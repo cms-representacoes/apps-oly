@@ -53,7 +53,6 @@
       --primary:#2836D4;
       --ring: rgba(40,54,212,.35);
     }
-
     html, body { height: 100%; }
     body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: var(--bg); color: var(--text); }
 
@@ -99,6 +98,15 @@
     .toggle-track[data-on="true"] { background: rgba(40,54,212,.15); }
     .toggle-thumb { transition: transform .2s ease; }
     .toggle-track[data-on="true"] .toggle-thumb { transform: translateX(18px); }
+
+    /* Search expand */
+    .search-collapsed {
+      width: 44px;
+      transition: width .22s ease;
+      overflow: hidden;
+      border-radius: 999px;
+    }
+    .search-collapsed.open { width: min(620px, 100%); }
   </style>
 </head>
 
@@ -119,36 +127,37 @@
           </div>
 
           <div class="flex items-center gap-2">
-            <button id="btnOpenDrawerFilters" class="focus-ring inline-flex items-center gap-2 rounded-full border border-oly-border bg-white px-4 py-2 text-sm font-semibold hover:bg-oly-bg" title="Filtros">
+            <!-- Search: icon-only -> expands -->
+            <div id="searchWrap" class="search-collapsed bg-white border border-oly-border shadow-sm flex items-center gap-2 px-2 py-2">
+              <button id="btnSearchToggle" class="focus-ring h-9 w-9 rounded-full hover:bg-oly-bg" title="Buscar">
+                <i class="fa-solid fa-magnifying-glass text-oly-blue"></i>
+              </button>
+              <input id="searchInput" class="hidden w-full bg-transparent text-sm font-medium placeholder:text-oly-muted/80 focus:outline-none"
+                     placeholder="Buscar por produto, código, cor, gênero ou segmento…" />
+              <button id="btnSearchClose" class="hidden focus-ring h-9 w-9 rounded-full hover:bg-oly-bg" title="Fechar busca">
+                <i class="fa-solid fa-xmark text-oly-blue"></i>
+              </button>
+            </div>
+
+            <button id="btnOpenDrawerFilters" class="focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-oly-border bg-white px-4 py-2 text-sm font-semibold hover:bg-oly-bg" title="Filtros">
               <i class="fa-solid fa-sliders text-oly-blue"></i>
               <span class="hidden sm:inline">Filtros</span>
             </button>
 
-            <button id="btnRefresh" class="focus-ring inline-flex items-center gap-2 rounded-full border border-oly-border bg-white px-4 py-2 text-sm font-semibold hover:bg-oly-bg" title="Recarregar">
+            <button id="btnRefresh" class="focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-oly-border bg-white px-4 py-2 text-sm font-semibold hover:bg-oly-bg" title="Recarregar">
               <i class="fa-solid fa-arrows-rotate text-oly-blue"></i>
               <span class="hidden sm:inline">Atualizar</span>
             </button>
 
-            <button id="btnOpenCart" class="focus-ring inline-flex items-center gap-2 rounded-full border border-oly-border bg-white px-4 py-2 text-sm font-semibold hover:bg-oly-bg">
+            <button id="btnClear" class="focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-oly-border bg-white px-4 py-2 text-sm font-semibold hover:bg-oly-bg" title="Limpar (busca + filtros)">
+              <i class="fa-solid fa-broom text-oly-blue"></i>
+              <span class="hidden sm:inline">Limpar</span>
+            </button>
+
+            <button id="btnOpenCart" class="focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-oly-border bg-white px-4 py-2 text-sm font-semibold hover:bg-oly-bg" title="Sacola">
               <i class="fa-solid fa-bag-shopping text-oly-blue"></i>
               <span class="hidden sm:inline">Sacola</span>
               <span id="cartCountBadge" class="hidden rounded-full bg-oly-blue px-2 py-0.5 text-xs font-bold text-white">0</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Search -->
-        <div class="mt-4 flex flex-col sm:flex-row gap-2 sm:items-center">
-          <div class="relative flex-1">
-            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-oly-muted"></i>
-            <input id="searchInput" class="focus-ring w-full rounded-full border border-oly-border bg-white px-11 py-3 text-sm font-medium placeholder:text-oly-muted/80"
-              placeholder="Buscar por produto, código, cor, gênero ou segmento…" />
-          </div>
-
-          <div class="flex gap-2 items-center">
-            <button id="btnClear" class="focus-ring inline-flex items-center gap-2 rounded-full border border-oly-border bg-white px-4 py-3 text-sm font-semibold hover:bg-oly-bg">
-              <i class="fa-solid fa-xmark text-oly-blue"></i>
-              <span>Limpar</span>
             </button>
           </div>
         </div>
@@ -292,21 +301,6 @@
         </div>
       </section>
 
-      <!-- Desktop-only results -->
-      <section id="resultsHeader" class="hidden mt-6 sm:block">
-        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
-          <div>
-            <div class="text-sm text-oly-muted">Resultados</div>
-            <div class="text-xl font-extrabold tracking-tight">
-              <span id="resultsCount">0</span> itens encontrados
-            </div>
-          </div>
-          <div class="text-sm text-oly-muted">
-            Mostrando <span id="shownCount">0</span> de <span id="totalCount">0</span>
-          </div>
-        </div>
-      </section>
-
       <section id="grid" class="hidden mt-4">
         <div id="cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
 
@@ -327,16 +321,10 @@
       </section>
     </main>
 
-    <!-- Mini Cart (small, corner) -->
+    <!-- Mini Cart -->
     <button id="miniCartFab" class="hidden pulse-soft focus-ring fixed z-50 left-4 bottom-4 safe-bottom inline-flex items-center gap-2 rounded-full bg-oly-blue px-4 py-3 text-white shadow-lift">
       <i class="fa-solid fa-bag-shopping"></i>
       <span class="text-sm font-extrabold"><span id="miniCartCount">0</span></span>
-    </button>
-
-    <!-- WhatsApp floating -->
-    <button id="btnWhats" class="pulse-soft focus-ring fixed z-50 right-4 bottom-4 safe-bottom inline-flex items-center justify-center h-14 w-14 rounded-full bg-green-500 text-white shadow-lift">
-      <i class="fa-brands fa-whatsapp text-2xl"></i>
-      <span class="sr-only">Abrir WhatsApp</span>
     </button>
 
     <!-- Product Modal -->
@@ -368,7 +356,6 @@
                       <i class="fa-solid fa-image text-oly-blue"></i>
                     </div>
                     <div class="mt-2 font-extrabold">Imagem indisponível</div>
-                    <div class="mt-1 text-sm text-oly-muted">Verifique <span class="font-mono">./Catalogo/</span> e o nome em <span class="font-mono">Imagem</span> no XLSX.</div>
                   </div>
                 </div>
 
@@ -378,7 +365,7 @@
                     <div id="pmCodigo" class="font-extrabold">—</div>
                   </div>
                   <div class="rounded-2xl border border-oly-border bg-white p-3">
-                    <div class="text-xs text-oly-muted">Preço (referência)</div>
+                    <div class="text-xs text-oly-muted">Preço</div>
                     <div id="pmPreco" class="font-extrabold">—</div>
                   </div>
                   <div class="rounded-2xl border border-oly-border bg-white p-3">
@@ -417,6 +404,7 @@
 
                 <div class="mt-4 rounded-3xl border border-oly-border bg-white p-4">
                   <div class="text-sm font-extrabold">Quantidade</div>
+
                   <div class="mt-3 flex items-center gap-3">
                     <button id="qtyMinus" class="focus-ring h-11 w-11 rounded-full border border-oly-border hover:bg-oly-bg" aria-label="Diminuir">
                       <i class="fa-solid fa-minus text-oly-blue"></i>
@@ -428,27 +416,25 @@
                   </div>
 
                   <div id="packQuickWrap" class="hidden mt-4 rounded-2xl border border-oly-border bg-oly-bg p-4">
-                    <div class="text-sm font-extrabold">Atalho de pedido</div>
+                    <div class="text-sm font-extrabold">Atalho (pares)</div>
                     <div class="mt-3 flex gap-2">
-                      <button id="btnSet6" class="focus-ring flex-1 inline-flex items-center justify-center gap-2 rounded-2xl border border-oly-border bg-white px-4 py-3 text-sm font-extrabold hover:bg-white/90">
-                        <span>6</span>
-                      </button>
-                      <button id="btnSet12" class="focus-ring flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-oly-blue px-4 py-3 text-sm font-extrabold text-white hover:opacity-95">
-                        <span>12</span>
-                      </button>
+                      <button id="btnPack6" class="focus-ring flex-1 inline-flex items-center justify-center rounded-2xl border border-oly-border bg-white px-4 py-3 text-sm font-extrabold hover:bg-white/90">+6</button>
+                      <button id="btnPack12" class="focus-ring flex-1 inline-flex items-center justify-center rounded-2xl bg-oly-blue px-4 py-3 text-sm font-extrabold text-white hover:opacity-95">+12</button>
+                    </div>
+                    <div class="mt-2 text-xs text-oly-muted">
+                      Dica: primeiro toque vira 6/12; depois soma (12 + 12 = 24).
                     </div>
                   </div>
 
                   <div class="mt-4">
                     <label class="text-sm font-extrabold" for="pmObs">Observações</label>
                     <textarea id="pmObs" rows="3" class="focus-ring mt-2 w-full rounded-2xl border border-oly-border px-4 py-3 text-sm placeholder:text-oly-muted/80"
-                      placeholder="Ex.: Preferência de numeração, cor alternativa, etc."></textarea>
+                      placeholder="Ex.: preferência de numeração, cor alternativa, etc."></textarea>
                   </div>
 
                   <button id="btnAddToCart" class="focus-ring mt-4 w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-oly-blue px-5 py-4 text-sm font-extrabold text-white hover:opacity-95">
                     <i class="fa-solid fa-bag-shopping"></i>
                     <span>Adicionar à Sacola</span>
-                    <span class="ml-1 opacity-90" id="btnAddPrice">—</span>
                   </button>
                 </div>
               </div>
@@ -511,6 +497,7 @@
                   </div>
 
                   <div class="mt-4 grid grid-cols-1 gap-2">
+                    <!-- ✅ único WhatsApp do sistema (somente na sacola) -->
                     <button id="btnWhatsCheckout" class="focus-ring inline-flex items-center justify-center gap-2 rounded-2xl bg-green-500 px-4 py-3 text-sm font-extrabold text-white hover:opacity-95">
                       <i class="fa-brands fa-whatsapp text-lg"></i>
                       <span>Solicitar via WhatsApp</span>
@@ -580,7 +567,7 @@
 
 <script>
 const DATA_CONFIG = { xlsxPath: "./Produtos.xlsx", imagesBasePath: "./Catalogo/", cacheBustOnRefresh: true };
-const STORAGE_KEYS = { cart: "olympikus_cart_v3", customer: "olympikus_customer_v1" };
+const STORAGE_KEYS = { cart: "olympikus_cart_v4", customer: "olympikus_customer_v1" };
 const CATEGORY_LABELS = { "FTW":"TÊNIS", "ACC":"ACESSÓRIOS", "CHI":"CHINELOS", "MEIA":"MEIAS", "V&A":"VESTUÁRIO" };
 
 const state = {
@@ -591,6 +578,7 @@ const state = {
   pagination: { pageSize: 24, shown: 0 },
   productModal: { open:false, item:null, group:null, qty:1 },
   cart: new Map(),
+  cardQty: new Map(), // key -> qty manual for card
 };
 
 const $ = (id)=>document.getElementById(id);
@@ -668,12 +656,33 @@ function loadCustomerFromStorage(){
   }catch(e){}
 }
 
+/** Search expand/collapse */
+function openSearch(){
+  $("searchWrap").classList.add("open");
+  $("searchInput").classList.remove("hidden");
+  $("btnSearchClose").classList.remove("hidden");
+  setTimeout(()=> $("searchInput").focus(), 50);
+}
+function closeSearch(){
+  $("searchWrap").classList.remove("open");
+  $("searchInput").classList.add("hidden");
+  $("btnSearchClose").classList.add("hidden");
+  $("searchInput").value = "";
+  state.filters.q = "";
+  refreshView(true);
+}
+$("btnSearchToggle").addEventListener("click", ()=>{
+  if($("searchWrap").classList.contains("open")) $("searchInput").focus();
+  else openSearch();
+});
+$("btnSearchClose").addEventListener("click", closeSearch);
+$("searchInput").addEventListener("input", (e)=>{ state.filters.q = e.target.value.trim(); refreshView(true); });
+
 /** Load XLSX */
 async function loadCatalog({ cacheBust=false } = {}){
   try{
     $("loadingState").classList.remove("hidden");
     $("grid").classList.add("hidden");
-    $("resultsHeader").classList.add("hidden");
     setHeaderStatus("Carregando…");
 
     const url = cacheBust ? `${DATA_CONFIG.xlsxPath}?v=${Date.now()}` : DATA_CONFIG.xlsxPath;
@@ -706,7 +715,6 @@ async function loadCatalog({ cacheBust=false } = {}){
 
     $("loadingState").classList.add("hidden");
     $("grid").classList.remove("hidden");
-    $("resultsHeader").classList.remove("hidden");
   }catch(err){
     console.error(err);
     setHeaderStatus("Erro ao carregar");
@@ -769,7 +777,9 @@ function clearAllFilters(){
   state.filters.q = "";
   state.groupColors = false;
 
-  $("searchInput").value = "";
+  // search UI
+  closeSearch();
+
   $("filterCategory").value = "";
   $("filterSegment").value = "";
   $("filterGender").value = "";
@@ -797,9 +807,8 @@ $("toggleGroup").addEventListener("click", ()=>{
   setToggleUI();
   refreshView(true);
 });
-$("searchInput").addEventListener("input", (e)=>{ state.filters.q = e.target.value.trim(); refreshView(true); });
 
-/** View */
+/** View + paging */
 $("btnLoadMore").addEventListener("click", ()=>{
   state.pagination.shown = Math.min(state.pagination.shown + state.pagination.pageSize, state.productsView.length);
   renderCards();
@@ -851,10 +860,6 @@ function refreshView(resetPaging){
 
   if(resetPaging) state.pagination.shown = Math.min(state.pagination.pageSize, state.productsView.length);
 
-  $("resultsCount").textContent = state.productsView.length.toLocaleString("pt-BR");
-  $("totalCount").textContent = state.productsView.length.toLocaleString("pt-BR");
-  $("shownCount").textContent = state.pagination.shown.toLocaleString("pt-BR");
-
   $("noResults").classList.toggle("hidden", state.productsView.length !== 0);
 
   renderCards();
@@ -868,6 +873,11 @@ function resolveImageSrc(imagemValue){
   const filename = hasExt ? raw : `${raw}.png`;
   return `${DATA_CONFIG.imagesBasePath}${encodeURIComponent(filename)}`;
 }
+
+/** Key for cart item (variant) */
+function cartKeyFor(item){
+  return normalizeName([item.codigo || "", item.corCodigo || item.cor || "", item.genero || ""].join("||"));
+}
 function getVariantsFor(item){
   const key = normalizeName(`${item.produto}||${item.codigo}||${item.genero}`);
   const variants = state.productsRaw
@@ -875,6 +885,46 @@ function getVariantsFor(item){
     .slice()
     .sort((a,b)=>String(a.cor).localeCompare(String(b.cor),"pt-BR",{sensitivity:"base"}));
   return variants.length ? variants : [item];
+}
+
+/** Card qty state */
+function getCardQty(key){
+  return state.cardQty.has(key) ? state.cardQty.get(key) : 1;
+}
+function setCardQty(key, n){
+  const v = Math.max(1, Math.min(999, Number(n) || 1));
+  state.cardQty.set(key, v);
+}
+
+/** Add to cart helper (accumulates) */
+function addToCart(item, qty, { obs="" } = {}){
+  const key = cartKeyFor(item);
+  const precoNum = toNumberBR(item.precoRaw ?? 0);
+  const precoFmt = moneyBR(precoNum);
+  const existing = state.cart.get(key);
+  if(existing){
+    existing.qty = Math.min(9999, existing.qty + qty);
+    if(obs) existing.obs = obs;
+    state.cart.set(key, existing);
+  } else {
+    state.cart.set(key, {
+      key,
+      codigo: item.codigo || "",
+      produto: item.produto || "",
+      cor: item.cor || "",
+      corCodigo: item.corCodigo || "",
+      genero: item.genero || "",
+      segmento: item.segmento || "",
+      categoria: item.categoria || "",
+      precoNum,
+      precoFmt,
+      qty: qty,
+      obs: obs || "",
+      imgSrc: resolveImageSrc(item.imagem),
+    });
+  }
+  saveCartToStorage();
+  renderCartUI();
 }
 
 function renderCards(){
@@ -890,7 +940,6 @@ function renderCards(){
     if(v._type === "group"){
       const first = v.items[0];
       const imgSrc = resolveImageSrc(first?.imagem);
-      const price = v.minPriceFmt || "—";
 
       card.innerHTML = `
         <div class="aspect-[4/3] bg-oly-bg border-b border-oly-border flex items-center justify-center overflow-hidden">
@@ -903,40 +952,34 @@ function renderCards(){
         </div>
 
         <div class="p-4">
-          <div class="flex items-start justify-between gap-3">
+          <div class="flex items-start justify-between gap-2">
             <div class="min-w-0">
               <div class="text-base font-extrabold leading-snug line-clamp-2">${escapeHtml(v.produto || "Produto")}</div>
-              <div class="mt-1 text-xs text-oly-muted">
-                <span class="font-bold">${escapeHtml(categoryLabel(v.categoria))}</span> · ${escapeHtml(v.segmento || "—")} · ${escapeHtml(v.genero || "—")}
+              <div class="mt-2 flex items-center justify-between gap-2">
+                <span class="inline-flex items-center rounded-full bg-oly-blue/10 px-3 py-1 text-xs font-extrabold text-oly-blue">
+                  ${escapeHtml(categoryLabel(v.categoria))}
+                </span>
+                <div class="text-sm font-extrabold">${escapeHtml(v.minPriceFmt || "—")}</div>
               </div>
             </div>
-            <span class="shrink-0 inline-flex items-center gap-2 rounded-full bg-oly-blue/10 px-3 py-1 text-xs font-extrabold text-oly-blue">
-              <i class="fa-solid fa-palette"></i>
-              <span>${v.colorCount ? `${v.colorCount} cores` : "—"}</span>
-            </span>
+
+            <button class="btnDetails focus-ring h-10 w-10 rounded-full border border-oly-border hover:bg-oly-bg" title="Detalhes">
+              <i class="fa-solid fa-eye text-oly-blue"></i>
+            </button>
           </div>
 
-          <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
-            <div class="rounded-2xl border border-oly-border bg-oly-bg px-3 py-2">
-              <div class="text-[11px] text-oly-muted font-semibold">Código</div>
-              <div class="font-extrabold">${escapeHtml(v.codigo || "—")}</div>
-            </div>
-            <div class="rounded-2xl border border-oly-border bg-oly-bg px-3 py-2">
-              <div class="text-[11px] text-oly-muted font-semibold">A partir de</div>
-              <div class="font-extrabold">${escapeHtml(price)}</div>
-            </div>
+          <div class="mt-3 rounded-2xl border border-oly-border bg-oly-bg p-3 text-xs text-oly-muted">
+            <b>${v.colorCount || 0}</b> cores disponíveis. Abra detalhes para escolher.
           </div>
-
-          <button class="mt-3 w-full focus-ring inline-flex items-center justify-center gap-2 rounded-2xl border border-oly-border bg-white px-4 py-3 text-sm font-extrabold hover:bg-oly-bg">
-            <i class="fa-solid fa-eye text-oly-blue"></i>
-            <span>Ver detalhes</span>
-          </button>
         </div>
       `;
-      card.querySelector("button").addEventListener("click", ()=> openProductModal({ item:first, group:v }));
+      card.querySelector(".btnDetails").addEventListener("click", ()=> openProductModal({ item:first, group:v }));
       card.addEventListener("keydown", (ev)=>{ if(ev.key==="Enter") openProductModal({ item:first, group:v }); });
     } else {
       const imgSrc = resolveImageSrc(v.imagem);
+      const key = cartKeyFor(v);
+      const qty = getCardQty(key);
+
       card.innerHTML = `
         <div class="aspect-[4/3] bg-oly-bg border-b border-oly-border flex items-center justify-center overflow-hidden">
           <img alt="${escapeHtml(v.produto)}" src="${imgSrc}" class="h-full w-full object-contain bg-white"
@@ -948,48 +991,103 @@ function renderCards(){
         </div>
 
         <div class="p-4">
-          <div class="text-base font-extrabold leading-snug line-clamp-2">${escapeHtml(v.produto || "Produto")}</div>
-          <div class="mt-1 text-xs text-oly-muted">
-            <span class="font-bold">${escapeHtml(categoryLabel(v.categoria))}</span> · ${escapeHtml(v.segmento || "—")} · ${escapeHtml(v.genero || "—")}
-          </div>
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <div class="text-base font-extrabold leading-snug line-clamp-2">${escapeHtml(v.produto || "Produto")}</div>
 
-          <div class="mt-3 flex flex-wrap items-center gap-2">
-            <span class="inline-flex items-center gap-2 rounded-full bg-oly-blue/10 px-3 py-1 text-xs font-extrabold text-oly-blue">
-              <i class="fa-solid fa-palette"></i>
-              <span>${escapeHtml(v.cor || "—")}</span>
-            </span>
-            <span class="inline-flex items-center gap-2 rounded-full bg-white border border-oly-border px-3 py-1 text-xs font-bold">
-              <i class="fa-solid fa-hashtag text-oly-blue"></i>
-              <span>${escapeHtml(v.codigo || "—")}</span>
-            </span>
-          </div>
-
-          <div class="mt-3 flex items-end justify-between">
-            <div>
-              <div class="text-[11px] text-oly-muted font-semibold">Preço (referência)</div>
-              <div class="text-lg font-extrabold">${escapeHtml(v.priceFmt)}</div>
+              <!-- Categoria + Preço (mesma linha) -->
+              <div class="mt-2 flex items-center justify-between gap-2">
+                <span class="inline-flex items-center rounded-full bg-oly-blue/10 px-3 py-1 text-xs font-extrabold text-oly-blue">
+                  ${escapeHtml(categoryLabel(v.categoria))}
+                </span>
+                <div class="text-sm font-extrabold">${escapeHtml(v.priceFmt)}</div>
+              </div>
             </div>
-            <button class="focus-ring inline-flex items-center gap-2 rounded-2xl bg-oly-blue px-4 py-3 text-sm font-extrabold text-white hover:opacity-95">
-              <i class="fa-solid fa-eye"></i>
-              <span>Detalhes</span>
+
+            <button class="btnDetails focus-ring h-10 w-10 rounded-full border border-oly-border hover:bg-oly-bg" title="Detalhes">
+              <i class="fa-solid fa-eye text-oly-blue"></i>
+            </button>
+          </div>
+
+          <!-- Controles: manual + atalho +6/+12 + adicionar -->
+          <div class="mt-3 rounded-2xl border border-oly-border bg-oly-bg p-3">
+            <div class="flex items-center gap-2">
+              <button class="btnMinus focus-ring h-10 w-10 rounded-full border border-oly-border bg-white hover:bg-white/90" aria-label="Diminuir">
+                <i class="fa-solid fa-minus text-oly-blue"></i>
+              </button>
+              <div class="qtyDisplay min-w-[44px] text-center text-sm font-extrabold">${qty}</div>
+              <button class="btnPlus focus-ring h-10 w-10 rounded-full border border-oly-border bg-white hover:bg-white/90" aria-label="Aumentar">
+                <i class="fa-solid fa-plus text-oly-blue"></i>
+              </button>
+
+              <button class="btnAdd6 focus-ring flex-1 rounded-2xl border border-oly-border bg-white px-3 py-2 text-xs font-extrabold hover:bg-white/90">+6</button>
+              <button class="btnAdd12 focus-ring flex-1 rounded-2xl bg-oly-blue px-3 py-2 text-xs font-extrabold text-white hover:opacity-95">+12</button>
+            </div>
+
+            <button class="btnAdd focus-ring mt-2 w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-oly-blue px-4 py-3 text-sm font-extrabold text-white hover:opacity-95">
+              <i class="fa-solid fa-bag-shopping"></i>
+              <span>Adicionar</span>
             </button>
           </div>
         </div>
       `;
-      card.querySelector("button").addEventListener("click", ()=> openProductModal({ item:v, group:null }));
-      card.addEventListener("keydown", (ev)=>{ if(ev.key==="Enter") openProductModal({ item:v, group:null }); });
+
+      const btnDetails = card.querySelector(".btnDetails");
+      const qtyDisplay = card.querySelector(".qtyDisplay");
+      const btnMinus = card.querySelector(".btnMinus");
+      const btnPlus = card.querySelector(".btnPlus");
+      const btnAdd = card.querySelector(".btnAdd");
+      const btnAdd6 = card.querySelector(".btnAdd6");
+      const btnAdd12 = card.querySelector(".btnAdd12");
+
+      btnDetails.addEventListener("click", ()=> openProductModal({ item:v, group:null }));
+
+      btnMinus.addEventListener("click", ()=>{
+        const cur = getCardQty(key);
+        const next = Math.max(1, cur - 1);
+        setCardQty(key, next);
+        qtyDisplay.textContent = String(next);
+      });
+      btnPlus.addEventListener("click", ()=>{
+        const cur = getCardQty(key);
+        const next = Math.min(999, cur + 1);
+        setCardQty(key, next);
+        qtyDisplay.textContent = String(next);
+      });
+
+      // ✅ Sugestão item 6: +6/+12 vão DIRETO pra sacola e acumulam sempre
+      btnAdd6.addEventListener("click", ()=>{
+        addToCart(v, 6);
+        toast("+6 na sacola ✅");
+      });
+      btnAdd12.addEventListener("click", ()=>{
+        addToCart(v, 12);
+        toast("+12 na sacola ✅");
+      });
+
+      // manual qty
+      btnAdd.addEventListener("click", ()=>{
+        addToCart(v, getCardQty(key));
+        toast("Adicionado ✅");
+      });
     }
 
     wrap.appendChild(card);
   }
 }
 
-/** Product modal */
+/** Product modal qty helpers */
 function setQty(n){
   state.productModal.qty = Math.max(1, Math.min(999, Number(n) || 1));
   $("qtyValue").textContent = String(state.productModal.qty);
 }
+// ✅ first click turns 6/12 (if qty is 1), later adds
+function applyPack(n){
+  if(state.productModal.qty <= 1) setQty(n);
+  else setQty(state.productModal.qty + n);
+}
 
+/** Product modal open/close */
 function openProductModal({ item, group }){
   state.productModal.open = true;
   state.productModal.item = item;
@@ -1001,15 +1099,11 @@ function openProductModal({ item, group }){
   const cor = item.cor || "—";
   const corCodigo = item.corCodigo || "—";
 
-  const priceNum = toNumberBR(item.precoRaw ?? 0);
-  const priceFmt = moneyBR(priceNum);
-
   $("pmTitle").textContent = item.produto || "Produto";
   $("pmCodigo").textContent = item.codigo || "—";
   $("pmSegmento").textContent = item.segmento || "—";
   $("pmGenero").textContent = item.genero || "—";
-  $("pmPreco").textContent = priceFmt;
-  $("btnAddPrice").textContent = `· ${priceFmt}`;
+  $("pmPreco").textContent = moneyBR(toNumberBR(item.precoRaw ?? 0));
 
   $("pmCategoriaBadge").textContent = `${categoryLabel(categoria)} (${categoria || "—"})`;
   $("pmCorBadge").textContent = cor;
@@ -1035,6 +1129,7 @@ function openProductModal({ item, group }){
     fallback.classList.remove("hidden");
   }
 
+  // Colors picker (group mode)
   const wrap = $("pmColorPickerWrap");
   const chips = $("pmColorChips");
   chips.innerHTML = "";
@@ -1055,6 +1150,7 @@ function openProductModal({ item, group }){
     }
   }
 
+  // Zoom viewer
   const variants = getVariantsFor(item);
   const currentIndex = Math.max(0, variants.findIndex(v => normalizeName(v.cor) === normalizeName(item.cor) && normalizeName(v.corCodigo) === normalizeName(item.corCodigo)));
   $("btnZoomImage").onclick = () => openImageViewer(variants, currentIndex, { returnToProductModal:true });
@@ -1077,42 +1173,13 @@ $("productModal").addEventListener("click", (e)=>{
 });
 $("qtyMinus").addEventListener("click", ()=> setQty(state.productModal.qty - 1));
 $("qtyPlus").addEventListener("click", ()=> setQty(state.productModal.qty + 1));
-$("btnSet6").addEventListener("click", ()=> setQty(6));
-$("btnSet12").addEventListener("click", ()=> setQty(12));
+$("btnPack6").addEventListener("click", ()=> applyPack(6));
+$("btnPack12").addEventListener("click", ()=> applyPack(12));
 
 $("btnAddToCart").addEventListener("click", ()=>{
   const item = state.productModal.item;
   if(!item) return;
-
-  const key = normalizeName([item.codigo || "", item.corCodigo || item.cor || "", item.genero || ""].join("||"));
-  const precoNum = toNumberBR(item.precoRaw ?? 0);
-  const precoFmt = moneyBR(precoNum);
-
-  const existing = state.cart.get(key);
-  if(existing){
-    existing.qty = Math.min(9999, existing.qty + state.productModal.qty);
-    if($("pmObs").value.trim()) existing.obs = $("pmObs").value.trim();
-    state.cart.set(key, existing);
-  } else {
-    state.cart.set(key, {
-      key,
-      codigo: item.codigo || "",
-      produto: item.produto || "",
-      cor: item.cor || "",
-      corCodigo: item.corCodigo || "",
-      genero: item.genero || "",
-      segmento: item.segmento || "",
-      categoria: item.categoria || "",
-      precoNum,
-      precoFmt,
-      qty: state.productModal.qty,
-      obs: $("pmObs").value.trim(),
-      imgSrc: resolveImageSrc(item.imagem),
-    });
-  }
-
-  saveCartToStorage();
-  renderCartUI();
+  addToCart(item, state.productModal.qty, { obs: $("pmObs").value.trim() });
   toast("Adicionado ✅");
   closeProductModal();
 });
@@ -1159,8 +1226,6 @@ function renderCartUI(){
   $("miniCartCount").textContent = String(items);
 
   $("btnOpenCart").classList.toggle("pulse-soft", items > 0);
-
-  $("btnWhats").style.bottom = (items === 0) ? "1rem" : "5.5rem";
 
   $("cartEmpty").classList.toggle("hidden", items !== 0);
   $("cartContent").classList.toggle("hidden", items === 0);
@@ -1244,7 +1309,7 @@ function renderCartUI(){
   }
 }
 
-/** WhatsApp */
+/** WhatsApp (only in sacola) */
 function buildWhatsMessage(){
   const name = $("ckName").value.trim();
   const city = $("ckCity").value.trim();
@@ -1276,7 +1341,6 @@ function openWhatsApp(){
   const msg = buildWhatsMessage();
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
 }
-$("btnWhats").addEventListener("click", openWhatsApp);
 $("btnWhatsCheckout").addEventListener("click", openWhatsApp);
 
 /** Export XLSX */
@@ -1297,7 +1361,7 @@ function exportOrderXlsx(){
 }
 $("btnExportXlsx").addEventListener("click", exportOrderXlsx);
 
-/** Export PDF (card-style, 2 per page) */
+/** Export PDF (sacola-like, card grid, better typography) */
 function loadImgAsDataURL(src){
   return new Promise((resolve)=>{
     const img = new Image();
@@ -1319,8 +1383,8 @@ function loadImgAsDataURL(src){
 
 async function exportOrderPdf(){
   if(state.cart.size === 0){ toast("Sacola vazia ✅"); return; }
-
   saveCustomerToStorage();
+
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit:"pt", format:"a4" });
 
@@ -1334,74 +1398,109 @@ async function exportOrderPdf(){
   const logoSrc = $("brandLogo")?.getAttribute("src") || "";
   const logoData = logoSrc ? await loadImgAsDataURL(logoSrc) : null;
 
-  const pageW = doc.internal.pageSize.getWidth();
-  const margin = 40;
-  const cardW = pageW - margin*2;
-  const cardH = 210;
-  const gap = 18;
-
   const items = Array.from(state.cart.values());
 
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 40;
+
+  const headerH = 110;
+  const gridTop = margin + headerH;
+  const cardGap = 14;
+
+  const cardW = (pageW - margin*2 - cardGap) / 2;   // 2 colunas
+  const cardH = 210;                                // altura fixa
+  const cols = 2;
+  const rowsPerPage = Math.floor((pageH - gridTop - margin + cardGap) / (cardH + cardGap));
+  const perPage = cols * rowsPerPage;
+
+  function drawHeader(){
+    if(logoData) doc.addImage(logoData, "PNG", margin, margin-6, 82, 38);
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(16);
+    doc.text("Pedido — Catálogo Olympikus", margin + 95, margin + 18);
+    doc.setFont("helvetica","normal");
+    doc.setFontSize(10);
+    doc.setTextColor(107,114,128);
+    doc.text(`Data: ${dateStr}`, margin + 95, margin + 36);
+    doc.setTextColor(17,24,39);
+
+    let y = margin + 62;
+    doc.setFontSize(11);
+    if(name) { doc.text(`Cliente: ${name}`, margin, y); y += 16; }
+    if(city) { doc.text(`Cidade/UF: ${city}`, margin, y); }
+  }
+
   for(let i=0; i<items.length; i++){
-    const idxOnPage = i % 2;
-    if(i > 0 && idxOnPage === 0) doc.addPage();
+    const pageIndex = Math.floor(i / perPage);
+    const indexInPage = i % perPage;
 
-    const yTop = 40 + idxOnPage*(cardH + gap);
-
-    if(idxOnPage === 0){
-      if(logoData) doc.addImage(logoData, "PNG", margin, 22, 74, 36);
-      doc.setFont("helvetica","bold");
-      doc.setFontSize(16);
-      doc.text("Pedido — Catálogo Olympikus", margin + 90, 44);
-      doc.setFont("helvetica","normal");
-      doc.setFontSize(10);
-      doc.text(`Data: ${dateStr}`, margin + 90, 62);
-      if(name) doc.text(`Cliente: ${name}`, margin, 86);
-      if(city) doc.text(`Cidade/UF: ${city}`, margin, 102);
+    if(indexInPage === 0){
+      if(pageIndex > 0) doc.addPage();
+      drawHeader();
     }
 
-    const cardY = yTop + 80;
+    const r = Math.floor(indexInPage / cols);
+    const c = indexInPage % cols;
 
+    const x = margin + c*(cardW + cardGap);
+    const y = gridTop + r*(cardH + cardGap);
+
+    // card bg
     doc.setDrawColor(229,231,235);
     doc.setFillColor(255,255,255);
-    doc.roundedRect(margin, cardY, cardW, cardH, 16, 16, "FD");
+    doc.roundedRect(x, y, cardW, cardH, 16, 16, "FD");
+
+    // image box
+    const imgBoxH = 110;
+    doc.setFillColor(246,247,251);
+    doc.roundedRect(x+12, y+12, cardW-24, imgBoxH, 14, 14, "F");
 
     const it = items[i];
-
-    const imgBoxX = margin + cardW - 180;
-    const imgBoxY = cardY + 18;
-    doc.setFillColor(246,247,251);
-    doc.roundedRect(imgBoxX, imgBoxY, 160, 160, 14, 14, "F");
-
     const imgData = it.imgSrc ? await loadImgAsDataURL(it.imgSrc) : null;
     if(imgData){
-      doc.addImage(imgData, "PNG", imgBoxX + 10, imgBoxY + 10, 140, 140, undefined, "FAST");
+      doc.addImage(imgData, "PNG", x+22, y+18, cardW-44, imgBoxH-12, undefined, "FAST");
     } else {
       doc.setFont("helvetica","normal");
       doc.setFontSize(10);
-      doc.text("Sem imagem", imgBoxX + 45, imgBoxY + 85);
-    }
-
-    const x = margin + 18;
-    let y = cardY + 34;
-
-    doc.setFont("helvetica","bold"); doc.setFontSize(13);
-    doc.text(`${i+1}. ${it.produto}`, x, y, { maxWidth: imgBoxX - x - 16 });
-
-    doc.setFont("helvetica","normal"); doc.setFontSize(11);
-    y += 22; doc.text(`Código: ${it.codigo}`, x, y);
-    y += 18; doc.text(`Cor: ${it.cor}${it.corCodigo ? " ("+it.corCodigo+")" : ""}`, x, y, { maxWidth: imgBoxX - x - 16 });
-    y += 18; doc.text(`Quantidade: ${it.qty}`, x, y);
-
-    if(it.obs){
-      y += 22;
-      doc.setFontSize(10);
       doc.setTextColor(107,114,128);
-      doc.text("Obs.:", x, y);
-      doc.setTextColor(17,24,39);
-      doc.text(String(it.obs).slice(0, 120), x + 30, y, { maxWidth: imgBoxX - x - 16 });
+      doc.text("Sem imagem", x + 30, y + 70);
       doc.setTextColor(17,24,39);
     }
+
+    // text
+    let ty = y + 12 + imgBoxH + 24;
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(12);
+    doc.text(String(it.produto || "Produto").slice(0, 26), x+14, ty);
+
+    ty += 16;
+    // Categoria (pill style) + Preço omitido no pedido (você não quer subtotal/preço no fluxo)
+    doc.setFont("helvetica","normal");
+    doc.setFontSize(10);
+    doc.setTextColor(40,54,212);
+    doc.text(categoryLabel(it.categoria), x+14, ty);
+    doc.setTextColor(17,24,39);
+
+    ty += 16;
+    doc.setTextColor(107,114,128);
+    doc.text("Código:", x+14, ty);
+    doc.setTextColor(17,24,39);
+    doc.text(String(it.codigo || "-"), x+54, ty);
+
+    ty += 14;
+    doc.setTextColor(107,114,128);
+    doc.text("Cor:", x+14, ty);
+    doc.setTextColor(17,24,39);
+    doc.text(`${it.cor || "-"}${it.corCodigo ? " ("+it.corCodigo+")" : ""}`.slice(0, 24), x+40, ty);
+
+    ty += 14;
+    doc.setTextColor(107,114,128);
+    doc.text("Qtd:", x+14, ty);
+    doc.setTextColor(17,24,39);
+    doc.text(String(it.qty || 0), x+40, ty);
+
+    doc.setTextColor(17,24,39);
   }
 
   doc.save(`pedido_olympikus_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.pdf`);
@@ -1423,7 +1522,6 @@ function openImageViewer(variants, currentIndex, opts={}){
   document.body.style.overflow = "hidden";
   trapFocus("imageViewer");
 }
-
 function closeImageViewer(){
   viewerState.open = false;
   $("imageViewer").classList.add("hidden");
@@ -1437,7 +1535,6 @@ function closeImageViewer(){
   }
   viewerState.returnToProductModal = false;
 }
-
 function renderImageViewer(){
   const it = viewerState.variants[viewerState.index];
   if(!it) return;
@@ -1473,7 +1570,6 @@ document.addEventListener("keydown", (e)=>{
     else if(e.key === "Escape") { e.preventDefault(); closeImageViewer(); }
     return;
   }
-
   if(e.key === "Escape"){
     if(state.productModal.open) closeProductModal();
     else if(isCartOpen()) closeCartModal();
