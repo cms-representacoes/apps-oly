@@ -47,7 +47,6 @@
   <style>
     :root{
       --bg: #F6F7FB;
-      --surface:#FFFFFF;
       --text:#111827;
       --muted:#6B7280;
       --border:#E5E7EB;
@@ -60,13 +59,10 @@
 
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
     .focus-ring:focus { outline: none; box-shadow: 0 0 0 4px var(--ring); }
-
     .safe-bottom { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
     .safe-top { padding-top: max(0px, env(safe-area-inset-top)); }
 
-    /* Pulse for attention (cart + whatsapp) */
     @keyframes softPulse {
       0% { transform: translateY(0) scale(1); box-shadow: 0 10px 25px rgba(0,0,0,.10); }
       50% { transform: translateY(-1px) scale(1.03); box-shadow: 0 14px 30px rgba(0,0,0,.13); }
@@ -97,6 +93,12 @@
     /* Drawer animation */
     .drawer { transform: translateX(-100%); transition: transform .2s ease; }
     .drawer.open { transform: translateX(0); }
+
+    /* Toggle */
+    .toggle-track { background: #E8EAF9; }
+    .toggle-track[data-on="true"] { background: rgba(40,54,212,.15); }
+    .toggle-thumb { transition: transform .2s ease; }
+    .toggle-track[data-on="true"] .toggle-thumb { transform: translateX(18px); }
   </style>
 </head>
 
@@ -108,12 +110,11 @@
         <div class="flex items-center justify-between gap-3">
           <div class="flex items-center gap-3 min-w-0">
             <div class="h-10 w-10 rounded-2xl bg-white border border-oly-border flex items-center justify-center overflow-hidden">
-              <!-- ✅ Suba no repo como: /logo-olympikus.png -->
               <img id="brandLogo" src="./logo-olympikus.png" alt="Olympikus" class="h-full w-full object-contain" onerror="this.style.display='none'">
             </div>
             <div class="leading-tight min-w-0">
               <div class="text-lg sm:text-xl font-extrabold tracking-tight truncate">Catálogo Olympikus</div>
-              <div id="headerStatus" class="text-xs text-oly-muted">Carregando dados…</div>
+              <div id="headerStatus" class="text-xs text-oly-muted">Carregando…</div>
             </div>
           </div>
 
@@ -123,14 +124,14 @@
               <span class="hidden sm:inline">Filtros</span>
             </button>
 
-            <button id="btnRefresh" class="focus-ring inline-flex items-center gap-2 rounded-full border border-oly-border bg-white px-4 py-2 text-sm font-semibold hover:bg-oly-bg" title="Recarregar dados do servidor">
+            <button id="btnRefresh" class="focus-ring inline-flex items-center gap-2 rounded-full border border-oly-border bg-white px-4 py-2 text-sm font-semibold hover:bg-oly-bg" title="Recarregar">
               <i class="fa-solid fa-arrows-rotate text-oly-blue"></i>
               <span class="hidden sm:inline">Atualizar</span>
             </button>
 
             <button id="btnOpenCart" class="focus-ring inline-flex items-center gap-2 rounded-full border border-oly-border bg-white px-4 py-2 text-sm font-semibold hover:bg-oly-bg">
               <i class="fa-solid fa-bag-shopping text-oly-blue"></i>
-              <span class="hidden sm:inline">Minha Sacola</span>
+              <span class="hidden sm:inline">Sacola</span>
               <span id="cartCountBadge" class="hidden rounded-full bg-oly-blue px-2 py-0.5 text-xs font-bold text-white">0</span>
             </button>
           </div>
@@ -149,28 +150,7 @@
               <i class="fa-solid fa-xmark text-oly-blue"></i>
               <span>Limpar</span>
             </button>
-
-            <div class="hidden sm:flex items-center gap-2 rounded-full border border-oly-border bg-white px-4 py-3 text-sm">
-              <i class="fa-solid fa-file-excel text-oly-blue"></i>
-              <span class="text-oly-muted">Fonte: Produtos.xlsx</span>
-            </div>
           </div>
-        </div>
-
-        <!-- Tiny status bar -->
-        <div class="mt-3 flex flex-wrap gap-2 text-xs text-oly-muted">
-          <span class="inline-flex items-center gap-2 rounded-full border border-oly-border bg-white px-3 py-1">
-            <i class="fa-solid fa-boxes-stacked text-oly-blue"></i>
-            <span><b id="statProducts">0</b> produtos</span>
-          </span>
-          <span class="inline-flex items-center gap-2 rounded-full border border-oly-border bg-white px-3 py-1">
-            <i class="fa-solid fa-image text-oly-blue"></i>
-            <span>Imagens: <span class="font-semibold">./Catalogo/</span></span>
-          </span>
-          <span id="filtersPill" class="inline-flex items-center gap-2 rounded-full border border-oly-border bg-white px-3 py-1">
-            <i class="fa-solid fa-sliders text-oly-blue"></i>
-            <span>(Todos)</span>
-          </span>
         </div>
       </div>
     </header>
@@ -282,7 +262,7 @@
               <div class="font-bold">Se não carregar:</div>
               <ul class="mt-1 list-disc pl-5 text-oly-muted">
                 <li>Confirme o nome <b>Produtos.xlsx</b> (exato).</li>
-                <li>Confirme a pasta <b>Catalogo</b> (maiúsculas/minúsculas importam).</li>
+                <li>Confirme a pasta <b>Catalogo</b>.</li>
                 <li>Clique em <b>Atualizar</b> no topo.</li>
               </ul>
             </div>
@@ -312,7 +292,8 @@
         </div>
       </section>
 
-      <section id="resultsHeader" class="hidden mt-6">
+      <!-- Desktop-only results -->
+      <section id="resultsHeader" class="hidden mt-6 sm:block">
         <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
           <div>
             <div class="text-sm text-oly-muted">Resultados</div>
@@ -447,8 +428,7 @@
                   </div>
 
                   <div id="packQuickWrap" class="hidden mt-4 rounded-2xl border border-oly-border bg-oly-bg p-4">
-                    <div class="text-sm font-extrabold">Atalho de pedido (pares)</div>
-                    <div class="mt-2 text-xs text-oly-muted">TÊNIS, CHINELOS e MEIAS costumam ser fechados por 6 ou 12.</div>
+                    <div class="text-sm font-extrabold">Atalho de pedido</div>
                     <div class="mt-3 flex gap-2">
                       <button id="btnSet6" class="focus-ring flex-1 inline-flex items-center justify-center gap-2 rounded-2xl border border-oly-border bg-white px-4 py-3 text-sm font-extrabold hover:bg-white/90">
                         <span>6</span>
@@ -530,7 +510,6 @@
                     </div>
                   </div>
 
-                  <!-- Smaller buttons + PDF -->
                   <div class="mt-4 grid grid-cols-1 gap-2">
                     <button id="btnWhatsCheckout" class="focus-ring inline-flex items-center justify-center gap-2 rounded-2xl bg-green-500 px-4 py-3 text-sm font-extrabold text-white hover:opacity-95">
                       <i class="fa-brands fa-whatsapp text-lg"></i>
@@ -547,19 +526,12 @@
                         <span>PDF</span>
                       </button>
                     </div>
-
-                    <div class="text-xs text-oly-muted">
-                      Export inclui: Código, Produto, Cor, Quantidade (+ imagens no PDF). ✅
-                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div class="p-4 sm:p-6 border-t border-oly-border text-xs text-oly-muted">
-            <span class="font-semibold">Observação:</span> não exibimos subtotais na sacola. ✅
-          </div>
         </div>
       </div>
     </div>
@@ -597,7 +569,7 @@
       </div>
     </div>
 
-    <!-- Toast (kept for add/remove feedback only) -->
+    <!-- Toast -->
     <div id="toast" class="pointer-events-none fixed top-4 left-1/2 -translate-x-1/2 z-[80] hidden">
       <div class="pointer-events-auto rounded-full bg-oly-text text-white px-4 py-2 text-sm font-bold shadow-lift flex items-center gap-2">
         <i class="fa-solid fa-circle-check"></i>
@@ -607,27 +579,9 @@
   </div>
 
 <script>
-/** ==========================
- *  Config
- *  ========================== */
-const DATA_CONFIG = {
-  xlsxPath: "./Produtos.xlsx",
-  imagesBasePath: "./Catalogo/",
-  cacheBustOnRefresh: true
-};
-
-const STORAGE_KEYS = {
-  cart: "olympikus_cart_v2",
-  customer: "olympikus_customer_v1",
-};
-
-const CATEGORY_LABELS = {
-  "FTW": "TÊNIS",
-  "ACC": "ACESSÓRIOS",
-  "CHI": "CHINELOS",
-  "MEIA": "MEIAS",
-  "V&A": "VESTUÁRIO",
-};
+const DATA_CONFIG = { xlsxPath: "./Produtos.xlsx", imagesBasePath: "./Catalogo/", cacheBustOnRefresh: true };
+const STORAGE_KEYS = { cart: "olympikus_cart_v3", customer: "olympikus_customer_v1" };
+const CATEGORY_LABELS = { "FTW":"TÊNIS", "ACC":"ACESSÓRIOS", "CHI":"CHINELOS", "MEIA":"MEIAS", "V&A":"VESTUÁRIO" };
 
 const state = {
   productsRaw: [],
@@ -636,10 +590,10 @@ const state = {
   filters: { category:"", segment:"", gender:"", q:"", sort:"default" },
   pagination: { pageSize: 24, shown: 0 },
   productModal: { open:false, item:null, group:null, qty:1 },
-  cart: new Map(), // key -> item
+  cart: new Map(),
 };
 
-const $ = (id) => document.getElementById(id);
+const $ = (id)=>document.getElementById(id);
 
 function normalizeName(s){
   if(!s) return "";
@@ -657,14 +611,11 @@ function categoryLabel(cat){ return CATEGORY_LABELS[cat] || cat || "—"; }
 
 function moneyBR(value){
   const num = Number(value);
-  if(Number.isFinite(num)){
-    return num.toLocaleString("pt-BR", { style:"currency", currency:"BRL" });
-  }
+  if(Number.isFinite(num)) return num.toLocaleString("pt-BR", { style:"currency", currency:"BRL" });
   const str = String(value ?? "").trim();
   const cleaned = str.replace(/\./g,"").replace(",",".").replace(/[^\d.-]/g,"");
   const n2 = Number(cleaned);
-  if(Number.isFinite(n2)) return n2.toLocaleString("pt-BR", { style:"currency", currency:"BRL" });
-  return "R$ 0,00";
+  return Number.isFinite(n2) ? n2.toLocaleString("pt-BR", { style:"currency", currency:"BRL" }) : "R$ 0,00";
 }
 function toNumberBR(value){
   const num = Number(value);
@@ -684,25 +635,9 @@ function toast(msg){
 }
 function setHeaderStatus(msg){ $("headerStatus").textContent = msg; }
 
-/** ==========================
- *  LocalStorage (cart persistence)
- *  ========================== */
+/** LocalStorage */
 function saveCartToStorage(){
-  const arr = Array.from(state.cart.values()).map(it => ({
-    key: it.key,
-    codigo: it.codigo,
-    produto: it.produto,
-    cor: it.cor,
-    corCodigo: it.corCodigo,
-    genero: it.genero,
-    segmento: it.segmento,
-    categoria: it.categoria,
-    precoNum: it.precoNum,
-    precoFmt: it.precoFmt,
-    qty: it.qty,
-    obs: it.obs || "",
-    imgSrc: it.imgSrc || "",
-  }));
+  const arr = Array.from(state.cart.values()).map(it => ({...it}));
   localStorage.setItem(STORAGE_KEYS.cart, JSON.stringify(arr));
 }
 function loadCartFromStorage(){
@@ -713,10 +648,9 @@ function loadCartFromStorage(){
     if(!Array.isArray(arr)) return;
     state.cart.clear();
     for(const it of arr){
-      if(!it || !it.key) continue;
-      state.cart.set(it.key, it);
+      if(it && it.key) state.cart.set(it.key, it);
     }
-  }catch(e){ /* ignore */ }
+  }catch(e){}
 }
 function saveCustomerToStorage(){
   const payload = { name: $("ckName")?.value?.trim() || "", city: $("ckCity")?.value?.trim() || "" };
@@ -731,27 +665,24 @@ function loadCustomerFromStorage(){
       if($("ckName")) $("ckName").value = obj.name || "";
       if($("ckCity")) $("ckCity").value = obj.city || "";
     }
-  }catch(e){ /* ignore */ }
+  }catch(e){}
 }
 
-/** ==========================
- *  Load XLSX
- *  ========================== */
+/** Load XLSX */
 async function loadCatalog({ cacheBust=false } = {}){
   try{
     $("loadingState").classList.remove("hidden");
     $("grid").classList.add("hidden");
     $("resultsHeader").classList.add("hidden");
-    setHeaderStatus("Carregando dados…");
+    setHeaderStatus("Carregando…");
 
     const url = cacheBust ? `${DATA_CONFIG.xlsxPath}?v=${Date.now()}` : DATA_CONFIG.xlsxPath;
     const res = await fetch(url, { cache: "no-store" });
-    if(!res.ok) throw new Error(`HTTP ${res.status} ao buscar ${url}`);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.arrayBuffer();
 
     const wb = XLSX.read(data, { type:"array" });
-    const sheetName = wb.SheetNames[0];
-    const ws = wb.Sheets[sheetName];
+    const ws = wb.Sheets[wb.SheetNames[0]];
     const json = XLSX.utils.sheet_to_json(ws, { defval:"" });
 
     const rows = json.map((r, idx)=>({
@@ -768,8 +699,7 @@ async function loadCatalog({ cacheBust=false } = {}){
     }));
 
     state.productsRaw = rows.filter(x => x.produto || x.codigo || x.categoria || x.imagem);
-    $("statProducts").textContent = state.productsRaw.length.toLocaleString("pt-BR");
-    setHeaderStatus("Catálogo atualizado");
+    setHeaderStatus("Catálogo pronto");
 
     buildFilterOptions();
     refreshView(true);
@@ -780,27 +710,15 @@ async function loadCatalog({ cacheBust=false } = {}){
   }catch(err){
     console.error(err);
     setHeaderStatus("Erro ao carregar");
-    const hint = $("loadHint");
-    hint.innerHTML = `
+    $("loadHint").innerHTML = `
       <div class="font-bold text-red-700">Falha ao carregar Produtos.xlsx</div>
-      <div class="mt-1 text-sm text-oly-muted">
-        <div class="mt-2"><b>Erro:</b> <span class="font-mono">${escapeHtml(err.message)}</span></div>
-        <div class="mt-3 font-bold">Checklist:</div>
-        <ul class="mt-1 list-disc pl-5">
-          <li>O arquivo existe em <span class="font-mono">/Produtos.xlsx</span>?</li>
-          <li>O nome está exatamente igual (case-sensitive)?</li>
-          <li>Você está acessando via <span class="font-mono">https://</span> (não file://)?</li>
-        </ul>
-      </div>
+      <div class="mt-2 text-sm text-oly-muted">Verifique nome do arquivo e a pasta <b>Catalogo</b>.</div>
     `;
   }
 }
-
 $("btnRefresh").addEventListener("click", ()=> loadCatalog({ cacheBust: DATA_CONFIG.cacheBustOnRefresh }));
 
-/** ==========================
- *  Drawer filters
- *  ========================== */
+/** Drawer */
 function openFiltersDrawer(){
   $("filtersDrawerWrap").classList.remove("hidden");
   requestAnimationFrame(()=> $("filtersDrawer").classList.add("open"));
@@ -821,26 +739,14 @@ $("filtersDrawerWrap").addEventListener("click", (e)=>{
   if(closeEl) closeFiltersDrawer();
 });
 
-/** ==========================
- *  Filters logic
- *  ========================== */
+/** Filters */
 function uniqSorted(arr){
   return Array.from(new Set(arr.filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b),"pt-BR",{sensitivity:"base"}));
 }
-
-function updateFiltersPill(){
-  const parts = [];
-  if(state.filters.category) parts.push(categoryLabel(state.filters.category));
-  if(state.filters.segment) parts.push(state.filters.segment);
-  if(state.filters.gender) parts.push(state.filters.gender);
-  $("filtersPill").querySelector("span").textContent = parts.length ? `(${parts.join(" · ")})` : "(Todos)";
-}
-
 function setToggleUI(){
   $("toggleTrack").dataset.on = String(state.groupColors);
   $("toggleLabel").textContent = state.groupColors ? "On" : "Off";
 }
-
 function buildFilterOptions(){
   const cats = uniqSorted(state.productsRaw.map(p=>p.categoria));
   const segs = uniqSorted(state.productsRaw.map(p=>p.segmento));
@@ -850,61 +756,55 @@ function buildFilterOptions(){
     const label = CATEGORY_LABELS[c] || c;
     return `<option value="${escapeHtml(c)}">${escapeHtml(label)} (${escapeHtml(c)})</option>`;
   }).join("");
-
   $("filterSegment").innerHTML = `<option value="">Segmento: Todos</option>` + segs.map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
   $("filterGender").innerHTML = `<option value="">Gênero: Todos</option>` + gens.map(g=>`<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join("");
 
-  updateFiltersPill();
   setToggleUI();
 }
-
-$("searchInput").addEventListener("input", (e)=>{ state.filters.q = e.target.value.trim(); refreshView(true); });
-$("btnClear").addEventListener("click", ()=>{ $("searchInput").value=""; state.filters.q=""; refreshView(true); });
-
-$("btnClearFilters").addEventListener("click", ()=>{
+function clearAllFilters(){
   state.filters.category = "";
   state.filters.segment = "";
   state.filters.gender = "";
   state.filters.sort = "default";
+  state.filters.q = "";
   state.groupColors = false;
 
+  $("searchInput").value = "";
   $("filterCategory").value = "";
   $("filterSegment").value = "";
   $("filterGender").value = "";
   $("sortBy").value = "default";
-
-  updateFiltersPill();
   setToggleUI();
+}
+$("btnClear").addEventListener("click", ()=>{
+  clearAllFilters();
   refreshView(true);
 });
-
+$("btnClearFilters").addEventListener("click", ()=>{
+  clearAllFilters();
+  refreshView(true);
+});
 $("btnApplyFilters").addEventListener("click", ()=>{
   state.filters.category = $("filterCategory").value;
   state.filters.segment = $("filterSegment").value;
   state.filters.gender = $("filterGender").value;
   state.filters.sort = $("sortBy").value;
-  updateFiltersPill();
   refreshView(true);
   closeFiltersDrawer();
 });
-
 $("toggleGroup").addEventListener("click", ()=>{
   state.groupColors = !state.groupColors;
   setToggleUI();
   refreshView(true);
 });
+$("searchInput").addEventListener("input", (e)=>{ state.filters.q = e.target.value.trim(); refreshView(true); });
 
-/** ==========================
- *  View + paging
- *  ========================== */
+/** View */
 $("btnLoadMore").addEventListener("click", ()=>{
   state.pagination.shown = Math.min(state.pagination.shown + state.pagination.pageSize, state.productsView.length);
   renderCards();
 });
-
-function getPriceNum(v){
-  return v._type === "group" ? (v.minPriceNum ?? 0) : (v.priceNum ?? toNumberBR(v.precoRaw));
-}
+function getPriceNum(v){ return v._type === "group" ? (v.minPriceNum ?? 0) : (v.priceNum ?? toNumberBR(v.precoRaw)); }
 function getTitle(v){ return v.produto; }
 
 function refreshView(resetPaging){
@@ -951,24 +851,14 @@ function refreshView(resetPaging){
 
   if(resetPaging) state.pagination.shown = Math.min(state.pagination.pageSize, state.productsView.length);
 
-  renderMain();
-}
-
-function renderMain(){
-  const hasData = state.productsRaw.length > 0;
-  if(!hasData) return;
-
   $("resultsCount").textContent = state.productsView.length.toLocaleString("pt-BR");
   $("totalCount").textContent = state.productsView.length.toLocaleString("pt-BR");
   $("shownCount").textContent = state.pagination.shown.toLocaleString("pt-BR");
 
-  const noRes = state.productsView.length === 0;
-  $("noResults").classList.toggle("hidden", !noRes);
+  $("noResults").classList.toggle("hidden", state.productsView.length !== 0);
 
   renderCards();
-
-  const canLoadMore = state.pagination.shown < state.productsView.length;
-  $("btnLoadMore").classList.toggle("hidden", !canLoadMore || noRes);
+  $("btnLoadMore").classList.toggle("hidden", !(state.pagination.shown < state.productsView.length) || state.productsView.length===0);
 }
 
 function resolveImageSrc(imagemValue){
@@ -978,7 +868,6 @@ function resolveImageSrc(imagemValue){
   const filename = hasExt ? raw : `${raw}.png`;
   return `${DATA_CONFIG.imagesBasePath}${encodeURIComponent(filename)}`;
 }
-
 function getVariantsFor(item){
   const key = normalizeName(`${item.produto}||${item.codigo}||${item.genero}`);
   const variants = state.productsRaw
@@ -991,9 +880,8 @@ function getVariantsFor(item){
 function renderCards(){
   const wrap = $("cards");
   wrap.innerHTML = "";
-  $("shownCount").textContent = state.pagination.shown.toLocaleString("pt-BR");
-
   const slice = state.productsView.slice(0, state.pagination.shown);
+
   for(const v of slice){
     const card = document.createElement("article");
     card.className = "rounded-3xl border border-oly-border bg-white shadow-card hover:shadow-lift transition-shadow overflow-hidden";
@@ -1045,12 +933,10 @@ function renderCards(){
           </button>
         </div>
       `;
-
       card.querySelector("button").addEventListener("click", ()=> openProductModal({ item:first, group:v }));
       card.addEventListener("keydown", (ev)=>{ if(ev.key==="Enter") openProductModal({ item:first, group:v }); });
     } else {
       const imgSrc = resolveImageSrc(v.imagem);
-
       card.innerHTML = `
         <div class="aspect-[4/3] bg-oly-bg border-b border-oly-border flex items-center justify-center overflow-hidden">
           <img alt="${escapeHtml(v.produto)}" src="${imgSrc}" class="h-full w-full object-contain bg-white"
@@ -1090,7 +976,6 @@ function renderCards(){
           </div>
         </div>
       `;
-
       card.querySelector("button").addEventListener("click", ()=> openProductModal({ item:v, group:null }));
       card.addEventListener("keydown", (ev)=>{ if(ev.key==="Enter") openProductModal({ item:v, group:null }); });
     }
@@ -1099,21 +984,19 @@ function renderCards(){
   }
 }
 
-/** ==========================
- *  Product modal
- *  ========================== */
+/** Product modal */
+function setQty(n){
+  state.productModal.qty = Math.max(1, Math.min(999, Number(n) || 1));
+  $("qtyValue").textContent = String(state.productModal.qty);
+}
+
 function openProductModal({ item, group }){
   state.productModal.open = true;
   state.productModal.item = item;
   state.productModal.group = group;
-  state.productModal.qty = 1;
-  $("qtyValue").textContent = "1";
+  setQty(1);
   $("pmObs").value = "";
 
-  const produto = item.produto || "Produto";
-  const codigo = item.codigo || "—";
-  const segmento = item.segmento || "—";
-  const genero = item.genero || "—";
   const categoria = item.categoria || "";
   const cor = item.cor || "—";
   const corCodigo = item.corCodigo || "—";
@@ -1121,10 +1004,10 @@ function openProductModal({ item, group }){
   const priceNum = toNumberBR(item.precoRaw ?? 0);
   const priceFmt = moneyBR(priceNum);
 
-  $("pmTitle").textContent = produto;
-  $("pmCodigo").textContent = codigo;
-  $("pmSegmento").textContent = segmento;
-  $("pmGenero").textContent = genero;
+  $("pmTitle").textContent = item.produto || "Produto";
+  $("pmCodigo").textContent = item.codigo || "—";
+  $("pmSegmento").textContent = item.segmento || "—";
+  $("pmGenero").textContent = item.genero || "—";
   $("pmPreco").textContent = priceFmt;
   $("btnAddPrice").textContent = `· ${priceFmt}`;
 
@@ -1132,7 +1015,6 @@ function openProductModal({ item, group }){
   $("pmCorBadge").textContent = cor;
   $("pmCorCodigoBadge").textContent = corCodigo;
 
-  // ✅ show 6/12 for FTW, CHI, MEIA
   const cat = String(categoria).trim().toUpperCase();
   $("packQuickWrap").classList.toggle("hidden", !(cat === "FTW" || cat === "CHI" || cat === "MEIA"));
 
@@ -1175,7 +1057,7 @@ function openProductModal({ item, group }){
 
   const variants = getVariantsFor(item);
   const currentIndex = Math.max(0, variants.findIndex(v => normalizeName(v.cor) === normalizeName(item.cor) && normalizeName(v.corCodigo) === normalizeName(item.corCodigo)));
-  $("btnZoomImage").onclick = () => openImageViewer(variants, currentIndex);
+  $("btnZoomImage").onclick = () => openImageViewer(variants, currentIndex, { returnToProductModal:true });
 
   $("productModal").classList.remove("hidden");
   document.body.style.overflow = "hidden";
@@ -1189,56 +1071,44 @@ function closeProductModal(){
   releaseFocusTrap();
 }
 
-// ✅ fix close clicking on icon inside button
 $("productModal").addEventListener("click", (e)=>{
   const closeEl = e.target?.closest?.('[data-close="true"]');
   if(closeEl) closeProductModal();
 });
-
-$("qtyMinus").addEventListener("click", ()=>{
-  state.productModal.qty = Math.max(1, state.productModal.qty - 1);
-  $("qtyValue").textContent = String(state.productModal.qty);
-});
-$("qtyPlus").addEventListener("click", ()=>{
-  state.productModal.qty = Math.min(999, state.productModal.qty + 1);
-  $("qtyValue").textContent = String(state.productModal.qty);
-});
-
-// ✅ set exact quantity (not sum)
-$("btnSet6").addEventListener("click", ()=>{
-  state.productModal.qty = 6;
-  $("qtyValue").textContent = "6";
-});
-$("btnSet12").addEventListener("click", ()=>{
-  state.productModal.qty = 12;
-  $("qtyValue").textContent = "12";
-});
+$("qtyMinus").addEventListener("click", ()=> setQty(state.productModal.qty - 1));
+$("qtyPlus").addEventListener("click", ()=> setQty(state.productModal.qty + 1));
+$("btnSet6").addEventListener("click", ()=> setQty(6));
+$("btnSet12").addEventListener("click", ()=> setQty(12));
 
 $("btnAddToCart").addEventListener("click", ()=>{
   const item = state.productModal.item;
   if(!item) return;
 
-  const codigo = item.codigo || "";
-  const produto = item.produto || "";
-  const cor = item.cor || "";
-  const corCodigo = item.corCodigo || "";
-  const genero = item.genero || "";
-  const segmento = item.segmento || "";
-  const categoria = item.categoria || "";
+  const key = normalizeName([item.codigo || "", item.corCodigo || item.cor || "", item.genero || ""].join("||"));
   const precoNum = toNumberBR(item.precoRaw ?? 0);
   const precoFmt = moneyBR(precoNum);
-  const qty = state.productModal.qty;
-  const obs = $("pmObs").value.trim();
-  const imgSrc = resolveImageSrc(item.imagem);
 
-  const key = normalizeName([codigo, corCodigo || cor, genero].join("||"));
   const existing = state.cart.get(key);
   if(existing){
-    existing.qty = Math.min(9999, existing.qty + qty);
-    if(obs) existing.obs = obs;
+    existing.qty = Math.min(9999, existing.qty + state.productModal.qty);
+    if($("pmObs").value.trim()) existing.obs = $("pmObs").value.trim();
     state.cart.set(key, existing);
   } else {
-    state.cart.set(key, { key, codigo, produto, cor, corCodigo, genero, segmento, categoria, precoNum, precoFmt, qty, obs, imgSrc });
+    state.cart.set(key, {
+      key,
+      codigo: item.codigo || "",
+      produto: item.produto || "",
+      cor: item.cor || "",
+      corCodigo: item.corCodigo || "",
+      genero: item.genero || "",
+      segmento: item.segmento || "",
+      categoria: item.categoria || "",
+      precoNum,
+      precoFmt,
+      qty: state.productModal.qty,
+      obs: $("pmObs").value.trim(),
+      imgSrc: resolveImageSrc(item.imagem),
+    });
   }
 
   saveCartToStorage();
@@ -1247,11 +1117,8 @@ $("btnAddToCart").addEventListener("click", ()=>{
   closeProductModal();
 });
 
-/** ==========================
- *  Cart
- *  ========================== */
+/** Cart */
 function isCartOpen(){ return !$("cartModal").classList.contains("hidden"); }
-
 function openCartModal(){
   $("cartModal").classList.remove("hidden");
   document.body.style.overflow = "hidden";
@@ -1263,15 +1130,12 @@ function closeCartModal(){
   document.body.style.overflow = "";
   releaseFocusTrap();
 }
-
 $("btnOpenCart").addEventListener("click", openCartModal);
 $("miniCartFab").addEventListener("click", openCartModal);
-
 $("cartModal").addEventListener("click", (e)=>{
   const closeEl = e.target?.closest?.('[data-close-cart="true"]');
   if(closeEl) closeCartModal();
 });
-
 $("btnClearCart").addEventListener("click", ()=>{
   state.cart.clear();
   saveCartToStorage();
@@ -1284,26 +1148,20 @@ function cartTotals(){
   for(const it of state.cart.values()) items += it.qty;
   return { items };
 }
-
 function renderCartUI(){
   const { items } = cartTotals();
 
-  // header badge
   const badge = $("cartCountBadge");
   badge.textContent = String(items);
   badge.classList.toggle("hidden", items === 0);
 
-  // mini cart fab
   $("miniCartFab").classList.toggle("hidden", items === 0);
   $("miniCartCount").textContent = String(items);
 
-  // make header cart pulse when has items
   $("btnOpenCart").classList.toggle("pulse-soft", items > 0);
 
-  // lift whatsapp when mini cart is visible
   $("btnWhats").style.bottom = (items === 0) ? "1rem" : "5.5rem";
 
-  // cart modal empty/content
   $("cartEmpty").classList.toggle("hidden", items !== 0);
   $("cartContent").classList.toggle("hidden", items === 0);
 
@@ -1324,9 +1182,6 @@ function renderCartUI(){
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <div class="font-extrabold leading-snug line-clamp-2">${escapeHtml(it.produto || "Produto")}</div>
-              <div class="mt-1 text-xs text-oly-muted">
-                <span class="font-bold">${escapeHtml(categoryLabel(it.categoria))}</span> · ${escapeHtml(it.segmento || "—")} · ${escapeHtml(it.genero || "—")}
-              </div>
               <div class="mt-2 flex flex-wrap gap-2">
                 <span class="inline-flex items-center gap-2 rounded-full bg-oly-blue/10 px-3 py-1 text-xs font-extrabold text-oly-blue">
                   <i class="fa-solid fa-palette"></i>
@@ -1389,9 +1244,7 @@ function renderCartUI(){
   }
 }
 
-/** ==========================
- *  WhatsApp (somente info solicitada)
- *  ========================== */
+/** WhatsApp */
 function buildWhatsMessage(){
   const name = $("ckName").value.trim();
   const city = $("ckCity").value.trim();
@@ -1414,7 +1267,6 @@ function buildWhatsMessage(){
   }
   return lines.join("\n");
 }
-
 function openWhatsApp(){
   if(state.cart.size === 0){
     toast("Adicione itens ✅");
@@ -1422,48 +1274,30 @@ function openWhatsApp(){
   }
   saveCustomerToStorage();
   const msg = buildWhatsMessage();
-  const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
-  window.open(url, "_blank", "noopener,noreferrer");
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
 }
 $("btnWhats").addEventListener("click", openWhatsApp);
 $("btnWhatsCheckout").addEventListener("click", openWhatsApp);
 
-/** ==========================
- *  Export XLSX
- *  ========================== */
+/** Export XLSX */
 function exportOrderXlsx(){
-  if(state.cart.size === 0){
-    toast("Sacola vazia ✅");
-    return;
-  }
+  if(state.cart.size === 0){ toast("Sacola vazia ✅"); return; }
   const rows = [];
   for(const it of state.cart.values()){
-    rows.push({
-      "Código": it.codigo,
-      "Produto": it.produto,
-      "Cor": it.cor,
-      "Cor código": it.corCodigo,
-      "Quantidade": it.qty,
-    });
+    rows.push({ "Código": it.codigo, "Produto": it.produto, "Cor": it.cor, "Cor código": it.corCodigo, "Quantidade": it.qty });
   }
   const ws = XLSX.utils.json_to_sheet(rows);
   ws["!cols"] = [{wch:14},{wch:38},{wch:18},{wch:12},{wch:12}];
-
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Pedido");
-
   const now = new Date();
   const pad = (n)=>String(n).padStart(2,"0");
-  const name = `pedido_olympikus_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.xlsx`;
-
-  XLSX.writeFile(wb, name);
+  XLSX.writeFile(wb, `pedido_olympikus_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.xlsx`);
   toast("Excel gerado ✅");
 }
 $("btnExportXlsx").addEventListener("click", exportOrderXlsx);
 
-/** ==========================
- *  Export PDF (logo + data + imagem + qtd)
- *  ========================== */
+/** Export PDF (card-style, 2 per page) */
 function loadImgAsDataURL(src){
   return new Promise((resolve)=>{
     const img = new Image();
@@ -1476,9 +1310,7 @@ function loadImgAsDataURL(src){
         const ctx = c.getContext("2d");
         ctx.drawImage(img,0,0);
         resolve(c.toDataURL("image/png"));
-      }catch(e){
-        resolve(null);
-      }
+      }catch(e){ resolve(null); }
     };
     img.onerror = ()=> resolve(null);
     img.src = src;
@@ -1486,104 +1318,126 @@ function loadImgAsDataURL(src){
 }
 
 async function exportOrderPdf(){
-  if(state.cart.size === 0){
-    toast("Sacola vazia ✅");
-    return;
-  }
+  if(state.cart.size === 0){ toast("Sacola vazia ✅"); return; }
 
   saveCustomerToStorage();
-
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
-  const pad = (n)=>String(n).padStart(2,"0");
+  const doc = new jsPDF({ unit:"pt", format:"a4" });
+
   const now = new Date();
+  const pad = (n)=>String(n).padStart(2,"0");
   const dateStr = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
   const name = $("ckName").value.trim();
   const city = $("ckCity").value.trim();
 
-  // logo
   const logoSrc = $("brandLogo")?.getAttribute("src") || "";
   const logoData = logoSrc ? await loadImgAsDataURL(logoSrc) : null;
 
-  let y = 48;
-
-  // Header
-  if(logoData){
-    doc.addImage(logoData, "PNG", 40, 30, 70, 35);
-  }
-  doc.setFont("helvetica","bold");
-  doc.setFontSize(16);
-  doc.text("Pedido — Catálogo Olympikus", 120, 55);
-
-  doc.setFont("helvetica","normal");
-  doc.setFontSize(10);
-  doc.text(`Data: ${dateStr}`, 120, 72);
-  if(name) doc.text(`Cliente: ${name}`, 40, 95);
-  if(city) doc.text(`Cidade/UF: ${city}`, 40, 110);
-
-  y = 140;
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 40;
+  const cardW = pageW - margin*2;
+  const cardH = 210;
+  const gap = 18;
 
   const items = Array.from(state.cart.values());
 
   for(let i=0; i<items.length; i++){
-    const it = items[i];
+    const idxOnPage = i % 2;
+    if(i > 0 && idxOnPage === 0) doc.addPage();
 
-    if(i > 0){
-      doc.addPage();
-      y = 48;
-      if(logoData) doc.addImage(logoData, "PNG", 40, 30, 70, 35);
-      doc.setFont("helvetica","bold"); doc.setFontSize(16);
-      doc.text("Pedido — Catálogo Olympikus", 120, 55);
-      doc.setFont("helvetica","normal"); doc.setFontSize(10);
-      doc.text(`Data: ${dateStr}`, 120, 72);
-      y = 120;
+    const yTop = 40 + idxOnPage*(cardH + gap);
+
+    if(idxOnPage === 0){
+      if(logoData) doc.addImage(logoData, "PNG", margin, 22, 74, 36);
+      doc.setFont("helvetica","bold");
+      doc.setFontSize(16);
+      doc.text("Pedido — Catálogo Olympikus", margin + 90, 44);
+      doc.setFont("helvetica","normal");
+      doc.setFontSize(10);
+      doc.text(`Data: ${dateStr}`, margin + 90, 62);
+      if(name) doc.text(`Cliente: ${name}`, margin, 86);
+      if(city) doc.text(`Cidade/UF: ${city}`, margin, 102);
     }
 
-    doc.setFont("helvetica","bold"); doc.setFontSize(12);
-    doc.text(`${i+1}. ${it.produto}`, 40, y);
+    const cardY = yTop + 80;
 
-    doc.setFont("helvetica","normal"); doc.setFontSize(11);
-    doc.text(`Código: ${it.codigo}`, 40, y+18);
-    doc.text(`Cor: ${it.cor}${it.corCodigo ? " ("+it.corCodigo+")" : ""}`, 40, y+36);
-    doc.text(`Quantidade: ${it.qty}`, 40, y+54);
+    doc.setDrawColor(229,231,235);
+    doc.setFillColor(255,255,255);
+    doc.roundedRect(margin, cardY, cardW, cardH, 16, 16, "FD");
 
-    // image
+    const it = items[i];
+
+    const imgBoxX = margin + cardW - 180;
+    const imgBoxY = cardY + 18;
+    doc.setFillColor(246,247,251);
+    doc.roundedRect(imgBoxX, imgBoxY, 160, 160, 14, 14, "F");
+
     const imgData = it.imgSrc ? await loadImgAsDataURL(it.imgSrc) : null;
     if(imgData){
-      doc.addImage(imgData, "PNG", 330, y-10, 220, 165, undefined, "FAST");
+      doc.addImage(imgData, "PNG", imgBoxX + 10, imgBoxY + 10, 140, 140, undefined, "FAST");
     } else {
+      doc.setFont("helvetica","normal");
       doc.setFontSize(10);
-      doc.text("Imagem não disponível", 330, y+20);
+      doc.text("Sem imagem", imgBoxX + 45, imgBoxY + 85);
+    }
+
+    const x = margin + 18;
+    let y = cardY + 34;
+
+    doc.setFont("helvetica","bold"); doc.setFontSize(13);
+    doc.text(`${i+1}. ${it.produto}`, x, y, { maxWidth: imgBoxX - x - 16 });
+
+    doc.setFont("helvetica","normal"); doc.setFontSize(11);
+    y += 22; doc.text(`Código: ${it.codigo}`, x, y);
+    y += 18; doc.text(`Cor: ${it.cor}${it.corCodigo ? " ("+it.corCodigo+")" : ""}`, x, y, { maxWidth: imgBoxX - x - 16 });
+    y += 18; doc.text(`Quantidade: ${it.qty}`, x, y);
+
+    if(it.obs){
+      y += 22;
+      doc.setFontSize(10);
+      doc.setTextColor(107,114,128);
+      doc.text("Obs.:", x, y);
+      doc.setTextColor(17,24,39);
+      doc.text(String(it.obs).slice(0, 120), x + 30, y, { maxWidth: imgBoxX - x - 16 });
+      doc.setTextColor(17,24,39);
     }
   }
 
-  const file = `pedido_olympikus_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.pdf`;
-  doc.save(file);
+  doc.save(`pedido_olympikus_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.pdf`);
   toast("PDF gerado ✅");
 }
 $("btnExportPdf").addEventListener("click", exportOrderPdf);
 
-/** ==========================
- *  Image viewer (fullscreen)
- *  ========================== */
-const viewerState = { open:false, variants:[], index:0 };
+/** Image viewer */
+const viewerState = { open:false, variants:[], index:0, returnToProductModal:false };
 
-function openImageViewer(variants, currentIndex){
+function openImageViewer(variants, currentIndex, opts={}){
   viewerState.open = true;
   viewerState.variants = variants || [];
   viewerState.index = Math.max(0, Math.min(currentIndex || 0, viewerState.variants.length-1));
+  viewerState.returnToProductModal = !!opts.returnToProductModal;
+
   renderImageViewer();
   $("imageViewer").classList.remove("hidden");
   document.body.style.overflow = "hidden";
   trapFocus("imageViewer");
 }
+
 function closeImageViewer(){
   viewerState.open = false;
   $("imageViewer").classList.add("hidden");
-  document.body.style.overflow = "";
-  releaseFocusTrap();
+
+  if(viewerState.returnToProductModal && state.productModal.open){
+    document.body.style.overflow = "hidden";
+    trapFocus("productModal");
+  } else {
+    document.body.style.overflow = "";
+    releaseFocusTrap();
+  }
+  viewerState.returnToProductModal = false;
 }
+
 function renderImageViewer(){
   const it = viewerState.variants[viewerState.index];
   if(!it) return;
@@ -1594,35 +1448,40 @@ function renderImageViewer(){
   $("viewerPrev").style.display = viewerState.variants.length > 1 ? "inline-flex" : "none";
   $("viewerNext").style.display = viewerState.variants.length > 1 ? "inline-flex" : "none";
 }
+function viewerPrev(){
+  if(!viewerState.variants.length) return;
+  viewerState.index = (viewerState.index - 1 + viewerState.variants.length) % viewerState.variants.length;
+  renderImageViewer();
+}
+function viewerNext(){
+  if(!viewerState.variants.length) return;
+  viewerState.index = (viewerState.index + 1) % viewerState.variants.length;
+  renderImageViewer();
+}
 $("imageViewer").addEventListener("click", (e)=>{
   const closeEl = e.target?.closest?.('[data-close-viewer="true"]');
   if(closeEl) closeImageViewer();
 });
-$("viewerPrev").addEventListener("click", ()=>{
-  if(!viewerState.variants.length) return;
-  viewerState.index = (viewerState.index - 1 + viewerState.variants.length) % viewerState.variants.length;
-  renderImageViewer();
-});
-$("viewerNext").addEventListener("click", ()=>{
-  if(!viewerState.variants.length) return;
-  viewerState.index = (viewerState.index + 1) % viewerState.variants.length;
-  renderImageViewer();
-});
+$("viewerPrev").addEventListener("click", viewerPrev);
+$("viewerNext").addEventListener("click", viewerNext);
 
-/** ==========================
- *  ESC closes modals/drawer
- *  ========================== */
+/** Keyboard */
 document.addEventListener("keydown", (e)=>{
-  if(e.key !== "Escape") return;
-  if(state.productModal.open) closeProductModal();
-  if(isCartOpen()) closeCartModal();
-  if(viewerState.open) closeImageViewer();
-  if(!$("filtersDrawerWrap").classList.contains("hidden")) closeFiltersDrawer();
+  if(viewerState.open){
+    if(e.key === "ArrowLeft") { e.preventDefault(); viewerPrev(); }
+    else if(e.key === "ArrowRight") { e.preventDefault(); viewerNext(); }
+    else if(e.key === "Escape") { e.preventDefault(); closeImageViewer(); }
+    return;
+  }
+
+  if(e.key === "Escape"){
+    if(state.productModal.open) closeProductModal();
+    else if(isCartOpen()) closeCartModal();
+    else if(!$("filtersDrawerWrap").classList.contains("hidden")) closeFiltersDrawer();
+  }
 });
 
-/** ==========================
- *  Focus trap
- *  ========================== */
+/** Focus trap */
 let trap = { root:null, prevActive:null };
 function trapFocus(rootId){
   const root = $(rootId);
@@ -1637,9 +1496,7 @@ function trapFocus(rootId){
   root.addEventListener("keydown", handleTrapKeydown);
 }
 function releaseFocusTrap(){
-  if(trap.root){
-    trap.root.removeEventListener("keydown", handleTrapKeydown);
-  }
+  if(trap.root) trap.root.removeEventListener("keydown", handleTrapKeydown);
   const prev = trap.prevActive;
   trap = { root:null, prevActive:null };
   if(prev && prev.focus) prev.focus();
@@ -1654,23 +1511,18 @@ function handleTrapKeydown(e){
 
   const first = focusables[0];
   const last = focusables[focusables.length-1];
-  if(e.shiftKey && document.activeElement === first){
-    e.preventDefault(); last.focus();
-  } else if(!e.shiftKey && document.activeElement === last){
-    e.preventDefault(); first.focus();
-  }
+  if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+  else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
 }
 
-/** ==========================
- *  Init
- *  ========================== */
+/** Init */
 loadCartFromStorage();
 renderCartUI();
 loadCustomerFromStorage();
-setHeaderStatus("Carregando dados…");
-loadCatalog({ cacheBust: false });
 
-// keep storage updated for customer fields
+setHeaderStatus("Carregando…");
+loadCatalog({ cacheBust:false });
+
 document.addEventListener("input", (e)=>{
   if(e.target && (e.target.id === "ckName" || e.target.id === "ckCity")) saveCustomerToStorage();
 });
