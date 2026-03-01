@@ -1138,6 +1138,7 @@ function addToCart(item, qty, { obs="" } = {}){
 
 /** ✅ Card add button UI state (only cart) */
 
+
 function updateAddButtonUI(btnAdd, key){
   if(!btnAdd || !key) return;
 
@@ -1147,24 +1148,46 @@ function updateAddButtonUI(btnAdd, key){
   });
 
   btnAdd.classList.add("btn-add-status");
-  btnAdd.classList.remove("is-idle","is-pending","is-added","pulse-soft");
+  btnAdd.classList.remove("is-idle","is-pending","is-loading","is-added","pulse-soft");
+  btnAdd.removeAttribute("disabled");
 
   const status = getCardAddStatus(key);
+
   let label = "Adicionar";
+  let iconHtml = '<i class="fa-solid fa-bag-shopping"></i>';
+
   if(status === "pending"){
     btnAdd.classList.add("is-pending","pulse-soft");
     label = "Finalizar";
+    iconHtml = '<i class="fa-solid fa-bag-shopping"></i>';
+  } else if(status === "loading"){
+    btnAdd.classList.add("is-loading");
+    btnAdd.setAttribute("disabled","true");
+    label = "Adicionando…";
+    iconHtml = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
   } else if(status === "added"){
     btnAdd.classList.add("is-added");
     label = "Adicionado";
+    iconHtml = '<i class="fa-solid fa-check"></i>';
   } else {
     btnAdd.classList.add("is-idle");
     label = "Adicionar";
+    iconHtml = '<i class="fa-solid fa-bag-shopping"></i>';
   }
 
   const span = btnAdd.querySelector("span");
   if(span) span.textContent = label;
+
+  const icon = btnAdd.querySelector("i");
+  if(icon){
+    const wrap = document.createElement("span");
+    wrap.innerHTML = iconHtml;
+    icon.replaceWith(wrap.firstChild);
+  } else {
+    btnAdd.insertAdjacentHTML("afterbegin", iconHtml);
+  }
 }
+
 
 
 /** Cards */
@@ -1351,15 +1374,36 @@ function renderCards(){
       });
 
       // ✅ adiciona ao clicar em Adicionar (e fica verde); depois zera qtd
-      btnAdd.addEventListener("click", ()=>{
+      
+btnAdd.addEventListener("click", ()=>{
+        const status = getCardAddStatus(key);
+        if(status === "loading") return;
+
+        const shouldUseFlow = (status === "pending");
+
+        if(shouldUseFlow){
+          setCardAddStatus(key, "loading");
+          updateAddButtonUI(btnAdd, key);
+
+          setTimeout(()=>{
+            addToCart(v, getCardQty(key));
+            setCardAddStatus(key, "added");
+            updateAddButtonUI(btnAdd, key);
+            resetCardQty(key);
+            qtyDisplay.textContent = "1";
+            toast("Adicionado ✅");
+          }, 350);
+          return;
+        }
+
         addToCart(v, getCardQty(key));
         setCardAddStatus(key, "added");
         updateAddButtonUI(btnAdd, key);
         resetCardQty(key);
         qtyDisplay.textContent = "1";
-        // depois que zera, o botão permanece "added" (verde) para feedback
         toast("Adicionado ✅");
       });
+
 
       // inicializa estado do botão
       updateAddButtonUI(btnAdd, key);
@@ -1496,6 +1540,13 @@ $("btnAddToCart").addEventListener("click", ()=>{
   closeProductModal();
 });
 
+
+function findProductVariantFromCartItem(cartItem){
+  const key = cartItem?.key;
+  if(!key) return null;
+  const found = state.productsRaw.find(p => cartKeyFor(p) === key);
+  return found || null;
+}
 /** Cart */
 function isCartOpen(){ return !$("cartModal").classList.contains("hidden"); }
 function openCartModal(){
@@ -1566,7 +1617,7 @@ function renderCartUI(){
         </div>
         <div class="min-w-0 flex-1">
           <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
+            <div class="min-w-0" data-open="true" role="button" tabindex="0" title="Ver/editar item">
               <div class="font-extrabold leading-snug line-clamp-2">${escapeHtml(it.produto || "Produto")}</div>
               <div class="mt-2 flex flex-wrap gap-2">
                 <span class="inline-flex items-center gap-2 rounded-full bg-oly-blue/10 px-3 py-1 text-xs font-extrabold text-oly-blue">
@@ -1580,6 +1631,9 @@ function renderCartUI(){
                 </span>
               </div>
             </div>
+            ${!it.obs ? `<button class="focus-ring h-10 w-10 rounded-full border border-oly-border hover:bg-oly-bg" data-edit="true" aria-label="Editar/Adicionar observação">
+              <i class="fa-solid fa-pen-to-square text-oly-blue"></i>
+            </button>` : ``}
             <button class="focus-ring h-10 w-10 rounded-full border border-oly-border hover:bg-oly-bg" data-remove="true" aria-label="Remover item">
               <i class="fa-solid fa-trash text-oly-blue"></i>
             </button>
@@ -1607,8 +1661,18 @@ function renderCartUI(){
       const rm = e.target?.closest?.("[data-remove='true']");
       const mn = e.target?.closest?.("[data-minus='true']");
       const pl = e.target?.closest?.("[data-plus='true']");
+      const op = e.target?.closest?.("[data-open='true']");
+      const ed = e.target?.closest?.("[data-edit='true']");
 
-      if(rm){
+      if(op || ed){
+        const variant = findProductVariantFromCartItem(it);
+        if(variant){
+          closeCartModal();
+          openProductModal({ item: variant, group: null });
+          if($('pmObs')) $('pmObs').value = it.obs || '';
+          if(ed && !it.obs){ $('pmObs')?.focus?.(); }
+        }
+      } else if(rm){
         state.cart.delete(it.key);
         saveCartToStorage();
         renderCartUI();
