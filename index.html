@@ -426,14 +426,10 @@
                       <i class="fa-solid fa-palette text-oly-blue"></i>
                       <span id="pmCorBadge">—</span>
                     </span>
-                    <span class="inline-flex items-center gap-2 rounded-full bg-white border border-oly-border px-3 py-1 text-xs font-bold">
-                      <i class="fa-solid fa-hashtag text-oly-blue"></i>
-                      <span id="pmCorCodigoBadge">—</span>
-                    </span>
+                    <span class="hidden"><span id="pmCorCodigoBadge">—</span></span>
                   </div>
 
                   <div id="pmColorPickerWrap" class="hidden mt-4">
-                    <div class="text-xs text-oly-muted font-semibold">Outras cores disponíveis (toque para trocar)</div>
                     <div id="pmColorChips" class="mt-2 flex flex-wrap gap-2"></div>
                   </div>
                 </div>
@@ -1259,7 +1255,16 @@ function renderCards(){
         });
       }
       card.querySelector(".btnDetails").addEventListener("click", ()=> openProductModal({ item:first, group:v }));
-      card.querySelector(".imgHit").addEventListener("click", ()=> openProductModal({ item:first, group:v }));
+      
+      const btnCardZoom = card.querySelector(".btnCardZoom");
+      if(btnCardZoom){
+        btnCardZoom.addEventListener("click", (e)=>{
+          e.stopPropagation();
+          const variants = getVariantsFor(first);
+          openImageViewer(variants, 0, { returnToProductModal:false });
+        });
+      }
+card.querySelector(".imgHit").addEventListener("click", ()=> openProductModal({ item:first, group:v }));
       card.addEventListener("keydown", (ev)=>{ if(ev.key==="Enter") openProductModal({ item:first, group:v }); });
     } else {
       const imgSrc = resolveImageSrc(v.imagem);
@@ -1282,6 +1287,9 @@ function renderCards(){
           <div class="absolute left-3 top-3 h-9 w-9 rounded-full bg-white/95 border border-oly-border flex items-center justify-center" title="${escapeHtml(g.label)}">
             <i class="fa-solid ${g.icon} ${g.isFemale ? "text-pink-500" : "text-oly-blue"}"></i>
           </div>
+          <button class="btnCardZoom focus-ring absolute right-3 top-3 h-10 w-10 rounded-full bg-white/95 border border-oly-border hover:bg-oly-bg" aria-label="Zoom">
+            <i class="fa-solid fa-magnifying-glass-plus text-oly-blue"></i>
+          </button>
         </div>
 
         <div class="p-4">
@@ -1340,6 +1348,18 @@ function renderCards(){
 
       // ✅ imagem abre detalhes
       imgHit.addEventListener("click", ()=> openProductModal({ item:v, group:null }));
+
+
+      const btnCardZoom = card.querySelector(".btnCardZoom");
+      if(btnCardZoom){
+        btnCardZoom.addEventListener("click", (e)=>{
+          e.stopPropagation();
+          const variants = getVariantsFor(v);
+          const currentIndex = Math.max(0, variants.findIndex(x => cartKeyFor(x) === cartKeyFor(v)));
+          openImageViewer(variants, currentIndex, { returnToProductModal:false });
+        });
+      }
+
 
       // ✅ favoritar (não mexe em estado de sacola)
       btnFav.addEventListener("click", (e)=>{
