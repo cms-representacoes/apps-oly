@@ -462,7 +462,7 @@
                   <div class="mt-4">
                     <label class="text-sm font-extrabold" for="pmObs">Observações</label>
                     <textarea id="pmObs" rows="3" class="focus-ring mt-2 w-full rounded-2xl border border-oly-border px-4 py-3 text-sm placeholder:text-oly-muted/80"
-                      placeholder="Ex.: preferência de numeração, cor alternativa, etc."></textarea>
+                      placeholder="Ex: Grade MASC ou FEM do 38 ao 43 (123321)."></textarea>
                   </div>
 
                   <button id="btnAddToCart" class="focus-ring mt-4 w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-oly-blue px-5 py-4 text-sm font-extrabold text-white hover:opacity-95">
@@ -1214,8 +1214,12 @@ function renderCards(){
       const imgSrc = resolveImageSrc(first?.imagem);
 
       card.innerHTML = `
-        <div class="imgHit aspect-[4/3] bg-oly-bg border-b border-oly-border flex items-center justify-center overflow-hidden cursor-pointer">
-          <img alt="${escapeHtml(v.produto)}" src="${imgSrc}" class="h-full w-full object-contain bg-white"
+        <div class="imgHit aspect-[4/3] bg-oly-bg border-b border-oly-border flex items-center justify-center overflow-hidden cursor-pointer relative">
+            <button class="btnCardZoom focus-ring absolute right-3 top-3 h-10 w-10 rounded-full bg-white/95 border border-oly-border hover:bg-oly-bg" aria-label="Zoom">
+    <i class="fa-solid fa-magnifying-glass-plus text-oly-blue"></i>
+  </button>
+
+  <img alt="${escapeHtml(v.produto)}" src="${imgSrc}" class="h-full w-full object-contain bg-white"
             onerror="this.style.display='none'; this.parentElement.querySelector('.imgFallback').style.display='flex';">
           <div class="imgFallback hidden h-full w-full flex flex-col items-center justify-center gap-2 text-oly-muted" style="display:none">
             <i class="fa-solid fa-image text-3xl text-oly-blue"></i>
@@ -1246,6 +1250,14 @@ function renderCards(){
           </div>
         </div>
       `;
+      const btnCardZoom = card.querySelector(".btnCardZoom");
+      if(btnCardZoom){
+        btnCardZoom.addEventListener("click", (e)=>{
+          e.stopPropagation();
+          const variants = getVariantsFor(first);
+          openImageViewer(variants, 0, { returnToProductModal:false });
+        });
+      }
       card.querySelector(".btnDetails").addEventListener("click", ()=> openProductModal({ item:first, group:v }));
       card.querySelector(".imgHit").addEventListener("click", ()=> openProductModal({ item:first, group:v }));
       card.addEventListener("keydown", (ev)=>{ if(ev.key==="Enter") openProductModal({ item:first, group:v }); });
@@ -1540,10 +1552,10 @@ if(showPicker){
 
     btn.innerHTML = srcImg
       ? `<img src="${srcImg}" alt="${escapeHtml(it.cor||"Cor")}" onerror="this.style.display='none'; this.parentElement.querySelector('.pm-thumb-fallback').style.display='block';">`
-        + `<div class="pm-thumb-fallback" style="display:none">${escapeHtml(it.cor||"Cor")}<br><span style="font-weight:700">${escapeHtml(it.corCodigo||"")}</span></div>`
-      : `<div class="pm-thumb-fallback" style="display:block">${escapeHtml(it.cor||"Cor")}<br><span style="font-weight:700">${escapeHtml(it.corCodigo||"")}</span></div>`;
+        + `<div class="pm-thumb-fallback" style="display:none">${escapeHtml(it.cor||"Cor")}</div>`
+      : `<div class="pm-thumb-fallback" style="display:block">${escapeHtml(it.cor||"Cor")}</div>`;
 
-    btn.title = `${it.cor || "Cor"}${it.corCodigo ? " ("+it.corCodigo+")" : ""}`;
+    btn.title = `${it.cor || "Cor"}`;
     btn.addEventListener("click", ()=>{
       // mantém o modo (se veio da sacola/edição) ao trocar de cor
       openProductModal({
