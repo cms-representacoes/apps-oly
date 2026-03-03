@@ -409,39 +409,38 @@
                 </div>
 
                 </div>
-
-                <div class="mt-4 grid grid-cols-2 gap-2 text-sm">
-                  <div class="rounded-2xl border border-oly-border bg-white p-3">
-                    <div class="text-xs text-oly-muted">Código</div>
-                    <div id="pmCodigo" class="font-extrabold">—</div>
-                  </div>
-                  <div class="rounded-2xl border border-oly-border bg-white p-3">
-                    <div class="text-xs text-oly-muted">Preço</div>
-                    <div id="pmPreco" class="font-extrabold">—</div>
-                  </div>
-                  <div class="rounded-2xl border border-oly-border bg-white p-3">
-                    <div class="text-xs text-oly-muted">Segmento</div>
-                    <div id="pmSegmento" class="font-bold">—</div>
-                  </div>
-                  <div class="rounded-2xl border border-oly-border bg-white p-3">
-                    <div class="text-xs text-oly-muted">Gênero</div>
-                    <div id="pmGenero" class="font-bold">—</div>
-                  </div>
-                </div>
+              </div>
               </div>
 
               <div>
-                <div class="rounded-3xl border border-oly-border bg-oly-bg p-4">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <span class="inline-flex items-center gap-2 rounded-full bg-white border border-oly-border px-3 py-1 text-xs font-bold">
-                      <i class="fa-solid fa-tags text-oly-blue"></i>
-                      <span id="pmCategoriaBadge">—</span>
-                    </span>
-                    <span class="inline-flex items-center gap-2 rounded-full bg-white border border-oly-border px-3 py-1 text-xs font-bold">
-                      <i class="fa-solid fa-palette text-oly-blue"></i>
-                      <span id="pmCorBadge">—</span>
-                    </span>
-                    <span class="hidden"><span id="pmCorCodigoBadge">—</span></span>
+                
+<div class="rounded-3xl border border-oly-border bg-oly-bg p-4">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0 flex items-center gap-3">
+                      <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white border border-oly-border">
+                        <i id="pmGeneroIcon" class="fa-solid fa-user text-oly-blue"></i>
+                      </span>
+                      <div class="min-w-0">
+                        <div id="pmCodigoSegmento" class="truncate text-[11px] font-extrabold text-oly-muted">—</div>
+                        <div class="mt-2 flex flex-wrap items-center gap-2">
+                          <div id="pmPrecoBig" class="text-2xl font-extrabold">—</div>
+                          <span class="inline-flex items-center gap-2 rounded-full bg-white border border-oly-border px-3 py-1 text-xs font-extrabold">
+                            <i class="fa-solid fa-palette text-oly-blue"></i>
+                            <span id="pmCorBadge">—</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- IDs legados (mantidos por compatibilidade) -->
+                  <div class="hidden">
+                    <span id="pmCodigo">—</span>
+                    <span id="pmSegmento">—</span>
+                    <span id="pmGenero">—</span>
+                    <span id="pmPreco">—</span>
+                    <span id="pmCategoriaBadge">—</span>
+                    <span id="pmCorCodigoBadge">—</span>
                   </div>
 
                   <div id="pmColorPickerWrap" class="hidden mt-4">
@@ -1570,6 +1569,19 @@ function openProductModal({ item, group, fromCart=false, editing=false, editKey=
 
   $("pmCategoriaBadge").textContent = `${categoryLabel(categoria)} (${categoria || "—"})`;
   $("pmCorBadge").textContent = cor;
+
+  // UI compacto (meta + preço)
+  const meta = `${item.codigo || "—"} · ${item.segmento || "—"}`;
+  if($("pmCodigoSegmento")) $("pmCodigoSegmento").textContent = meta;
+  if($("pmPrecoBig")) $("pmPrecoBig").textContent = moneyBR(toNumberBR(item.precoRaw ?? 0));
+
+  // Ícone de gênero (Feminino em rosa)
+  const gi = genderIcon(item.genero || "");
+  const giEl = $("pmGeneroIcon");
+  if(giEl){
+    giEl.className = `fa-solid ${gi.icon} ` + (normalizeName(gi.label).includes("feminino") ? "text-pink-500" : "text-oly-blue");
+    giEl.parentElement?.setAttribute?.("title", gi.label || "Gênero");
+  }
 
   const cat = String(categoria).trim().toUpperCase();
   $("packQuickWrap").classList.toggle("hidden", !(cat === "FTW" || cat === "CHI" || cat === "MEIA"));
