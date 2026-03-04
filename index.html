@@ -163,6 +163,12 @@
     
       #pmPrecoMain{ font-size: 18px; }
     }
+
+    /* ✅ Garantia: título do produto no header do modal NÃO aparece no mobile (evita sobrepor ícones) */
+    @media (max-width: 767px){
+      #pmTitle{ display:none !important; }
+      #actionBar{ -webkit-overflow-scrolling: touch; }
+    }
 </style>
 </head>
 
@@ -184,9 +190,9 @@
             <div id="headerStatusMobile" class="text-xs text-oly-muted sm:hidden">Carregando…</div>
           </div>
 
-          <div class="flex items-center gap-2">
+          <div id="actionBar" class="flex items-center gap-2 overflow-x-auto no-scrollbar flex-nowrap scroll-smooth -mx-1 px-1 overscroll-x-contain">
             <!-- Search: icon-only -> expands -->
-            <div id="searchWrap" class="search-collapsed bg-white border border-oly-border shadow-sm flex items-center gap-2 px-2 py-2">
+            <div id="searchWrap" class="search-collapsed shrink-0 bg-white border border-oly-border shadow-sm flex items-center gap-2 px-2 py-2">
               <button id="btnSearchToggle" class="focus-ring h-9 w-9 rounded-full hover:bg-oly-bg" title="Buscar">
                 <i class="fa-solid fa-magnifying-glass text-oly-blue"></i>
               </button>
@@ -413,7 +419,7 @@
           <div class="p-4 sm:p-6 border-b border-oly-border flex items-center justify-between">
             <div class="min-w-0">
               <div class="text-xs text-oly-muted">Detalhes do produto</div>
-              <div id="pmTitle" class="truncate text-base sm:text-xl font-extrabold hidden sm:block">—</div>
+              <div id="pmTitle" class="truncate text-base md:text-xl font-extrabold hidden md:block">—</div>
             </div>
             <div class="flex items-center gap-2">
               <!-- ✅ Favoritar no modal (por cor/variante) -->
@@ -561,20 +567,16 @@
                 <div class="rounded-3xl border border-oly-border bg-oly-bg p-4">
                    <div class="font-extrabold">Resumo</div>
                    <div class="mt-3 rounded-2xl border border-oly-border bg-white p-4">
-                     <div class="grid grid-cols-2 gap-3 text-sm">
-                       <div>
-                         <div class="text-xs font-bold text-oly-muted">Total de pares</div>
-                         <div id="cartTotalQty" class="mt-1 text-lg font-extrabold">0</div>
-                       </div>
-                       <div>
-                         <div class="text-xs font-bold text-oly-muted">Linhas</div>
-                         <div id="cartTotalLines" class="mt-1 text-lg font-extrabold">0</div>
-                       </div>
+                     <div>
+                       <div class="text-xs font-bold text-oly-muted">Total de pares</div>
+                       <div id="cartTotalQty" class="mt-1 text-2xl font-extrabold">0</div>
                      </div>
-                     <div class="mt-3">
-                       <div class="text-xs font-bold text-oly-muted">Valor estimado</div>
-                       <div id="cartTotalValue" class="mt-1 text-xl font-extrabold">R$ 0,00</div>
-                       <div class="mt-1 text-xs text-oly-muted">*Estimativa baseada no preço do XLSX.</div>
+                     <div class="mt-4 space-y-2 text-sm">
+                       <div id="cartRowMasc" class="hidden flex items-center justify-between"><span class="font-bold text-oly-muted">Masculino</span><span id="cartQtyMasc" class="font-extrabold">0</span></div>
+                       <div id="cartRowFem" class="hidden flex items-center justify-between"><span class="font-bold text-oly-muted">Feminino</span><span id="cartQtyFem" class="font-extrabold">0</span></div>
+                       <div id="cartRowInf" class="hidden flex items-center justify-between"><span class="font-bold text-oly-muted">Infantil</span><span id="cartQtyInf" class="font-extrabold">0</span></div>
+                       <div id="cartRowAcess" class="hidden flex items-center justify-between"><span class="font-bold text-oly-muted">Acessórios</span><span id="cartQtyAcess" class="font-extrabold">0</span></div>
+                       <div id="cartRowVest" class="hidden flex items-center justify-between"><span class="font-bold text-oly-muted">Vestuário</span><span id="cartQtyVest" class="font-extrabold">0</span></div>
                      </div>
                    </div>
                  </div>
@@ -1463,7 +1465,7 @@ function renderCards(){
               ${state.favsSelectMode && !isGroup ? `
                 <label class="inline-flex items-center justify-center h-10 w-10 rounded-full border border-oly-border bg-white hover:bg-oly-bg cursor-pointer" title="Selecionar">
                   <input type="checkbox" class="hidden" ${checked ? "checked" : ""} data-favkey="${escapeHtml(keyForSelect)}">
-                  <i class="${checked ? "fa-solid" : "fa-regular"} fa-square-check text-oly-blue"></i>
+                  <i class="${checked ? "fa-solid text-green-600" : "fa-regular text-oly-blue"} fa-square-check"></i>
                 </label>
               ` : ``}
             </div>
@@ -1481,7 +1483,7 @@ function renderCards(){
       `;
 
       // eventos
-      card.querySelector(".btnDetails")?.addEventListener("click", ()=> openProductModal(base));
+      card.querySelector(".btnDetails")?.addEventListener("click", ()=> openProductModal({ item: base, group: isGroup ? v : null }));
       card.querySelector(".btnUnfav")?.addEventListener("click", ()=>{
         if(isGroup){
           // remove todos os favoritos das variantes desse grupo
@@ -1501,7 +1503,14 @@ function renderCards(){
       card.querySelector("input[type='checkbox']")?.addEventListener("change", (e)=>{
         const k = e.target?.dataset?.favkey;
         if(!k) return;
-        if(e.target.checked) state.favsSelected.add(k); else state.favsSelected.delete(k);
+        const icon = e.target.closest("label")?.querySelector("i");
+        if(e.target.checked){
+          state.favsSelected.add(k);
+          if(icon){ icon.classList.remove("fa-regular","text-oly-blue"); icon.classList.add("fa-solid","text-green-600"); }
+        }else{
+          state.favsSelected.delete(k);
+          if(icon){ icon.classList.remove("fa-solid","text-green-600"); icon.classList.add("fa-regular","text-oly-blue"); }
+        }
         updateFavHeaderUI();
       });
 
@@ -2053,29 +2062,49 @@ $("btnClearCart").addEventListener("click", ()=>{
 
 function cartTotals(){
   let items = 0;
-  let value = 0;
-  let lines = 0;
+  const by = { masc:0, fem:0, inf:0, acess:0, vest:0 };
+  const norm = (s)=> String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
   for(const it of state.cart.values()){
-    items += (Number(it.qty)||0);
-    lines += 1;
-    const p = Number(it.precoNum)||0;
-    value += p * (Number(it.qty)||0);
+    const q = (Number(it.qty)||0);
+    items += q;
+
+    const g = norm(it.genero);
+    const seg = norm(it.segmento);
+    const cat = norm(it.categoria);
+
+    // prioridade: genero explícito
+    if(g.includes("masc") || g.includes("homem")) by.masc += q;
+    else if(g.includes("fem") || g.includes("mulher")) by.fem += q;
+    else if(g.includes("inf") || g.includes("kids") || g.includes("crianca")) by.inf += q;
+    else {
+      // fallback: segmento/categoria (acessórios/vestuário)
+      if(seg.includes("acessor") || cat.includes("acessor")) by.acess += q;
+      else if(seg.includes("vest") || cat.includes("vest") || seg.includes("roup") || cat.includes("roup")) by.vest += q;
+    }
   }
-  return { items, value, lines };
+  return { items, by };
 }
 function renderCartUI(){
   syncCardAddStatusFromCart();
   syncCardAddStatusFromCart();
   syncCardAddStatusFromCart();
-  const { items, value, lines } = cartTotals();
+  const { items, by } = cartTotals();
 
   // ✅ Atualiza resumo (se existir)
   if($("cartTotalQty")) $("cartTotalQty").textContent = String(items);
-  if($("cartTotalLines")) $("cartTotalLines").textContent = String(lines);
-  if($("cartTotalValue")) $("cartTotalValue").textContent = moneyBR(value);
 
-
-  const badge = $("cartCountBadge");
+  const setRow = (rowId, valId, val)=>{
+    const row = $(rowId); const el = $(valId);
+    if(!row || !el) return;
+    row.classList.toggle("hidden", !(val>0));
+    el.textContent = String(val||0);
+  };
+  setRow("cartRowMasc","cartQtyMasc",by.masc);
+  setRow("cartRowFem","cartQtyFem",by.fem);
+  setRow("cartRowInf","cartQtyInf",by.inf);
+  setRow("cartRowAcess","cartQtyAcess",by.acess);
+  setRow("cartRowVest","cartQtyVest",by.vest);
+const badge = $("cartCountBadge");
   badge.textContent = String(items);
   badge.classList.toggle("hidden", items === 0);
 
