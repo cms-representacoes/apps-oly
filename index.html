@@ -13,14 +13,12 @@
   <style>
     :root{
       --bg:#f6f7fb;
-      --card:#ffffff;
+      --card:#fff;
       --text:#0f172a;
       --muted:#64748b;
       --line:#e2e8f0;
       --brand:#2836d4;
       --brand-soft:rgba(40,54,212,.10);
-      --success:#16a34a;
-      --danger:#dc2626;
       --shadow:0 18px 42px rgba(15,23,42,.08);
       --shadow-soft:0 10px 24px rgba(15,23,42,.05);
     }
@@ -28,21 +26,19 @@
     html,body{height:100%;overflow-x:hidden}
     body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
     .focus-ring:focus-visible{outline:none;box-shadow:0 0 0 4px rgba(40,54,212,.15)}
-    .safe-top{padding-top:max(0px, env(safe-area-inset-top))}
-    .safe-bottom{padding-bottom:max(14px, env(safe-area-inset-bottom))}
+    .glass{backdrop-filter:blur(12px);background:rgba(255,255,255,.88)}
     .shadow-soft{box-shadow:var(--shadow-soft)}
     .shadow-card{box-shadow:var(--shadow)}
-    .glass{backdrop-filter:blur(12px);background:rgba(255,255,255,.88)}
     .drawer{transform:translateX(105%);transition:transform .24s ease}
     .drawer.open{transform:translateX(0)}
     .backdrop{background:rgba(15,23,42,.54);backdrop-filter:blur(6px)}
-    .grade-pill{min-width:50px;border:1px solid var(--line);border-radius:14px;padding:8px 6px;background:#fff;text-align:center}
-    .grade-size{display:block;font-size:12px;line-height:1;color:#64748b;font-weight:700}
-    .grade-qty{display:block;font-size:22px;line-height:1.1;color:var(--brand);font-weight:800}
     .chip{display:inline-flex;align-items:center;gap:.4rem;border-radius:999px;padding:.42rem .78rem;font-size:12px;font-weight:800}
     .chip-blue{background:var(--brand-soft);color:var(--brand)}
     .chip-gray{background:#eef2f7;color:#334155}
     .qty-btn{height:42px;width:42px;border-radius:999px;border:1px solid var(--line);background:#fff;font-weight:800}
+    .grade-pill{min-width:46px;border:1px solid var(--line);border-radius:12px;padding:5px 6px;background:#fff;text-align:center}
+    .grade-size{display:block;font-size:11px;line-height:1;color:#64748b;font-weight:700}
+    .grade-qty{display:block;font-size:13px;line-height:1.15;color:var(--brand);font-weight:800;margin-top:4px}
     .filters-collapsed #filtersPanel{display:none}
     .filters-collapsed #catalogShell{grid-template-columns:minmax(0,1fr)}
     #catalogShell{display:grid;grid-template-columns:290px minmax(0,1fr);gap:16px}
@@ -55,7 +51,7 @@
     }
   </style>
 </head>
-<body class="safe-top">
+<body>
   <div id="toast" class="hidden fixed left-1/2 top-6 z-[90] -translate-x-1/2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-card"></div>
 
   <header class="sticky top-0 z-40 border-b border-slate-200 glass">
@@ -136,7 +132,7 @@
                 <option value="produto">Produto A-Z</option>
                 <option value="saldoDesc">Maior saldo</option>
                 <option value="saldoAsc">Menor saldo</option>
-                <option value="entregaAsc">Entrega mais próxima</option>
+                <option value="entregaAsc">Prev. faturamento mais próxima</option>
               </select>
             </div>
             <button id="btnClearFilters" class="focus-ring w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-extrabold text-[var(--brand)]">Limpar filtros</button>
@@ -150,8 +146,8 @@
               <div class="text-lg font-extrabold"><span id="visibleCount">0</span> itens na vitrine</div>
             </div>
             <div class="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-bold">
-              <span class="chip chip-gray"><i class="fa-solid fa-boxes-stacked"></i> <span id="kpiBoxes">0</span> caixas livres</span>
-              <span class="chip chip-blue"><i class="fa-solid fa-shoe-prints"></i> <span id="kpiPairs">0</span> pares livres</span>
+              <span class="chip chip-gray"><i class="fa-solid fa-boxes-stacked"></i> <span id="kpiPacks">0</span> packs</span>
+              <span class="chip chip-blue"><i class="fa-solid fa-cubes-stacked"></i> <span id="kpiUnits">0</span> itens livres</span>
             </div>
           </div>
 
@@ -180,35 +176,32 @@
       </div>
 
       <div class="flex-1 overflow-y-auto px-4 py-4">
-        <div class="mb-4 flex items-center justify-between">
-          <div class="text-2xl font-extrabold hidden"></div>
+        <div class="mb-4 flex items-center justify-end">
           <button id="btnClearCart" class="focus-ring text-sm font-extrabold text-[var(--brand)]">Limpar sacola</button>
         </div>
 
         <div id="cartEmptyState" class="hidden rounded-[28px] border border-slate-200 bg-white p-8 text-center">
           <div class="mx-auto h-14 w-14 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center text-2xl"><i class="fa-solid fa-bag-shopping"></i></div>
           <div class="mt-4 text-xl font-extrabold">Sua sacola está vazia</div>
-          <div class="mt-1 text-slate-500">Adicione caixas dos produtos disponíveis.</div>
+          <div class="mt-1 text-slate-500">Adicione itens disponíveis.</div>
         </div>
 
         <div id="cartItems" class="space-y-3"></div>
       </div>
 
-      <div class="safe-bottom border-t border-slate-200 bg-white px-5 py-4">
+      <div class="border-t border-slate-200 bg-white px-5 py-4">
         <div class="grid grid-cols-2 gap-3 text-sm">
           <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <div class="text-xs font-bold text-slate-500">Caixas no pedido</div>
-            <div id="cartTotalBoxes" class="mt-1 text-2xl font-extrabold">0</div>
+            <div class="text-xs font-bold text-slate-500">Packs no pedido</div>
+            <div id="cartTotalPacks" class="mt-1 text-2xl font-extrabold">0</div>
           </div>
           <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <div class="text-xs font-bold text-slate-500">Pares no pedido</div>
-            <div id="cartTotalPairs" class="mt-1 text-2xl font-extrabold">0</div>
+            <div class="text-xs font-bold text-slate-500">Itens no pedido</div>
+            <div id="cartTotalUnits" class="mt-1 text-2xl font-extrabold">0</div>
           </div>
         </div>
-
         <div class="mt-3 grid gap-3">
           <button id="btnSaveOrderLocal" class="focus-ring rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white">Salvar pedido para consulta</button>
-          <div class="text-xs text-slate-500">Neste passo, o pedido fica salvo localmente neste navegador para o cliente consultar depois. Na próxima etapa, ligamos isso ao fluxo administrativo.</div>
         </div>
       </div>
     </aside>
@@ -246,11 +239,13 @@ const DEFAULTS = {
   logoPath: `${BASE_PREFIX}/logo-olympikus.png`
 };
 const STORAGE_KEYS = {
-  cart: 'repasse_cart_v2',
-  orders: 'repasse_orders_v2'
+  cart: 'repasse_cart_v3',
+  orders: 'repasse_orders_v3'
 };
 const CATEGORY_LABELS = { FTW:'Tênis', ACC:'Acessórios', CHI:'Chinelos', MEIA:'Meias', 'V&A':'Vestuário' };
-const DISPO_COLUMNS = ['28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','33/34','35/36','37/38','39/40','41/42','43/44','45/46'];
+const FOOTWEAR_COLUMNS = ['28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','33/34','35/36','37/38','39/40','41/42','43/44','45/46','33/38','39/44'];
+const APPAREL_COLUMNS = ['PP','P','M','G','GG','U'];
+const DISPO_COLUMNS = [...FOOTWEAR_COLUMNS, ...APPAREL_COLUMNS];
 
 const STATE = {
   raw: [],
@@ -263,7 +258,7 @@ const STATE = {
 
 const $ = (id)=>document.getElementById(id);
 
-function toast(msg, ms=2000){
+function toast(msg, ms=2200){
   const el = $('toast');
   el.textContent = msg;
   el.classList.remove('hidden');
@@ -290,10 +285,35 @@ function productImage(item){
   const name = hasExt ? raw : `${raw}.png`;
   return `${DEFAULTS.imagesBasePath}${encodeURIComponent(name)}`;
 }
+function excelSerialToDate(serial){
+  const utcDays = Math.floor(Number(serial) - 25569);
+  const utcValue = utcDays * 86400;
+  const dateInfo = new Date(utcValue * 1000);
+  const fractionalDay = Number(serial) - Math.floor(Number(serial)) + 0.0000001;
+  let totalSeconds = Math.floor(86400 * fractionalDay);
+  const seconds = totalSeconds % 60;
+  totalSeconds -= seconds;
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor(totalSeconds / 60) % 60;
+  return new Date(dateInfo.getFullYear(), dateInfo.getMonth(), dateInfo.getDate(), hours, minutes, seconds);
+}
 function formatDate(value){
-  if(!value) return '—';
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleDateString('pt-BR');
+  if(value === null || value === undefined || value === '') return '—';
+  if(typeof value === 'number' && value > 59){
+    return excelSerialToDate(value).toLocaleDateString('pt-BR');
+  }
+  const str = String(value).trim();
+  if(/^\d+(\.\d+)?$/.test(str) && Number(str) > 59){
+    return excelSerialToDate(Number(str)).toLocaleDateString('pt-BR');
+  }
+  const br = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if(br){
+    const [_, d, m, y] = br;
+    const year = y.length === 2 ? `20${y}` : y;
+    return `${d.padStart(2,'0')}/${m.padStart(2,'0')}/${year}`;
+  }
+  const d = new Date(str);
+  return Number.isNaN(d.getTime()) ? str : d.toLocaleDateString('pt-BR');
 }
 function readJsonSafe(key, fallback){
   try{
@@ -301,28 +321,31 @@ function readJsonSafe(key, fallback){
     return raw ? JSON.parse(raw) : fallback;
   }catch(e){ return fallback; }
 }
-function saveCartStorage(){
-  localStorage.setItem(STORAGE_KEYS.cart, JSON.stringify(Array.from(STATE.cart.values())));
-}
-function saveOrdersStorage(){
-  localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(STATE.orders));
-}
+function saveCartStorage(){ localStorage.setItem(STORAGE_KEYS.cart, JSON.stringify(Array.from(STATE.cart.values()))); }
+function saveOrdersStorage(){ localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(STATE.orders)); }
 function loadLocalState(){
   const savedCart = readJsonSafe(STORAGE_KEYS.cart, []);
   STATE.cart = new Map(savedCart.map(item => [item.key, item]));
   STATE.orders = readJsonSafe(STORAGE_KEYS.orders, []);
 }
 function gradeEntriesFromRow(row){
-  return DISPO_COLUMNS
-    .map(col=>{
-      const raw = row[col] ?? row[Number(col)] ?? '';
-      const qty = toNumber(raw);
-      return qty > 0 ? { size: String(col), qty } : null;
-    })
-    .filter(Boolean);
+  return DISPO_COLUMNS.map(col=>{
+    const raw = row[col] ?? row[Number(col)] ?? '';
+    const qty = toNumber(raw);
+    return qty > 0 ? { size:String(col), qty } : null;
+  }).filter(Boolean);
 }
-function sumPairs(grade){
-  return grade.reduce((sum, x)=>sum + Number(x.qty || 0), 0);
+function sumGrade(grade){ return grade.reduce((sum, x)=>sum + Number(x.qty || 0), 0); }
+function inferMode(grade, categoria, produto){
+  const labels = grade.map(g => g.size);
+  const hasFootwear = labels.some(l => FOOTWEAR_COLUMNS.includes(l));
+  const hasApparel = labels.some(l => APPAREL_COLUMNS.includes(l));
+  const cat = normalizeText(categoria);
+  const name = normalizeText(produto);
+  if(cat.includes('acessor') || cat === 'acc' || name.includes('mochila') || name.includes('bolsa') || name.includes('bone')) return 'unit';
+  if(hasFootwear) return 'boxed';
+  if(hasApparel) return 'unit';
+  return 'unit';
 }
 function mergeData(prodRows, dispoRows){
   const byKey = new Map();
@@ -336,37 +359,45 @@ function mergeData(prodRows, dispoRows){
     const cor = String(r['COR'] ?? r['Cor'] ?? '').trim().toUpperCase();
     const ref = byKey.get(`${codigo}|${cor}`) || {};
     const grade = gradeEntriesFromRow(r);
-    const pairsPerBox = sumPairs(grade) || 12;
-    const saldoPairs = toNumber(r['SALDO'] ?? 0);
+    const categoria = String(ref['Categoria'] ?? ref['CATEGORIA'] ?? '').trim();
+    const produto = String(r['Produto'] ?? r['PRODUTO'] ?? ref['Produto'] ?? '').trim();
+    const mode = inferMode(grade, categoria, produto);
+    const gradeTotal = sumGrade(grade);
+    const saldoRaw = toNumber(r['SALDO'] ?? 0);
+    const availableUnits = Math.max(saldoRaw, gradeTotal);
+    const packSize = mode === 'boxed' ? (gradeTotal === 6 ? 6 : 12) : 1;
+    const groupedSizes = mode === 'boxed' ? grade : grade;
     return {
       _row: idx + 2,
-      keyBase: `${codigo}|${cor}|${idx+2}`,
       ebm: String(r['EBM'] ?? '').trim(),
       gci: String(r['GCI'] ?? '').trim(),
       codigo,
-      produto: String(r['Produto'] ?? r['PRODUTO'] ?? ref['Produto'] ?? '').trim(),
+      produto,
       cor,
-      dataEntrega: r['DATA ENTREGA'] || '',
-      saldoPairs,
-      grade,
-      pairsPerBox,
-      boxesBase: Math.floor(saldoPairs / (pairsPerBox || 1)),
-      imagem: String(ref['Imagem'] ?? ref['IMAGEM'] ?? '').trim(),
-      categoria: String(ref['Categoria'] ?? ref['CATEGORIA'] ?? '').trim(),
+      prevFaturamento: r['DATA ENTREGA'] || '',
+      grade: groupedSizes,
+      mode,
+      availableUnits,
+      packSize,
+      displayBalance: mode === 'boxed' ? Math.floor(availableUnits / packSize) : availableUnits,
+      imagem: String(ref['Imagem'] ?? ref['IMAGEM'] ?? ref['imagem'] ?? '').trim(),
+      categoria,
       segmento: String(ref['Segmento'] ?? ref['SEGMENTO'] ?? '').trim(),
       genero: String(ref['Gênero'] ?? ref['Genero'] ?? ref['GENERO'] ?? '').trim(),
-      preco: toNumber(ref['Preço'] ?? ref['Preco'] ?? ref['PREÇO'] ?? ref['PRECO'] ?? 0)
     };
-  }).filter(item => item.codigo && item.produto && item.saldoPairs > 0);
+  }).filter(item => item.codigo && item.produto && item.availableUnits > 0);
 }
-function reservedBoxes(key){
-  return Number(STATE.cart.get(key)?.boxes || 0);
+function currentCartAmount(key){ return Number(STATE.cart.get(key)?.amount || 0); }
+function remainingUnits(item){
+  const reserved = item.mode === 'boxed'
+    ? currentCartAmount(item.key) * item.packSize
+    : currentCartAmount(item.key);
+  return Math.max(0, item.availableUnits - reserved);
 }
-function remainingPairs(item){
-  return Math.max(0, Number(item.saldoPairs || 0) - (reservedBoxes(item.key) * Number(item.pairsPerBox || 0)));
-}
-function remainingBoxes(item){
-  return Math.floor(remainingPairs(item) / (Number(item.pairsPerBox || 1)));
+function remainingPacks(item){
+  return item.mode === 'boxed'
+    ? Math.floor(remainingUnits(item) / item.packSize)
+    : remainingUnits(item);
 }
 function buildFilters(){
   const uniq = (arr)=>Array.from(new Set(arr.filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b), 'pt-BR', { sensitivity:'base' }));
@@ -380,9 +411,9 @@ function buildFilters(){
 function sortView(items){
   const arr = [...items];
   switch(STATE.filters.sort){
-    case 'saldoDesc': arr.sort((a,b)=>remainingPairs(b)-remainingPairs(a)); break;
-    case 'saldoAsc': arr.sort((a,b)=>remainingPairs(a)-remainingPairs(b)); break;
-    case 'entregaAsc': arr.sort((a,b)=>new Date(a.dataEntrega||'2999-12-31') - new Date(b.dataEntrega||'2999-12-31')); break;
+    case 'saldoDesc': arr.sort((a,b)=>remainingUnits(b)-remainingUnits(a)); break;
+    case 'saldoAsc': arr.sort((a,b)=>remainingUnits(a)-remainingUnits(b)); break;
+    case 'entregaAsc': arr.sort((a,b)=>new Date(formatDate(a.prevFaturamento).split('/').reverse().join('-') || '2999-12-31') - new Date(formatDate(b.prevFaturamento).split('/').reverse().join('-') || '2999-12-31')); break;
     default: arr.sort((a,b)=>String(a.produto).localeCompare(String(b.produto), 'pt-BR', { sensitivity:'base' })); break;
   }
   return arr;
@@ -390,7 +421,7 @@ function sortView(items){
 function applyFilters(){
   const q = normalizeText(STATE.search);
   STATE.view = sortView(STATE.raw.filter(item=>{
-    if(remainingPairs(item) <= 0) return false;
+    if(remainingUnits(item) <= 0) return false;
     const categoryLabel = CATEGORY_LABELS[item.categoria] || item.categoria;
     const hay = normalizeText([item.codigo, item.produto, item.cor, item.segmento, item.genero, categoryLabel].join(' '));
     const hitQ = !q || hay.includes(q);
@@ -404,8 +435,8 @@ function applyFilters(){
 }
 function renderKpis(){
   $('visibleCount').textContent = STATE.view.length;
-  $('kpiBoxes').textContent = STATE.view.reduce((sum, item)=>sum + remainingBoxes(item), 0);
-  $('kpiPairs').textContent = STATE.view.reduce((sum, item)=>sum + remainingPairs(item), 0);
+  $('kpiPacks').textContent = STATE.view.reduce((sum, item)=>sum + remainingPacks(item), 0);
+  $('kpiUnits').textContent = STATE.view.reduce((sum, item)=>sum + remainingUnits(item), 0);
 }
 function gradeHtml(grade){
   return grade.map(g=>`
@@ -415,6 +446,25 @@ function gradeHtml(grade){
     </div>
   `).join('');
 }
+function availabilityChips(item){
+  if(item.mode === 'boxed'){
+    return `
+      <div class="chip chip-blue"><i class="fa-solid fa-shoe-prints"></i> ${remainingUnits(item)} pares</div>
+      <div class="mt-2 chip chip-gray"><i class="fa-solid fa-box-open"></i> ${remainingPacks(item)} caixa${remainingPacks(item) !== 1 ? 's' : ''}</div>
+    `;
+  }
+  return `<div class="chip chip-blue"><i class="fa-solid fa-cubes-stacked"></i> ${remainingUnits(item)} disponível${remainingUnits(item) !== 1 ? 'is' : ''}</div>`;
+}
+function secondaryMeta(item){
+  if(item.mode === 'boxed'){
+    return `<span class="chip chip-gray"><i class="fa-solid fa-boxes-stacked"></i> Grade de ${item.packSize} pares</span>`;
+  }
+  if(item.grade.length === 1 && item.grade[0].size === 'U'){
+    return `<span class="chip chip-gray"><i class="fa-solid fa-box"></i> Único</span>`;
+  }
+  const labels = item.grade.map(g=>g.size).join('-');
+  return labels ? `<span class="chip chip-gray"><i class="fa-solid fa-ruler-combined"></i> ${safeHtml(labels)}</span>` : '';
+}
 function renderCatalog(){
   const wrap = $('cardsWrap');
   wrap.innerHTML = '';
@@ -423,8 +473,7 @@ function renderCatalog(){
   for(const item of STATE.view){
     const key = item.key;
     const img = productImage(item);
-    const boxesFree = remainingBoxes(item);
-    const pairsFree = remainingPairs(item);
+    const freeAmount = item.mode === 'boxed' ? remainingPacks(item) : remainingUnits(item);
 
     const card = document.createElement('article');
     card.className = 'rounded-[28px] border border-slate-200 bg-white shadow-soft overflow-hidden';
@@ -441,68 +490,63 @@ function renderCatalog(){
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <div class="text-xl font-extrabold leading-tight">${safeHtml(item.produto)}</div>
-            <div class="mt-1 text-sm text-slate-500">${safeHtml(item.codigo)} · Entrega ${safeHtml(formatDate(item.dataEntrega))}</div>
+            <div class="mt-1 text-sm text-slate-500">${safeHtml(item.codigo)} · Prev. Faturamento ${safeHtml(formatDate(item.prevFaturamento))}</div>
           </div>
-          <div class="text-right">
-            <div class="chip chip-blue"><i class="fa-solid fa-shoe-prints"></i> ${pairsFree} pares</div>
-            <div class="mt-2 chip chip-gray"><i class="fa-solid fa-box-open"></i> ${boxesFree} caixas</div>
-          </div>
+          <div class="text-right">${availabilityChips(item)}</div>
         </div>
 
         <div class="mt-3 flex flex-wrap gap-2">
           <span class="chip chip-blue"><i class="fa-solid fa-palette"></i> ${safeHtml(item.cor)}</span>
-          ${item.pairsPerBox ? `<span class="chip chip-gray"><i class="fa-solid fa-boxes-stacked"></i> ${item.pairsPerBox} pares por caixa</span>` : ''}
+          ${secondaryMeta(item)}
         </div>
 
+        ${item.grade.length ? `
         <div class="mt-4">
-          <div class="text-sm font-extrabold">Grade disponível</div>
+          <div class="text-sm font-extrabold">Disponível</div>
           <div class="mt-2 flex flex-wrap gap-2">${gradeHtml(item.grade)}</div>
+        </div>` : ''}
+
+        <div class="mt-4 flex items-center justify-end gap-2">
+          <button class="btnMinus qty-btn focus-ring"><i class="fa-solid fa-minus"></i></button>
+          <div class="qty min-w-[28px] text-center text-lg font-extrabold">1</div>
+          <button class="btnPlus qty-btn focus-ring"><i class="fa-solid fa-plus"></i></button>
         </div>
 
-        <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-          <div class="flex items-center justify-between gap-3">
-            <div>
-              <div class="text-xs font-bold text-slate-500">Quantidade em caixas</div>
-              <div class="mt-1 text-sm font-semibold text-slate-600">Cada caixa segue a grade acima.</div>
-            </div>
-            <div class="flex items-center gap-2">
-              <button class="btnMinus qty-btn focus-ring"><i class="fa-solid fa-minus"></i></button>
-              <div class="qty min-w-[28px] text-center text-lg font-extrabold">1</div>
-              <button class="btnPlus qty-btn focus-ring"><i class="fa-solid fa-plus"></i></button>
-            </div>
-          </div>
-        </div>
-
-        <button class="btnAdd focus-ring mt-4 w-full rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white ${boxesFree <= 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${boxesFree <= 0 ? 'disabled' : ''}>Adicionar ${item.pairsPerBox} pares à sacola</button>
+        <button class="btnAdd focus-ring mt-4 w-full rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white ${freeAmount <= 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${freeAmount <= 0 ? 'disabled' : ''}>
+          ${item.mode === 'boxed'
+            ? `Adicionar ${item.packSize} pares à sacola`
+            : 'Adicionar à sacola'}
+        </button>
       </div>
     `;
 
-    let boxes = 1;
+    let amount = 1;
     const qtyEl = card.querySelector('.qty');
     card.querySelector('.btnMinus').addEventListener('click', ()=>{
-      boxes = Math.max(1, boxes - 1);
-      qtyEl.textContent = boxes;
+      amount = Math.max(1, amount - 1);
+      qtyEl.textContent = amount;
     });
     card.querySelector('.btnPlus').addEventListener('click', ()=>{
-      boxes = Math.min(999, boxes + 1);
-      qtyEl.textContent = boxes;
+      amount = Math.min(freeAmount, amount + 1);
+      qtyEl.textContent = amount;
     });
     card.querySelector('.btnAdd').addEventListener('click', ()=>{
-      const freeNow = remainingBoxes(item);
-      if(boxes > freeNow){ toast('Quantidade de caixas acima do saldo disponível'); return; }
+      const freeNow = item.mode === 'boxed' ? remainingPacks(item) : remainingUnits(item);
+      if(amount > freeNow){ toast('Quantidade acima do saldo disponível'); return; }
       const existing = STATE.cart.get(key);
-      const nextBoxes = Number(existing?.boxes || 0) + boxes;
-      if(nextBoxes > (Math.floor(Number(item.saldoPairs || 0) / Number(item.pairsPerBox || 1)))){ toast('Saldo excedido'); return; }
+      const nextAmount = Number(existing?.amount || 0) + amount;
+      const reservedUnits = item.mode === 'boxed' ? nextAmount * item.packSize : nextAmount;
+      if(reservedUnits > item.availableUnits){ toast('Saldo excedido'); return; }
       STATE.cart.set(key, {
         ...item,
         key,
-        boxes: nextBoxes,
-        totalPairs: nextBoxes * Number(item.pairsPerBox || 0)
+        amount: nextAmount,
+        totalUnits: reservedUnits
       });
       saveCartStorage();
       renderCart();
       applyFilters();
-      toast('Caixa adicionada à sacola');
+      toast('Item adicionado à sacola');
     });
 
     wrap.appendChild(card);
@@ -513,14 +557,18 @@ function renderCart(){
   $('cartCountBadge').classList.toggle('hidden', items.length === 0);
   $('cartCountBadge').textContent = items.length;
   $('cartEmptyState').classList.toggle('hidden', items.length !== 0);
-  $('cartTotalBoxes').textContent = items.reduce((sum, item)=>sum + Number(item.boxes || 0), 0);
-  $('cartTotalPairs').textContent = items.reduce((sum, item)=>sum + Number(item.boxes || 0) * Number(item.pairsPerBox || 0), 0);
+
+  const totalPacks = items.reduce((sum, item)=>sum + Number(item.amount || 0), 0);
+  const totalUnits = items.reduce((sum, item)=>sum + (item.mode === 'boxed' ? Number(item.amount || 0) * item.packSize : Number(item.amount || 0)), 0);
+  $('cartTotalPacks').textContent = totalPacks;
+  $('cartTotalUnits').textContent = totalUnits;
 
   const wrap = $('cartItems');
   wrap.innerHTML = '';
 
   for(const item of items){
     const img = productImage(item);
+    const totalUnitsItem = item.mode === 'boxed' ? item.amount * item.packSize : item.amount;
     const row = document.createElement('div');
     row.className = 'rounded-[28px] border border-slate-200 bg-white p-4';
     row.innerHTML = `
@@ -535,22 +583,29 @@ function renderCart(){
               <div class="text-2xl leading-none font-extrabold">${safeHtml(item.produto)}</div>
               <div class="mt-2 flex flex-wrap gap-2">
                 <span class="chip chip-blue"><i class="fa-solid fa-palette"></i> ${safeHtml(item.cor)}</span>
-                <span class="chip chip-gray"><i class="fa-solid fa-box"></i> ${item.boxes} caixa${item.boxes > 1 ? 's' : ''}</span>
+                ${item.mode === 'boxed'
+                  ? `<span class="chip chip-gray"><i class="fa-solid fa-box"></i> ${item.amount} caixa${item.amount > 1 ? 's' : ''}</span>`
+                  : `<span class="chip chip-gray"><i class="fa-solid fa-cubes-stacked"></i> ${item.amount} unidade${item.amount > 1 ? 's' : ''}</span>`}
               </div>
             </div>
             <button class="btnRemove focus-ring h-10 w-10 rounded-full border border-slate-200 bg-white text-[var(--brand)]"><i class="fa-solid fa-trash"></i></button>
           </div>
 
+          ${item.grade.length ? `
           <div class="mt-3">
-            <div class="text-sm font-extrabold text-slate-600">Grade</div>
+            <div class="text-sm font-extrabold text-slate-600">${item.mode === 'boxed' ? 'Grade' : 'Disponível'}</div>
             <div class="mt-2 flex flex-wrap gap-2">${gradeHtml(item.grade)}</div>
-          </div>
+          </div>` : ''}
 
           <div class="mt-3 flex items-center justify-between gap-3">
-            <div class="text-sm font-semibold text-slate-600">${item.boxes * item.pairsPerBox} pares no total</div>
+            <div class="text-sm font-semibold text-slate-600">
+              ${item.mode === 'boxed'
+                ? `${totalUnitsItem} pares no total`
+                : `${totalUnitsItem} unidade${totalUnitsItem > 1 ? 's' : ''} no total`}
+            </div>
             <div class="flex items-center gap-2">
               <button class="btnMinus qty-btn focus-ring"><i class="fa-solid fa-minus"></i></button>
-              <div class="min-w-[28px] text-center text-lg font-extrabold">${item.boxes}</div>
+              <div class="min-w-[28px] text-center text-lg font-extrabold">${item.amount}</div>
               <button class="btnPlus qty-btn focus-ring"><i class="fa-solid fa-plus"></i></button>
             </div>
           </div>
@@ -565,18 +620,18 @@ function renderCart(){
       applyFilters();
     });
     row.querySelector('.btnMinus').addEventListener('click', ()=>{
-      const next = Math.max(1, Number(item.boxes || 1) - 1);
-      STATE.cart.set(item.key, { ...item, boxes: next, totalPairs: next * Number(item.pairsPerBox || 0) });
+      const next = Math.max(1, Number(item.amount || 1) - 1);
+      STATE.cart.set(item.key, { ...item, amount: next, totalUnits: item.mode === 'boxed' ? next * item.packSize : next });
       saveCartStorage();
       renderCart();
       applyFilters();
     });
     row.querySelector('.btnPlus').addEventListener('click', ()=>{
       const original = STATE.raw.find(x=>x.key === item.key);
-      const maxBoxes = Math.floor(Number(original?.saldoPairs || 0) / Number(original?.pairsPerBox || 1));
-      if(Number(item.boxes || 0) + 1 > maxBoxes){ toast('Limite do saldo atingido'); return; }
-      const next = Number(item.boxes || 0) + 1;
-      STATE.cart.set(item.key, { ...item, boxes: next, totalPairs: next * Number(item.pairsPerBox || 0) });
+      const max = original?.mode === 'boxed' ? Math.floor(original.availableUnits / original.packSize) : original.availableUnits;
+      if(Number(item.amount || 0) + 1 > max){ toast('Limite do saldo atingido'); return; }
+      const next = Number(item.amount || 0) + 1;
+      STATE.cart.set(item.key, { ...item, amount: next, totalUnits: item.mode === 'boxed' ? next * item.packSize : next });
       saveCartStorage();
       renderCart();
       applyFilters();
@@ -601,8 +656,8 @@ function renderOrders(){
           <div class="mt-1 text-sm text-slate-500">${created.toLocaleDateString('pt-BR')} às ${created.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</div>
         </div>
         <div class="text-right">
-          <div class="chip chip-gray">${order.totals.boxes} caixas</div>
-          <div class="mt-2 chip chip-blue">${order.totals.pairs} pares</div>
+          <div class="chip chip-gray">${order.totals.packs} packs</div>
+          <div class="mt-2 chip chip-blue">${order.totals.units} itens</div>
         </div>
       </div>
       <div class="mt-4 space-y-3">
@@ -613,9 +668,13 @@ function renderOrders(){
                 <div class="font-extrabold">${safeHtml(item.produto)}</div>
                 <div class="mt-1 text-xs text-slate-500">${safeHtml(item.codigo)} · ${safeHtml(item.cor)}</div>
               </div>
-              <div class="text-right text-sm font-extrabold">${item.boxes} caixa${item.boxes > 1 ? 's' : ''}</div>
+              <div class="text-right text-sm font-extrabold">
+                ${item.mode === 'boxed'
+                  ? `${item.amount} caixa${item.amount > 1 ? 's' : ''}`
+                  : `${item.amount} unidade${item.amount > 1 ? 's' : ''}`}
+              </div>
             </div>
-            <div class="mt-2 flex flex-wrap gap-2">${gradeHtml(item.grade)}</div>
+            ${item.grade?.length ? `<div class="mt-2 flex flex-wrap gap-2">${gradeHtml(item.grade)}</div>` : ''}
           </div>
         `).join('')}
       </div>
@@ -656,16 +715,17 @@ function saveLocalOrder(){
     codigo: item.codigo,
     produto: item.produto,
     cor: item.cor,
-    boxes: item.boxes,
-    pairsPerBox: item.pairsPerBox,
+    amount: item.amount,
+    mode: item.mode,
+    packSize: item.packSize,
     grade: item.grade
   }));
   STATE.orders.unshift({
     id: `PED-${stamp}`,
     createdAt: now.toISOString(),
     totals: {
-      boxes: items.reduce((sum, item)=>sum + Number(item.boxes || 0), 0),
-      pairs: items.reduce((sum, item)=>sum + Number(item.boxes || 0) * Number(item.pairsPerBox || 0), 0)
+      packs: items.reduce((sum, item)=>sum + Number(item.amount || 0), 0),
+      units: items.reduce((sum, item)=>sum + (item.mode === 'boxed' ? Number(item.amount || 0) * Number(item.packSize || 0) : Number(item.amount || 0)), 0)
     },
     items
   });
