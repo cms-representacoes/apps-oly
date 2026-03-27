@@ -3,982 +3,228 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Repasse Olympikus</title>
+  <title>Admin • Repasse Olympikus</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <style>
-    :root{
-      --bg:#f5f7fb;
-      --card:#ffffff;
-      --text:#0f172a;
-      --muted:#64748b;
-      --line:#e2e8f0;
-      --brand:#2836D4;
-      --brand-soft:rgba(40,54,212,.10);
-      --success:#16a34a;
-      --warning:#f59e0b;
-      --danger:#dc2626;
-      --dark:#0f172a;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%;overflow-x:hidden}
-    body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
-    .focus-ring:focus-visible{outline:none;box-shadow:0 0 0 4px rgba(40,54,212,.18)}
-    .no-scrollbar::-webkit-scrollbar{display:none}
-    .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
-    .glass{backdrop-filter:blur(10px);background:rgba(255,255,255,.88)}
-    .shadow-soft{box-shadow:0 12px 30px rgba(15,23,42,.08)}
-    .shadow-lift{box-shadow:0 20px 40px rgba(15,23,42,.12)}
-    .status-dot{width:10px;height:10px;border-radius:999px;display:inline-block}
-    .status-disponivel{background:var(--success)}
-    .status-reservado{background:var(--warning)}
-    .status-indisponivel{background:var(--danger)}
-    .safe-bottom{padding-bottom:max(14px, env(safe-area-inset-bottom))}
-    .safe-top{padding-top:max(0px, env(safe-area-inset-top))}
-    .drawer{transform:translateX(105%);transition:transform .22s ease}
-    .drawer.open{transform:translateX(0)}
-    .modal-backdrop{background:rgba(15,23,42,.54);backdrop-filter:blur(6px)}
-    .admin-shell{display:grid;grid-template-columns:340px minmax(0,1fr);gap:16px}
-    @media (max-width: 1023px){
-      .admin-shell{grid-template-columns:1fr}
-    }
+    :root{--bg:#f6f7fb;--card:#fff;--text:#0f172a;--line:#e2e8f0;--brand:#2836d4;--brand-soft:rgba(40,54,212,.10);--shadow:0 18px 42px rgba(15,23,42,.08)}
+    *{box-sizing:border-box} body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .chip{display:inline-flex;align-items:center;gap:.4rem;border-radius:999px;padding:.42rem .78rem;font-size:12px;font-weight:800}
+    .chip-blue{background:var(--brand-soft);color:var(--brand)} .chip-gray{background:#eef2f7;color:#334155}
+    .shadow-card{box-shadow:var(--shadow)}
+    .focus-ring:focus-visible{outline:none;box-shadow:0 0 0 4px rgba(40,54,212,.15)}
+    .grade-pill{min-width:34px;border:1px solid var(--line);border-radius:10px;padding:4px 5px;background:#fff;text-align:center}
+    .grade-size{display:block;font-size:10px;line-height:1;color:#64748b;font-weight:700}
+    .grade-qty{display:block;font-size:11px;line-height:1.15;color:var(--brand);font-weight:800;margin-top:3px}
   </style>
 </head>
 <body>
-  <div id="app" class="min-h-full">
-    <header class="safe-top sticky top-0 z-40 border-b border-slate-200 glass">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 py-4">
-        <div class="flex items-center justify-between gap-3">
-          <div class="flex items-center gap-3 min-w-0">
-            <div class="h-11 w-11 rounded-2xl overflow-hidden border border-slate-200 bg-white flex items-center justify-center">
-              <img id="brandLogo" alt="Olympikus" class="h-full w-full object-contain" />
-            </div>
-            <div class="min-w-0">
-              <div class="text-lg sm:text-xl font-extrabold truncate" id="appTitle">Disponibilidade de Repasse</div>
-              <div id="headerStatus" class="text-xs text-slate-500">Carregando catálogo…</div>
-            </div>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <div class="hidden md:flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 shadow-soft">
-              <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
-              <input id="searchInput" class="focus-ring w-[260px] bg-transparent text-sm outline-none placeholder:text-slate-400" placeholder="Buscar por produto, código, cor, gênero ou segmento" />
-            </div>
-            <button id="btnSearchMobile" class="md:hidden focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white"><i class="fa-solid fa-magnifying-glass text-slate-700"></i></button>
-            <button id="btnToggleAdmin" class="hidden focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">Painel admin</button>
-            <button id="btnOpenCart" class="focus-ring inline-flex items-center gap-2 rounded-full bg-[var(--brand)] px-4 py-2 text-sm font-extrabold text-white shadow-soft">
-              <i class="fa-solid fa-cart-shopping"></i>
-              <span>Pedido</span>
-              <span id="cartCountBadge" class="hidden rounded-full bg-white/18 px-2 py-0.5 text-xs">0</span>
-            </button>
-          </div>
+  <main class="min-h-screen p-4 sm:p-6">
+    <section id="loginScreen" class="mx-auto max-w-md pt-16 sm:pt-24">
+      <div class="rounded-[32px] border border-slate-200 bg-white p-6 sm:p-8 shadow-card">
+        <div class="mx-auto h-14 w-14 rounded-2xl bg-[var(--brand-soft)] text-[var(--brand)] flex items-center justify-center text-2xl">
+          <i class="fa-solid fa-shield-halved"></i>
         </div>
-        <div class="mt-3 md:hidden hidden items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-soft" id="mobileSearchWrap">
-          <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
-          <input id="searchInputMobile" class="focus-ring w-full bg-transparent text-sm outline-none placeholder:text-slate-400" placeholder="Buscar produto" />
-          <button id="btnCloseMobileSearch" class="focus-ring h-9 w-9 rounded-full hover:bg-slate-50"><i class="fa-solid fa-xmark"></i></button>
+        <h1 class="mt-5 text-2xl font-extrabold">Painel Administrativo</h1>
+        <p class="mt-2 text-sm text-slate-500">Entre com a senha para visualizar pedidos enviados pelos vendedores.</p>
+        <div class="mt-5">
+          <label class="text-xs font-bold text-slate-500">Senha</label>
+          <input id="adminPassword" type="password" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold" placeholder="Digite a senha" />
         </div>
+        <button id="btnAdminLogin" class="focus-ring mt-5 w-full rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white">Entrar</button>
+        <div class="mt-3 text-xs text-slate-400">Acesso interno. Troque a senha no arquivo quando necessário.</div>
       </div>
-    </header>
+    </section>
 
-    <main class="mx-auto max-w-7xl px-4 sm:px-6 py-5 sm:py-6">
-      <section id="heroBlock" class="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-soft">
-        <div class="flex flex-col lg:flex-row lg:items-center gap-4 justify-between">
+    <section id="adminApp" class="hidden mx-auto max-w-7xl">
+      <header class="rounded-[32px] border border-slate-200 bg-white p-4 sm:p-5 shadow-card">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <div class="inline-flex items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-1 text-xs font-bold text-[var(--brand)]">
-              <i class="fa-solid fa-arrows-rotate"></i>
-              <span>Uma linha por produto da planilha</span>
-            </div>
-            <h1 class="mt-3 text-2xl sm:text-3xl font-extrabold tracking-tight">Catálogo de repasse com disponibilidade e pedidos em JSON</h1>
-            <p class="mt-2 text-sm sm:text-base text-slate-600 max-w-3xl">
-              Leitura direta do <b>Produtos.xlsx</b>, controle de disponibilidade separado em <b>disponibilidade.json</b> e pedidos gravados em <b>data/pedidos/*.json</b> no GitHub.
-            </p>
+            <div class="text-xs font-bold text-slate-500">Gestão</div>
+            <div class="text-2xl sm:text-3xl font-extrabold">Pedidos de repasse</div>
           </div>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 min-w-full lg:min-w-[520px]">
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div class="text-xs font-bold text-slate-500">Produtos</div>
-              <div id="kpiProdutos" class="mt-1 text-2xl font-extrabold">0</div>
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 min-w-[220px]">
+              <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
+              <input id="adminSearch" class="focus-ring w-full bg-transparent text-sm outline-none" placeholder="Buscar pedido, cliente ou preposto" />
             </div>
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div class="text-xs font-bold text-slate-500">Disponíveis</div>
-              <div id="kpiDisponiveis" class="mt-1 text-2xl font-extrabold">0</div>
-            </div>
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div class="text-xs font-bold text-slate-500">Reservados</div>
-              <div id="kpiReservados" class="mt-1 text-2xl font-extrabold">0</div>
-            </div>
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div class="text-xs font-bold text-slate-500">Indisponíveis</div>
-              <div id="kpiIndisponiveis" class="mt-1 text-2xl font-extrabold">0</div>
-            </div>
+            <select id="adminStatusFilter" class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold">
+              <option value="">Todos os status</option>
+              <option value="Pendente">Pendente</option>
+              <option value="Em análise">Em análise</option>
+              <option value="Aprovado">Aprovado</option>
+              <option value="Rejeitado">Rejeitado</option>
+              <option value="Atendido parcialmente">Atendido parcialmente</option>
+            </select>
+            <button id="btnLogout" class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">Sair</button>
           </div>
         </div>
+      </header>
+
+      <section class="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-card"><div class="text-xs font-bold text-slate-500">Pedidos</div><div id="kpiOrders" class="mt-1 text-3xl font-extrabold">0</div></div>
+        <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-card"><div class="text-xs font-bold text-slate-500">Pendentes</div><div id="kpiPending" class="mt-1 text-3xl font-extrabold">0</div></div>
+        <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-card"><div class="text-xs font-bold text-slate-500">Volumes</div><div id="kpiPacks" class="mt-1 text-3xl font-extrabold">0</div></div>
+        <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-card"><div class="text-xs font-bold text-slate-500">Itens</div><div id="kpiUnits" class="mt-1 text-3xl font-extrabold">0</div></div>
       </section>
 
-      <section class="mt-4 grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-4">
-        <aside class="rounded-3xl border border-slate-200 bg-white p-4 shadow-soft h-fit">
-          <div class="flex items-center justify-between">
-            <div>
-              <div class="text-xs font-bold text-slate-500">Busca refinada</div>
-              <div class="text-lg font-extrabold">Filtros</div>
-            </div>
-            <button id="btnClearFilters" class="focus-ring text-sm font-bold text-[var(--brand)]">Limpar</button>
-          </div>
-          <div class="mt-4 space-y-3">
-            <div>
-              <label class="text-xs font-bold text-slate-500">Categoria</label>
-              <select id="filterCategoria" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold"></select>
-            </div>
-            <div>
-              <label class="text-xs font-bold text-slate-500">Segmento</label>
-              <select id="filterSegmento" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold"></select>
-            </div>
-            <div>
-              <label class="text-xs font-bold text-slate-500">Gênero</label>
-              <select id="filterGenero" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold"></select>
-            </div>
-            <div>
-              <label class="text-xs font-bold text-slate-500">Status</label>
-              <select id="filterStatus" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold">
-                <option value="">Todos</option>
-                <option value="disponivel">Disponível</option>
-                <option value="reservado">Reservado</option>
-                <option value="indisponivel">Indisponível</option>
-              </select>
-            </div>
-            <div>
-              <label class="text-xs font-bold text-slate-500">Ordenação</label>
-              <select id="sortBy" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold">
-                <option value="produto">Produto A-Z</option>
-                <option value="precoAsc">Menor preço</option>
-                <option value="precoDesc">Maior preço</option>
-                <option value="status">Status</option>
-              </select>
-            </div>
-          </div>
-        </aside>
-
-        <section>
-          <div id="loadingBlock" class="rounded-3xl border border-slate-200 bg-white p-10 shadow-soft text-center">
-            <div class="mx-auto h-14 w-14 rounded-2xl bg-[var(--brand-soft)] text-[var(--brand)] flex items-center justify-center text-2xl">
-              <i class="fa-solid fa-spinner fa-spin"></i>
-            </div>
-            <div class="mt-4 text-xl font-extrabold">Carregando Produtos.xlsx</div>
-            <div class="mt-1 text-slate-500">Estrutura esperada: /index.html, /Produtos.xlsx, /Catalogo/* e /data/disponibilidade.json.</div>
-          </div>
-
-          <div id="catalogWrap" class="hidden">
-            <div id="cardsWrap" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"></div>
-            <div id="emptyState" class="hidden rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-soft mt-4">
-              <div class="mx-auto h-14 w-14 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center text-2xl"><i class="fa-solid fa-box-open"></i></div>
-              <div class="mt-4 text-xl font-extrabold">Nenhum produto encontrado</div>
-              <div class="mt-1 text-slate-500">Revise a busca ou os filtros.</div>
-            </div>
-          </div>
-        </section>
-      </section>
-
-      <section id="adminSection" class="hidden mt-5 rounded-3xl border border-slate-200 bg-white p-4 sm:p-5 shadow-soft">
-        <div class="flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            <div class="text-xs font-bold text-slate-500">Modo administrativo</div>
-            <div class="text-xl font-extrabold">Painel do GitHub</div>
-          </div>
-          <div class="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-4 py-2 text-sm font-semibold text-amber-700">
-            <i class="fa-solid fa-triangle-exclamation"></i>
-            <span>Para gravar no GitHub Pages, este modelo usa token armazenado localmente no navegador.</span>
-          </div>
+      <section class="mt-4 grid grid-cols-1 xl:grid-cols-[420px_minmax(0,1fr)] gap-4">
+        <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-card">
+          <div class="text-lg font-extrabold">Lista de pedidos</div>
+          <div id="ordersEmpty" class="hidden mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center text-slate-500">Nenhum pedido encontrado.</div>
+          <div id="adminOrdersList" class="mt-4 space-y-3"></div>
         </div>
 
-        <div class="admin-shell mt-4">
-          <aside class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-            <div class="text-sm font-extrabold">Configuração</div>
-            <div class="mt-3 space-y-3">
-              <div>
-                <label class="text-xs font-bold text-slate-500">Owner</label>
-                <input id="ghOwner" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm" placeholder="seu-usuario" />
-              </div>
-              <div>
-                <label class="text-xs font-bold text-slate-500">Repositório</label>
-                <input id="ghRepo" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm" placeholder="nome-do-repo" />
-              </div>
-              <div>
-                <label class="text-xs font-bold text-slate-500">Branch</label>
-                <input id="ghBranch" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm" placeholder="main" />
-              </div>
-              <div>
-                <label class="text-xs font-bold text-slate-500">Pasta do JSON de disponibilidade</label>
-                <input id="ghAvailabilityPath" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm" placeholder="data/disponibilidade.json" />
-              </div>
-              <div>
-                <label class="text-xs font-bold text-slate-500">Pasta dos pedidos</label>
-                <input id="ghOrdersPath" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm" placeholder="data/pedidos" />
-              </div>
-              <div>
-                <label class="text-xs font-bold text-slate-500">Token GitHub (PAT)</label>
-                <input id="ghToken" type="password" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm" placeholder="ghp_..." />
-              </div>
-              <div class="grid grid-cols-2 gap-2">
-                <button id="btnSaveGithubConfig" class="focus-ring rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white">Salvar config</button>
-                <button id="btnTestGithub" class="focus-ring rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-extrabold">Testar acesso</button>
-              </div>
-            </div>
-          </aside>
-
-          <div class="space-y-4 min-w-0">
-            <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-              <div class="flex items-center justify-between gap-3 flex-wrap">
-                <div>
-                  <div class="text-sm font-extrabold">Disponibilidade</div>
-                  <div class="text-xs text-slate-500">Uma linha por produto da planilha. Edite quantidade, status e observação.</div>
-                </div>
-                <div class="flex items-center gap-2">
-                  <input id="adminSearch" class="focus-ring rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm" placeholder="Buscar no admin" />
-                  <button id="btnSaveAvailability" class="focus-ring rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white">Salvar disponibilidade.json</button>
-                </div>
-              </div>
-              <div class="mt-4 overflow-auto rounded-2xl border border-slate-200 bg-white">
-                <table class="min-w-full text-sm">
-                  <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
-                    <tr>
-                      <th class="px-3 py-3 text-left">Código</th>
-                      <th class="px-3 py-3 text-left">Produto</th>
-                      <th class="px-3 py-3 text-left">Cor</th>
-                      <th class="px-3 py-3 text-left">Gênero</th>
-                      <th class="px-3 py-3 text-left">Disponível</th>
-                      <th class="px-3 py-3 text-left">Status</th>
-                      <th class="px-3 py-3 text-left">Obs.</th>
-                    </tr>
-                  </thead>
-                  <tbody id="adminTableBody"></tbody>
-                </table>
-              </div>
-            </div>
-
-            <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-              <div class="flex items-center justify-between gap-3 flex-wrap">
-                <div>
-                  <div class="text-sm font-extrabold">Pedidos gravados</div>
-                  <div class="text-xs text-slate-500">Leitura dos JSON já salvos no repositório.</div>
-                </div>
-                <button id="btnReloadOrders" class="focus-ring rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-extrabold">Atualizar lista</button>
-              </div>
-              <div id="ordersList" class="mt-4 space-y-3"></div>
-            </div>
-          </div>
+        <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-card">
+          <div id="detailEmpty" class="rounded-2xl border border-slate-200 bg-slate-50 p-10 text-center text-slate-500">Selecione um pedido para visualizar os detalhes.</div>
+          <div id="adminOrderDetail" class="hidden"></div>
         </div>
       </section>
-    </main>
-
-    <button id="miniCartFab" class="hidden safe-bottom focus-ring fixed bottom-4 right-4 z-30 rounded-full bg-[var(--brand)] px-5 py-3 text-sm font-extrabold text-white shadow-lift">
-      <i class="fa-solid fa-cart-shopping mr-2"></i>
-      <span id="miniCartCount">0</span>
-    </button>
-
-    <div id="cartDrawerWrap" class="hidden fixed inset-0 z-50">
-      <div class="modal-backdrop absolute inset-0" data-close-cart="true"></div>
-      <aside id="cartDrawer" class="drawer absolute right-0 top-0 bottom-0 w-full max-w-xl bg-white shadow-lift flex flex-col">
-        <div class="border-b border-slate-200 p-4 flex items-center justify-between">
-          <div>
-            <div class="text-xs text-slate-500">Solicitação</div>
-            <div class="text-xl font-extrabold">Pedido de repasse</div>
-          </div>
-          <button class="focus-ring h-11 w-11 rounded-full border border-slate-200" data-close-cart="true"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4">
-          <div>
-            <label class="text-xs font-bold text-slate-500">Solicitante</label>
-            <input id="orderCustomer" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Nome do cliente ou loja" />
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label class="text-xs font-bold text-slate-500">Cidade/UF</label>
-              <input id="orderCity" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Cidade/UF" />
-            </div>
-            <div>
-              <label class="text-xs font-bold text-slate-500">Responsável</label>
-              <input id="orderSeller" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm" placeholder="Representante" />
-            </div>
-          </div>
-          <div>
-            <label class="text-xs font-bold text-slate-500">Observação geral</label>
-            <textarea id="orderNotes" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm" rows="3" placeholder="Observações gerais do pedido"></textarea>
-          </div>
-
-          <div id="cartEmptyState" class="hidden rounded-3xl border border-slate-200 bg-slate-50 p-8 text-center">
-            <div class="mx-auto h-12 w-12 rounded-2xl bg-white text-slate-400 flex items-center justify-center text-xl"><i class="fa-solid fa-box-open"></i></div>
-            <div class="mt-3 text-xl font-extrabold">Nenhum item no pedido</div>
-            <div class="mt-1 text-slate-500">Adicione produtos antes de enviar.</div>
-          </div>
-
-          <div id="cartItems" class="space-y-3"></div>
-        </div>
-        <div class="border-t border-slate-200 p-4 space-y-3">
-          <div class="flex items-center justify-between text-sm">
-            <span class="font-bold text-slate-500">Itens no pedido</span>
-            <span id="cartTotalItems" class="font-extrabold">0</span>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <button id="btnClearCart" class="focus-ring rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-extrabold">Limpar</button>
-            <button id="btnSubmitOrder" class="focus-ring rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white">Salvar pedido no GitHub</button>
-          </div>
-        </div>
-      </aside>
-    </div>
-
-    <div id="toast" class="hidden fixed top-4 left-1/2 -translate-x-1/2 z-[70] rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white shadow-lift"></div>
-  </div>
+    </section>
+  </main>
 
 <script>
-const PAGE_MODE = {
-  admin: location.pathname.endsWith('/admin') || location.pathname.endsWith('/admin/') || new URLSearchParams(location.search).has('admin') || location.hash === '#admin'
-};
-const BASE_PREFIX = (location.pathname.includes('/admin')) ? '..' : '.';
-const CONFIG_KEYS = {
-  owner: 'repasse_github_owner',
-  repo: 'repasse_github_repo',
-  branch: 'repasse_github_branch',
-  token: 'repasse_github_token',
-  availabilityPath: 'repasse_github_availability_path',
-  ordersPath: 'repasse_github_orders_path'
-};
-const DEFAULTS = {
-  xlsxPath: `${BASE_PREFIX}/Produtos.xlsx`,
-  imagesBasePath: `${BASE_PREFIX}/Catalogo/`,
-  logoPath: `${BASE_PREFIX}/logo-olympikus.png`,
-  availabilityPath: 'data/disponibilidade.json',
-  ordersPath: 'data/pedidos',
-  branch: 'main'
-};
-const STATE = {
-  raw: [],
-  view: [],
-  search: '',
-  filters: { categoria:'', segmento:'', genero:'', status:'', sort:'produto' },
-  availability: {},
-  cart: new Map(),
-  orderFiles: [],
-  adminSearch: ''
-};
+const STORAGE_KEYS = { orders:'repasse_orders_v4', adminAuth:'repasse_admin_auth_v1' };
+const ADMIN_PASSWORD = 'cmsrepasse';
+const STATUS_OPTIONS = ['Pendente','Em análise','Aprovado','Rejeitado','Atendido parcialmente'];
+const STATE = { orders: [], filtered: [], selectedId: null };
 const $ = (id)=>document.getElementById(id);
-const CATEGORY_LABELS = { FTW:'Tênis', ACC:'Acessórios', CHI:'Chinelos', MEIA:'Meias', 'V&A':'Vestuário' };
-
-function toast(msg, ms=1800){
-  const el = $('toast');
-  el.textContent = msg;
-  el.classList.remove('hidden');
-  clearTimeout(toast._t);
-  toast._t = setTimeout(()=>el.classList.add('hidden'), ms);
+function safeHtml(v){ return String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;'); }
+function readOrders(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.orders) || '[]'); } catch { return []; } }
+function saveOrders(){ localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(STATE.orders)); }
+function gradeHtml(grade=[]){ return grade.map(g=>`<div class="grade-pill"><span class="grade-size">${safeHtml(g.size)}</span><span class="grade-qty">${safeHtml(g.qty)}</span></div>`).join(''); }
+function applyAuthUI(){
+  const ok = localStorage.getItem(STORAGE_KEYS.adminAuth) === 'ok';
+  $('loginScreen').classList.toggle('hidden', ok);
+  $('adminApp').classList.toggle('hidden', !ok);
+  if(ok){ loadAdmin(); }
 }
-function normalizeText(v){
-  return String(v ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+function loadAdmin(){
+  STATE.orders = readOrders().sort((a,b)=>new Date(b.createdAt) - new Date(a.createdAt));
+  applyFilters();
 }
-function money(v){
-  const n = Number(v || 0);
-  return n.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-}
-function toNumber(v){
-  const n = Number(v);
-  if(Number.isFinite(n)) return n;
-  return Number(String(v||'').replace(/\./g,'').replace(',', '.').replace(/[^\d.-]/g,'')) || 0;
-}
-function safeHtml(v){
-  return String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
-}
-function productKey(item){
-  return normalizeText([item.codigo, item.corCodigo || item.cor, item.genero, item.produto, item._row].join('||'));
-}
-function productImage(item){
-  const raw = String(item.imagem || '').trim();
-  if(!raw) return '';
-  const hasExt = /\.[a-z0-9]+$/i.test(raw);
-  const name = hasExt ? raw : `${raw}.png`;
-  return `${DEFAULTS.imagesBasePath}${encodeURIComponent(name)}`;
-}
-function statusInfo(item){
-  const key = productKey(item);
-  const meta = STATE.availability[key] || {};
-  const status = String(meta.status || 'disponivel').toLowerCase();
-  const disponivel = Number.isFinite(Number(meta.disponivel)) ? Number(meta.disponivel) : '';
-  const label = status === 'reservado' ? 'Reservado' : status === 'indisponivel' ? 'Indisponível' : 'Disponível';
-  return { status, label, disponivel, obs: meta.obs || '' };
-}
-function setHeader(msg){ $('headerStatus').textContent = msg; }
-
-function githubConfig(){
-  return {
-    owner: localStorage.getItem(CONFIG_KEYS.owner) || '',
-    repo: localStorage.getItem(CONFIG_KEYS.repo) || '',
-    branch: localStorage.getItem(CONFIG_KEYS.branch) || DEFAULTS.branch,
-    token: localStorage.getItem(CONFIG_KEYS.token) || '',
-    availabilityPath: localStorage.getItem(CONFIG_KEYS.availabilityPath) || DEFAULTS.availabilityPath,
-    ordersPath: localStorage.getItem(CONFIG_KEYS.ordersPath) || DEFAULTS.ordersPath
-  };
-}
-function fillGithubForm(){
-  const cfg = githubConfig();
-  if($('ghOwner')) $('ghOwner').value = cfg.owner;
-  if($('ghRepo')) $('ghRepo').value = cfg.repo;
-  if($('ghBranch')) $('ghBranch').value = cfg.branch;
-  if($('ghToken')) $('ghToken').value = cfg.token;
-  if($('ghAvailabilityPath')) $('ghAvailabilityPath').value = cfg.availabilityPath;
-  if($('ghOrdersPath')) $('ghOrdersPath').value = cfg.ordersPath;
-}
-function saveGithubConfig(){
-  localStorage.setItem(CONFIG_KEYS.owner, $('ghOwner').value.trim());
-  localStorage.setItem(CONFIG_KEYS.repo, $('ghRepo').value.trim());
-  localStorage.setItem(CONFIG_KEYS.branch, $('ghBranch').value.trim() || DEFAULTS.branch);
-  localStorage.setItem(CONFIG_KEYS.token, $('ghToken').value.trim());
-  localStorage.setItem(CONFIG_KEYS.availabilityPath, $('ghAvailabilityPath').value.trim() || DEFAULTS.availabilityPath);
-  localStorage.setItem(CONFIG_KEYS.ordersPath, $('ghOrdersPath').value.trim() || DEFAULTS.ordersPath);
-  toast('Configuração do GitHub salva');
-}
-async function ghFetch(path, options={}){
-  const cfg = githubConfig();
-  if(!cfg.owner || !cfg.repo) throw new Error('Owner e repositório não configurados.');
-  const headers = { 'Accept':'application/vnd.github+json' };
-  if(cfg.token) headers['Authorization'] = `Bearer ${cfg.token}`;
-  const res = await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}${path}`, { ...options, headers: { ...headers, ...(options.headers || {}) } });
-  if(!res.ok){
-    const txt = await res.text();
-    throw new Error(`GitHub ${res.status}: ${txt || 'falha na requisição'}`);
-  }
-  if(res.status === 204) return null;
-  const ct = res.headers.get('content-type') || '';
-  if(ct.includes('application/json')) return res.json();
-  return res.text();
-}
-async function ghGetContent(filePath){
-  const cfg = githubConfig();
-  try{
-    return await ghFetch(`/contents/${filePath}?ref=${encodeURIComponent(cfg.branch)}`);
-  }catch(err){
-    if(String(err.message).includes('404')) return null;
-    throw err;
-  }
-}
-async function ghPutJson(filePath, payload, message){
-  const existing = await ghGetContent(filePath);
-  const body = {
-    message,
-    branch: githubConfig().branch,
-    content: btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))))
-  };
-  if(existing?.sha) body.sha = existing.sha;
-  return ghFetch(`/contents/${filePath}`, { method:'PUT', body: JSON.stringify(body) });
-}
-async function ghListDir(dirPath){
-  return ghFetch(`/contents/${dirPath}?ref=${encodeURIComponent(githubConfig().branch)}`);
-}
-
-async function loadCatalog(){
-  try{
-    setHeader('Carregando catálogo…');
-    $('brandLogo').src = DEFAULTS.logoPath;
-    const res = await fetch(`${DEFAULTS.xlsxPath}?v=${Date.now()}`, { cache:'no-store' });
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    const buff = await res.arrayBuffer();
-    const wb = XLSX.read(buff, { type:'array' });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, { defval:'' });
-    STATE.raw = rows
-      .map((r, idx)=>({
-        _row: idx + 2,
-        imagem: String(r['Imagem'] ?? r['IMAGEM'] ?? '').trim(),
-        categoria: String(r['Categoria'] ?? r['CATEGORIA'] ?? '').trim(),
-        segmento: String(r['Segmento'] ?? r['SEGMENTO'] ?? '').trim(),
-        codigo: String(r['Código'] ?? r['Codigo'] ?? r['CODIGO'] ?? '').trim(),
-        produto: String(r['Produto'] ?? r['PRODUTO'] ?? '').trim(),
-        corCodigo: String(r['Cor código'] ?? r['Cor codigo'] ?? r['COR CODIGO'] ?? r['COR CÓDIGO'] ?? '').trim(),
-        cor: String(r['Cor'] ?? r['COR'] ?? '').trim(),
-        genero: String(r['Gênero'] ?? r['Genero'] ?? r['GENERO'] ?? r['GÊNERO'] ?? '').trim(),
-        preco: toNumber(r['Preço'] ?? r['Preco'] ?? r['PREÇO'] ?? r['PRECO'] ?? 0),
-        custo: toNumber(r['Custo'] ?? r['CUSTO'] ?? 0)
-      }))
-      .filter(r => r.produto || r.codigo || r.cor || r.imagem);
-
-    buildFilters();
-    await loadAvailability();
-    applyFilters();
-    renderAdminTable();
-    $('loadingBlock').classList.add('hidden');
-    $('catalogWrap').classList.remove('hidden');
-    setHeader(`${STATE.raw.length} produtos carregados`);
-  }catch(err){
-    console.error(err);
-    setHeader('Falha ao carregar');
-    $('loadingBlock').innerHTML = `
-      <div class="mx-auto h-14 w-14 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center text-2xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
-      <div class="mt-4 text-xl font-extrabold">Não foi possível ler o Produtos.xlsx</div>
-      <div class="mt-1 text-slate-500">Confira nome do arquivo e estrutura das pastas. Detalhe: ${safeHtml(err.message)}</div>
-    `;
-  }
-}
-
-async function loadAvailability(){
-  try{
-    const cfg = githubConfig();
-    const online = cfg.owner && cfg.repo ? await ghGetContent(cfg.availabilityPath) : null;
-    if(online?.content){
-      const json = JSON.parse(decodeURIComponent(escape(atob(online.content.replace(/\n/g,'')))));
-      STATE.availability = json.items || {};
-      return;
-    }
-  }catch(err){
-    console.warn('Falha ao carregar disponibilidade do GitHub:', err.message);
-  }
-  try{
-    const local = await fetch(`${BASE_PREFIX}/data/disponibilidade.json?v=${Date.now()}`, { cache:'no-store' });
-    if(local.ok){
-      const json = await local.json();
-      STATE.availability = json.items || {};
-      return;
-    }
-  }catch(err){ console.warn(err); }
-  STATE.availability = {};
-}
-
-function buildFilters(){
-  const fill = (id, values, label)=>{
-    const el = $(id);
-    el.innerHTML = `<option value="">${label}</option>` + values.map(v=>`<option value="${safeHtml(v)}">${safeHtml(v)}</option>`).join('');
-  };
-  const uniq = (arr)=>Array.from(new Set(arr.filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b),'pt-BR',{sensitivity:'base'}));
-  fill('filterCategoria', uniq(STATE.raw.map(x=>CATEGORY_LABELS[x.categoria] || x.categoria)), 'Todas as categorias');
-  fill('filterSegmento', uniq(STATE.raw.map(x=>x.segmento)), 'Todos os segmentos');
-  fill('filterGenero', uniq(STATE.raw.map(x=>x.genero)), 'Todos os gêneros');
-}
-
 function applyFilters(){
-  const q = normalizeText(STATE.search);
-  STATE.view = STATE.raw.filter(item=>{
-    const st = statusInfo(item);
-    const categoryLabel = CATEGORY_LABELS[item.categoria] || item.categoria;
-    const hay = normalizeText([item.codigo, item.produto, item.cor, item.corCodigo, item.genero, item.segmento, categoryLabel].join(' '));
-    const hitQ = !q || hay.includes(q);
-    const hitCat = !STATE.filters.categoria || categoryLabel === STATE.filters.categoria;
-    const hitSeg = !STATE.filters.segmento || item.segmento === STATE.filters.segmento;
-    const hitGen = !STATE.filters.genero || item.genero === STATE.filters.genero;
-    const hitStatus = !STATE.filters.status || st.status === STATE.filters.status;
-    return hitQ && hitCat && hitSeg && hitGen && hitStatus;
+  const q = ($('adminSearch').value || '').toLowerCase().trim();
+  const status = $('adminStatusFilter').value;
+  STATE.filtered = STATE.orders.filter(order=>{
+    const hay = `${order.id} ${order.clienteCodigo} ${order.preposto?.nome || ''} ${order.preposto?.codigo || ''} ${order.prazo} ${order.campanha || ''}`.toLowerCase();
+    return (!q || hay.includes(q)) && (!status || order.status === status);
   });
-
-  if(STATE.filters.sort === 'precoAsc') STATE.view.sort((a,b)=>a.preco - b.preco);
-  else if(STATE.filters.sort === 'precoDesc') STATE.view.sort((a,b)=>b.preco - a.preco);
-  else if(STATE.filters.sort === 'status') STATE.view.sort((a,b)=>statusInfo(a).status.localeCompare(statusInfo(b).status));
-  else STATE.view.sort((a,b)=>String(a.produto).localeCompare(String(b.produto),'pt-BR',{sensitivity:'base'}));
-
-  renderCatalog();
-  updateKpis();
+  renderKpis();
+  renderList();
+  if(!STATE.selectedId && STATE.filtered[0]) STATE.selectedId = STATE.filtered[0].id;
+  if(STATE.selectedId && !STATE.filtered.find(o=>o.id === STATE.selectedId)) STATE.selectedId = STATE.filtered[0]?.id || null;
+  renderDetail();
 }
-
-function updateKpis(){
-  $('kpiProdutos').textContent = STATE.raw.length;
-  let disponiveis = 0, reservados = 0, indisponiveis = 0;
-  for(const item of STATE.raw){
-    const st = statusInfo(item).status;
-    if(st === 'reservado') reservados++;
-    else if(st === 'indisponivel') indisponiveis++;
-    else disponiveis++;
-  }
-  $('kpiDisponiveis').textContent = disponiveis;
-  $('kpiReservados').textContent = reservados;
-  $('kpiIndisponiveis').textContent = indisponiveis;
+function renderKpis(){
+  $('kpiOrders').textContent = STATE.filtered.length;
+  $('kpiPending').textContent = STATE.filtered.filter(o=>o.status === 'Pendente').length;
+  $('kpiPacks').textContent = STATE.filtered.reduce((sum,o)=>sum + Number(o.totals?.packs || 0), 0);
+  $('kpiUnits').textContent = STATE.filtered.reduce((sum,o)=>sum + Number(o.totals?.units || 0), 0);
 }
-
-function renderCatalog(){
-  const wrap = $('cardsWrap');
-  wrap.innerHTML = '';
-  $('emptyState').classList.toggle('hidden', STATE.view.length !== 0);
-
-  for(const item of STATE.view){
-    const st = statusInfo(item);
-    const key = productKey(item);
-    const img = productImage(item);
-    const qtyInCart = STATE.cart.get(key)?.qty || 0;
-    const card = document.createElement('article');
-    card.className = 'rounded-3xl border border-slate-200 bg-white shadow-soft overflow-hidden';
-    card.innerHTML = `
-      <div class="aspect-[4/3] bg-slate-50 border-b border-slate-200 flex items-center justify-center overflow-hidden">
-        ${img ? `<img src="${img}" alt="${safeHtml(item.produto)}" class="h-full w-full object-contain bg-white" onerror="this.style.display='none';this.parentElement.querySelector('.img-fallback').classList.remove('hidden')">` : ''}
-        <div class="img-fallback ${img ? 'hidden' : ''} flex flex-col items-center justify-center text-slate-400">
-          <i class="fa-solid fa-image text-3xl"></i>
-          <div class="mt-2 text-xs font-bold">Sem imagem</div>
-        </div>
-      </div>
-      <div class="p-4">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="text-base font-extrabold leading-snug">${safeHtml(item.produto || 'Produto')}</div>
-            <div class="mt-1 text-xs text-slate-500">${safeHtml(item.codigo)} · ${safeHtml(item.segmento || 'Sem segmento')}</div>
-          </div>
-          <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold ${st.status === 'disponivel' ? 'bg-green-50 text-green-700' : st.status === 'reservado' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}">
-            <span class="status-dot status-${st.status}"></span>
-            ${st.label}
-          </span>
-        </div>
-        <div class="mt-3 flex flex-wrap gap-2 text-xs font-bold">
-          <span class="rounded-full bg-slate-100 px-3 py-1">${safeHtml(CATEGORY_LABELS[item.categoria] || item.categoria || '—')}</span>
-          <span class="rounded-full bg-slate-100 px-3 py-1">${safeHtml(item.genero || '—')}</span>
-          <span class="rounded-full bg-slate-100 px-3 py-1">${safeHtml(item.cor || item.corCodigo || '—')}</span>
-        </div>
-        <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
-          <div class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-            <div class="text-xs font-bold text-slate-500">Preço</div>
-            <div class="mt-1 font-extrabold">${money(item.preco)}</div>
-          </div>
-          <div class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-            <div class="text-xs font-bold text-slate-500">Disponível</div>
-            <div class="mt-1 font-extrabold">${st.disponivel === '' ? '—' : st.disponivel}</div>
-          </div>
-        </div>
-        ${st.obs ? `<div class="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs"><div class="font-bold text-slate-500">Obs.</div><div class="mt-1 font-semibold text-slate-700">${safeHtml(st.obs)}</div></div>` : ''}
-        <div class="mt-4 flex items-center gap-2">
-          <button class="btnMinus focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white"><i class="fa-solid fa-minus"></i></button>
-          <div class="qty min-w-[42px] text-center text-sm font-extrabold">1</div>
-          <button class="btnPlus focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white"><i class="fa-solid fa-plus"></i></button>
-          <button class="btnAdd focus-ring flex-1 rounded-2xl ${st.status === 'indisponivel' ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-[var(--brand)] text-white'} px-4 py-3 text-sm font-extrabold">${st.status === 'indisponivel' ? 'Indisponível' : 'Adicionar ao pedido'}</button>
-        </div>
-        ${qtyInCart ? `<div class="mt-3 text-xs font-bold text-[var(--brand)]">Já no pedido: ${qtyInCart}</div>` : ''}
-      </div>
-    `;
-
-    let qty = 1;
-    const qtyEl = card.querySelector('.qty');
-    card.querySelector('.btnMinus').addEventListener('click', ()=>{ qty = Math.max(1, qty - 1); qtyEl.textContent = qty; });
-    card.querySelector('.btnPlus').addEventListener('click', ()=>{ qty = Math.min(999, qty + 1); qtyEl.textContent = qty; });
-    card.querySelector('.btnAdd').addEventListener('click', ()=>{
-      if(st.status === 'indisponivel') return;
-      if(st.disponivel !== '' && qty > st.disponivel){ toast('Quantidade acima da disponibilidade'); return; }
-      const existing = STATE.cart.get(key);
-      const nextQty = (existing?.qty || 0) + qty;
-      if(st.disponivel !== '' && nextQty > st.disponivel){ toast('Pedido acima da disponibilidade'); return; }
-      STATE.cart.set(key, { ...item, key, qty: nextQty });
-      renderCart();
-      applyFilters();
-      toast('Produto adicionado');
-    });
-    wrap.appendChild(card);
-  }
-}
-
-function renderCart(){
-  const items = Array.from(STATE.cart.values());
-  $('cartCountBadge').classList.toggle('hidden', items.length === 0);
-  $('cartCountBadge').textContent = items.length;
-  $('miniCartFab').classList.toggle('hidden', items.length === 0);
-  $('miniCartCount').textContent = items.length;
-  $('cartTotalItems').textContent = items.reduce((sum, x)=>sum + Number(x.qty || 0), 0);
-  $('cartEmptyState').classList.toggle('hidden', items.length !== 0);
-  const wrap = $('cartItems');
-  wrap.innerHTML = '';
-  for(const item of items){
-    const st = statusInfo(item);
-    const row = document.createElement('div');
-    row.className = 'rounded-3xl border border-slate-200 bg-white p-4';
-    row.innerHTML = `
-      <div class="flex gap-3">
-        <div class="h-20 w-20 shrink-0 rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center">
-          ${productImage(item) ? `<img src="${productImage(item)}" class="h-full w-full object-contain bg-white">` : `<i class="fa-solid fa-image text-slate-400"></i>`}
-        </div>
-        <div class="min-w-0 flex-1">
-          <div class="flex items-start justify-between gap-2">
-            <div>
-              <div class="font-extrabold leading-snug">${safeHtml(item.produto)}</div>
-              <div class="mt-1 text-xs text-slate-500">${safeHtml(item.codigo)} · ${safeHtml(item.cor || item.corCodigo || '—')}</div>
-            </div>
-            <button class="btnRemove focus-ring h-10 w-10 rounded-full border border-slate-200"><i class="fa-solid fa-trash"></i></button>
-          </div>
-          <div class="mt-3 flex items-center gap-2">
-            <button class="btnMinus focus-ring h-10 w-10 rounded-full border border-slate-200 bg-white"><i class="fa-solid fa-minus"></i></button>
-            <div class="min-w-[42px] text-center font-extrabold">${item.qty}</div>
-            <button class="btnPlus focus-ring h-10 w-10 rounded-full border border-slate-200 bg-white"><i class="fa-solid fa-plus"></i></button>
-            <span class="ml-auto rounded-full px-3 py-1 text-xs font-bold ${st.status === 'disponivel' ? 'bg-green-50 text-green-700' : st.status === 'reservado' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}">${st.label}</span>
-          </div>
-        </div>
-      </div>
-    `;
-    row.querySelector('.btnRemove').addEventListener('click', ()=>{ STATE.cart.delete(item.key); renderCart(); applyFilters(); });
-    row.querySelector('.btnMinus').addEventListener('click', ()=>{
-      item.qty = Math.max(1, item.qty - 1);
-      STATE.cart.set(item.key, item);
-      renderCart();
-    });
-    row.querySelector('.btnPlus').addEventListener('click', ()=>{
-      const st2 = statusInfo(item);
-      if(st2.disponivel !== '' && item.qty + 1 > st2.disponivel){ toast('Limite da disponibilidade atingido'); return; }
-      item.qty += 1;
-      STATE.cart.set(item.key, item);
-      renderCart();
-    });
-    wrap.appendChild(row);
-  }
-}
-
-function openCart(){
-  $('cartDrawerWrap').classList.remove('hidden');
-  requestAnimationFrame(()=> $('cartDrawer').classList.add('open'));
-  document.body.style.overflow = 'hidden';
-}
-function closeCart(){
-  $('cartDrawer').classList.remove('open');
-  setTimeout(()=>{
-    $('cartDrawerWrap').classList.add('hidden');
-    document.body.style.overflow = '';
-  }, 220);
-}
-
-async function submitOrder(){
-  if(STATE.cart.size === 0){ toast('Adicione itens antes de salvar'); return; }
-  const cfg = githubConfig();
-  if(!cfg.owner || !cfg.repo || !cfg.token){ toast('Configure owner, repo e token no painel admin'); return; }
-
-  const now = new Date();
-  const pad = (n)=>String(n).padStart(2,'0');
-  const stamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
-  const filePath = `${cfg.ordersPath.replace(/\/$/,'')}/pedido_${stamp}.json`;
-  const payload = {
-    id: `pedido_${stamp}`,
-    createdAt: now.toISOString(),
-    requester: {
-      nome: $('orderCustomer').value.trim(),
-      cidadeUf: $('orderCity').value.trim(),
-      representante: $('orderSeller').value.trim(),
-      observacao: $('orderNotes').value.trim()
-    },
-    totals: {
-      itens: STATE.cart.size,
-      pares: Array.from(STATE.cart.values()).reduce((s,x)=>s + Number(x.qty || 0), 0)
-    },
-    items: Array.from(STATE.cart.values()).map(item=>({
-      codigo: item.codigo,
-      produto: item.produto,
-      cor: item.cor,
-      corCodigo: item.corCodigo,
-      genero: item.genero,
-      segmento: item.segmento,
-      categoria: item.categoria,
-      preco: item.preco,
-      quantidade: item.qty,
-      disponibilidadeAtual: statusInfo(item).disponivel,
-      statusAtual: statusInfo(item).status
-    }))
-  };
-
-  try{
-    $('btnSubmitOrder').disabled = true;
-    $('btnSubmitOrder').textContent = 'Salvando...';
-    await ghPutJson(filePath, payload, `Novo pedido ${payload.id}`);
-    toast('Pedido salvo no GitHub');
-    STATE.cart.clear();
-    renderCart();
-    closeCart();
-    await loadOrders();
-  }catch(err){
-    console.error(err);
-    toast(`Falha ao salvar pedido: ${err.message}`, 3200);
-  }finally{
-    $('btnSubmitOrder').disabled = false;
-    $('btnSubmitOrder').textContent = 'Salvar pedido no GitHub';
-  }
-}
-
-function buildAvailabilityPayload(){
-  const payload = {};
-  for(const item of STATE.raw){
-    const key = productKey(item);
-    const current = STATE.availability[key] || {};
-    payload[key] = {
-      codigo: item.codigo,
-      produto: item.produto,
-      cor: item.cor,
-      corCodigo: item.corCodigo,
-      genero: item.genero,
-      segmento: item.segmento,
-      categoria: item.categoria,
-      disponivel: current.disponivel ?? '',
-      status: current.status || 'disponivel',
-      obs: current.obs || ''
-    };
-  }
-  return { updatedAt: new Date().toISOString(), items: payload };
-}
-
-async function saveAvailability(){
-  const cfg = githubConfig();
-  if(!cfg.owner || !cfg.repo || !cfg.token){ toast('Configure owner, repo e token antes de salvar'); return; }
-  try{
-    $('btnSaveAvailability').disabled = true;
-    $('btnSaveAvailability').textContent = 'Salvando...';
-    const payload = buildAvailabilityPayload();
-    await ghPutJson(cfg.availabilityPath, payload, 'Atualiza disponibilidade de repasse');
-    toast('disponibilidade.json salvo no GitHub');
-    await loadAvailability();
-    applyFilters();
-    renderAdminTable();
-  }catch(err){
-    console.error(err);
-    toast(`Falha ao salvar disponibilidade: ${err.message}`, 3200);
-  }finally{
-    $('btnSaveAvailability').disabled = false;
-    $('btnSaveAvailability').textContent = 'Salvar disponibilidade.json';
-  }
-}
-
-function renderAdminTable(){
-  const wrap = $('adminTableBody');
-  if(!wrap) return;
-  wrap.innerHTML = '';
-  const q = normalizeText(STATE.adminSearch);
-  const rows = STATE.raw.filter(item=>{
-    if(!q) return true;
-    const hay = normalizeText([item.codigo, item.produto, item.cor, item.genero, item.segmento].join(' '));
-    return hay.includes(q);
-  });
-
-  for(const item of rows){
-    const key = productKey(item);
-    if(!STATE.availability[key]) STATE.availability[key] = { disponivel:'', status:'disponivel', obs:'' };
-    const meta = STATE.availability[key];
-    const tr = document.createElement('tr');
-    tr.className = 'border-t border-slate-200';
-    tr.innerHTML = `
-      <td class="px-3 py-3 align-top font-semibold">${safeHtml(item.codigo)}</td>
-      <td class="px-3 py-3 align-top">
-        <div class="font-bold">${safeHtml(item.produto)}</div>
-        <div class="text-xs text-slate-500">${safeHtml(item.segmento || '')}</div>
-      </td>
-      <td class="px-3 py-3 align-top">${safeHtml(item.cor || item.corCodigo || '—')}</td>
-      <td class="px-3 py-3 align-top">${safeHtml(item.genero || '—')}</td>
-      <td class="px-3 py-3 align-top"><input data-role="disp" class="focus-ring w-24 rounded-xl border border-slate-200 px-3 py-2 text-sm" value="${safeHtml(meta.disponivel ?? '')}" /></td>
-      <td class="px-3 py-3 align-top">
-        <select data-role="status" class="focus-ring rounded-xl border border-slate-200 px-3 py-2 text-sm">
-          <option value="disponivel" ${meta.status === 'disponivel' ? 'selected' : ''}>Disponível</option>
-          <option value="reservado" ${meta.status === 'reservado' ? 'selected' : ''}>Reservado</option>
-          <option value="indisponivel" ${meta.status === 'indisponivel' ? 'selected' : ''}>Indisponível</option>
-        </select>
-      </td>
-      <td class="px-3 py-3 align-top"><input data-role="obs" class="focus-ring w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" value="${safeHtml(meta.obs || '')}" placeholder="Obs." /></td>
-    `;
-    tr.querySelector('[data-role="disp"]').addEventListener('input', (e)=>{
-      const value = e.target.value.trim();
-      STATE.availability[key].disponivel = value === '' ? '' : Math.max(0, Number(value) || 0);
-      applyFilters();
-    });
-    tr.querySelector('[data-role="status"]').addEventListener('change', (e)=>{
-      STATE.availability[key].status = e.target.value;
-      applyFilters();
-    });
-    tr.querySelector('[data-role="obs"]').addEventListener('input', (e)=>{
-      STATE.availability[key].obs = e.target.value;
-      applyFilters();
-    });
-    wrap.appendChild(tr);
-  }
-}
-
-async function loadOrders(){
-  const wrap = $('ordersList');
-  if(!wrap) return;
-  wrap.innerHTML = '<div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">Carregando pedidos…</div>';
-  try{
-    const cfg = githubConfig();
-    if(!cfg.owner || !cfg.repo){ wrap.innerHTML = '<div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">Configure owner e repositório para listar pedidos.</div>'; return; }
-    const files = await ghListDir(cfg.ordersPath);
-    const jsonFiles = (Array.isArray(files) ? files : []).filter(f => f.type === 'file' && /\.json$/i.test(f.name)).sort((a,b)=>b.name.localeCompare(a.name));
-    if(!jsonFiles.length){ wrap.innerHTML = '<div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">Nenhum pedido JSON encontrado.</div>'; return; }
-
-    wrap.innerHTML = '';
-    for(const file of jsonFiles.slice(0, 20)){
-      const card = document.createElement('div');
-      card.className = 'rounded-2xl border border-slate-200 bg-white p-4';
-      card.innerHTML = `
+function renderList(){
+  $('ordersEmpty').classList.toggle('hidden', STATE.filtered.length !== 0);
+  $('adminOrdersList').innerHTML = STATE.filtered.map(order=>{
+    const active = order.id === STATE.selectedId;
+    const created = new Date(order.createdAt);
+    return `
+      <button data-order-id="${safeHtml(order.id)}" class="w-full text-left rounded-[24px] border ${active ? 'border-[var(--brand)] bg-[rgba(40,54,212,.05)]' : 'border-slate-200 bg-slate-50'} p-4">
         <div class="flex items-start justify-between gap-3">
           <div>
-            <div class="font-extrabold">${safeHtml(file.name)}</div>
-            <div class="mt-1 text-xs text-slate-500">${safeHtml(file.path)}</div>
+            <div class="font-extrabold">${safeHtml(order.id)}</div>
+            <div class="mt-1 text-xs text-slate-500">${created.toLocaleDateString('pt-BR')} • ${created.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
           </div>
-          <button class="btnRead focus-ring rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-extrabold">Abrir JSON</button>
+          <span class="chip chip-gray">${safeHtml(order.status)}</span>
         </div>
-        <div class="jsonPreview mt-3 hidden rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs whitespace-pre-wrap"></div>
-      `;
-      card.querySelector('.btnRead').addEventListener('click', async ()=>{
-        const preview = card.querySelector('.jsonPreview');
-        if(!preview.classList.contains('hidden')){ preview.classList.add('hidden'); return; }
-        const content = await ghGetContent(file.path);
-        const json = content?.content ? JSON.parse(decodeURIComponent(escape(atob(content.content.replace(/\n/g,''))))) : null;
-        preview.textContent = json ? JSON.stringify(json, null, 2) : 'Sem conteúdo';
-        preview.classList.remove('hidden');
-      });
-      wrap.appendChild(card);
-    }
-  }catch(err){
-    console.error(err);
-    wrap.innerHTML = `<div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">Falha ao listar pedidos: ${safeHtml(err.message)}</div>`;
-  }
+        <div class="mt-3 flex flex-wrap gap-2 text-xs font-bold">
+          <span class="chip chip-blue">Cliente ${safeHtml(order.clienteCodigo)}</span>
+          <span class="chip chip-gray">${safeHtml(order.preposto?.nome || '')}</span>
+          <span class="chip chip-gray">${safeHtml(order.prazo)}</span>
+        </div>
+      </button>
+    `;
+  }).join('');
+  $('adminOrdersList').querySelectorAll('[data-order-id]').forEach(btn=>btn.addEventListener('click', ()=>{ STATE.selectedId = btn.dataset.orderId; renderList(); renderDetail(); }));
 }
+function renderDetail(){
+  const order = STATE.filtered.find(o=>o.id === STATE.selectedId);
+  $('detailEmpty').classList.toggle('hidden', !!order);
+  $('adminOrderDetail').classList.toggle('hidden', !order);
+  if(!order){ $('adminOrderDetail').innerHTML = ''; return; }
+  const created = new Date(order.createdAt);
+  $('adminOrderDetail').innerHTML = `
+    <div class="flex flex-col gap-4">
+      <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+        <div>
+          <div class="text-2xl font-extrabold">${safeHtml(order.id)}</div>
+          <div class="mt-1 text-sm text-slate-500">${created.toLocaleDateString('pt-BR')} às ${created.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <span class="chip chip-blue">${safeHtml(order.preposto?.codigo || '')} - ${safeHtml(order.preposto?.nome || '')}</span>
+            <span class="chip chip-gray">Cliente ${safeHtml(order.clienteCodigo)}</span>
+            <span class="chip chip-gray">${safeHtml(order.prazo)}</span>
+            ${order.campanha ? `<span class="chip chip-blue">${safeHtml(order.campanha)}</span>` : ''}
+          </div>
+        </div>
+        <div class="rounded-[24px] border border-slate-200 bg-slate-50 p-4 min-w-[220px]">
+          <div class="text-xs font-bold text-slate-500">Status do pedido</div>
+          <select id="detailStatus" class="focus-ring mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold">
+            ${STATUS_OPTIONS.map(s=>`<option value="${safeHtml(s)}" ${s===order.status?'selected':''}>${safeHtml(s)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
 
-function bindEvents(){
-  $('btnOpenCart').addEventListener('click', openCart);
-  $('miniCartFab').addEventListener('click', openCart);
-  $('cartDrawerWrap').addEventListener('click', (e)=>{ if(e.target.closest('[data-close-cart="true"]')) closeCart(); });
-  $('btnClearCart').addEventListener('click', ()=>{ STATE.cart.clear(); renderCart(); applyFilters(); });
-  $('btnSubmitOrder').addEventListener('click', submitOrder);
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="rounded-[24px] border border-slate-200 bg-slate-50 p-4"><div class="text-xs font-bold text-slate-500">Volumes</div><div class="mt-1 text-2xl font-extrabold">${order.totals?.packs || 0}</div></div>
+        <div class="rounded-[24px] border border-slate-200 bg-slate-50 p-4"><div class="text-xs font-bold text-slate-500">Itens</div><div class="mt-1 text-2xl font-extrabold">${order.totals?.units || 0}</div></div>
+        <div class="rounded-[24px] border border-slate-200 bg-slate-50 p-4"><div class="text-xs font-bold text-slate-500">Itens no pedido</div><div class="mt-1 text-2xl font-extrabold">${order.items?.length || 0}</div></div>
+      </div>
 
-  $('btnSearchMobile').addEventListener('click', ()=> $('mobileSearchWrap').classList.remove('hidden'));
-  $('btnCloseMobileSearch').addEventListener('click', ()=> $('mobileSearchWrap').classList.add('hidden'));
-  $('searchInput').addEventListener('input', (e)=>{ STATE.search = e.target.value; applyFilters(); });
-  $('searchInputMobile').addEventListener('input', (e)=>{ STATE.search = e.target.value; $('searchInput').value = e.target.value; applyFilters(); });
+      ${order.observacoes ? `<div class="rounded-[24px] border border-slate-200 bg-slate-50 p-4"><div class="text-xs font-bold text-slate-500">Observações</div><div class="mt-2 text-sm font-semibold text-slate-700">${safeHtml(order.observacoes)}</div></div>` : ''}
 
-  $('filterCategoria').addEventListener('change', (e)=>{ STATE.filters.categoria = e.target.value; applyFilters(); });
-  $('filterSegmento').addEventListener('change', (e)=>{ STATE.filters.segmento = e.target.value; applyFilters(); });
-  $('filterGenero').addEventListener('change', (e)=>{ STATE.filters.genero = e.target.value; applyFilters(); });
-  $('filterStatus').addEventListener('change', (e)=>{ STATE.filters.status = e.target.value; applyFilters(); });
-  $('sortBy').addEventListener('change', (e)=>{ STATE.filters.sort = e.target.value; applyFilters(); });
-  $('btnClearFilters').addEventListener('click', ()=>{
-    STATE.search = '';
-    STATE.filters = { categoria:'', segmento:'', genero:'', status:'', sort:'produto' };
-    $('searchInput').value = '';
-    $('searchInputMobile').value = '';
-    $('filterCategoria').value = '';
-    $('filterSegmento').value = '';
-    $('filterGenero').value = '';
-    $('filterStatus').value = '';
-    $('sortBy').value = 'produto';
-    applyFilters();
-  });
-
-  if(PAGE_MODE.admin){
-    $('btnToggleAdmin').classList.remove('hidden');
-    $('adminSection').classList.remove('hidden');
-    $('btnToggleAdmin').addEventListener('click', ()=> $('adminSection').scrollIntoView({ behavior:'smooth', block:'start' }));
-    fillGithubForm();
-    $('btnSaveGithubConfig').addEventListener('click', saveGithubConfig);
-    $('btnTestGithub').addEventListener('click', async ()=>{
-      try{
-        saveGithubConfig();
-        await ghFetch('');
-        toast('Acesso ao repositório validado');
-      }catch(err){
-        toast(`Falha no acesso: ${err.message}`, 3200);
-      }
-    });
-    $('btnSaveAvailability').addEventListener('click', saveAvailability);
-    $('adminSearch').addEventListener('input', (e)=>{ STATE.adminSearch = e.target.value; renderAdminTable(); });
-    $('btnReloadOrders').addEventListener('click', loadOrders);
-  }
+      <div class="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+        <div class="text-lg font-extrabold">Itens do pedido</div>
+        <div class="mt-4 space-y-3">
+          ${order.items.map(item=>`
+            <div class="rounded-[22px] border border-slate-200 bg-white p-4">
+              <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                <div>
+                  <div class="font-extrabold">${safeHtml(item.produto)}</div>
+                  <div class="mt-1 text-xs text-slate-500">${safeHtml(item.codigo)} · ${safeHtml(item.cor)} · Prev. Faturamento ${safeHtml(item.prevFaturamento || '—')}</div>
+                </div>
+                <div class="text-right text-sm font-extrabold">
+                  ${item.mode === 'boxed' ? `${item.amount} caixa${item.amount > 1 ? 's' : ''}` : `${item.amount} unidade${item.amount > 1 ? 's' : ''}`}
+                  <div class="mt-1 text-xs text-slate-500">${safeHtml(item.totalUnits || 0)} itens</div>
+                </div>
+              </div>
+              ${item.grade?.length ? `<div class="mt-3 flex flex-wrap gap-2">${gradeHtml(item.grade)}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+  $('detailStatus').addEventListener('change', e=>updateStatus(order.id, e.target.value));
 }
-
-bindEvents();
-renderCart();
-if(PAGE_MODE.admin){
-  $('appTitle').textContent = 'Disponibilidade de Repasse · Admin';
+function updateStatus(id, status){
+  const idx = STATE.orders.findIndex(o=>o.id === id);
+  if(idx === -1) return;
+  STATE.orders[idx].status = status;
+  saveOrders();
+  applyFilters();
 }
-loadCatalog().then(()=>{ if(PAGE_MODE.admin) loadOrders(); });
+$('btnAdminLogin').addEventListener('click', ()=>{
+  if($('adminPassword').value !== ADMIN_PASSWORD){ alert('Senha inválida.'); return; }
+  localStorage.setItem(STORAGE_KEYS.adminAuth, 'ok');
+  $('adminPassword').value = '';
+  applyAuthUI();
+});
+$('btnLogout').addEventListener('click', ()=>{ localStorage.removeItem(STORAGE_KEYS.adminAuth); applyAuthUI(); });
+$('adminSearch').addEventListener('input', applyFilters);
+$('adminStatusFilter').addEventListener('change', applyFilters);
+applyAuthUI();
 </script>
 </body>
 </html>

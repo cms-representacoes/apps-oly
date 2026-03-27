@@ -12,163 +12,94 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <style>
     :root{
-      --bg:#f5f7fb;
-      --card:#ffffff;
+      --bg:#f6f7fb;
+      --card:#fff;
       --text:#0f172a;
       --muted:#64748b;
-      --line:#dbe2ee;
-      --brand:#2d3fe0;
-      --brand-soft:rgba(45,63,224,.09);
+      --line:#e2e8f0;
+      --brand:#2836d4;
+      --brand-soft:rgba(40,54,212,.10);
       --shadow:0 18px 42px rgba(15,23,42,.08);
       --shadow-soft:0 10px 24px rgba(15,23,42,.05);
-      --radius-xl:28px;
-      --radius-lg:20px;
     }
     *{box-sizing:border-box}
     html,body{height:100%;overflow-x:hidden}
-    body{
-      margin:0;
-      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:var(--bg);
-      color:var(--text);
-    }
-    button,input,select{font:inherit}
-    .focus-ring:focus-visible{outline:none;box-shadow:0 0 0 4px rgba(45,63,224,.15)}
+    body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .focus-ring:focus-visible{outline:none;box-shadow:0 0 0 4px rgba(40,54,212,.15)}
     .glass{backdrop-filter:blur(12px);background:rgba(255,255,255,.88)}
     .shadow-soft{box-shadow:var(--shadow-soft)}
     .shadow-card{box-shadow:var(--shadow)}
     .drawer{transform:translateX(105%);transition:transform .24s ease}
     .drawer.open{transform:translateX(0)}
+    .sheet{transform:translateY(105%);transition:transform .24s ease}
+    .sheet.open{transform:translateY(0)}
     .backdrop{background:rgba(15,23,42,.54);backdrop-filter:blur(6px)}
-    .chip{
-      display:inline-flex;align-items:center;gap:.4rem;border-radius:999px;
-      padding:.42rem .78rem;font-size:12px;font-weight:800;white-space:nowrap
-    }
+    .chip{display:inline-flex;align-items:center;gap:.4rem;border-radius:999px;padding:.42rem .78rem;font-size:12px;font-weight:800}
     .chip-blue{background:var(--brand-soft);color:var(--brand)}
     .chip-gray{background:#eef2f7;color:#334155}
-    .icon-btn{
-      height:44px;width:44px;border-radius:999px;border:1px solid var(--line);
-      background:#fff;color:#64748b;display:inline-flex;align-items:center;justify-content:center
-    }
-    .qty-btn{
-      height:40px;width:40px;border-radius:999px;border:1px solid var(--line);
-      background:#fff;font-weight:800;color:#334155
-    }
-    .grade-grid{display:flex;flex-wrap:wrap;gap:6px}
-    .grade-pill{
-      min-width:40px;border:1px solid #cfd8e8;border-radius:11px;padding:4px 5px;background:#fff;text-align:center
-    }
+    .qty-btn{height:42px;width:42px;border-radius:999px;border:1px solid var(--line);background:#fff;font-weight:800}
+    .grade-pill{min-width:34px;border:1px solid var(--line);border-radius:10px;padding:4px 5px;background:#fff;text-align:center}
     .grade-size{display:block;font-size:10px;line-height:1;color:#64748b;font-weight:700}
-    .grade-qty{display:block;font-size:12px;line-height:1.15;color:var(--brand);font-weight:800;margin-top:4px}
-    .toast{
-      position:fixed;left:50%;top:20px;transform:translateX(-50%);
-      z-index:90;background:#0f172a;color:#fff;padding:10px 16px;border-radius:999px;
-      font-size:14px;font-weight:700;box-shadow:var(--shadow);
-    }
+    .grade-qty{display:block;font-size:11px;line-height:1.15;color:var(--brand);font-weight:800;margin-top:3px}
     .filters-collapsed #filtersPanel{display:none}
     .filters-collapsed #catalogShell{grid-template-columns:minmax(0,1fr)}
-    #catalogShell{display:grid;grid-template-columns:290px minmax(0,1fr);gap:16px}
-    .mobile-only{display:none}
+    #catalogShell{display:grid;grid-template-columns:280px minmax(0,1fr);gap:16px}
+    .list-grade-strip{display:flex;flex-wrap:wrap;gap:6px}
+    .list-item{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:12px}
     .desktop-only{display:block}
-    .view-toggle button.active{
-      background:var(--brand-soft);color:var(--brand);border-color:transparent
-    }
-    .list-card{
-      border:1px solid var(--line);background:#fff;border-radius:28px;padding:14px 16px;
-      display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:14px;align-items:center;
-      box-shadow:var(--shadow-soft)
-    }
-    .list-grade-block{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-    .bottom-sheet{
-      position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:28px 28px 0 0;
-      padding:18px 16px 22px;transform:translateY(105%);transition:transform .24s ease;
-      box-shadow:0 -18px 40px rgba(15,23,42,.18)
-    }
-    .bottom-sheet.open{transform:translateY(0)}
+    .mobile-only{display:none}
     @media (max-width: 1023px){
       #catalogShell{grid-template-columns:minmax(0,1fr)}
       #filtersPanel{display:none}
       body.filters-open #filtersPanel{
-        display:block;position:fixed;inset:auto 12px 12px 12px;top:98px;z-index:60;
-        max-height:calc(100dvh - 112px);overflow:auto
+        display:block;position:fixed;inset:auto 12px 12px 12px;top:82px;z-index:60;max-height:calc(100dvh - 96px);overflow:auto
       }
-      .desktop-only{display:none !important}
-      .mobile-only{display:block}
-      .list-card{
-        grid-template-columns:64px minmax(0,1fr);
-        gap:12px;
-        align-items:start;
-        padding:14px;
-      }
-      .list-actions-mobile{
-        display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px
-      }
-      .mobile-stack-row{display:flex;gap:8px;flex-wrap:wrap}
     }
-    @media (max-width: 640px){
-      .mobile-topbar{
-        display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;align-items:center;
-      }
-      .mobile-action-row{
-        display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;
-      }
-      .count-strip{
-        padding-left:2px;padding-right:2px;
-      }
-      .grade-pill{
-        min-width:34px;padding:3px 4px;border-radius:10px
-      }
-      .grade-size{font-size:9px}
-      .grade-qty{font-size:11px}
+    @media (max-width: 767px){
+      .desktop-only{display:none}
+      .mobile-only{display:block}
+      .list-item{grid-template-columns:74px minmax(0,1fr);gap:10px}
+      .top-actions{gap:8px;flex-wrap:wrap}
+      .top-actions > *{flex:0 0 auto}
     }
   </style>
 </head>
 <body>
-  <div id="toast" class="toast hidden"></div>
+  <div id="toast" class="hidden fixed left-1/2 top-6 z-[95] -translate-x-1/2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-card"></div>
 
   <header class="sticky top-0 z-40 border-b border-slate-200 glass">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 py-4">
-      <div class="flex items-center justify-between gap-3">
+      <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex min-w-0 items-center gap-3">
-          <div class="h-12 w-12 overflow-hidden rounded-2xl border border-slate-200 bg-white flex items-center justify-center">
+          <div class="h-11 w-11 overflow-hidden rounded-2xl border border-slate-200 bg-white flex items-center justify-center">
             <img id="brandLogo" alt="Logo" class="h-full w-full object-contain" />
           </div>
           <div class="min-w-0">
-            <div class="truncate text-[30px] leading-none sm:text-[34px] font-extrabold tracking-[-0.03em]">Repasse Olympikus</div>
+            <div class="truncate text-lg sm:text-xl font-extrabold">Repasse Olympikus</div>
           </div>
         </div>
-      </div>
 
-      <div class="mt-4 grid gap-3">
-        <div class="mobile-topbar sm:flex sm:flex-wrap sm:items-center sm:gap-2">
-          <button id="btnToggleFilters" class="focus-ring icon-btn shrink-0">
+        <div class="top-actions flex items-center">
+          <button id="btnToggleFilters" class="focus-ring inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">
             <i class="fa-solid fa-sliders"></i>
+            <span class="hidden sm:inline">Filtros</span>
           </button>
 
-          <div class="flex min-w-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 shadow-soft">
+          <div class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 min-w-[210px] sm:min-w-[260px]">
             <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
             <input id="searchInputTop" class="focus-ring w-full bg-transparent text-sm outline-none placeholder:text-slate-400" placeholder="Buscar produto, código ou cor" />
           </div>
 
-          <div class="desktop-only ml-auto"></div>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-2">
-          <div class="view-toggle inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-soft">
-            <button id="btnViewCards" class="focus-ring active h-11 w-11 rounded-full text-slate-600" title="Modo cards">
-              <i class="fa-solid fa-table-cells-large"></i>
-            </button>
-            <button id="btnViewList" class="focus-ring h-11 w-11 rounded-full text-slate-600" title="Modo lista">
-              <i class="fa-solid fa-list"></i>
-            </button>
+          <div class="inline-flex items-center rounded-full border border-slate-200 bg-white p-1">
+            <button id="btnViewCards" class="focus-ring rounded-full px-3 py-2 text-sm font-bold text-slate-700 bg-slate-100">Cards</button>
+            <button id="btnViewList" class="focus-ring rounded-full px-3 py-2 text-sm font-bold text-slate-700">Lista</button>
           </div>
 
-          <button id="btnOrders" class="focus-ring inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-soft">
+          <button id="btnOrders" class="focus-ring inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">
             <i class="fa-regular fa-rectangle-list"></i>
             <span class="hidden sm:inline">Meus pedidos</span>
           </button>
-
-          <button id="btnOpenCart" class="focus-ring inline-flex items-center gap-2 rounded-full bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white shadow-soft">
+          <button id="btnOpenCart" class="focus-ring inline-flex items-center gap-2 rounded-full bg-[var(--brand)] px-4 py-2 text-sm font-extrabold text-white shadow-soft">
             <i class="fa-solid fa-cart-shopping"></i>
             <span>Sacola</span>
             <span id="cartCountBadge" class="hidden rounded-full bg-white/18 px-2 py-0.5 text-xs">0</span>
@@ -192,8 +123,8 @@
         <aside id="filtersPanel" class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-soft h-fit">
           <div class="flex items-center justify-between gap-3">
             <div>
-              <div class="text-xs font-bold text-slate-500">Filtros</div>
-              <div class="text-lg font-extrabold">Busca refinada</div>
+              <div class="text-xs font-bold text-slate-500">Busca refinada</div>
+              <div class="text-lg font-extrabold">Filtros</div>
             </div>
             <button id="btnCloseFilters" class="focus-ring h-10 w-10 rounded-full border border-slate-200 lg:hidden"><i class="fa-solid fa-xmark"></i></button>
           </div>
@@ -225,9 +156,12 @@
         </aside>
 
         <section>
-          <div class="count-strip mb-4 flex items-center justify-between gap-3 px-1 text-sm font-extrabold text-slate-500">
-            <div><span id="visibleCount">0</span> produtos encontrados</div>
-            <div class="desktop-only"><span id="loadedCount">0</span> itens com dispo carregados</div>
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[28px] border border-slate-200 bg-white px-4 py-4 shadow-soft">
+            <div class="text-sm font-bold text-slate-500"><span id="visibleCount">0</span> itens na vitrine</div>
+            <div class="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-bold">
+              <span class="chip chip-gray"><i class="fa-solid fa-boxes-stacked"></i> <span id="kpiPacks">0</span> caixas</span>
+              <span class="chip chip-blue"><i class="fa-solid fa-cubes-stacked"></i> <span id="kpiUnits">0</span> disponível</span>
+            </div>
           </div>
 
           <div id="cardsWrap" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"></div>
@@ -249,7 +183,7 @@
       <div class="border-b border-slate-200 bg-white px-5 py-4">
         <div class="flex items-start justify-between gap-3">
           <div>
-            <div class="text-sm text-slate-500">Checkout</div>
+            <div class="text-sm text-slate-500">Conferência</div>
             <div class="text-[30px] leading-none font-extrabold">Minha Sacola</div>
           </div>
           <button class="focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white" data-close-cart="true"><i class="fa-solid fa-xmark"></i></button>
@@ -273,7 +207,7 @@
       <div class="border-t border-slate-200 bg-white px-5 py-4">
         <div class="grid grid-cols-2 gap-3 text-sm">
           <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <div class="text-xs font-bold text-slate-500">Volumes</div>
+            <div class="text-xs font-bold text-slate-500">Caixas / volumes</div>
             <div id="cartTotalPacks" class="mt-1 text-2xl font-extrabold">0</div>
           </div>
           <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -282,7 +216,73 @@
           </div>
         </div>
         <div class="mt-3 grid gap-3">
-          <button id="btnSaveOrderLocal" class="focus-ring rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white">Salvar pedido para consulta</button>
+          <button id="btnProceedOrder" class="focus-ring rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white">Continuar para pedido</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div id="checkoutDrawerWrap" class="hidden fixed inset-0 z-[60]">
+    <div class="backdrop absolute inset-0" data-close-checkout="true"></div>
+    <aside id="checkoutDrawer" class="drawer absolute right-0 top-0 bottom-0 w-full max-w-2xl bg-[#f8f9fc] shadow-card flex flex-col">
+      <div class="border-b border-slate-200 bg-white px-5 py-4">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="text-sm text-slate-500">Etapa final</div>
+            <div class="text-[30px] leading-none font-extrabold">Finalizar pedido</div>
+          </div>
+          <button class="focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white" data-close-checkout="true"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-4 py-4">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <section class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-soft">
+            <div class="text-lg font-extrabold">Dados do pedido</div>
+            <div class="mt-4 space-y-4">
+              <div>
+                <label class="text-xs font-bold text-slate-500">Preposto *</label>
+                <select id="checkoutPreposto" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold">
+                  <option value="">Selecione</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-500">Cliente *</label>
+                <input id="checkoutCliente" inputmode="numeric" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold" placeholder="Digite o código do cliente" />
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-500">Prazo *</label>
+                <select id="checkoutPrazo" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold">
+                  <option value="">Selecione</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-500">Campanha</label>
+                <select id="checkoutCampanha" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold">
+                  <option value="">Sem campanha</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-500">Observações</label>
+                <textarea id="checkoutObs" rows="4" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold resize-none" placeholder="Campo opcional"></textarea>
+              </div>
+            </div>
+          </section>
+
+          <section class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-soft">
+            <div class="flex items-center justify-between gap-2">
+              <div class="text-lg font-extrabold">Resumo do pedido</div>
+              <div class="chip chip-blue"><span id="checkoutSummaryCount">0</span> itens</div>
+            </div>
+            <div id="checkoutItems" class="mt-4 space-y-3"></div>
+          </section>
+        </div>
+      </div>
+
+      <div class="border-t border-slate-200 bg-white px-5 py-4">
+        <div class="flex flex-col sm:flex-row gap-3 sm:justify-end">
+          <button id="btnBackToCart" class="focus-ring rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-extrabold text-slate-700">Voltar</button>
+          <button id="btnSubmitOrder" class="focus-ring rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white">Confirmar pedido</button>
         </div>
       </div>
     </aside>
@@ -304,31 +304,25 @@
         <div id="ordersEmptyState" class="hidden rounded-[28px] border border-slate-200 bg-white p-8 text-center">
           <div class="mx-auto h-14 w-14 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center text-2xl"><i class="fa-regular fa-rectangle-list"></i></div>
           <div class="mt-4 text-xl font-extrabold">Nenhum pedido salvo</div>
-          <div class="mt-1 text-slate-500">Quando você salvar um pedido, ele ficará disponível aqui para consulta.</div>
+          <div class="mt-1 text-slate-500">Quando você confirmar um pedido, ele ficará disponível aqui para consulta.</div>
         </div>
         <div id="ordersList" class="space-y-3"></div>
       </div>
     </aside>
   </div>
 
-  <div id="gradeModalWrap" class="hidden fixed inset-0 z-[70]">
+  <div id="gradeSheetWrap" class="hidden fixed inset-0 z-[70] md:hidden">
     <div class="backdrop absolute inset-0" data-close-grade="true"></div>
-    <div id="gradeSheet" class="bottom-sheet">
-      <div class="mx-auto mb-4 h-1.5 w-16 rounded-full bg-slate-200"></div>
+    <div id="gradeSheet" class="sheet absolute inset-x-0 bottom-0 rounded-t-[28px] bg-white p-4 shadow-card">
+      <div class="mx-auto mb-3 h-1.5 w-16 rounded-full bg-slate-200"></div>
       <div class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
-          <div id="gradeModalTitle" class="truncate text-xl font-extrabold"></div>
-          <div id="gradeModalSubtitle" class="mt-1 text-sm text-slate-500"></div>
+        <div>
+          <div class="text-xs font-bold text-slate-500">Grade disponível</div>
+          <div id="gradeSheetTitle" class="text-lg font-extrabold"></div>
         </div>
         <button class="focus-ring h-10 w-10 rounded-full border border-slate-200 bg-white" data-close-grade="true"><i class="fa-solid fa-xmark"></i></button>
       </div>
-
-      <div id="gradeModalBody" class="mt-4"></div>
-
-      <div class="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
-        <span class="text-slate-500">Prev. Faturamento:</span>
-        <span id="gradeModalDate"></span>
-      </div>
+      <div id="gradeSheetContent" class="mt-4 flex flex-wrap gap-2"></div>
     </div>
   </div>
 
@@ -341,14 +335,27 @@ const DEFAULTS = {
   logoPath: `${BASE_PREFIX}/logo-olympikus.png`
 };
 const STORAGE_KEYS = {
-  cart: 'repasse_cart_v6',
-  orders: 'repasse_orders_v6',
-  view: 'repasse_view_v6'
+  cart: 'repasse_cart_v4',
+  orders: 'repasse_orders_v4',
+  view: 'repasse_view_mode_v4'
 };
 const CATEGORY_LABELS = { FTW:'Tênis', ACC:'Acessórios', CHI:'Chinelos', MEIA:'Meias', 'V&A':'Vestuário' };
 const FOOTWEAR_COLUMNS = ['28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','33/34','35/36','37/38','39/40','41/42','43/44','45/46','33/38','39/44'];
 const APPAREL_COLUMNS = ['PP','P','M','G','GG','U'];
 const DISPO_COLUMNS = [...FOOTWEAR_COLUMNS, ...APPAREL_COLUMNS];
+const PREPOSTOS = [
+  '114611 - JORGE',
+  '109839 - MARIANA',
+  '1333497 - RAFAEL',
+  '25471 - WILLAME',
+  '25745 - LÉO',
+  '3616654 - MARCOS',
+  '25846 - CMS'
+];
+const PRAZOS = [
+  'Z01 - A VISTA','Z02 - 14 D','Z03 - 21 D','Z04 - 28 D','Z05 - 35 D','Z06 - 42 D','Z07 - 49 D','Z08 - 56 D','Z09 - 63 D','Z10 - 70 D','Z11 - 77 D','Z12 - 84 D','Z13 - 91 D','Z14 - 98 D','Z15 - 105 D','Z16 - 112 D','Z17 - 119 D','Z18 - 21/49 D','Z19 - 28/56 D','Z20 - 35/63 D','Z21 - 42/70 D','Z22 - 49/77 D','Z23 - 56/84 D','Z24 - 63/91 D','Z25 - 70/98 D','Z26 - 77/105 D','Z27 - 84/112 D','Z28 - 91/119 D','Z29 - 21/49/77 D','Z30 - 28/56/84 D','Z31 - 35/63/91 D','Z32 - 42/70/98 D','Z33 - 49/77/105 D','Z34 - 56/84/112 D','Z35 - 63/91/119 D'
+];
+const CAMPANHAS = ['CO681 +28DD OLY','CO689 +56DD OLY','CO684 +28DD UA','CO690 +56DD UA'];
 
 const STATE = {
   raw: [],
@@ -357,9 +364,7 @@ const STATE = {
   filters: { categoria:'', segmento:'', genero:'', sort:'produto' },
   cart: new Map(),
   orders: [],
-  ui: {
-    viewMode: localStorage.getItem(STORAGE_KEYS.view) || 'list'
-  }
+  viewMode: localStorage.getItem(STORAGE_KEYS.view) || 'cards'
 };
 
 const $ = (id)=>document.getElementById(id);
@@ -428,7 +433,7 @@ function readJsonSafe(key, fallback){
 }
 function saveCartStorage(){ localStorage.setItem(STORAGE_KEYS.cart, JSON.stringify(Array.from(STATE.cart.values()))); }
 function saveOrdersStorage(){ localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(STATE.orders)); }
-function saveViewMode(){ localStorage.setItem(STORAGE_KEYS.view, STATE.ui.viewMode); }
+function saveViewMode(){ localStorage.setItem(STORAGE_KEYS.view, STATE.viewMode); }
 function loadLocalState(){
   const savedCart = readJsonSafe(STORAGE_KEYS.cart, []);
   STATE.cart = new Map(savedCart.map(item => [item.key, item]));
@@ -443,15 +448,14 @@ function gradeEntriesFromRow(row){
 }
 function sumGrade(grade){ return grade.reduce((sum, x)=>sum + Number(x.qty || 0), 0); }
 function inferMode(grade, categoria, produto){
+  const labels = grade.map(g => g.size);
+  const hasFootwear = labels.some(l => FOOTWEAR_COLUMNS.includes(l));
+  const hasApparel = labels.some(l => APPAREL_COLUMNS.includes(l));
   const cat = normalizeText(categoria);
   const name = normalizeText(produto);
-  const labels = grade.map(g => g.size);
-  const hasFootwearLabels = labels.some(l => FOOTWEAR_COLUMNS.includes(l));
-  const hasApparel = labels.some(l => APPAREL_COLUMNS.includes(l));
-
-  if(cat.includes('acessor') || cat === 'acc' || cat.includes('meia') || cat === 'meia' || name.includes('meia') || name.includes('mochila') || name.includes('bolsa') || name.includes('bone')) return 'unit';
+  if(cat.includes('acessor') || cat === 'acc' || name.includes('mochila') || name.includes('bolsa') || name.includes('bone')) return 'unit';
+  if(hasFootwear) return 'boxed';
   if(hasApparel) return 'unit';
-  if(hasFootwearLabels) return 'boxed';
   return 'unit';
 }
 function mergeData(prodRows, dispoRows){
@@ -472,10 +476,7 @@ function mergeData(prodRows, dispoRows){
     const gradeTotal = sumGrade(grade);
     const saldoRaw = toNumber(r['SALDO'] ?? 0);
     const availableUnits = saldoRaw;
-    let packSize = 1;
-    if(mode === 'boxed'){
-      packSize = gradeTotal === 6 ? 6 : 12;
-    }
+    const packSize = mode === 'boxed' ? (gradeTotal === 6 ? 6 : 12) : 1;
     return {
       _row: idx + 2,
       ebm: String(r['EBM'] ?? '').trim(),
@@ -488,6 +489,7 @@ function mergeData(prodRows, dispoRows){
       mode,
       availableUnits,
       packSize,
+      displayBalance: mode === 'boxed' ? Math.floor(availableUnits / packSize) : availableUnits,
       imagem: String(ref['Imagem'] ?? ref['IMAGEM'] ?? ref['imagem'] ?? '').trim(),
       categoria,
       segmento: String(ref['Segmento'] ?? ref['SEGMENTO'] ?? '').trim(),
@@ -515,32 +517,19 @@ function buildFilters(){
   fill('filterCategoria', uniq(STATE.raw.map(x=>CATEGORY_LABELS[x.categoria] || x.categoria)), 'Todas as categorias');
   fill('filterSegmento', uniq(STATE.raw.map(x=>x.segmento)), 'Todos os segmentos');
   fill('filterGenero', uniq(STATE.raw.map(x=>x.genero)), 'Todos os gêneros');
+  $('checkoutPreposto').innerHTML += PREPOSTOS.map(v=>`<option value="${safeHtml(v)}">${safeHtml(v)}</option>`).join('');
+  $('checkoutPrazo').innerHTML += PRAZOS.map(v=>`<option value="${safeHtml(v)}">${safeHtml(v)}</option>`).join('');
+  $('checkoutCampanha').innerHTML += CAMPANHAS.map(v=>`<option value="${safeHtml(v)}">${safeHtml(v)}</option>`).join('');
 }
 function sortView(items){
   const arr = [...items];
   switch(STATE.filters.sort){
     case 'saldoDesc': arr.sort((a,b)=>remainingUnits(b)-remainingUnits(a)); break;
     case 'saldoAsc': arr.sort((a,b)=>remainingUnits(a)-remainingUnits(b)); break;
-    case 'entregaAsc': {
-      arr.sort((a,b)=>{
-        const av = dateToComparable(a.prevFaturamento);
-        const bv = dateToComparable(b.prevFaturamento);
-        return av - bv;
-      });
-      break;
-    }
+    case 'entregaAsc': arr.sort((a,b)=>new Date(formatDate(a.prevFaturamento).split('/').reverse().join('-') || '2999-12-31') - new Date(formatDate(b.prevFaturamento).split('/').reverse().join('-') || '2999-12-31')); break;
     default: arr.sort((a,b)=>String(a.produto).localeCompare(String(b.produto), 'pt-BR', { sensitivity:'base' })); break;
   }
   return arr;
-}
-function dateToComparable(value){
-  const formatted = formatDate(value);
-  const parts = formatted.split('/');
-  if(parts.length === 3){
-    const [d,m,y] = parts;
-    return Number(`${y}${m.padStart(2,'0')}${d.padStart(2,'0')}`);
-  }
-  return 99999999;
 }
 function applyFilters(){
   const q = normalizeText(STATE.search);
@@ -555,6 +544,12 @@ function applyFilters(){
     return hitQ && hitCat && hitSeg && hitGen;
   }));
   renderCatalog();
+  renderKpis();
+}
+function renderKpis(){
+  $('visibleCount').textContent = STATE.view.length;
+  $('kpiPacks').textContent = STATE.view.reduce((sum, item)=>sum + remainingPacks(item), 0);
+  $('kpiUnits').textContent = STATE.view.reduce((sum, item)=>sum + remainingUnits(item), 0);
 }
 function gradeHtml(grade){
   return grade.map(g=>`
@@ -564,10 +559,17 @@ function gradeHtml(grade){
     </div>
   `).join('');
 }
-function availabilityLabel(item){
-  return item.mode === 'boxed'
-    ? `${remainingUnits(item)} pares`
-    : `${remainingUnits(item)} ${remainingUnits(item) === 1 ? 'unidade' : 'unidades'}`;
+function gradeText(grade){
+  return grade.map(g=>`${g.size} ${g.qty}`).join(' · ');
+}
+function availabilityChips(item){
+  if(item.mode === 'boxed'){
+    return `
+      <div class="chip chip-blue"><i class="fa-solid fa-shoe-prints"></i> ${remainingUnits(item)} pares</div>
+      <div class="mt-2 chip chip-gray"><i class="fa-solid fa-box-open"></i> ${remainingPacks(item)} caixa${remainingPacks(item) !== 1 ? 's' : ''}</div>
+    `;
+  }
+  return `<div class="chip chip-blue"><i class="fa-solid fa-cubes-stacked"></i> ${remainingUnits(item)} disponível${remainingUnits(item) !== 1 ? 'is' : ''}</div>`;
 }
 function secondaryMeta(item){
   if(item.mode === 'boxed'){
@@ -579,46 +581,32 @@ function secondaryMeta(item){
   const labels = item.grade.map(g=>g.size).join('-');
   return labels ? `<span class="chip chip-gray"><i class="fa-solid fa-ruler-combined"></i> ${safeHtml(labels)}</span>` : '';
 }
-function quickAdd(item, amount = 1){
-  const key = item.key;
-  const freeNow = item.mode === 'boxed' ? remainingPacks(item) : remainingUnits(item);
-  if(amount > freeNow){
-    toast('Quantidade acima do saldo disponível');
-    return;
-  }
-  const existing = STATE.cart.get(key);
+function quickAdd(item){
+  const amount = 1;
+  const existing = STATE.cart.get(item.key);
   const nextAmount = Number(existing?.amount || 0) + amount;
   const reservedUnits = item.mode === 'boxed' ? nextAmount * item.packSize : nextAmount;
-  if(reservedUnits > item.availableUnits){
-    toast('Saldo insuficiente');
-    return;
-  }
-  STATE.cart.set(key, {
-    ...item,
-    key,
-    amount: nextAmount,
-    totalUnits: reservedUnits
-  });
+  if(reservedUnits > item.availableUnits){ toast('Saldo insuficiente'); return; }
+  STATE.cart.set(item.key, { ...item, amount: nextAmount, totalUnits: reservedUnits });
   saveCartStorage();
   renderCart();
   applyFilters();
   toast('Adicionado à sacola');
 }
-function bindQuickAdd(root, item){
-  root.querySelectorAll('.btnQuickAdd').forEach(btn=>{
-    btn.addEventListener('click', ()=> quickAdd(item, 1));
-  });
-}
-function bindGradeButtons(root, item){
-  root.querySelectorAll('.btnShowGrade').forEach(btn=>{
-    btn.addEventListener('click', ()=> openGradeModal(item));
-  });
-}
-function renderCards(){
+function renderCatalog(){
+  $('cardsWrap').classList.toggle('hidden', STATE.viewMode !== 'cards');
+  $('listWrap').classList.toggle('hidden', STATE.viewMode !== 'list');
+  $('btnViewCards').classList.toggle('bg-slate-100', STATE.viewMode === 'cards');
+  $('btnViewList').classList.toggle('bg-slate-100', STATE.viewMode === 'list');
+
   const wrap = $('cardsWrap');
+  const listWrap = $('listWrap');
   wrap.innerHTML = '';
+  listWrap.innerHTML = '';
+  $('emptyState').classList.toggle('hidden', STATE.view.length !== 0);
 
   for(const item of STATE.view){
+    const key = item.key;
     const img = productImage(item);
     const freeAmount = item.mode === 'boxed' ? remainingPacks(item) : remainingUnits(item);
 
@@ -639,10 +627,7 @@ function renderCards(){
             <div class="text-xl font-extrabold leading-tight">${safeHtml(item.produto)}</div>
             <div class="mt-1 text-sm text-slate-500">${safeHtml(item.codigo)} · Prev. Faturamento ${safeHtml(formatDate(item.prevFaturamento))}</div>
           </div>
-          <div class="text-right">
-            <div class="chip chip-blue"><i class="fa-solid ${item.mode === 'boxed' ? 'fa-shoe-prints' : 'fa-cubes-stacked'}"></i> ${availabilityLabel(item)}</div>
-            ${item.mode === 'boxed' ? `<div class="mt-2 chip chip-gray"><i class="fa-solid fa-box-open"></i> ${remainingPacks(item)} caixa${remainingPacks(item) !== 1 ? 's' : ''}</div>` : ''}
-          </div>
+          <div class="text-right">${availabilityChips(item)}</div>
         </div>
 
         <div class="mt-3 flex flex-wrap gap-2">
@@ -653,7 +638,7 @@ function renderCards(){
         ${item.grade.length ? `
         <div class="mt-4">
           <div class="text-sm font-extrabold">Disponível</div>
-          <div class="grade-grid mt-2">${gradeHtml(item.grade)}</div>
+          <div class="mt-2 flex flex-wrap gap-2">${gradeHtml(item.grade)}</div>
         </div>` : ''}
 
         <div class="mt-4 flex items-center justify-end gap-2">
@@ -683,85 +668,59 @@ function renderCards(){
     card.querySelector('.btnAdd').addEventListener('click', ()=>{
       const freeNow = item.mode === 'boxed' ? remainingPacks(item) : remainingUnits(item);
       if(amount > freeNow){ toast('Quantidade acima do saldo disponível'); return; }
-      quickAdd(item, amount);
+      const existing = STATE.cart.get(key);
+      const nextAmount = Number(existing?.amount || 0) + amount;
+      const reservedUnits = item.mode === 'boxed' ? nextAmount * item.packSize : nextAmount;
+      if(reservedUnits > item.availableUnits){ toast('Saldo excedido'); return; }
+      STATE.cart.set(key, {
+        ...item,
+        key,
+        amount: nextAmount,
+        totalUnits: reservedUnits
+      });
+      saveCartStorage();
+      renderCart();
+      applyFilters();
+      toast('Item adicionado à sacola');
     });
-
     wrap.appendChild(card);
-  }
-}
-function renderList(){
-  const wrap = $('listWrap');
-  wrap.innerHTML = '';
 
-  for(const item of STATE.view){
-    const img = productImage(item);
     const row = document.createElement('article');
-    row.className = 'list-card';
+    row.className = 'rounded-[28px] border border-slate-200 bg-white p-4 shadow-soft';
     row.innerHTML = `
-      <div class="h-16 w-16 shrink-0 rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center">
-        ${img ? `<img src="${img}" alt="${safeHtml(item.produto)}" class="h-full w-full object-contain bg-white">` : `<i class="fa-solid fa-image text-slate-400"></i>`}
-      </div>
-
-      <div class="min-w-0">
-        <div class="text-[18px] sm:text-[20px] font-extrabold leading-tight">${safeHtml(item.produto)}</div>
-        <div class="mt-1 text-sm text-slate-500">${safeHtml(item.cor)}</div>
-        <div class="mt-2 text-[17px] sm:text-[18px] font-extrabold text-[var(--brand)]">${availabilityLabel(item)}</div>
-
-        <div class="desktop-only mt-3">
-          ${item.grade.length ? `
-            <div class="text-xs font-extrabold uppercase tracking-[.05em] text-slate-500">Grade disponível</div>
-            <div class="list-grade-block mt-2">
-              <div class="grade-grid">${gradeHtml(item.grade)}</div>
-            </div>
-          ` : ''}
+      <div class="list-item items-center">
+        <div class="h-[96px] w-[96px] md:h-[96px] md:w-[96px] rounded-[22px] border border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center">
+          ${img ? `<img src="${img}" alt="${safeHtml(item.produto)}" class="h-full w-full object-contain bg-white">` : `<i class="fa-solid fa-image text-slate-400"></i>`}
         </div>
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0 max-w-full">
+              <div class="truncate text-lg font-extrabold">${safeHtml(item.produto)}</div>
+              <div class="mt-1 text-sm text-slate-500">${safeHtml(item.codigo)} · ${safeHtml(item.cor)}</div>
+            </div>
+            <div class="chip chip-blue whitespace-nowrap">${item.mode === 'boxed' ? `${remainingPacks(item)} cx` : `${remainingUnits(item)} disp.`}</div>
+          </div>
+          <div class="mt-2 text-xs font-semibold text-slate-500">Prev. Faturamento ${safeHtml(formatDate(item.prevFaturamento))}</div>
 
-        <div class="mobile-only list-actions-mobile">
-          ${item.grade.length ? `
-            <button class="btnShowGrade focus-ring inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700">
-              <i class="fa-solid fa-ruler-horizontal"></i>
-              <span>Ver grade</span>
-            </button>
-          ` : '<div></div>'}
-          <div class="mobile-stack-row">
-            <button class="btnQuickAdd focus-ring icon-btn text-[var(--brand)]" title="Adicionar à sacola">
-              <i class="fa-solid fa-cart-plus"></i>
-            </button>
+          <div class="desktop-only mt-3">
+            ${item.grade.length ? `<div class="list-grade-strip">${gradeHtml(item.grade)}</div>` : ''}
+          </div>
+
+          <div class="mobile-only mt-3 flex items-center gap-2">
+            ${item.grade.length ? `<button class="btnShowGrade focus-ring inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-extrabold text-[var(--brand)]"><i class="fa-solid fa-ruler"></i> Ver grade</button>` : ''}
           </div>
         </div>
+        <div class="desktop-only flex items-center gap-2 self-center">
+          <button class="btnQuickAdd focus-ring inline-flex items-center gap-2 rounded-full bg-[var(--brand)] px-4 py-2 text-sm font-extrabold text-white ${freeAmount <= 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${freeAmount <= 0 ? 'disabled' : ''}><i class="fa-solid fa-cart-plus"></i> ${item.mode === 'boxed' ? '1 caixa' : 'Adicionar'}</button>
+        </div>
       </div>
-
-      <div class="desktop-only flex items-center gap-2">
-        <button class="btnQuickAdd focus-ring icon-btn text-[var(--brand)]" title="Adicionar à sacola">
-          <i class="fa-solid fa-cart-plus"></i>
-        </button>
-        ${item.grade.length ? `
-          <button class="btnShowGrade focus-ring inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700">
-            <i class="fa-solid fa-ruler-horizontal"></i>
-            <span>Ver grade</span>
-          </button>
-        ` : ''}
+      <div class="mobile-only mt-3 flex justify-end">
+        <button class="btnQuickAdd focus-ring inline-flex items-center gap-2 rounded-full bg-[var(--brand)] px-4 py-2 text-sm font-extrabold text-white ${freeAmount <= 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${freeAmount <= 0 ? 'disabled' : ''}><i class="fa-solid fa-cart-plus"></i> ${item.mode === 'boxed' ? '1 caixa' : 'Adicionar'}</button>
       </div>
     `;
-
-    bindQuickAdd(row, item);
-    bindGradeButtons(row, item);
-    wrap.appendChild(row);
-  }
-}
-function renderCatalog(){
-  $('visibleCount').textContent = STATE.view.length;
-  $('loadedCount').textContent = STATE.raw.length;
-  $('emptyState').classList.toggle('hidden', STATE.view.length !== 0);
-
-  if(STATE.ui.viewMode === 'cards'){
-    $('cardsWrap').classList.remove('hidden');
-    $('listWrap').classList.add('hidden');
-    renderCards();
-  }else{
-    $('cardsWrap').classList.add('hidden');
-    $('listWrap').classList.remove('hidden');
-    renderList();
+    row.querySelectorAll('.btnQuickAdd').forEach(btn=>btn.addEventListener('click', ()=> quickAdd(item)));
+    row.querySelector('.btnShowGrade')?.addEventListener('click', ()=> openGradeSheet(item));
+    listWrap.appendChild(row);
   }
 }
 function renderCart(){
@@ -806,7 +765,7 @@ function renderCart(){
           ${item.grade.length ? `
           <div class="mt-3">
             <div class="text-sm font-extrabold text-slate-600">${item.mode === 'boxed' ? 'Grade' : 'Disponível'}</div>
-            <div class="grade-grid mt-2">${gradeHtml(item.grade)}</div>
+            <div class="mt-2 flex flex-wrap gap-2">${gradeHtml(item.grade)}</div>
           </div>` : ''}
 
           <div class="mt-3 flex items-center justify-between gap-3">
@@ -851,6 +810,24 @@ function renderCart(){
     wrap.appendChild(row);
   }
 }
+function renderCheckoutSummary(){
+  const items = Array.from(STATE.cart.values());
+  $('checkoutSummaryCount').textContent = items.length;
+  $('checkoutItems').innerHTML = items.map(item=>`
+    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <div class="font-extrabold">${safeHtml(item.produto)}</div>
+          <div class="mt-1 text-xs text-slate-500">${safeHtml(item.codigo)} · ${safeHtml(item.cor)}</div>
+        </div>
+        <div class="text-right text-sm font-extrabold">
+          ${item.mode === 'boxed' ? `${item.amount} caixa${item.amount > 1 ? 's' : ''}` : `${item.amount} unidade${item.amount > 1 ? 's' : ''}`}
+        </div>
+      </div>
+      ${item.grade?.length ? `<div class="mt-2 flex flex-wrap gap-2">${gradeHtml(item.grade)}</div>` : ''}
+    </div>
+  `).join('');
+}
 function renderOrders(){
   const orders = [...STATE.orders].sort((a,b)=>new Date(b.createdAt) - new Date(a.createdAt));
   $('ordersEmptyState').classList.toggle('hidden', orders.length !== 0);
@@ -866,6 +843,13 @@ function renderOrders(){
         <div>
           <div class="text-lg font-extrabold">${safeHtml(order.id)}</div>
           <div class="mt-1 text-sm text-slate-500">${created.toLocaleDateString('pt-BR')} às ${created.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</div>
+          <div class="mt-2 flex flex-wrap gap-2 text-xs font-bold">
+            <span class="chip chip-gray">${safeHtml(order.preposto.nome)}</span>
+            <span class="chip chip-blue">Cliente ${safeHtml(order.clienteCodigo)}</span>
+            <span class="chip chip-gray">${safeHtml(order.prazo)}</span>
+            ${order.campanha ? `<span class="chip chip-blue">${safeHtml(order.campanha)}</span>` : ''}
+            <span class="chip chip-gray">${safeHtml(order.status)}</span>
+          </div>
         </div>
         <div class="text-right">
           <div class="chip chip-gray">${order.totals.packs} volumes</div>
@@ -886,7 +870,7 @@ function renderOrders(){
                   : `${item.amount} unidade${item.amount > 1 ? 's' : ''}`}
               </div>
             </div>
-            ${item.grade?.length ? `<div class="grade-grid mt-2">${gradeHtml(item.grade)}</div>` : ''}
+            ${item.grade?.length ? `<div class="mt-2 flex flex-wrap gap-2">${gradeHtml(item.grade)}</div>` : ''}
           </div>
         `).join('')}
       </div>
@@ -919,28 +903,49 @@ function closeOrders(){
     document.body.style.overflow = '';
   }, 240);
 }
-function openGradeModal(item){
-  $('gradeModalTitle').textContent = item.produto;
-  $('gradeModalSubtitle').textContent = `${item.cor} • ${availabilityLabel(item)}`;
-  $('gradeModalBody').innerHTML = item.grade.length
-    ? `<div class="text-sm font-extrabold mb-2">Grade disponível</div><div class="grade-grid">${gradeHtml(item.grade)}</div>`
-    : `<div class="text-sm text-slate-500">Este item não possui grade disponível.</div>`;
-  $('gradeModalDate').textContent = formatDate(item.prevFaturamento);
-  $('gradeModalWrap').classList.remove('hidden');
+function openCheckout(){
+  if(STATE.cart.size === 0){ toast('Adicione itens à sacola antes de continuar'); return; }
+  renderCheckoutSummary();
+  $('checkoutDrawerWrap').classList.remove('hidden');
+  requestAnimationFrame(()=> $('checkoutDrawer').classList.add('open'));
+}
+function closeCheckout(){
+  $('checkoutDrawer').classList.remove('open');
+  setTimeout(()=> $('checkoutDrawerWrap').classList.add('hidden'), 240);
+}
+function openGradeSheet(item){
+  $('gradeSheetTitle').textContent = item.produto;
+  $('gradeSheetContent').innerHTML = gradeHtml(item.grade);
+  $('gradeSheetWrap').classList.remove('hidden');
   requestAnimationFrame(()=> $('gradeSheet').classList.add('open'));
-  document.body.style.overflow = 'hidden';
 }
-function closeGradeModal(){
+function closeGradeSheet(){
   $('gradeSheet').classList.remove('open');
-  setTimeout(()=>{
-    $('gradeModalWrap').classList.add('hidden');
-    document.body.style.overflow = '';
-  }, 240);
+  setTimeout(()=> $('gradeSheetWrap').classList.add('hidden'), 240);
 }
-function saveLocalOrder(){
-  if(STATE.cart.size === 0){ toast('Adicione itens à sacola antes de salvar'); return; }
+function parsePreposto(value){
+  const [codigo, ...rest] = String(value).split(' - ');
+  return { codigo: codigo || '', nome: rest.join(' - ') || '' };
+}
+function validateCheckout(){
+  const preposto = $('checkoutPreposto').value;
+  const cliente = $('checkoutCliente').value.trim();
+  const prazo = $('checkoutPrazo').value;
+  if(!preposto){ toast('Selecione o preposto'); return false; }
+  if(!cliente){ toast('Preencha o cliente'); return false; }
+  if(!/^\d+$/.test(cliente)){ toast('Cliente deve conter apenas números'); return false; }
+  if(!prazo){ toast('Selecione o prazo'); return false; }
+  return true;
+}
+function submitOrder(){
+  if(!validateCheckout()) return;
   const now = new Date();
-  const stamp = now.toLocaleDateString('pt-BR').replaceAll('/','') + '_' + now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}).replace(':','');
+  const sequence = String(STATE.orders.length + 1).padStart(4, '0');
+  const preposto = parsePreposto($('checkoutPreposto').value);
+  const clienteCodigo = $('checkoutCliente').value.trim();
+  const prazo = $('checkoutPrazo').value;
+  const campanha = $('checkoutCampanha').value;
+  const observacoes = $('checkoutObs').value.trim();
   const items = Array.from(STATE.cart.values()).map(item=>({
     codigo: item.codigo,
     produto: item.produto,
@@ -948,32 +953,40 @@ function saveLocalOrder(){
     amount: item.amount,
     mode: item.mode,
     packSize: item.packSize,
-    grade: item.grade
+    totalUnits: item.mode === 'boxed' ? item.amount * item.packSize : item.amount,
+    grade: item.grade,
+    prevFaturamento: item.prevFaturamento
   }));
-  STATE.orders.unshift({
-    id: `PED-${stamp}`,
+  const order = {
+    id: `PED-${now.toISOString().slice(0,10).replaceAll('-','')}-${sequence}`,
     createdAt: now.toISOString(),
+    status: 'Pendente',
+    preposto,
+    clienteCodigo,
+    prazo,
+    campanha,
+    observacoes,
     totals: {
       packs: items.reduce((sum, item)=>sum + Number(item.amount || 0), 0),
-      units: items.reduce((sum, item)=>sum + (item.mode === 'boxed' ? Number(item.amount || 0) * Number(item.packSize || 0) : Number(item.amount || 0)), 0)
+      units: items.reduce((sum, item)=>sum + Number(item.totalUnits || 0), 0)
     },
     items
-  });
+  };
+  STATE.orders.unshift(order);
   saveOrdersStorage();
   STATE.cart.clear();
   saveCartStorage();
   renderCart();
   applyFilters();
-  closeCart();
   renderOrders();
-  toast('Pedido salvo para consulta');
-}
-function setViewMode(mode){
-  STATE.ui.viewMode = mode;
-  saveViewMode();
-  $('btnViewCards').classList.toggle('active', mode === 'cards');
-  $('btnViewList').classList.toggle('active', mode === 'list');
-  renderCatalog();
+  $('checkoutPreposto').value = '';
+  $('checkoutCliente').value = '';
+  $('checkoutPrazo').value = '';
+  $('checkoutCampanha').value = '';
+  $('checkoutObs').value = '';
+  closeCheckout();
+  closeCart();
+  toast('Pedido confirmado com sucesso');
 }
 async function loadCatalog(){
   try{
@@ -998,7 +1011,6 @@ async function loadCatalog(){
     buildFilters();
     renderCart();
     applyFilters();
-    setViewMode(STATE.ui.viewMode);
 
     $('loadingBlock').classList.add('hidden');
     $('catalogWrap').classList.remove('hidden');
@@ -1014,9 +1026,9 @@ async function loadCatalog(){
 function bindEvents(){
   $('btnOpenCart').addEventListener('click', openCart);
   $('btnOrders').addEventListener('click', openOrders);
-  $('btnSaveOrderLocal').addEventListener('click', saveLocalOrder);
-  $('btnViewCards').addEventListener('click', ()=> setViewMode('cards'));
-  $('btnViewList').addEventListener('click', ()=> setViewMode('list'));
+  $('btnProceedOrder').addEventListener('click', openCheckout);
+  $('btnSubmitOrder').addEventListener('click', submitOrder);
+  $('btnBackToCart').addEventListener('click', closeCheckout);
   $('btnClearCart').addEventListener('click', ()=>{
     if(STATE.cart.size === 0) return;
     STATE.cart.clear();
@@ -1052,9 +1064,13 @@ function bindEvents(){
   });
   $('btnCloseFilters').addEventListener('click', ()=>document.body.classList.remove('filters-open'));
 
+  $('btnViewCards').addEventListener('click', ()=>{ STATE.viewMode = 'cards'; saveViewMode(); renderCatalog(); });
+  $('btnViewList').addEventListener('click', ()=>{ STATE.viewMode = 'list'; saveViewMode(); renderCatalog(); });
+
   $('cartDrawerWrap').addEventListener('click', (e)=>{ if(e.target.closest('[data-close-cart="true"]')) closeCart(); });
   $('ordersDrawerWrap').addEventListener('click', (e)=>{ if(e.target.closest('[data-close-orders="true"]')) closeOrders(); });
-  $('gradeModalWrap').addEventListener('click', (e)=>{ if(e.target.closest('[data-close-grade="true"]')) closeGradeModal(); });
+  $('checkoutDrawerWrap').addEventListener('click', (e)=>{ if(e.target.closest('[data-close-checkout="true"]')) closeCheckout(); });
+  $('gradeSheetWrap').addEventListener('click', (e)=>{ if(e.target.closest('[data-close-grade="true"]')) closeGradeSheet(); });
 }
 loadLocalState();
 bindEvents();
