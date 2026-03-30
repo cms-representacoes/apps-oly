@@ -14,8 +14,7 @@
     *{box-sizing:border-box} body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
     .chip{display:inline-flex;align-items:center;gap:.4rem;border-radius:999px;padding:.42rem .78rem;font-size:12px;font-weight:800}
     .chip-blue{background:var(--brand-soft);color:var(--brand)} .chip-gray{background:#eef2f7;color:#334155}
-    .shadow-card{box-shadow:var(--shadow)}
-    .focus-ring:focus-visible{outline:none;box-shadow:0 0 0 4px rgba(40,54,212,.15)}
+    .shadow-card{box-shadow:var(--shadow)} .focus-ring:focus-visible{outline:none;box-shadow:0 0 0 4px rgba(40,54,212,.15)}
     .grade-pill{min-width:34px;border:1px solid var(--line);border-radius:10px;padding:4px 5px;background:#fff;text-align:center}
     .grade-size{display:block;font-size:10px;line-height:1;color:#64748b;font-weight:700}
     .grade-qty{display:block;font-size:11px;line-height:1.15;color:var(--brand);font-weight:800;margin-top:3px}
@@ -35,7 +34,7 @@
           <input id="adminPassword" type="password" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold" placeholder="Digite a senha" />
         </div>
         <button id="btnAdminLogin" class="focus-ring mt-5 w-full rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white">Entrar</button>
-        <div class="mt-3 text-xs text-slate-400">Acesso interno. Troque a senha no arquivo quando necessário.</div>
+        <div class="mt-3 text-xs text-slate-400">Cole o mesmo token do vendedor neste arquivo para sincronização real.</div>
       </div>
     </section>
 
@@ -47,6 +46,7 @@
             <div class="text-2xl sm:text-3xl font-extrabold">Pedidos de repasse</div>
           </div>
           <div class="flex flex-wrap items-center gap-2">
+            <button id="btnRefresh" class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700"><i class="fa-solid fa-rotate-right mr-2"></i>Atualizar</button>
             <div class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 min-w-[220px]">
               <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
               <input id="adminSearch" class="focus-ring w-full bg-transparent text-sm outline-none" placeholder="Buscar pedido, cliente ou preposto" />
@@ -64,16 +64,12 @@
         </div>
       </header>
 
-      <section class="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-card"><div class="text-xs font-bold text-slate-500">Pedidos</div><div id="kpiOrders" class="mt-1 text-3xl font-extrabold">0</div></div>
-        <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-card"><div class="text-xs font-bold text-slate-500">Pendentes</div><div id="kpiPending" class="mt-1 text-3xl font-extrabold">0</div></div>
-        <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-card"><div class="text-xs font-bold text-slate-500">Volumes</div><div id="kpiPacks" class="mt-1 text-3xl font-extrabold">0</div></div>
-        <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-card"><div class="text-xs font-bold text-slate-500">Itens</div><div id="kpiUnits" class="mt-1 text-3xl font-extrabold">0</div></div>
-      </section>
-
-      <section class="mt-4 grid grid-cols-1 xl:grid-cols-[420px_minmax(0,1fr)] gap-4">
+      <section class="mt-4 grid grid-cols-1 xl:grid-cols-[380px_minmax(0,1fr)] gap-4">
         <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-card">
-          <div class="text-lg font-extrabold">Lista de pedidos</div>
+          <div class="flex items-center justify-between gap-2">
+            <div class="text-lg font-extrabold">Lista de pedidos</div>
+            <div id="listCount" class="chip chip-gray">0 pedidos</div>
+          </div>
           <div id="ordersEmpty" class="hidden mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center text-slate-500">Nenhum pedido encontrado.</div>
           <div id="adminOrdersList" class="mt-4 space-y-3"></div>
         </div>
@@ -87,43 +83,65 @@
   </main>
 
 <script>
-const STORAGE_KEYS = { orders:'repasse_orders_v4', adminAuth:'repasse_admin_auth_v1' };
+const GITHUB_CONFIG = { owner:'marcosrepcms-max', repo:'Catalogo-Olympikus', branch:'main', token:'COLE_AQUI_SEU_TOKEN', ordersPath:'data/pedidos.json' };
+const STORAGE_KEYS = { adminAuth:'repasse_admin_auth_v1' };
 const ADMIN_PASSWORD = 'cmsrepasse';
 const STATUS_OPTIONS = ['Pendente','Em análise','Aprovado','Rejeitado','Atendido parcialmente'];
 const STATE = { orders: [], filtered: [], selectedId: null };
 const $ = (id)=>document.getElementById(id);
 function safeHtml(v){ return String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;'); }
-function readOrders(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.orders) || '[]'); } catch { return []; } }
-function saveOrders(){ localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(STATE.orders)); }
 function gradeHtml(grade=[]){ return grade.map(g=>`<div class="grade-pill"><span class="grade-size">${safeHtml(g.size)}</span><span class="grade-qty">${safeHtml(g.qty)}</span></div>`).join(''); }
+function hasGithubConfig(){ return Boolean(GITHUB_CONFIG.token && GITHUB_CONFIG.token !== 'COLE_AQUI_SEU_TOKEN'); }
+async function githubGetJson(path){
+  const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${path}?ref=${encodeURIComponent(GITHUB_CONFIG.branch)}`;
+  const headers = { 'Accept':'application/vnd.github+json' };
+  if(hasGithubConfig()) headers['Authorization'] = `Bearer ${GITHUB_CONFIG.token}`;
+  const res = await fetch(url, { headers });
+  if(res.status === 404) return { exists:false, sha:null, data:[] };
+  if(!res.ok) throw new Error(`GitHub GET falhou (${res.status})`);
+  const payload = await res.json();
+  const decoded = decodeURIComponent(escape(atob(payload.content.replace(/
+/g,''))));
+  return { exists:true, sha:payload.sha, data: JSON.parse(decoded) };
+}
+async function githubPutJson(path, data, message){
+  if(!hasGithubConfig()) throw new Error('Token GitHub não configurado.');
+  const current = await githubGetJson(path);
+  const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${path}`;
+  const body = { message, content:btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2)))), branch:GITHUB_CONFIG.branch };
+  if(current.sha) body.sha = current.sha;
+  const res = await fetch(url, { method:'PUT', headers:{ 'Accept':'application/vnd.github+json','Authorization':`Bearer ${GITHUB_CONFIG.token}`,'Content-Type':'application/json' }, body:JSON.stringify(body) });
+  if(!res.ok){ const txt=await res.text(); throw new Error(`GitHub PUT falhou (${res.status}): ${txt.slice(0,160)}`); }
+  return res.json();
+}
 function applyAuthUI(){
   const ok = localStorage.getItem(STORAGE_KEYS.adminAuth) === 'ok';
   $('loginScreen').classList.toggle('hidden', ok);
   $('adminApp').classList.toggle('hidden', !ok);
   if(ok){ loadAdmin(); }
 }
-function loadAdmin(){
-  STATE.orders = readOrders().sort((a,b)=>new Date(b.createdAt) - new Date(a.createdAt));
-  applyFilters();
+async function loadAdmin(){
+  try{
+    const remote = await githubGetJson(GITHUB_CONFIG.ordersPath);
+    STATE.orders = Array.isArray(remote.data) ? remote.data.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)) : [];
+    applyFilters();
+  }catch(err){
+    console.error(err);
+    alert('Não foi possível carregar os pedidos do GitHub. Confira o token e o caminho do arquivo.');
+  }
 }
 function applyFilters(){
   const q = ($('adminSearch').value || '').toLowerCase().trim();
   const status = $('adminStatusFilter').value;
   STATE.filtered = STATE.orders.filter(order=>{
-    const hay = `${order.id} ${order.clienteCodigo} ${order.preposto?.nome || ''} ${order.preposto?.codigo || ''} ${order.prazo} ${order.campanha || ''}`.toLowerCase();
+    const hay = `${order.id} ${order.clienteCodigo} ${order.preposto?.nome || ''} ${order.preposto?.codigo || ''} ${order.prazo || ''} ${order.campanha || ''}`.toLowerCase();
     return (!q || hay.includes(q)) && (!status || order.status === status);
   });
-  renderKpis();
+  $('listCount').textContent = `${STATE.filtered.length} pedido${STATE.filtered.length===1?'':'s'}`;
   renderList();
   if(!STATE.selectedId && STATE.filtered[0]) STATE.selectedId = STATE.filtered[0].id;
   if(STATE.selectedId && !STATE.filtered.find(o=>o.id === STATE.selectedId)) STATE.selectedId = STATE.filtered[0]?.id || null;
   renderDetail();
-}
-function renderKpis(){
-  $('kpiOrders').textContent = STATE.filtered.length;
-  $('kpiPending').textContent = STATE.filtered.filter(o=>o.status === 'Pendente').length;
-  $('kpiPacks').textContent = STATE.filtered.reduce((sum,o)=>sum + Number(o.totals?.packs || 0), 0);
-  $('kpiUnits').textContent = STATE.filtered.reduce((sum,o)=>sum + Number(o.totals?.units || 0), 0);
 }
 function renderList(){
   $('ordersEmpty').classList.toggle('hidden', STATE.filtered.length !== 0);
@@ -133,8 +151,8 @@ function renderList(){
     return `
       <button data-order-id="${safeHtml(order.id)}" class="w-full text-left rounded-[24px] border ${active ? 'border-[var(--brand)] bg-[rgba(40,54,212,.05)]' : 'border-slate-200 bg-slate-50'} p-4">
         <div class="flex items-start justify-between gap-3">
-          <div>
-            <div class="font-extrabold">${safeHtml(order.id)}</div>
+          <div class="min-w-0">
+            <div class="text-sm font-extrabold truncate">${safeHtml(order.id)}</div>
             <div class="mt-1 text-xs text-slate-500">${created.toLocaleDateString('pt-BR')} • ${created.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
           </div>
           <span class="chip chip-gray">${safeHtml(order.status)}</span>
@@ -142,7 +160,6 @@ function renderList(){
         <div class="mt-3 flex flex-wrap gap-2 text-xs font-bold">
           <span class="chip chip-blue">Cliente ${safeHtml(order.clienteCodigo)}</span>
           <span class="chip chip-gray">${safeHtml(order.preposto?.nome || '')}</span>
-          <span class="chip chip-gray">${safeHtml(order.prazo)}</span>
         </div>
       </button>
     `;
@@ -159,12 +176,12 @@ function renderDetail(){
     <div class="flex flex-col gap-4">
       <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div>
-          <div class="text-2xl font-extrabold">${safeHtml(order.id)}</div>
+          <div class="text-lg sm:text-xl font-extrabold">${safeHtml(order.id)}</div>
           <div class="mt-1 text-sm text-slate-500">${created.toLocaleDateString('pt-BR')} às ${created.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
           <div class="mt-3 flex flex-wrap gap-2">
             <span class="chip chip-blue">${safeHtml(order.preposto?.codigo || '')} - ${safeHtml(order.preposto?.nome || '')}</span>
             <span class="chip chip-gray">Cliente ${safeHtml(order.clienteCodigo)}</span>
-            <span class="chip chip-gray">${safeHtml(order.prazo)}</span>
+            <span class="chip chip-gray">${safeHtml(order.prazo || '—')}</span>
             ${order.campanha ? `<span class="chip chip-blue">${safeHtml(order.campanha)}</span>` : ''}
           </div>
         </div>
@@ -175,15 +192,12 @@ function renderDetail(){
           </select>
         </div>
       </div>
-
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="rounded-[24px] border border-slate-200 bg-slate-50 p-4"><div class="text-xs font-bold text-slate-500">Volumes</div><div class="mt-1 text-2xl font-extrabold">${order.totals?.packs || 0}</div></div>
-        <div class="rounded-[24px] border border-slate-200 bg-slate-50 p-4"><div class="text-xs font-bold text-slate-500">Itens</div><div class="mt-1 text-2xl font-extrabold">${order.totals?.units || 0}</div></div>
-        <div class="rounded-[24px] border border-slate-200 bg-slate-50 p-4"><div class="text-xs font-bold text-slate-500">Itens no pedido</div><div class="mt-1 text-2xl font-extrabold">${order.items?.length || 0}</div></div>
+        <div class="rounded-[24px] border border-slate-200 bg-slate-50 p-4"><div class="text-xs font-bold text-slate-500">Volumes</div><div class="mt-1 text-xl font-extrabold">${order.totals?.packs || 0}</div></div>
+        <div class="rounded-[24px] border border-slate-200 bg-slate-50 p-4"><div class="text-xs font-bold text-slate-500">Itens</div><div class="mt-1 text-xl font-extrabold">${order.totals?.units || 0}</div></div>
+        <div class="rounded-[24px] border border-slate-200 bg-slate-50 p-4"><div class="text-xs font-bold text-slate-500">Linhas</div><div class="mt-1 text-xl font-extrabold">${order.items?.length || 0}</div></div>
       </div>
-
       ${order.observacoes ? `<div class="rounded-[24px] border border-slate-200 bg-slate-50 p-4"><div class="text-xs font-bold text-slate-500">Observações</div><div class="mt-2 text-sm font-semibold text-slate-700">${safeHtml(order.observacoes)}</div></div>` : ''}
-
       <div class="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
         <div class="text-lg font-extrabold">Itens do pedido</div>
         <div class="mt-4 space-y-3">
@@ -208,12 +222,19 @@ function renderDetail(){
   `;
   $('detailStatus').addEventListener('change', e=>updateStatus(order.id, e.target.value));
 }
-function updateStatus(id, status){
-  const idx = STATE.orders.findIndex(o=>o.id === id);
-  if(idx === -1) return;
-  STATE.orders[idx].status = status;
-  saveOrders();
-  applyFilters();
+async function updateStatus(id, status){
+  try{
+    const idx = STATE.orders.findIndex(o=>o.id === id);
+    if(idx === -1) return;
+    STATE.orders[idx].status = status;
+    STATE.orders[idx].updatedAt = new Date().toISOString();
+    await githubPutJson(GITHUB_CONFIG.ordersPath, STATE.orders, `Atualiza status ${id} para ${status}`);
+    applyFilters();
+  }catch(err){
+    console.error(err);
+    alert('Não foi possível atualizar o status no GitHub.');
+    await loadAdmin();
+  }
 }
 $('btnAdminLogin').addEventListener('click', ()=>{
   if($('adminPassword').value !== ADMIN_PASSWORD){ alert('Senha inválida.'); return; }
@@ -222,6 +243,7 @@ $('btnAdminLogin').addEventListener('click', ()=>{
   applyAuthUI();
 });
 $('btnLogout').addEventListener('click', ()=>{ localStorage.removeItem(STORAGE_KEYS.adminAuth); applyAuthUI(); });
+$('btnRefresh').addEventListener('click', loadAdmin);
 $('adminSearch').addEventListener('input', applyFilters);
 $('adminStatusFilter').addEventListener('change', applyFilters);
 applyAuthUI();
