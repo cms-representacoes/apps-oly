@@ -91,7 +91,7 @@
   </main>
 
 <script>
-const GITHUB_CONFIG = { owner:'marcosrepcms-max', repo:'Catalogo-Olympikus', branch:'main', token:'COLE_AQUII_SEU_TOKEN', ordersPath:'data/pedidos.json' };
+const WORKER_URL = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
 const STORAGE_KEYS = { adminAuth:'repasse_admin_auth_v1', adminScope:'repasse_admin_scope_v1' };
 const ADMIN_PASSWORD = 'cmsrepasse';
 const STATUS_OPTIONS = ['Pendente','Em análise','Aprovado','Rejeitado','Atendido parcialmente','Finalizado'];
@@ -99,11 +99,24 @@ const STATE = { orders: [], filtered: [], selectedId: null };
 const $ = (id)=>document.getElementById(id);
 function safeHtml(v){ return String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;'); }
 function gradeHtml(grade=[]){ return grade.map(g=>`<div class="grade-pill"><span class="grade-size">${safeHtml(g.size)}</span><span class="grade-qty">${safeHtml(g.qty)}</span></div>`).join(''); }
-function hasGithubConfig(){ return Boolean(GITHUB_CONFIG.token && GITHUB_CONFIG.token !== 'COLE_AQUII_SEU_TOKEN'); }
-function decodeBase64Utf8(value){ const binary = atob(String(value || '').replace(/\n/g,'')); const bytes = Uint8Array.from(binary, ch => ch.charCodeAt(0)); return new TextDecoder().decode(bytes); }
-function encodeBase64Utf8(value){ const bytes = new TextEncoder().encode(value); let binary=''; const chunk=0x8000; for(let i=0;i<bytes.length;i+=chunk){ binary += String.fromCharCode(...bytes.subarray(i,i+chunk)); } return btoa(binary); }
-async function githubGetJson(path){ const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${path}?ref=${encodeURIComponent(GITHUB_CONFIG.branch)}`; const headers = { 'Accept':'application/vnd.github+json' }; if(hasGithubConfig()) headers['Authorization'] = `Bearer ${GITHUB_CONFIG.token}`; const res = await fetch(url, { headers, cache:'no-store' }); if(res.status === 404) return { exists:false, sha:null, data:null }; if(!res.ok) throw new Error(`GitHub GET falhou (${res.status})`); const payload = await res.json(); return { exists:true, sha:payload.sha, data: JSON.parse(decodeBase64Utf8(payload.content)) }; }
-async function githubPutJson(path, data, message){ if(!hasGithubConfig()) throw new Error('Token GitHub não configurado'); const current = await githubGetJson(path); const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${path}`; const body = { message, content: encodeBase64Utf8(JSON.stringify(data, null, 2)), branch:GITHUB_CONFIG.branch }; if(current.sha) body.sha = current.sha; const res = await fetch(url, { method:'PUT', headers:{ 'Accept':'application/vnd.github+json', 'Authorization': `Bearer ${GITHUB_CONFIG.token}`, 'Content-Type':'application/json' }, body: JSON.stringify(body) }); if(!res.ok){ const txt = await res.text(); throw new Error(`GitHub PUT falhou (${res.status}): ${txt.slice(0,160)}`); } return res.json(); }
+async function workerGetOrders(){
+  const res = await fetch(WORKER_URL, { cache:'no-store' });
+  if(!res.ok) throw new Error(`Worker GET falhou (${res.status})`);
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+async function workerUpdateOrder(order){
+  const res = await fetch(WORKER_URL, {
+    method:'PUT',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify(order)
+  });
+  if(!res.ok){
+    const txt = await res.text();
+    throw new Error(`Worker PUT falhou (${res.status}): ${txt.slice(0,160)}`);
+  }
+  return res.json();
+}
 function getAdminScope(){ return localStorage.getItem(STORAGE_KEYS.adminScope) || 'active'; }
 function setAdminScope(scope){ localStorage.setItem(STORAGE_KEYS.adminScope, scope || 'active'); }
 function isHistoryStatus(status){ return ['Rejeitado','Finalizado'].includes(status || ''); }
@@ -118,12 +131,12 @@ async function applyAuthUI(){
 }
 async function loadAdmin(){
   try{
-    const remote = await githubGetJson(GITHUB_CONFIG.ordersPath);
-    STATE.orders = Array.isArray(remote.data) ? remote.data.sort((a,b)=>new Date(b.createdAt) - new Date(a.createdAt)) : [];
+    const remote = await workerGetOrders();
+    STATE.orders = Array.isArray(remote) ? remote.sort((a,b)=>new Date(b.createdAt) - new Date(a.createdAt)) : [];
     applyFilters();
   }catch(err){
     console.error(err);
-    alert('Não foi possível carregar os pedidos sincronizados. Confira token, branch e data/pedidos.json.');
+    alert('Não foi possível carregar os pedidos sincronizados pelo Worker.');
   }
 }
 function applyFilters(){
@@ -222,16 +235,15 @@ function renderDetail(){
   $('detailStatus').addEventListener('change', async e=>{ await updateStatus(order.id, e.target.value); });
   $('btnToggleArchive').addEventListener('click', async ()=>{ await toggleArchive(order.id); });
 }
-async function persistOrders(message){
-  await githubPutJson(GITHUB_CONFIG.ordersPath, STATE.orders, message);
+async function persistOrders(){
+  // Mantido para preservar a estrutura do fluxo já existente
 }
 async function updateStatus(id, status){
   const idx = STATE.orders.findIndex(o=>o.id === id);
   if(idx === -1) return;
-  STATE.orders[idx].status = status;
-  STATE.orders[idx].updatedAt = new Date().toISOString();
+  const updatedOrder = { ...STATE.orders[idx], status, updatedAt: new Date().toISOString() };
   try{
-    await persistOrders(`Atualiza status ${id} para ${status}`);
+    await workerUpdateOrder(updatedOrder);
     await loadAdmin();
   }catch(err){
     console.error(err);
@@ -241,10 +253,9 @@ async function updateStatus(id, status){
 async function toggleArchive(id){
   const idx = STATE.orders.findIndex(o=>o.id === id);
   if(idx === -1) return;
-  STATE.orders[idx].archived = !STATE.orders[idx].archived;
-  STATE.orders[idx].updatedAt = new Date().toISOString();
+  const updatedOrder = { ...STATE.orders[idx], archived: !STATE.orders[idx].archived, updatedAt: new Date().toISOString() };
   try{
-    await persistOrders(`${STATE.orders[idx].archived ? 'Arquiva' : 'Reativa'} pedido ${id}`);
+    await workerUpdateOrder(updatedOrder);
     await loadAdmin();
   }catch(err){
     console.error(err);
