@@ -1893,17 +1893,36 @@ async function buildCatalogPdfBlob(perPage){
 
     const imgUrl = productImage(item);
     const dataUrl = await imageUrlToDataUrl(imgUrl);
+    doc.setFillColor(248,250,252);
+    doc.roundedRect(sectionX, y, imageAreaW, imageBoxH, 3, 3, 'F');
     if(dataUrl){
       try{
         const imageType = dataUrl.includes('image/jpeg') ? 'JPEG' : 'PNG';
-        doc.addImage(dataUrl, imageType, sectionX, y, imageAreaW, imageBoxH, undefined, 'FAST');
+        const props = doc.getImageProperties(dataUrl);
+        const sourceW = Number(props.width || 0);
+        const sourceH = Number(props.height || 0);
+        const innerPad = perPage === 3 ? 2.2 : 2.8;
+        const maxW = Math.max(1, imageAreaW - (innerPad * 2));
+        const maxH = Math.max(1, imageBoxH - (innerPad * 2));
+        let drawW = maxW;
+        let drawH = maxH;
+
+        if(sourceW > 0 && sourceH > 0){
+          const scale = Math.min(maxW / sourceW, maxH / sourceH);
+          drawW = Math.max(1, sourceW * scale);
+          drawH = Math.max(1, sourceH * scale);
+        }
+
+        const drawX = sectionX + ((imageAreaW - drawW) / 2);
+        const drawY = y + ((imageBoxH - drawH) / 2);
+        doc.addImage(dataUrl, imageType, drawX, drawY, drawW, drawH, undefined, 'FAST');
       }catch(_){
-        doc.setFillColor(248,250,252);
-        doc.roundedRect(sectionX, y, imageAreaW, imageBoxH, 3, 3, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(148,163,184);
+        doc.text('Sem imagem', sectionX + imageAreaW/2, y + imageBoxH/2, { align:'center' });
       }
     }else{
-      doc.setFillColor(248,250,252);
-      doc.roundedRect(sectionX, y, imageAreaW, imageBoxH, 3, 3, 'F');
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
       doc.setTextColor(148,163,184);
