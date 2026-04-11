@@ -1880,11 +1880,11 @@ async function buildCatalogPdfBlob(perPage){
     const sectionX = 12;
     const sectionW = pageWidth - 24;
 
-    const imageBoxH = slotsPerPage === 3 ? slotHeight * 0.60 : slotHeight * 0.64;
-    const infoStartY = y + imageBoxH + 4.2;
-    const gradeLabelY = slotsPerPage === 3 ? infoStartY + 11.8 : infoStartY + 13.2;
-    const gradeTopY = gradeLabelY + 2.8;
-    const gradeAreaH = Math.max(14, (y + slotHeight) - gradeTopY - 1.4);
+    const imageBoxH = slotsPerPage === 3 ? slotHeight * 0.74 : slotHeight * 0.80;
+    const infoStartY = y + imageBoxH + 2.2;
+    const gradeLabelY = slotsPerPage === 3 ? infoStartY + 10.1 : infoStartY + 11.4;
+    const gradeTopY = gradeLabelY + 2.0;
+    const gradeAreaH = Math.max(12, (y + slotHeight) - gradeTopY - 0.8);
 
     doc.setDrawColor(226,232,240);
     doc.setLineWidth(0.35);
@@ -1904,8 +1904,8 @@ async function buildCatalogPdfBlob(perPage){
         const props = doc.getImageProperties(dataUrl);
         const sourceW = Number(props.width || 0);
         const sourceH = Number(props.height || 0);
-        const innerPadX = slotsPerPage === 3 ? 1.8 : 1.5;
-        const innerPadY = slotsPerPage === 3 ? 1.8 : 1.5;
+        const innerPadX = slotsPerPage === 3 ? 0.8 : 0.6;
+        const innerPadY = slotsPerPage === 3 ? 0.8 : 0.6;
         const maxW = Math.max(1, sectionW - (innerPadX * 2));
         const maxH = Math.max(1, imageBoxH - (innerPadY * 2));
         let drawW = maxW;
@@ -1939,26 +1939,19 @@ async function buildCatalogPdfBlob(perPage){
 
     doc.setTextColor(15,23,42);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(slotsPerPage === 3 ? 9.2 : 10.5);
-    const titleMaxW = sectionW * 0.56;
-    const productLines = doc.splitTextToSize(String(item.produto || ''), titleMaxW).slice(0,2);
+    doc.setFontSize(slotsPerPage === 3 ? 8.2 : 9.2);
+    const titleMaxW = sectionW;
+    const productLines = doc.splitTextToSize(String(item.produto || ''), titleMaxW).slice(0,1);
     doc.text(productLines, sectionX, infoStartY);
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(71,85,105);
-    doc.setFontSize(slotsPerPage === 3 ? 7.2 : 8);
-    const metaLine = `${item.codigo} • Cor: ${item.cor}`;
-    doc.text(doc.splitTextToSize(metaLine, sectionW * 0.68).slice(0,1), sectionX, infoStartY + (slotsPerPage === 3 ? 4.4 : 4.8));
-
-    const rightX = sectionX + sectionW;
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15,23,42);
-    doc.setFontSize(slotsPerPage === 3 ? 7.4 : 8.2);
-    doc.text(`Prev. Faturamento: ${formatDate(item.prevFaturamento)}`, rightX, infoStartY, { align:'right' });
-    doc.text(`Caixas: ${remainingPacks(item)}`, rightX, infoStartY + (slotsPerPage === 3 ? 4.4 : 4.8), { align:'right' });
+    doc.setFontSize(slotsPerPage === 3 ? 6.5 : 7.2);
+    const metaLine = `${item.codigo} • Cor: ${item.cor} • Prev: ${formatDate(item.prevFaturamento)} • Caixas: ${remainingPacks(item)}`;
+    doc.text(doc.splitTextToSize(metaLine, sectionW).slice(0,2), sectionX, infoStartY + (slotsPerPage === 3 ? 3.7 : 4.0));
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(slotsPerPage === 3 ? 7.8 : 8.5);
+    doc.setFontSize(slotsPerPage === 3 ? 7.0 : 7.6);
     doc.setTextColor(15,23,42);
     doc.text('Grade disponível', sectionX, gradeLabelY);
     drawGradeRow(doc, item, sectionX, gradeTopY, sectionW, gradeAreaH);
