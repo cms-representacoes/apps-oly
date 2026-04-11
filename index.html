@@ -37,9 +37,9 @@
     .chip{display:inline-flex;align-items:center;gap:.4rem;border-radius:999px;padding:.42rem .78rem;font-size:12px;font-weight:800}
     .chip-blue{background:var(--brand-soft);color:var(--brand)}
     .chip-gray{background:#eef2f7;color:#334155}
-    .chip-warning{background:#fff7ed;color:#c2410c;border:1px solid #fdba74}
-    .chip-danger{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
-    .availability-pulse{animation:availabilityPulse 1.15s ease-in-out infinite}
+    .chip-warning{background:#ffedd5;color:#c2410c;border:2px solid #fb923c;font-weight:900;box-shadow:0 0 0 4px rgba(249,115,22,.12)}
+    .chip-danger{background:#fff7ed;color:#ea580c;border:2px solid #fb923c;font-weight:900;box-shadow:0 0 0 4px rgba(249,115,22,.16)}
+    .availability-pulse{animation:availabilityPulse .95s ease-in-out infinite;transform-origin:center}
     .qty-btn{height:42px;width:42px;border-radius:999px;border:1px solid var(--line);background:#fff;font-weight:800}
     .grade-pill{min-width:34px;border:1px solid var(--line);border-radius:10px;padding:4px 5px;background:#fff;text-align:center}
     .grade-size{display:block;font-size:10px;line-height:1;color:#64748b;font-weight:700}
@@ -867,22 +867,21 @@ function gradeText(grade){
   return grade.map(g=>`${g.size} ${g.qty}`).join(' · ');
 }
 function availabilityChips(item){
+  const units = remainingUnits(item);
+  const packs = remainingPacks(item);
+  const chipClass = availabilityChipClass(item);
   if(item.mode === 'boxed'){
     return `
-      <div class="chip chip-blue"><i class="fa-solid fa-shoe-prints"></i> ${remainingUnits(item)} pares</div>
-      <div class="mt-2 chip chip-gray"><i class="fa-solid fa-box-open"></i> ${remainingPacks(item)} caixa${remainingPacks(item) !== 1 ? 's' : ''}</div>
+      <div class="${chipClass}"><i class="fa-solid fa-shoe-prints"></i> ${availabilitySummary(item)}</div>
+      <div class="mt-2 chip ${packs <= 0 ? 'chip-danger availability-pulse' : 'chip-gray'}"><i class="fa-solid fa-box-open"></i> ${packs} caixa${packs !== 1 ? 's' : ''}</div>
     `;
   }
-  return `<div class="chip chip-blue"><i class="fa-solid fa-cubes-stacked"></i> ${remainingUnits(item)} disponível${remainingUnits(item) !== 1 ? 'is' : ''}</div>`;
+  return `<div class="${chipClass}"><i class="fa-solid fa-cubes-stacked"></i> ${availabilitySummary(item)}</div>`;
 }
 function getAvailabilityState(item){
   const units = remainingUnits(item);
   if(units <= 0) return 'soldout';
-  if(item.mode === 'boxed'){
-    if(units <= item.packSize) return 'low';
-  } else if(units <= 3){
-    return 'low';
-  }
+  if(units <= 24) return 'low';
   return 'normal';
 }
 function availabilitySummary(item){
