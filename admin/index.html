@@ -408,7 +408,7 @@
           <div class="text-lg font-extrabold text-slate-900">Motivo do cancelamento</div>
           <div class="mt-1 text-sm font-semibold text-slate-500">Esse motivo será salvo no histórico do pedido.</div>
         </div>
-        <button id="btnCloseCancelReason" class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-bold text-slate-600">Fechar</button>
+        <button id="btnCloseCancelReason" type="button" class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-bold text-slate-600">Fechar</button>
       </div>
       <div class="mt-4">
         <label class="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Motivo</label>
@@ -416,8 +416,8 @@
         <div id="cancelReasonError" class="mt-2 hidden text-xs font-bold text-red-600">Informe o motivo antes de confirmar.</div>
       </div>
       <div class="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <button id="btnAbortCancelReason" class="focus-ring rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700">Voltar</button>
-        <button id="btnConfirmCancelReason" class="focus-ring rounded-2xl border border-red-200 bg-red-600 px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50" disabled>Confirmar cancelamento</button>
+        <button id="btnAbortCancelReason" type="button" class="focus-ring rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700">Voltar</button>
+        <button id="btnConfirmCancelReason" type="button" class="focus-ring rounded-2xl border border-red-200 bg-red-600 px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50" disabled>Confirmar cancelamento</button>
       </div>
     </div>
   </div>
@@ -1190,8 +1190,15 @@ function closeCancelReasonModal(){
   document.body.style.overflow = '';
 }
 
+function getCancelReasonValue(){
+  const el = $('cancelReasonInput');
+  return (el?.value || '').trim();
+}
+
 function syncCancelReasonButton(){
-  $('btnConfirmCancelReason').disabled = !normalizeText($('cancelReasonInput').value);
+  const hasReason = Boolean(getCancelReasonValue());
+  $('btnConfirmCancelReason').disabled = !hasReason;
+  return hasReason;
 }
 
 async function loadDispo(){
