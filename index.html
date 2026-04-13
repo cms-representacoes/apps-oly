@@ -112,6 +112,41 @@
 <body>
   <div id="toast" class="hidden fixed left-1/2 top-6 z-[95] -translate-x-1/2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-card"></div>
 
+  <!-- ── TELA DE LOGIN ──────────────────────────────────────────────────── -->
+  <div id="loginScreen" class="fixed inset-0 z-[200] flex items-center justify-center bg-[var(--bg)] p-4">
+    <div class="w-full max-w-sm rounded-[32px] border border-slate-200 bg-white p-6 sm:p-8 shadow-card">
+      <div class="mx-auto h-14 w-14 rounded-2xl bg-[var(--brand-soft)] text-[var(--brand)] flex items-center justify-center text-2xl">
+        <i class="fa-solid fa-user-tie"></i>
+      </div>
+      <h1 class="mt-5 text-2xl font-extrabold">Repasse Olympikus</h1>
+      <p class="mt-1 text-sm text-slate-500">Identifique-se para acessar a vitrine.</p>
+
+      <div class="mt-5 space-y-4">
+        <div>
+          <label class="text-xs font-bold text-slate-500">Seu nome</label>
+          <input id="loginNome" list="loginNomeList" autocomplete="off"
+            class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold"
+            placeholder="Digite ou selecione seu nome" />
+          <datalist id="loginNomeList"></datalist>
+        </div>
+        <div>
+          <label class="text-xs font-bold text-slate-500">Senha (seu código)</label>
+          <input id="loginSenha" type="password" inputmode="numeric"
+            class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold"
+            placeholder="Digite seu código" />
+        </div>
+        <div id="loginError" class="hidden rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+          Nome ou código incorretos. Tente novamente.
+        </div>
+        <button id="btnLogin"
+          class="focus-ring w-full rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white">
+          Entrar
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- ────────────────────────────────────────────────────────────────────── -->
+
   <header id="appHeader" class="sticky top-0 z-40 border-b border-slate-200 glass">
     <div class="header-shell mx-auto max-w-7xl px-4 sm:px-6 py-4">
       <div class="header-row-primary">
@@ -121,14 +156,22 @@
           </div>
           <div class="header-brand-title min-w-0">
             <div class="truncate text-lg sm:text-xl font-extrabold">Repasse Olympikus</div>
+            <div id="headerVendedorNome" class="text-xs font-bold text-[var(--brand)] hidden"></div>
           </div>
         </div>
 
-        <button id="btnOpenCart" class="focus-ring inline-flex items-center gap-2 rounded-full bg-[var(--brand)] px-4 py-2 text-sm font-extrabold text-white shadow-soft">
+        <div class="flex items-center gap-2">
+          <button id="btnOpenCart" class="focus-ring inline-flex items-center gap-2 rounded-full bg-[var(--brand)] px-4 py-2 text-sm font-extrabold text-white shadow-soft">
           <i class="fa-solid fa-cart-shopping"></i>
           <span>Sacola</span>
           <span id="cartCountBadge" class="hidden rounded-full bg-white/18 px-2 py-0.5 text-xs">0</span>
         </button>
+        <button id="btnVendedorLogout"
+          class="focus-ring hidden h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+          title="Sair">
+          <i class="fa-solid fa-right-from-bracket text-sm"></i>
+        </button>
+        </div>
       </div>
 
       <div class="header-row-secondary">
@@ -303,8 +346,12 @@
                 </select>
               </div>
               <div>
-                <label class="text-xs font-bold text-slate-500">Cliente *</label>
+                <label class="text-xs font-bold text-slate-500">Código do cliente *</label>
                 <input id="checkoutCliente" inputmode="numeric" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold" placeholder="Digite o código do cliente" />
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-500">Nome do cliente <span class="text-slate-400 font-semibold">(opcional)</span></label>
+                <input id="checkoutClienteNome" type="text" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold" placeholder="Ex.: Loja do João" />
               </div>
               <div>
                 <label class="text-xs font-bold text-slate-500">Prazo *</label>
@@ -371,6 +418,12 @@
           <div class="text-xs font-bold text-slate-400">Sem exclusão manual</div>
         </div>
         <div id="ordersList" class="space-y-3"></div>
+      </div>
+      <div class="border-t border-slate-200 bg-white px-4 py-3 sm:hidden">
+        <button data-close-orders="true"
+          class="focus-ring w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-extrabold text-slate-700">
+          <i class="fa-solid fa-xmark mr-2"></i>Fechar pedidos
+        </button>
       </div>
     </aside>
   </div>
@@ -533,7 +586,8 @@ const STORAGE_KEYS = {
   orders: 'repasse_orders_v4',
   view: 'repasse_view_mode_v4',
   lastPreposto: 'repasse_last_preposto_v1',
-  ordersScope: 'repasse_orders_scope_v1'
+  ordersScope: 'repasse_orders_scope_v1',
+  vendedorSession: 'repasse_vendedor_session_v1'
 };
 const CATEGORY_LABELS = { FTW:'Tênis', ACC:'Acessórios', CHI:'Chinelos', MEIA:'Meias', 'V&A':'Vestuário' };
 const FOOTWEAR_COLUMNS = ['28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','33/34','35/36','37/38','39/40','41/42','43/44','45/46','33/38','39/44'];
@@ -699,7 +753,93 @@ function readJsonSafe(key, fallback){
     return raw ? JSON.parse(raw) : fallback;
   }catch(e){ return fallback; }
 }
-function saveCartStorage(){ localStorage.setItem(STORAGE_KEYS.cart, JSON.stringify(Array.from(STATE.cart.values()))); }
+function getVendedorSession(){
+  return readJsonSafe(STORAGE_KEYS.vendedorSession, null);
+}
+function setVendedorSession(session){
+  localStorage.setItem(STORAGE_KEYS.vendedorSession, JSON.stringify(session));
+}
+function clearVendedorSession(){
+  localStorage.removeItem(STORAGE_KEYS.vendedorSession);
+}
+function applyVendedorSession(){
+  const session = getVendedorSession();
+  const loginScreen = $('loginScreen');
+  const headerNome = $('headerVendedorNome');
+  const btnLogout = $('btnVendedorLogout');
+  const checkoutPreposto = $('checkoutPreposto');
+
+  if(session){
+    loginScreen.classList.add('hidden');
+    if(headerNome){
+      headerNome.textContent = session.nome;
+      headerNome.classList.remove('hidden');
+    }
+    if(btnLogout) btnLogout.classList.remove('hidden');
+    btnLogout.classList.add('inline-flex');
+    // Pré-seleciona e bloqueia o preposto no checkout
+    if(checkoutPreposto){
+      const prepostoValue = `${session.codigo} - ${session.nome}`;
+      checkoutPreposto.value = prepostoValue;
+      checkoutPreposto.disabled = true;
+      checkoutPreposto.classList.add('opacity-70','cursor-not-allowed');
+    }
+  }else{
+    loginScreen.classList.remove('hidden');
+    if(headerNome) headerNome.classList.add('hidden');
+    if(btnLogout){ btnLogout.classList.add('hidden'); btnLogout.classList.remove('inline-flex'); }
+    if(checkoutPreposto){
+      checkoutPreposto.disabled = false;
+      checkoutPreposto.classList.remove('opacity-70','cursor-not-allowed');
+    }
+  }
+}
+function buildLoginDatalist(){
+  const datalist = $('loginNomeList');
+  if(!datalist) return;
+  datalist.innerHTML = PREPOSTOS.map(p => {
+    const parts = p.split(' - ');
+    const nome = parts.slice(1).join(' - ');
+    return `<option value="${safeHtml(nome)}">`;
+  }).join('');
+}
+function handleLogin(){
+  const nomeInput = ($('loginNome').value || '').trim().toUpperCase();
+  const senhaInput = ($('loginSenha').value || '').trim();
+  const errorEl = $('loginError');
+
+  // Busca o preposto pelo nome (case insensitive) E valida que a senha = código
+  const match = PREPOSTOS.find(p => {
+    const parts = p.split(' - ');
+    const codigo = parts[0].trim();
+    const nome = parts.slice(1).join(' - ').trim().toUpperCase();
+    return nome === nomeInput && codigo === senhaInput;
+  });
+
+  if(!match){
+    errorEl.classList.remove('hidden');
+    $('loginSenha').value = '';
+    $('loginSenha').focus();
+    return;
+  }
+
+  errorEl.classList.add('hidden');
+  const parts = match.split(' - ');
+  const session = {
+    codigo: parts[0].trim(),
+    nome: parts.slice(1).join(' - ').trim()
+  };
+  setVendedorSession(session);
+  setLastPreposto(`${session.codigo} - ${session.nome}`);
+  applyVendedorSession();
+}
+function handleLogout(){
+  clearVendedorSession();
+  $('loginNome').value = '';
+  $('loginSenha').value = '';
+  applyVendedorSession();
+}
+
 function saveOrdersStorage(){ localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(STATE.orders)); }
 function saveViewMode(){ localStorage.setItem(STORAGE_KEYS.view, STATE.viewMode); }
 function getLastPreposto(){ return localStorage.getItem(STORAGE_KEYS.lastPreposto) || ''; }
@@ -1618,12 +1758,13 @@ function validateCartAgainstAvailability(){
   return null;
 }
 function validateCheckout(){
-  const preposto = $('checkoutPreposto').value;
+  const session = getVendedorSession();
+  const preposto = session ? `${session.codigo} - ${session.nome}` : $('checkoutPreposto').value;
   const cliente = $('checkoutCliente').value.trim();
   const prazo = $('checkoutPrazo').value;
   if(!preposto){ toast('Selecione o preposto'); return false; }
-  if(!cliente){ toast('Preencha o cliente'); return false; }
-  if(!/^\d+$/.test(cliente)){ toast('Cliente deve conter apenas números'); return false; }
+  if(!cliente){ toast('Preencha o código do cliente'); return false; }
+  if(!/^\d+$/.test(cliente)){ toast('Código do cliente deve conter apenas números'); return false; }
   if(!prazo){ toast('Selecione o prazo'); return false; }
   return true;
 }
@@ -1650,9 +1791,13 @@ async function submitOrder(options = {}){
     }
 
     const now = new Date();
-    const prepostoValue = $('checkoutPreposto').value;
+    const session = getVendedorSession();
+    const prepostoValue = session
+      ? `${session.codigo} - ${session.nome}`
+      : $('checkoutPreposto').value;
     const preposto = parsePreposto(prepostoValue);
     const clienteCodigo = $('checkoutCliente').value.trim();
+    const clienteNome = ($('checkoutClienteNome')?.value || '').trim();
     const prazo = $('checkoutPrazo').value;
     const campanha = $('checkoutCampanha').value;
     const observacoes = $('checkoutObs').value.trim();
@@ -1681,6 +1826,7 @@ async function submitOrder(options = {}){
       archived: false,
       preposto,
       clienteCodigo,
+      clienteNome: clienteNome || '',
       prazo,
       campanha,
       observacoes,
@@ -1703,8 +1849,9 @@ async function submitOrder(options = {}){
     renderCart();
     applyFilters();
     renderOrders();
-    $('checkoutPreposto').value = '';
+    if(!getVendedorSession()) $('checkoutPreposto').value = '';
     $('checkoutCliente').value = '';
+    if($('checkoutClienteNome')) $('checkoutClienteNome').value = '';
     $('checkoutPrazo').value = '';
     $('checkoutCampanha').value = '';
     $('checkoutObs').value = '';
@@ -2028,6 +2175,11 @@ async function generateCatalogPdf(){
   }
 }
 function bindEvents(){
+  $('btnLogin').addEventListener('click', handleLogin);
+  $('loginSenha').addEventListener('keydown', (e)=>{ if(e.key === 'Enter') handleLogin(); });
+  $('loginNome').addEventListener('keydown', (e)=>{ if(e.key === 'Enter') $('loginSenha').focus(); });
+  $('btnVendedorLogout').addEventListener('click', handleLogout);
+
   $('btnOpenCart').addEventListener('click', openCart);
   $('btnOrders').addEventListener('click', openOrders);
   $('btnRefreshStock').addEventListener('click', ()=>refreshStockFromSource({ silent:false, reason:'manual', force:true }));
@@ -2214,6 +2366,8 @@ function initMobileHeaderAutoHide(){
 }
 
 loadLocalState();
+buildLoginDatalist();
+applyVendedorSession();
 bindEvents();
 initMobileHeaderAutoHide();
 updateOrdersScopeButtons();
