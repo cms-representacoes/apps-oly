@@ -103,9 +103,8 @@
       flex:0 0 auto;
     }
 
-    .dot-pendente{ background:#d97706; }
-    .dot-aprovado{ background:#16a34a; }
-    .dot-cancelado{ background:#dc2626; }
+    .chip-duplicate{ background:#fff7ed; color:#c2410c; border-color:#fed7aa; border:1px solid #fed7aa; }
+    .dot-duplicate{ background:#f97316; }
 
     .history-timeline{ position:relative; }
     .history-timeline::before{ content:''; position:absolute; left:11px; top:6px; bottom:6px; width:2px; background:#e2e8f0; border-radius:999px; }
@@ -894,6 +893,7 @@ function normalizeOrder(rawOrder){
   order.campanha = sanitizeDisplayText(order.campanha);
   order.observacoes = sanitizeDisplayText(order.observacoes);
   order.archived = Boolean(order.archived);
+  order.isDuplicate = Boolean(order.isDuplicate);
   order.createdAt = order.createdAt || order.updatedAt || new Date().toISOString();
   order.updatedAt = order.updatedAt || order.createdAt;
 
@@ -1072,6 +1072,7 @@ function renderList(){
           <span class="chip chip-gray">${safeHtml(order.prazo)}</span>
           <span class="chip chip-blue">${safeHtml(order.lastActionLabel || 'Sem histórico')}</span>
           ${order.archived ? `<span class="chip chip-gray">Arquivado</span>` : ''}
+          ${order.isDuplicate ? `<span class="chip chip-duplicate"><i class="fa-solid fa-triangle-exclamation"></i> Possível duplicata</span>` : ''}
         </div>
       </button>
     `;
@@ -1130,6 +1131,7 @@ function renderDetail(){
             ${order.campanha ? `<span class="chip chip-blue">${safeHtml(order.campanha)}</span>` : ''}
             ${renderStatusChip(order.status)}
             ${order.archived ? `<span class="chip chip-gray">Arquivado</span>` : ''}
+            ${order.isDuplicate ? `<span class="chip chip-duplicate"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Possível duplicata — enviado pelo vendedor mesmo assim</span>` : ''}
           </div>
           ${order.observacoes ? `<div class="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600">${safeHtml(order.observacoes)}</div>` : ''}
         </div>
@@ -1310,6 +1312,13 @@ async function confirmCancelWithReason(){
   await updateStatus(context.orderId, 'Cancelado', { cancelReason: reason });
 }
 
+function showOverwriteWarning(updatedAt, currentStatus){
+  return new Promise(resolve => {
+    const msg = `⚠️ Este pedido foi alterado por outra sessão em ${updatedAt}.\nStatus atual: ${currentStatus}\n\nDeseja salvar mesmo assim?`;
+    resolve(window.confirm(msg));
+  });
+}
+
 async function updateStatus(id, status, options = {}){
   const idx = STATE.orders.findIndex(o => o.id === id);
   if(idx === -1) return;
@@ -1321,6 +1330,24 @@ async function updateStatus(id, status, options = {}){
     showToast('Esse pedido já está nesse status.', 'info');
     return;
   }
+
+  // ── PROTEÇÃO DE SOBRESCRITA — verificar se foi alterado por outra sessão ──
+  if(options._skipTimestampCheck !== true){
+    try{
+      const remote = await workerGetOrders();
+      const remoteOrder = remote.find(o => o.id === id);
+      if(remoteOrder){
+        const localTs = new Date(currentOrder.updatedAt).getTime();
+        const remoteTs = new Date(remoteOrder.updatedAt).getTime();
+        if(remoteTs > localTs + 2000){ // margem de 2s para evitar falso positivo
+          const remoteUpdated = formatDateTime(remoteOrder.updatedAt);
+          const confirmOverwrite = await showOverwriteWarning(remoteUpdated, remoteOrder.status);
+          if(!confirmOverwrite) return;
+        }
+      }
+    }catch(_){ /* se falhar a verificação, deixa salvar normalmente */ }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   const cancelReason = sanitizeDisplayText(options?.cancelReason);
   const eventLabel = nextStatus === 'Aprovado' ? 'Pedido aprovado' : nextStatus === 'Cancelado' ? 'Pedido cancelado' : 'Pedido voltou para pendente';
