@@ -120,7 +120,6 @@
       </div>
       <h1 class="mt-5 text-2xl font-extrabold">Repasse Olympikus</h1>
       <p class="mt-1 text-sm text-slate-500">Identifique-se para acessar a vitrine.</p>
-
       <div class="mt-5 space-y-4">
         <div>
           <label class="text-xs font-bold text-slate-500">Seu nome</label>
@@ -138,8 +137,7 @@
         <div id="loginError" class="hidden rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
           Nome ou código incorretos. Tente novamente.
         </div>
-        <button id="btnLogin"
-          class="focus-ring w-full rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white">
+        <button id="btnLogin" class="focus-ring w-full rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white">
           Entrar
         </button>
       </div>
@@ -161,7 +159,7 @@
         </div>
 
         <div class="flex items-center gap-2">
-          <button id="btnOpenCart" class="focus-ring inline-flex items-center gap-2 rounded-full bg-[var(--brand)] px-4 py-2 text-sm font-extrabold text-white shadow-soft">
+        <button id="btnOpenCart" class="focus-ring inline-flex items-center gap-2 rounded-full bg-[var(--brand)] px-4 py-2 text-sm font-extrabold text-white shadow-soft">
           <i class="fa-solid fa-cart-shopping"></i>
           <span>Sacola</span>
           <span id="cartCountBadge" class="hidden rounded-full bg-white/18 px-2 py-0.5 text-xs">0</span>
@@ -346,7 +344,7 @@
                 </select>
               </div>
               <div>
-                <label class="text-xs font-bold text-slate-500">Código do cliente *</label>
+                <label class="text-xs font-bold text-slate-500">Cliente *</label>
                 <input id="checkoutCliente" inputmode="numeric" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold" placeholder="Digite o código do cliente" />
               </div>
               <div>
@@ -753,111 +751,72 @@ function readJsonSafe(key, fallback){
     return raw ? JSON.parse(raw) : fallback;
   }catch(e){ return fallback; }
 }
-function getVendedorSession(){
-  return readJsonSafe(STORAGE_KEYS.vendedorSession, null);
-}
-function setVendedorSession(session){
-  localStorage.setItem(STORAGE_KEYS.vendedorSession, JSON.stringify(session));
-}
-function clearVendedorSession(){
-  localStorage.removeItem(STORAGE_KEYS.vendedorSession);
-}
-function applyVendedorSession(){
-  const session = getVendedorSession();
-  const loginScreen = $('loginScreen');
-  const headerNome = $('headerVendedorNome');
-  const btnLogout = $('btnVendedorLogout');
-  const checkoutPreposto = $('checkoutPreposto');
-
-  if(session){
-    loginScreen.classList.add('hidden');
-    if(headerNome){
-      headerNome.textContent = session.nome;
-      headerNome.classList.remove('hidden');
-    }
-    if(btnLogout) btnLogout.classList.remove('hidden');
-    btnLogout.classList.add('inline-flex');
-    // Pré-seleciona e bloqueia o preposto no checkout
-    if(checkoutPreposto){
-      const prepostoValue = `${session.codigo} - ${session.nome}`;
-      checkoutPreposto.value = prepostoValue;
-      checkoutPreposto.disabled = true;
-      checkoutPreposto.classList.add('opacity-70','cursor-not-allowed');
-    }
-  }else{
-    loginScreen.classList.remove('hidden');
-    if(headerNome) headerNome.classList.add('hidden');
-    if(btnLogout){ btnLogout.classList.add('hidden'); btnLogout.classList.remove('inline-flex'); }
-    if(checkoutPreposto){
-      checkoutPreposto.disabled = false;
-      checkoutPreposto.classList.remove('opacity-70','cursor-not-allowed');
-    }
-  }
-}
-function buildLoginDatalist(){
-  const datalist = $('loginNomeList');
-  if(!datalist) return;
-  datalist.innerHTML = PREPOSTOS.map(p => {
-    const parts = p.split(' - ');
-    const nome = parts.slice(1).join(' - ');
-    return `<option value="${safeHtml(nome)}">`;
-  }).join('');
-}
-function handleLogin(){
-  const nomeInput = ($('loginNome').value || '').trim().toUpperCase();
-  const senhaInput = ($('loginSenha').value || '').trim();
-  const errorEl = $('loginError');
-
-  // Busca o preposto pelo nome (case insensitive) E valida que a senha = código
-  const match = PREPOSTOS.find(p => {
-    const parts = p.split(' - ');
-    const codigo = parts[0].trim();
-    const nome = parts.slice(1).join(' - ').trim().toUpperCase();
-    return nome === nomeInput && codigo === senhaInput;
-  });
-
-  if(!match){
-    errorEl.classList.remove('hidden');
-    $('loginSenha').value = '';
-    $('loginSenha').focus();
-    return;
-  }
-
-  errorEl.classList.add('hidden');
-  const parts = match.split(' - ');
-  const session = {
-    codigo: parts[0].trim(),
-    nome: parts.slice(1).join(' - ').trim()
-  };
-  setVendedorSession(session);
-  setLastPreposto(`${session.codigo} - ${session.nome}`);
-
-  // Limpa pedidos em cache — força busca fresca do Worker ao carregar
-  localStorage.removeItem(STORAGE_KEYS.orders);
-  STATE.orders = [];
-
-  applyVendedorSession();
-
-  // Recarrega pedidos frescos do Worker imediatamente após login
-  refreshOrdersFromRemote().then(()=>{
-    renderOrders();
-    renderCart();
-    applyFilters();
-  }).catch(()=>{});
-}
-function handleLogout(){
-  clearVendedorSession();
-  $('loginNome').value = '';
-  $('loginSenha').value = '';
-  applyVendedorSession();
-}
-
+function saveCartStorage(){ localStorage.setItem(STORAGE_KEYS.cart, JSON.stringify(Array.from(STATE.cart.values()))); }
 function saveOrdersStorage(){ localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(STATE.orders)); }
 function saveViewMode(){ localStorage.setItem(STORAGE_KEYS.view, STATE.viewMode); }
 function getLastPreposto(){ return localStorage.getItem(STORAGE_KEYS.lastPreposto) || ''; }
 function setLastPreposto(value){ localStorage.setItem(STORAGE_KEYS.lastPreposto, value || ''); }
 function getOrdersScope(){ return localStorage.getItem(STORAGE_KEYS.ordersScope) || 'active'; }
 function setOrdersScope(value){ localStorage.setItem(STORAGE_KEYS.ordersScope, value || 'active'); }
+
+// ── SESSÃO DO VENDEDOR ────────────────────────────────────────────────────────
+function getVendedorSession(){ return readJsonSafe(STORAGE_KEYS.vendedorSession, null); }
+function setVendedorSession(s){ localStorage.setItem(STORAGE_KEYS.vendedorSession, JSON.stringify(s)); }
+function clearVendedorSession(){ localStorage.removeItem(STORAGE_KEYS.vendedorSession); }
+
+function applyVendedorSession(){
+  const session = getVendedorSession();
+  const loginScreen = $('loginScreen');
+  const headerNome = $('headerVendedorNome');
+  const btnLogout = $('btnVendedorLogout');
+  const preposto = $('checkoutPreposto');
+
+  if(session){
+    loginScreen.classList.add('hidden');
+    if(headerNome){ headerNome.textContent = session.nome; headerNome.classList.remove('hidden'); }
+    if(btnLogout){ btnLogout.classList.remove('hidden'); btnLogout.classList.add('inline-flex'); }
+    if(preposto){ preposto.value = `${session.codigo} - ${session.nome}`; preposto.disabled = true; preposto.classList.add('opacity-70','cursor-not-allowed'); }
+  } else {
+    loginScreen.classList.remove('hidden');
+    if(headerNome) headerNome.classList.add('hidden');
+    if(btnLogout){ btnLogout.classList.add('hidden'); btnLogout.classList.remove('inline-flex'); }
+    if(preposto){ preposto.disabled = false; preposto.classList.remove('opacity-70','cursor-not-allowed'); }
+  }
+}
+
+function buildLoginDatalist(){
+  const dl = $('loginNomeList');
+  if(!dl) return;
+  dl.innerHTML = PREPOSTOS.map(p => {
+    const nome = p.split(' - ').slice(1).join(' - ');
+    return `<option value="${safeHtml(nome)}">`;
+  }).join('');
+}
+
+function handleLogin(){
+  const nomeInput = ($('loginNome').value || '').trim().toUpperCase();
+  const senhaInput = ($('loginSenha').value || '').trim();
+  const errorEl = $('loginError');
+  const match = PREPOSTOS.find(p => {
+    const parts = p.split(' - ');
+    return parts[0].trim() === senhaInput && parts.slice(1).join(' - ').trim().toUpperCase() === nomeInput;
+  });
+  if(!match){ errorEl.classList.remove('hidden'); $('loginSenha').value = ''; $('loginSenha').focus(); return; }
+  errorEl.classList.add('hidden');
+  const parts = match.split(' - ');
+  const session = { codigo: parts[0].trim(), nome: parts.slice(1).join(' - ').trim() };
+  setVendedorSession(session);
+  setLastPreposto(`${session.codigo} - ${session.nome}`);
+  applyVendedorSession();
+}
+
+function handleLogout(){
+  clearVendedorSession();
+  $('loginNome').value = '';
+  $('loginSenha').value = '';
+  applyVendedorSession();
+}
+// ─────────────────────────────────────────────────────────────────────────────
 function hasWorkerConfig(){
   return Boolean(WORKER_CONFIG.endpoint);
 }
@@ -877,10 +836,7 @@ async function workerRequest(method='GET', payload=null){
   return res.json();
 }
 function isReservedStatus(status){
-  const s = sanitizeDisplayText(status).toLowerCase();
-  // Exclui explicitamente cancelado e rejeitado
-  if(['cancelado','rejeitado','cancelada'].includes(s)) return false;
-  return ['pendente','em análise','aprovado','atendido parcialmente'].includes(s);
+  return ['Pendente','Em análise','Aprovado','Atendido parcialmente'].includes(sanitizeDisplayText(status));
 }
 function shouldReserveDispo(order){
   if(order?.archived) return false;
@@ -1778,8 +1734,8 @@ function validateCheckout(){
   const cliente = $('checkoutCliente').value.trim();
   const prazo = $('checkoutPrazo').value;
   if(!preposto){ toast('Selecione o preposto'); return false; }
-  if(!cliente){ toast('Preencha o código do cliente'); return false; }
-  if(!/^\d+$/.test(cliente)){ toast('Código do cliente deve conter apenas números'); return false; }
+  if(!cliente){ toast('Preencha o cliente'); return false; }
+  if(!/^\d+$/.test(cliente)){ toast('Cliente deve conter apenas números'); return false; }
   if(!prazo){ toast('Selecione o prazo'); return false; }
   return true;
 }
@@ -1807,9 +1763,7 @@ async function submitOrder(options = {}){
 
     const now = new Date();
     const session = getVendedorSession();
-    const prepostoValue = session
-      ? `${session.codigo} - ${session.nome}`
-      : $('checkoutPreposto').value;
+    const prepostoValue = session ? `${session.codigo} - ${session.nome}` : $('checkoutPreposto').value;
     const preposto = parsePreposto(prepostoValue);
     const clienteCodigo = $('checkoutCliente').value.trim();
     const clienteNome = ($('checkoutClienteNome')?.value || '').trim();
@@ -2190,42 +2144,25 @@ async function generateCatalogPdf(){
   }
 }
 function bindEvents(){
+  // ── LOGIN ─────────────────────────────────────────────────────────────────
   $('btnLogin').addEventListener('click', handleLogin);
   $('loginSenha').addEventListener('keydown', (e)=>{ if(e.key === 'Enter') handleLogin(); });
   $('loginNome').addEventListener('keydown', (e)=>{ if(e.key === 'Enter') $('loginSenha').focus(); });
   $('btnVendedorLogout').addEventListener('click', handleLogout);
 
-  // ── ESC global — fecha qualquer modal/drawer aberto ──────────────────────
+  // ── ESC global ────────────────────────────────────────────────────────────
   document.addEventListener('keydown', (e)=>{
     if(e.key !== 'Escape') return;
     e.preventDefault();
-
-    // Ordem: do mais profundo para o mais externo
-    if($('gradeSheetWrap') && !$('gradeSheetWrap').classList.contains('hidden')){
-      closeGradeSheet(); return;
-    }
-    if($('catalogShareModalWrap') && !$('catalogShareModalWrap').classList.contains('hidden')){
-      closeCatalogShareModal(); return;
-    }
-    if($('catalogPdfModalWrap') && !$('catalogPdfModalWrap').classList.contains('hidden')){
-      closeCatalogPdfModal(); return;
-    }
-    if($('conflictModalWrap') && !$('conflictModalWrap').classList.contains('hidden')){
-      closeConflictModal(); return;
-    }
-    if($('checkoutDrawerWrap') && !$('checkoutDrawerWrap').classList.contains('hidden')){
-      closeCheckout(); return;
-    }
-    if($('cartDrawerWrap') && !$('cartDrawerWrap').classList.contains('hidden')){
-      closeCart(); return;
-    }
-    if($('ordersDrawerWrap') && !$('ordersDrawerWrap').classList.contains('hidden')){
-      closeOrders(); return;
-    }
-    if(document.body.classList.contains('filters-open')){
-      document.body.classList.remove('filters-open'); return;
-    }
-  }, true); // capture:true — intercepta antes do elemento com foco
+    if($('gradeSheetWrap') && !$('gradeSheetWrap').classList.contains('hidden')){ closeGradeSheet(); return; }
+    if($('catalogShareModalWrap') && !$('catalogShareModalWrap').classList.contains('hidden')){ closeCatalogShareModal(); return; }
+    if($('catalogPdfModalWrap') && !$('catalogPdfModalWrap').classList.contains('hidden')){ closeCatalogPdfModal(); return; }
+    if($('conflictModalWrap') && !$('conflictModalWrap').classList.contains('hidden')){ closeConflictModal(); return; }
+    if($('checkoutDrawerWrap') && !$('checkoutDrawerWrap').classList.contains('hidden')){ closeCheckout(); return; }
+    if($('cartDrawerWrap') && !$('cartDrawerWrap').classList.contains('hidden')){ closeCart(); return; }
+    if($('ordersDrawerWrap') && !$('ordersDrawerWrap').classList.contains('hidden')){ closeOrders(); return; }
+    if(document.body.classList.contains('filters-open')){ document.body.classList.remove('filters-open'); return; }
+  }, true);
   // ─────────────────────────────────────────────────────────────────────────
 
   $('btnOpenCart').addEventListener('click', openCart);
@@ -2428,6 +2365,7 @@ refreshOrdersFromRemote().then(()=>{
 }).catch(()=>{});
 loadCatalog().then(()=>{
   refreshStockFromSource({ silent:true, reason:'load', force:true });
+  applyVendedorSession(); // re-aplica sessão após buildFilters popular o select de preposto
 }).catch(()=>{});
 </script>
 </body>
