@@ -879,12 +879,16 @@ function buildDesmembramentoLinhas(row){
   for(const order of STATE.orders){
     for(const item of (order.items || [])){
       // Cruza por codigo+cor+prevFat
-      const itemPrevFat = formatDate(item.prevFaturamento);
-      const rowPrevFat  = formatDate(row.dataEntrega);
-      const codigoMatch = sanitizeDisplayText(item.codigo) === sanitizeDisplayText(row.codigo);
-      const corMatch    = sanitizeDisplayText(item.cor).toUpperCase() === sanitizeDisplayText(row.cor).toUpperCase();
-      const fatMatch    = itemPrevFat === rowPrevFat;
-      if(!codigoMatch || !corMatch || !fatMatch) continue;
+      const itemCodigo  = sanitizeDisplayText(item.codigo || '');
+      const itemProduto = sanitizeDisplayText(item.produto || '');
+      const itemCor     = sanitizeDisplayText(item.cor || '').toUpperCase();
+      const rowCodigo   = sanitizeDisplayText(row.codigo || '');
+      const rowProduto  = sanitizeDisplayText(row.produto || '');
+      const rowCor      = sanitizeDisplayText(row.cor || '').toUpperCase();
+      // Cruza por codigo+cor OU produto+cor (fallback para pedidos sem codigo)
+      const codigoMatch = itemCodigo && rowCodigo ? itemCodigo === rowCodigo : itemProduto === rowProduto;
+      const corMatch    = itemCor === rowCor;
+      if(!codigoMatch || !corMatch) continue;
 
       const lineKey = `${order.id}||${item.codigo}||${item.cor}`;
       const savedStatus = saved[lineKey] || 'Pendente';
