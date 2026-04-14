@@ -282,6 +282,14 @@
     .grade-pill-inline .gpi-s{ color:#64748b; }
     .grade-pill-inline .gpi-q{ color:var(--brand); font-weight:800; }
 
+    .relatorio-grade-hidden .relatorio-grade-col{ display:none; }
+    .relatorio-table thead th.th-grade-toggle{
+      cursor:pointer; user-select:none;
+      transition:color .12s, background .12s;
+    }
+    .relatorio-table thead th.th-grade-toggle:hover{ color:var(--brand); background:#eef0ff; }
+    .relatorio-table thead th.th-grade-toggle.grade-active{ color:var(--brand); background:#eef0ff; }
+
     .ranking-bar{ background:#f1f5f9; border-radius:999px; height:6px; overflow:hidden; margin-top:5px; }
     .ranking-fill{ height:100%; border-radius:999px; background:var(--brand); transition:width .4s ease; }
 
@@ -431,10 +439,11 @@
             </div>
 
             <div id="relatorioTableWrap" class="hidden overflow-auto rounded-[20px] border border-slate-200">
-              <table class="relatorio-table" id="relatorioTable">
+              <table class="relatorio-table relatorio-grade-hidden" id="relatorioTable">
                 <thead>
                   <tr id="relatorioThead">
                     <th class="relatorio-sortable" data-col="data">Data <i class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                    <th class="relatorio-sortable" data-col="ebm">EBM <i class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
                     <th class="relatorio-sortable" data-col="gci">GCI <i class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
                     <th class="relatorio-sortable" data-col="cliente">Cliente <i class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
                     <th class="relatorio-sortable" data-col="prazo">Prazo <i class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
@@ -444,7 +453,9 @@
                     <th class="relatorio-sortable text-right" data-col="qtde">Qtde <i class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
                     <th class="relatorio-sortable" data-col="prevFaturamento">Prev Fat <i class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
                     <th class="relatorio-sortable" data-col="status">Status <i class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
-                    <th>Grade</th>
+                    <th class="th-grade-toggle relatorio-grade-col" id="thGradeToggle" onclick="toggleRelatorioGrade()">
+                      Grade <i class="fa-regular fa-eye text-[11px]"></i>
+                    </th>
                   </tr>
                 </thead>
                 <tbody id="relatorioTableBody"></tbody>
@@ -1502,11 +1513,29 @@ function stripOly(campanha){
   return sanitizeDisplayText(campanha).replace(/\s*\bOLY\b\s*/gi,'').replace(/\s*\bUA\b\s*/gi,'').trim() || '—';
 }
 
-function gradeInline(grade){
+function stripPrazo(prazo){
+  const s = sanitizeDisplayText(prazo);
+  // Remove prefixo "Z99 - " e sufixo " D"
+  const clean = s.replace(/^Z\d+\s*-\s*/i,'').replace(/\s*D\s*$/i,'').trim();
+  return clean || s;
+}
+
+function gradeInlinePills(grade){
   if(!Array.isArray(grade) || !grade.length) return '—';
-  return `<div style="display:flex;flex-wrap:nowrap;gap:2px;overflow:hidden">${
-    grade.map(g=>`<span class="grade-pill-inline"><span class="gpi-s">${safeHtml(g.size)}</span><span class="gpi-q">${safeHtml(g.qty)}</span></span>`).join('')
+  return `<div style="display:flex;flex-wrap:nowrap;gap:3px">${
+    grade.map(g=>`<div style="display:inline-flex;flex-direction:column;align-items:center;border:0.5px solid #e2e8f0;border-radius:8px;padding:3px 6px;min-width:30px;background:#fff"><span style="font-size:9px;color:#64748b;line-height:1.2">${safeHtml(g.size)}</span><span style="font-size:10px;color:var(--brand);font-weight:800;line-height:1.3">${safeHtml(g.qty)}</span></div>`).join('')
   }</div>`;
+}
+
+function toggleRelatorioGrade(){
+  const table = $('relatorioTable');
+  const th = $('thGradeToggle');
+  if(!table || !th) return;
+  const hidden = table.classList.contains('relatorio-grade-hidden');
+  table.classList.toggle('relatorio-grade-hidden', !hidden);
+  th.classList.toggle('grade-active', hidden);
+  const icon = th.querySelector('i');
+  if(icon) icon.className = hidden ? 'fa-solid fa-eye text-[11px]' : 'fa-regular fa-eye text-[11px]';
 }
 
 const RELATORIO_SORT = { col: null, dir: 1 };
@@ -1520,18 +1549,20 @@ function buildRelatorioLinhas(orders){
       : `<div class="font-extrabold">${safeHtml(o.clienteCodigo)}</div>`;
     const statusHtml = renderStatusChip(o.status);
     const campanhaDisplay = safeHtml(stripOly(o.campanha || ''));
-    const prazoDisplay = safeHtml(o.prazo || '—');
+    const prazoDisplay = safeHtml(stripPrazo(o.prazo || '—'));
     const items = o.items || [];
     if(!items.length){
       linhas.push(`<tr>
         <td class="text-slate-500 font-semibold whitespace-nowrap">${safeHtml(data)}</td>
+        <td class="text-slate-400">—</td>
         <td class="text-slate-400">—</td>
         <td>${clienteHtml}</td>
         <td class="text-slate-500 font-semibold whitespace-nowrap">${prazoDisplay}</td>
         <td class="text-slate-500 font-semibold">${campanhaDisplay}</td>
         <td class="text-slate-400">—</td><td class="text-slate-400">—</td>
         <td class="text-right font-extrabold">—</td><td class="text-slate-400">—</td>
-        <td>${statusHtml}</td><td class="text-slate-400">—</td>
+        <td>${statusHtml}</td>
+        <td class="relatorio-grade-col">—</td>
       </tr>`);
     } else {
       items.forEach((item, idx) => {
@@ -1539,7 +1570,8 @@ function buildRelatorioLinhas(orders){
         const prevFat = safeHtml(formatDate(item.prevFaturamento) || '—');
         linhas.push(`<tr>
           ${idx === 0 ? `<td class="text-slate-500 font-semibold whitespace-nowrap" rowspan="${items.length}">${safeHtml(data)}</td>` : ''}
-          <td class="font-extrabold text-[var(--brand)] text-[11px]">${safeHtml(item.gci || item.ebm || '—')}</td>
+          <td class="text-slate-500 font-semibold text-[11px]">${safeHtml(item.ebm || '—')}</td>
+          <td class="font-extrabold text-[var(--brand)] text-[11px]">${safeHtml(item.gci || '—')}</td>
           ${idx === 0 ? `<td rowspan="${items.length}">${clienteHtml}</td>` : ''}
           ${idx === 0 ? `<td class="text-slate-500 font-semibold whitespace-nowrap" rowspan="${items.length}">${prazoDisplay}</td>` : ''}
           ${idx === 0 ? `<td class="text-slate-500 font-semibold" rowspan="${items.length}">${campanhaDisplay}</td>` : ''}
@@ -1548,7 +1580,7 @@ function buildRelatorioLinhas(orders){
           <td class="text-right font-extrabold">${formatInt(units)}</td>
           <td class="text-slate-500 font-semibold whitespace-nowrap">${prevFat}</td>
           ${idx === 0 ? `<td rowspan="${items.length}">${statusHtml}</td>` : ''}
-          <td>${gradeInline(item.grade)}</td>
+          <td class="relatorio-grade-col">${gradeInlinePills(item.grade)}</td>
         </tr>`);
       });
     }
@@ -1619,7 +1651,7 @@ function renderRelatorio(){
   $('relatorioTableWrap').classList.remove('hidden');
   $('relatorioAcoes').classList.remove('hidden');
   $('relatorioTableBody').innerHTML=buildRelatorioLinhas(orders).join('');
-  $('relatorioTableFoot').innerHTML=`<tr><td colspan="7" class="font-extrabold">Total</td><td class="text-right font-extrabold">${formatInt(totalUnidades)}</td><td colspan="3"></td></tr>`;
+  $('relatorioTableFoot').innerHTML=`<tr><td colspan="8" class="font-extrabold">Total</td><td class="text-right font-extrabold">${formatInt(totalUnidades)}</td><td colspan="3"></td></tr>`;
   const now=new Date();
   $('relatorioRodape').textContent=`Gerado em ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · ${orders.length} pedidos · ${formatInt(totalUnidades)} unidades`;
   STATE._relatorioAtual={nomeVendedor,orders,totalItens,totalUnidades};
@@ -1706,16 +1738,17 @@ async function relatorioExportPdf(){
     // Colunas — landscape A4 = 297mm, usável = 273mm
     const cols = [
       { label:'Data',      w:20 },
+      { label:'EBM',       w:18 },
       { label:'GCI',       w:16 },
-      { label:'Cliente',   w:28 },
-      { label:'Campanha',  w:24 },
-      { label:'Prazo',     w:22 },
-      { label:'Descrição', w:46 },
-      { label:'Cor',       w:20 },
+      { label:'Cliente',   w:26 },
+      { label:'Prazo',     w:18 },
+      { label:'Campanha',  w:22 },
+      { label:'Descrição', w:44 },
+      { label:'Cor',       w:18 },
       { label:'Qtde',      w:12, align:'right' },
       { label:'Prev Fat',  w:18 },
       { label:'Status',    w:18 },
-      { label:'Grade',     w:49 }
+      { label:'Grade',     w:43 }
     ];
 
     const startX = 12;
@@ -1773,10 +1806,11 @@ async function relatorioExportPdf(){
 
         const vals = [
           idx===0 ? data : '',
-          item ? (item.gci || item.ebm || '—') : '—',
+          item ? (item.ebm || '—') : '—',
+          item ? (item.gci || '—') : '—',
           idx===0 ? cliente : '',
-          idx===0 ? campanha : '',
-          idx===0 ? (o.prazo || '—') : '',
+          idx===0 ? stripPrazo(o.prazo || '—') : '',
+          idx===0 ? stripOly(o.campanha || '—') : '',
           item ? (item.produto || '—') : '—',
           item ? (item.cor || '—') : '—',
           item ? String(formatInt(units)) : '—',
@@ -1791,10 +1825,10 @@ async function relatorioExportPdf(){
           const col = cols[i];
           const tx = col.align==='right' ? cx+col.w-2 : cx;
           let txt = doc.splitTextToSize(String(vals[i]), col.w-2)[0] || '';
-          if(i===9 && vals[i]){
+          if(i===10 && vals[i]){
             const color = status==='Aprovado'?[21,128,61]:status==='Cancelado'?[185,28,28]:[180,83,9];
             doc.setTextColor(...color);
-          } else if(i===1 && vals[i] && vals[i]!=='—'){
+          } else if(i===2 && vals[i] && vals[i]!=='—'){
             doc.setTextColor(40,54,212);
           } else {
             doc.setTextColor(15,23,42);
@@ -1813,7 +1847,7 @@ async function relatorioExportPdf(){
     doc.setFontSize(7);
     doc.setTextColor(15,23,42);
     let cx = startX + 1.5;
-    const totVals = ['Total','','','','','','',formatInt(totalUnidadesPdf),'','',''];
+    const totVals = ['Total','','','','','','','',formatInt(totalUnidadesPdf),'','',''];
     for(let i=0;i<cols.length;i++){
       const col = cols[i];
       const tx = col.align==='right'?cx+col.w-2:cx;
