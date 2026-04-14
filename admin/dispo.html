@@ -298,8 +298,7 @@
     }
 
     /* Linha clicável */
-    .table-wrap tbody tr{ cursor:pointer; }
-    .table-wrap tbody tr:hover td{ background:#f1f5f9; }
+    .table-wrap tbody tr:hover td{ background:#f8fafc; }
 
     /* Modal desmembramento */
     .desm-modal-wrap{ position:fixed; inset:0; z-index:100; display:none; align-items:center; justify-content:center; }
@@ -317,6 +316,15 @@
     .desm-status-select{ border:1px solid #e2e8f0; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; cursor:pointer; outline:none; appearance:none; -webkit-appearance:none; }
     .desm-status-select.st-pendente{ background:#fef3c7; color:#b45309; border-color:#fde68a; }
     .desm-status-select.st-finalizado{ background:#dcfce7; color:#15803d; border-color:#bbf7d0; }
+
+    .btn-desmembrar{
+      display:inline-flex; align-items:center; gap:5px;
+      border:1px solid var(--brand); border-radius:999px;
+      padding:4px 10px; font-size:11px; font-weight:700;
+      color:var(--brand); background:#eef0ff; cursor:pointer;
+      white-space:nowrap; transition:background .12s;
+    }
+    .btn-desmembrar:hover{ background:#d8dbff; }
   </style>
 </head>
 <body>
@@ -446,6 +454,7 @@
                 <th class="sortable" data-col="pedidoMae">Pedido Mãe<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th>Comprometido</th>
                 <th class="sortable" data-col="situacao">Situação<i class="fa-solid fa-sort sort-icon"></i></th>
+                <th></th>
               </tr>
             </thead>
             <tbody id="dispoTableBody"></tbody>
@@ -834,7 +843,7 @@ function renderDispo(){
 
   $('dispoEmpty').classList.add('hidden');
 
-  $('dispoTableBody').innerHTML = sorted.map(row => {
+  $('dispoTableBody').innerHTML = sorted.map((row, idx) => {
     const sit = row.situacao;
     const saldoRealDisplay = row.saldoReal < 0
       ? `<span class="${sit.className}">−${formatInt(Math.abs(row.saldoReal))}</span>`
@@ -859,6 +868,11 @@ function renderDispo(){
             ${sit.sortVal <= 1 ? '<i class="fa-solid fa-triangle-exclamation"></i>' : ''}
             ${safeHtml(sit.label)}
           </span>
+        </td>
+        <td>
+          <button class="btn-desmembrar" data-idx="${idx}">
+            <i class="fa-solid fa-table-list"></i> Desmembrar
+          </button>
         </td>
       </tr>
     `;
@@ -1098,16 +1112,17 @@ document.addEventListener('keydown', (e)=>{
 });
 
 // Click em qualquer linha da tabela DISPO
+
+
+// Botão Desmembrar por linha
 $('dispoTableBody').addEventListener('click', (e)=>{
-  const tr = e.target.closest('tr');
-  if(!tr) return;
-  const idx = Array.from(tr.parentElement.children).indexOf(tr);
-  const visibleRows = sortRows(computeRows());
-  const row = visibleRows[idx];
+  const btn = e.target.closest('.btn-desmembrar');
+  if(!btn) return;
+  const idx = parseInt(btn.dataset.idx, 10);
+  const sorted = sortRows(computeRows());
+  const row = sorted[idx];
   if(row) openDesmModal(row);
 });
-
-// ── INIT ──────────────────────────────────────────────────────────────────────
 // Auto-load on page open
 loadDispo();
 </script>
