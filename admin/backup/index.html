@@ -321,13 +321,6 @@
               Atualizar
             </button>
 
-            <button id="btnToggleResumo"
-              class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 flex items-center gap-2"
-              title="Exibir/ocultar painel de resumo">
-              <i class="fa-solid fa-chart-bar"></i>
-              <span id="btnToggleResumoLabel">Ocultar resumo</span>
-            </button>
-
             <a href="./dispo.html"
               class="focus-ring rounded-full border border-[var(--brand)] bg-[var(--brand-soft)] px-4 py-2 text-sm font-bold text-[var(--brand)] flex items-center gap-2 hover:bg-[var(--brand)] hover:text-white transition-colors">
               <i class="fa-solid fa-boxes-stacked"></i>
@@ -933,10 +926,6 @@ async function workerDeleteOrder(id){
 }
 
 async function applyAuthUI(){
-  // Se voltando do Painel DISPO, já está autenticado — limpa o flag
-  const returning = sessionStorage.getItem('dispo_returning');
-  if(returning) sessionStorage.removeItem('dispo_returning');
-
   const ok = localStorage.getItem(STORAGE_KEYS.adminAuth) === 'ok';
 
   $('loginScreen').classList.toggle('hidden', ok);
@@ -1680,45 +1669,12 @@ $('btnAdminLogin').addEventListener('click', async ()=>{
   await applyAuthUI();
 });
 
-$('adminPassword').addEventListener('keydown', async (e)=>{
-  if(e.key === 'Enter') $('btnAdminLogin').click();
-});
-
 $('btnLogout').addEventListener('click', ()=>{
   localStorage.removeItem(STORAGE_KEYS.adminAuth);
   applyAuthUI();
 });
 
 $('btnRefresh').addEventListener('click', async ()=>{ await loadAdmin(); });
-
-// ── Toggle Bloco 2 ────────────────────────────────────────────────────────────
-(()=>{
-  const RESUMO_KEY = 'repasse_admin_resumo_visible_v1';
-  let visible = localStorage.getItem(RESUMO_KEY) !== 'false';
-
-  function applyResumoVisibility(){
-    const section = $('blocoResumo');
-    const label = $('btnToggleResumoLabel');
-    const btn = $('btnToggleResumo');
-    if(!section) return;
-    section.style.display = visible ? '' : 'none';
-    if(label) label.textContent = visible ? 'Ocultar resumo' : 'Mostrar resumo';
-    if(btn){
-      btn.classList.toggle('bg-[var(--brand-soft)]', !visible);
-      btn.classList.toggle('text-[var(--brand)]', !visible);
-      btn.classList.toggle('border-[var(--brand)]', !visible);
-    }
-  }
-
-  $('btnToggleResumo').addEventListener('click', ()=>{
-    visible = !visible;
-    localStorage.setItem(RESUMO_KEY, String(visible));
-    applyResumoVisibility();
-  });
-
-  applyResumoVisibility();
-})();
-// ─────────────────────────────────────────────────────────────────────────────
 
 // ── BLOCO 2 listeners ─────────────────────────────────────────────────────────
 document.querySelectorAll('.kpi-op[data-status-filter]').forEach(card => {
