@@ -372,26 +372,23 @@
           </div>
         </div>
 
-        <!-- RANKING + RELATÓRIO -->
-        <div class="grid grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)] gap-4 mb-4">
-
-          <!-- RANKING VENDEDORES — colapsável -->
-          <div class="rounded-[28px] border border-slate-200 bg-white shadow-card overflow-hidden">
-            <button id="btnToggleRanking"
-              class="focus-ring w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors"
-              onclick="(()=>{ const b=$('rankingBody'); const ic=$('rankingIcon'); const vis=b.style.display==='none'; b.style.display=vis?'block':'none'; ic.style.transform=vis?'rotate(0deg)':'rotate(-90deg)'; localStorage.setItem('repasse_ranking_open',vis?'1':'0'); })()">
-              <div class="text-sm font-extrabold text-slate-800">Ranking de vendedores</div>
-              <i id="rankingIcon" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform" style="transform:rotate(-90deg)"></i>
-            </button>
-            <div id="rankingBody" class="px-4 pb-4 space-y-3" style="display:none">
-              <div id="rankingVendedores" class="space-y-3">
-                <div class="text-xs text-slate-400 font-semibold">Carregando...</div>
-              </div>
+        <!-- RANKING — largura total, colapsável, acima do relatório -->
+        <div class="rounded-[28px] border border-slate-200 bg-white shadow-card overflow-hidden mb-4">
+          <button id="btnToggleRanking"
+            class="focus-ring w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+            onclick="(()=>{ const b=$('rankingBody'); const ic=$('rankingIcon'); const vis=b.style.display==='none'; b.style.display=vis?'block':'none'; ic.style.transform=vis?'rotate(0deg)':'rotate(-90deg)'; localStorage.setItem('repasse_ranking_open',vis?'1':'0'); })()">
+            <div class="text-sm font-extrabold text-slate-800">Ranking de vendedores</div>
+            <i id="rankingIcon" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform" style="transform:rotate(-90deg)"></i>
+          </button>
+          <div id="rankingBody" class="px-4 pb-4" style="display:none">
+            <div id="rankingVendedores" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+              <div class="text-xs text-slate-400 font-semibold">Carregando...</div>
             </div>
           </div>
+        </div>
 
-          <!-- RELATÓRIO POR VENDEDOR -->
-          <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-card">
+        <!-- RELATÓRIO POR VENDEDOR — largura total -->
+        <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-card mb-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <div>
                 <div class="text-sm font-extrabold text-slate-800">Relatório por vendedor</div>
@@ -424,6 +421,7 @@
                     <th>GCI</th>
                     <th>Cliente</th>
                     <th>Campanha</th>
+                    <th>Prazo</th>
                     <th>Descrição</th>
                     <th>Cor</th>
                     <th class="text-right">Qtde</th>
@@ -455,7 +453,6 @@
               </div>
             </div>
           </div>
-        </div>
       </section>
       <!-- ────────────────────────────────────────────────────────────────────── -->
 
@@ -1441,7 +1438,7 @@ function renderRanking(){
   }
 
   $('rankingVendedores').innerHTML = sorted.map(([nome, qtd], idx) => `
-    <div>
+    <div class="rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-3">
       <div class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2 min-w-0">
           <span class="text-xs font-extrabold text-slate-400 w-4">${idx+1}</span>
@@ -1532,16 +1529,17 @@ function renderRelatorio(){
       : `<div class="font-extrabold">${safeHtml(o.clienteCodigo)}</div>`;
     const status = renderStatusChip(o.status);
     const campanha = safeHtml(o.campanha || '—');
+    const prazo = safeHtml(o.prazo || '—');
 
     const items = o.items || [];
     if(!items.length){
-      // Pedido sem itens — linha única com dados do pedido
       linhas.push(`
         <tr>
           <td class="text-slate-500 font-semibold whitespace-nowrap">${safeHtml(data)}</td>
           <td class="text-slate-400">—</td>
           <td>${cliente}</td>
           <td class="text-slate-500 font-semibold">${campanha}</td>
+          <td class="text-slate-500 font-semibold whitespace-nowrap">${prazo}</td>
           <td class="text-slate-400">—</td>
           <td class="text-slate-400">—</td>
           <td class="text-right font-extrabold">—</td>
@@ -1564,6 +1562,7 @@ function renderRelatorio(){
             <td class="font-extrabold text-[var(--brand)] text-[11px]">${safeHtml(item.gci || item.ebm || '—')}</td>
             ${idx === 0 ? `<td rowspan="${items.length}">${cliente}</td>` : ''}
             ${idx === 0 ? `<td class="text-slate-500 font-semibold" rowspan="${items.length}">${campanha}</td>` : ''}
+            ${idx === 0 ? `<td class="text-slate-500 font-semibold whitespace-nowrap" rowspan="${items.length}">${prazo}</td>` : ''}
             <td class="font-extrabold text-slate-800">${safeHtml(item.produto || '—')}</td>
             <td class="text-slate-500 font-semibold">${safeHtml(item.cor || '—')}</td>
             <td class="text-right font-extrabold">${formatInt(units)}</td>
@@ -1580,7 +1579,7 @@ function renderRelatorio(){
 
   $('relatorioTableFoot').innerHTML = `
     <tr>
-      <td colspan="6" class="font-extrabold">Total</td>
+      <td colspan="7" class="font-extrabold">Total</td>
       <td class="text-right font-extrabold">${formatInt(totalUnidades)}</td>
       <td colspan="3"></td>
     </tr>
@@ -1665,16 +1664,17 @@ async function relatorioExportPdf(){
 
     // Colunas — landscape A4 = 297mm, usável = 273mm
     const cols = [
-      { label:'Data',      w:22 },
-      { label:'GCI',       w:18 },
-      { label:'Cliente',   w:30 },
-      { label:'Campanha',  w:28 },
-      { label:'Descrição', w:52 },
-      { label:'Cor',       w:22 },
-      { label:'Qtde',      w:14, align:'right' },
-      { label:'Prev Fat',  w:20 },
-      { label:'Status',    w:20 },
-      { label:'Grade',     w:47 }
+      { label:'Data',      w:20 },
+      { label:'GCI',       w:16 },
+      { label:'Cliente',   w:28 },
+      { label:'Campanha',  w:24 },
+      { label:'Prazo',     w:22 },
+      { label:'Descrição', w:46 },
+      { label:'Cor',       w:20 },
+      { label:'Qtde',      w:12, align:'right' },
+      { label:'Prev Fat',  w:18 },
+      { label:'Status',    w:18 },
+      { label:'Grade',     w:49 }
     ];
 
     const startX = 12;
@@ -1735,6 +1735,7 @@ async function relatorioExportPdf(){
           item ? (item.gci || item.ebm || '—') : '—',
           idx===0 ? cliente : '',
           idx===0 ? campanha : '',
+          idx===0 ? (o.prazo || '—') : '',
           item ? (item.produto || '—') : '—',
           item ? (item.cor || '—') : '—',
           item ? String(formatInt(units)) : '—',
@@ -1749,7 +1750,7 @@ async function relatorioExportPdf(){
           const col = cols[i];
           const tx = col.align==='right' ? cx+col.w-2 : cx;
           let txt = doc.splitTextToSize(String(vals[i]), col.w-2)[0] || '';
-          if(i===8 && vals[i]){
+          if(i===9 && vals[i]){
             const color = status==='Aprovado'?[21,128,61]:status==='Cancelado'?[185,28,28]:[180,83,9];
             doc.setTextColor(...color);
           } else if(i===1 && vals[i] && vals[i]!=='—'){
@@ -1771,7 +1772,7 @@ async function relatorioExportPdf(){
     doc.setFontSize(7);
     doc.setTextColor(15,23,42);
     let cx = startX + 1.5;
-    const totVals = ['Total','','','','','',formatInt(totalUnidadesPdf),'','',''];
+    const totVals = ['Total','','','','','','',formatInt(totalUnidadesPdf),'','',''];
     for(let i=0;i<cols.length;i++){
       const col = cols[i];
       const tx = col.align==='right'?cx+col.w-2:cx;
