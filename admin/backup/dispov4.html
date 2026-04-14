@@ -469,6 +469,34 @@
     </div>
   </main>
 
+  <!-- ── MODAL DESMEMBRAMENTO ──────────────────────────────────────────────── -->
+  <div id="desmModalWrap" class="desm-modal-wrap">
+    <div class="desm-backdrop" id="desmBackdrop"></div>
+    <div class="desm-modal">
+      <div class="desm-header">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <div class="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Desmembramento de pedido</div>
+            <div id="desmTitle" class="text-xl font-extrabold text-slate-800"></div>
+            <div id="desmSubtitle" class="mt-1 text-sm text-slate-500 font-semibold"></div>
+          </div>
+          <button id="btnCloseDesmModal" class="h-10 w-10 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 flex-shrink-0">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+      <div class="desm-body overflow-auto">
+        <div id="desmContent"></div>
+      </div>
+      <div class="desm-footer">
+        <div id="desmRodape" class="text-xs text-slate-400 font-semibold"></div>
+        <button id="btnSaveDesmembramento" class="rounded-2xl bg-[var(--brand)] px-5 py-2.5 text-sm font-extrabold text-white flex items-center gap-2">
+          <i class="fa-solid fa-floppy-disk"></i> Salvar alterações
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- ────────────────────────────────────────────────────────────────────────── -->
 
 <script>
 const WORKER_URL = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
@@ -642,22 +670,15 @@ function buildProgressBar(saldo, pendente, aprovado){
 
 async function loadOrders(){
   try{
-    // Carrega pedidos
     const res = await fetch(`${WORKER_URL}?t=${Date.now()}`, { cache:'no-store' });
     if(!res.ok) throw new Error(`Worker GET falhou (${res.status})`);
     const data = await res.json();
-    STATE.orders = Array.isArray(data) ? data : (data.orders || []);
-
-    // Carrega desmembramentos via PATCH
-    try{
-      const dRes = await fetch(WORKER_URL, {
-        method:'PATCH',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({action:'get'})
-      });
-      if(dRes.ok) STATE.desmembramentos = await dRes.json();
-    }catch(_){ /* ignora erro de desmembramentos */ }
-
+    if(Array.isArray(data)){
+      STATE.orders = data;
+    } else {
+      STATE.orders = Array.isArray(data.orders) ? data.orders : [];
+      STATE.desmembramentos = data.desmembramentos || {};
+    }
   }catch(err){
     console.error(err);
     STATE.orders = [];
@@ -911,20 +932,24 @@ function buildDesmembramentoLinhas(row){
 
 function openDesmModal(row){
   const linhas = buildDesmembramentoLinhas(row);
-  // Passa dados via sessionStorage para a página de desmembramento
-  sessionStorage.setItem('desm_row', JSON.stringify({
-    codigo: row.codigo,
-    produto: row.produto,
-    cor: row.cor,
-    gci: row.gci,
-    dataEntrega: row.dataEntrega ? String(row.dataEntrega) : null
-  }));
-  sessionStorage.setItem('desm_linhas', JSON.stringify(linhas));
-  sessionStorage.setItem('desm_key', desmKey(row));
-  sessionStorage.setItem('desm_desmembramentos', JSON.stringify(STATE.desmembramentos));
-  window.location.href = './dispo_desm.html';
-}
+  const key = desmKey(row);
+  STATE._desmCurrentKey = key;
+  STATE._desmCurrentLinhas = linhas;
 
+  $('desmTitle').textContent = `${row.produto} · ${row.cor}`;
+  $('desmSubtitle').textContent = `Código ${row.codigo} · Prev. Fat. ${formatDate(row.dataEntrega)}`;
+  $('desmModalWrap').classList.add('open');
+
+  if(!linhas.length){
+    $('desmContent').innerHTML = `<div style="padding:40px;text-align:center;color:#94a3b8"><i class="fa-solid fa-inbox" style="font-size:32px;display:block;margin-bottom:12px"></i><div style="font-size:14px;font-weight:600">Nenhum pedido encontrado para este produto.</div><div style="font-size:12px;margin-top:6px">Cruzamento: código ${safeHtml(row.codigo)} · cor ${safeHtml(row.cor)}</div></div>`;
+    $('desmRodape').textContent = '0 linhas';
+    return;
+  }
+
+  renderDesmTable(linhas);
+  const total = linhas.reduce((s,l)=>s+l.qtde,0);
+  $('desmRodape').textContent = `${linhas.length} linha${linhas.length!==1?'s':''} · ${total} unidades`;
+}
 
 function renderDesmTable(linhas){
   $('desmContent').innerHTML = `
@@ -989,9 +1014,11 @@ async function saveDesmembramento(){
   const key = STATE._desmCurrentKey;
   if(!key) return;
 
-  const selects = document.querySelectorAll('.desm-status-select');
+  const selects = $('desmContent').querySelectorAll('.desm-status-select');
   const saved = STATE.desmembramentos[key] || {};
-  selects.forEach(sel => { saved[sel.dataset.lineKey] = sel.value; });
+  selects.forEach(sel => {
+    saved[sel.dataset.lineKey] = sel.value;
+  });
   STATE.desmembramentos[key] = saved;
 
   const btn = $('btnSaveDesmembramento');
@@ -1000,14 +1027,22 @@ async function saveDesmembramento(){
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
 
   try{
-    const res = await fetch(WORKER_URL, {
-      method: 'PATCH',
+    // Lê o JSON atual do Worker
+    const res = await fetch(`${WORKER_URL}?t=${Date.now()}`, { cache:'no-store' });
+    let data = await res.json();
+
+    // Suporta tanto array simples quanto objeto com chaves
+    if(Array.isArray(data)){
+      data = { orders: data, desmembramentos: {} };
+    }
+    data.desmembramentos = { ...(data.desmembramentos||{}), ...STATE.desmembramentos };
+
+    const putRes = await fetch(WORKER_URL, {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'save', data: STATE.desmembramentos })
+      body: JSON.stringify(data)
     });
-    if(!res.ok) throw new Error(`Worker PATCH falhou (${res.status})`);
-    const result = await res.json();
-    if(!result.success) throw new Error(result.error || 'Erro ao salvar');
+    if(!putRes.ok) throw new Error('Worker retornou erro');
     showToast('Desmembramento salvo com sucesso!', 'success');
   }catch(err){
     console.error(err);
@@ -1067,6 +1102,17 @@ document.querySelector('thead').addEventListener('click', (e) => {
   }
 
   renderDispo();
+});
+
+// ── DESMEMBRAMENTO LISTENERS ──────────────────────────────────────────────────
+$('btnCloseDesmModal').addEventListener('click', closeDesmModal);
+$('desmBackdrop').addEventListener('click', closeDesmModal);
+$('btnSaveDesmembramento').addEventListener('click', saveDesmembramento);
+
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'Escape' && $('desmModalWrap').classList.contains('open')){
+    closeDesmModal();
+  }
 });
 
 // Click em qualquer linha da tabela DISPO
