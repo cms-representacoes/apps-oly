@@ -296,27 +296,6 @@
       font-size:14px;
       font-weight:600;
     }
-
-    /* Linha clicável */
-    .table-wrap tbody tr{ cursor:pointer; }
-    .table-wrap tbody tr:hover td{ background:#f1f5f9; }
-
-    /* Modal desmembramento */
-    .desm-modal-wrap{ position:fixed; inset:0; z-index:100; display:none; align-items:center; justify-content:center; }
-    .desm-modal-wrap.open{ display:flex; }
-    .desm-backdrop{ position:absolute; inset:0; background:rgba(15,23,42,.45); }
-    .desm-modal{ position:relative; background:#fff; border-radius:28px; width:95vw; max-width:1100px; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 24px 60px rgba(15,23,42,.18); }
-    .desm-header{ border-bottom:1px solid var(--line); padding:18px 24px; }
-    .desm-body{ flex:1; overflow:auto; padding:0; }
-    .desm-footer{ border-top:1px solid var(--line); padding:14px 24px; background:#f8fafc; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
-    .desm-table{ width:100%; border-collapse:separate; border-spacing:0; font-size:12px; min-width:900px; }
-    .desm-table thead th{ background:#f8fafc; color:#475569; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; padding:10px 12px; border-bottom:1px solid var(--line); white-space:nowrap; position:sticky; top:0; z-index:1; }
-    .desm-table tbody td{ padding:10px 12px; border-bottom:1px solid #edf2f7; vertical-align:middle; }
-    .desm-table tbody tr:last-child td{ border-bottom:none; }
-    .desm-table tbody tr:hover td{ background:#f8fafc; }
-    .desm-status-select{ border:1px solid #e2e8f0; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; cursor:pointer; outline:none; appearance:none; -webkit-appearance:none; }
-    .desm-status-select.st-pendente{ background:#fef3c7; color:#b45309; border-color:#fde68a; }
-    .desm-status-select.st-finalizado{ background:#dcfce7; color:#15803d; border-color:#bbf7d0; }
   </style>
 </head>
 <body>
@@ -461,35 +440,6 @@
     </div>
   </main>
 
-  <!-- ── MODAL DESMEMBRAMENTO ──────────────────────────────────────────────── -->
-  <div id="desmModalWrap" class="desm-modal-wrap">
-    <div class="desm-backdrop" id="desmBackdrop"></div>
-    <div class="desm-modal">
-      <div class="desm-header">
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <div class="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Desmembramento de pedido</div>
-            <div id="desmTitle" class="text-xl font-extrabold text-slate-800"></div>
-            <div id="desmSubtitle" class="mt-1 text-sm text-slate-500 font-semibold"></div>
-          </div>
-          <button id="btnCloseDesmModal" class="h-10 w-10 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 flex-shrink-0">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-      </div>
-      <div class="desm-body overflow-auto">
-        <div id="desmContent"></div>
-      </div>
-      <div class="desm-footer">
-        <div id="desmRodape" class="text-xs text-slate-400 font-semibold"></div>
-        <button id="btnSaveDesmembramento" class="rounded-2xl bg-[var(--brand)] px-5 py-2.5 text-sm font-extrabold text-white flex items-center gap-2">
-          <i class="fa-solid fa-floppy-disk"></i> Salvar alterações
-        </button>
-      </div>
-    </div>
-  </div>
-  <!-- ────────────────────────────────────────────────────────────────────────── -->
-
 <script>
 const WORKER_URL = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
 const DISPO_FILE_URL = '../DISPO.xlsx';
@@ -511,7 +461,6 @@ const STATE = {
   orders: [],
   dispoRows: [],
   dispoLoadedAt: null,
-  desmembramentos: {}, // chave: "codigo|cor|prevFat" → array de {orderId, itemKey, status}
   sortCol: 'saldoReal',
   sortDir: 'asc',
   activeFilter: 'all',
@@ -665,12 +614,7 @@ async function loadOrders(){
     const res = await fetch(`${WORKER_URL}?t=${Date.now()}`, { cache:'no-store' });
     if(!res.ok) throw new Error(`Worker GET falhou (${res.status})`);
     const data = await res.json();
-    if(Array.isArray(data)){
-      STATE.orders = data;
-    } else {
-      STATE.orders = Array.isArray(data.orders) ? data.orders : [];
-      STATE.desmembramentos = data.desmembramentos || {};
-    }
+    STATE.orders = Array.isArray(data) ? data : [];
   }catch(err){
     console.error(err);
     STATE.orders = [];
@@ -865,178 +809,6 @@ function renderDispo(){
   }).join('');
 }
 
-// ── DESMEMBRAMENTO ────────────────────────────────────────────────────────────
-
-function desmKey(row){
-  return `${row.codigo}|${row.cor}|${formatDate(row.dataEntrega)}`;
-}
-
-function buildDesmembramentoLinhas(row){
-  const key = desmKey(row);
-  const saved = STATE.desmembramentos[key] || {};
-  const linhas = [];
-
-  for(const order of STATE.orders){
-    for(const item of (order.items || [])){
-      // Cruza por codigo+cor+prevFat
-      const itemPrevFat = formatDate(item.prevFaturamento);
-      const rowPrevFat  = formatDate(row.dataEntrega);
-      const codigoMatch = sanitizeDisplayText(item.codigo) === sanitizeDisplayText(row.codigo);
-      const corMatch    = sanitizeDisplayText(item.cor).toUpperCase() === sanitizeDisplayText(row.cor).toUpperCase();
-      const fatMatch    = itemPrevFat === rowPrevFat;
-      if(!codigoMatch || !corMatch || !fatMatch) continue;
-
-      const lineKey = `${order.id}||${item.codigo}||${item.cor}`;
-      const savedStatus = saved[lineKey] || 'Pendente';
-      const units = Number(item.totalUnits || 0) || (item.grade||[]).reduce((s,g)=>s+Number(g.qty||0),0);
-      linhas.push({
-        lineKey,
-        num:   item.ebm || '—',
-        ebm:   item.ebm || '—',
-        gci:   item.gci || '—',
-        cliente: order.clienteNome ? `${order.clienteCodigo} — ${order.clienteNome}` : order.clienteCodigo,
-        prazo:   order.prazo || '—',
-        campanha: (order.campanha||'').replace(/\s*\bOLY\b\s*/gi,'').trim() || '—',
-        produto: item.produto || '—',
-        cor:     item.cor || '—',
-        qtde:    units,
-        prevFat: itemPrevFat,
-        orderStatus: order.status,
-        desmStatus: savedStatus
-      });
-    }
-  }
-  return linhas;
-}
-
-function openDesmModal(row){
-  const linhas = buildDesmembramentoLinhas(row);
-  if(!linhas.length){
-    showToast('Nenhum pedido encontrado para este produto.', 'info');
-    return;
-  }
-
-  const key = desmKey(row);
-  STATE._desmCurrentKey = key;
-  STATE._desmCurrentLinhas = linhas;
-
-  $('desmTitle').textContent = `${row.produto} · ${row.cor}`;
-  $('desmSubtitle').textContent = `Código ${row.codigo} · Prev. Fat. ${formatDate(row.dataEntrega)} · ${linhas.length} cliente${linhas.length!==1?'s':''}`;
-
-  renderDesmTable(linhas);
-  const total = linhas.reduce((s,l)=>s+l.qtde,0);
-  $('desmRodape').textContent = `${linhas.length} linha${linhas.length!==1?'s':''} · ${total} unidades`;
-  $('desmModalWrap').classList.add('open');
-}
-
-function renderDesmTable(linhas){
-  $('desmContent').innerHTML = `
-    <div class="overflow-auto">
-      <table class="desm-table">
-        <thead>
-          <tr>
-            <th>EBM</th>
-            <th>GCI</th>
-            <th>Cliente</th>
-            <th>Prazo</th>
-            <th>Campanha</th>
-            <th>Descrição</th>
-            <th>Cor</th>
-            <th class="text-right">Qtde</th>
-            <th>Prev Fat</th>
-            <th>Status Pedido</th>
-            <th>Situação</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${linhas.map(l => `
-            <tr>
-              <td class="text-slate-500 font-semibold">${safeHtml(l.ebm)}</td>
-              <td class="font-extrabold text-[var(--brand)]">${safeHtml(l.gci)}</td>
-              <td class="font-extrabold">${safeHtml(l.cliente)}</td>
-              <td class="text-slate-500 font-semibold whitespace-nowrap">${safeHtml(l.prazo)}</td>
-              <td class="text-slate-500 font-semibold">${safeHtml(l.campanha)}</td>
-              <td class="font-extrabold">${safeHtml(l.produto)}</td>
-              <td class="text-slate-500 font-semibold">${safeHtml(l.cor)}</td>
-              <td class="text-right font-extrabold">${l.qtde}</td>
-              <td class="text-slate-500 font-semibold whitespace-nowrap">${safeHtml(l.prevFat)}</td>
-              <td>${renderStatusChipDesm(l.orderStatus)}</td>
-              <td>
-                <select class="desm-status-select st-${(l.desmStatus||'Pendente').toLowerCase()}"
-                  data-line-key="${safeHtml(l.lineKey)}"
-                  onchange="onDesmStatusChange(this)">
-                  <option value="Pendente"  ${l.desmStatus==='Pendente'  ?'selected':''}>Pendente</option>
-                  <option value="Finalizado" ${l.desmStatus==='Finalizado'?'selected':''}>Finalizado</option>
-                </select>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-function renderStatusChipDesm(status){
-  const s = (status||'').toLowerCase();
-  if(s.includes('aprovado'))  return `<span class="chip chip-success" style="font-size:11px">Aprovado</span>`;
-  if(s.includes('cancelado')) return `<span class="chip chip-danger"  style="font-size:11px">Cancelado</span>`;
-  return `<span class="chip chip-warning" style="font-size:11px">Pendente</span>`;
-}
-
-function onDesmStatusChange(sel){
-  sel.className = `desm-status-select st-${sel.value.toLowerCase()}`;
-}
-
-async function saveDesmembramento(){
-  const key = STATE._desmCurrentKey;
-  if(!key) return;
-
-  const selects = $('desmContent').querySelectorAll('.desm-status-select');
-  const saved = STATE.desmembramentos[key] || {};
-  selects.forEach(sel => {
-    saved[sel.dataset.lineKey] = sel.value;
-  });
-  STATE.desmembramentos[key] = saved;
-
-  const btn = $('btnSaveDesmembramento');
-  const prev = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
-
-  try{
-    // Lê o JSON atual do Worker
-    const res = await fetch(`${WORKER_URL}?t=${Date.now()}`, { cache:'no-store' });
-    let data = await res.json();
-
-    // Suporta tanto array simples quanto objeto com chaves
-    if(Array.isArray(data)){
-      data = { orders: data, desmembramentos: {} };
-    }
-    data.desmembramentos = { ...(data.desmembramentos||{}), ...STATE.desmembramentos };
-
-    const putRes = await fetch(WORKER_URL, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    if(!putRes.ok) throw new Error('Worker retornou erro');
-    showToast('Desmembramento salvo com sucesso!', 'success');
-  }catch(err){
-    console.error(err);
-    showToast('Não foi possível salvar. Tente novamente.', 'error');
-  }finally{
-    btn.disabled = false;
-    btn.innerHTML = prev;
-  }
-}
-
-function closeDesmModal(){
-  $('desmModalWrap').classList.remove('open');
-  STATE._desmCurrentKey = null;
-  STATE._desmCurrentLinhas = null;
-}
-
 // ── EVENT LISTENERS ───────────────────────────────────────────────────────────
 
 $('btnRefreshDispo').addEventListener('click', async () => {
@@ -1080,27 +852,6 @@ document.querySelector('thead').addEventListener('click', (e) => {
   }
 
   renderDispo();
-});
-
-// ── DESMEMBRAMENTO LISTENERS ──────────────────────────────────────────────────
-$('btnCloseDesmModal').addEventListener('click', closeDesmModal);
-$('desmBackdrop').addEventListener('click', closeDesmModal);
-$('btnSaveDesmembramento').addEventListener('click', saveDesmembramento);
-
-document.addEventListener('keydown', (e)=>{
-  if(e.key === 'Escape' && $('desmModalWrap').classList.contains('open')){
-    closeDesmModal();
-  }
-});
-
-// Click em qualquer linha da tabela DISPO
-$('dispoTableBody').addEventListener('click', (e)=>{
-  const tr = e.target.closest('tr');
-  if(!tr) return;
-  const idx = Array.from(tr.parentElement.children).indexOf(tr);
-  const visibleRows = sortRows(computeRows());
-  const row = visibleRows[idx];
-  if(row) openDesmModal(row);
 });
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
