@@ -1592,7 +1592,7 @@ function buildRelatorioLinhas(orders){
     const nomeCliente = safeHtml(o.clienteNome || '—');
     const statusHtml = renderStatusChip(o.status);
     const campanhaDisplay = safeHtml(stripOly(o.campanha || ''));
-    const prazoDisplay = safeHtml(o.prazo || '—');
+    const prazoDisplay = safeHtml(stripPrazo(o.prazo || '—'));
     const items = o.items || [];
     const rowspan = items.length || 1;
 
@@ -1867,7 +1867,7 @@ async function relatorioExportPdf(){
           idx===0 ? (o.preposto?.nome || o.preposto?.codigo || '—') : '',
           idx===0 ? (o.clienteCodigo || '—') : '',
           idx===0 ? (o.clienteNome || '—') : '',
-          idx===0 ? (o.prazo || '—') : '',
+          idx===0 ? stripPrazo(o.prazo || '—') : '',
           idx===0 ? stripOly(o.campanha || '—') : '',
           item ? (item.ebm || '—') : '—',
           item ? (item.gci || '—') : '—',
@@ -2014,7 +2014,7 @@ function relatorioExportXlsx(){
       const vendedor = o.preposto?.nome || o.preposto?.codigo || '—';
       const codCliente = o.clienteCodigo || '—';
       const nomeCliente = o.clienteNome || '—';
-      const prazo = o.prazo || '—';
+      const prazo = stripPrazo(o.prazo || '—');
       const campanha = stripOly(o.campanha || '—');
       const status = canonicalStatus(o.status);
       const items = o.items || [];
