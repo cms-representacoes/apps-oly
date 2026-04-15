@@ -466,6 +466,30 @@
         Saldo real = Saldo DISPO − Pendente − Aprovado &nbsp;·&nbsp; Pedidos cancelados e arquivados não são contabilizados
       </div>
 
+      <!-- CONSULTA DESMEMBRAMENTOS -->
+      <div id="consultaDesmWrap" class="hidden mt-6">
+        <div class="rounded-[28px] border border-slate-200 bg-white overflow-hidden shadow-card">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-slate-200">
+            <div>
+              <div class="text-sm font-extrabold text-slate-800">Consulta de desmembramentos</div>
+              <div class="text-xs text-slate-400 font-semibold mt-0.5">Veja todas as lojas que receberam cada produto</div>
+            </div>
+            <select id="consultaDesmSel" class="focus-ring rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold min-w-[260px]" onchange="renderConsultaDesm()">
+              <option value="">Selecione um produto</option>
+            </select>
+          </div>
+
+          <div id="consultaDesmMeta" class="hidden flex flex-wrap gap-5 px-5 py-3 bg-slate-50 border-b border-slate-200 text-xs"></div>
+
+          <div id="consultaDesmContent">
+            <div class="py-12 text-center text-slate-400 text-sm font-semibold">
+              <i class="fa-solid fa-magnifying-glass text-3xl block mb-3 text-slate-300"></i>
+              Selecione um produto para ver os desmembramentos.
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </main>
 
@@ -657,6 +681,8 @@ async function loadOrders(){
       });
       if(dRes.ok) STATE.desmembramentos = await dRes.json();
     }catch(_){ /* ignora erro de desmembramentos */ }
+
+    populateConsultaDesm();
 
   }catch(err){
     console.error(err);
@@ -1022,6 +1048,120 @@ function closeDesmModal(){
   $('desmModalWrap').classList.remove('open');
   STATE._desmCurrentKey = null;
   STATE._desmCurrentLinhas = null;
+}
+
+// ── CONSULTA DESMEMBRAMENTOS ──────────────────────────────────────────────────
+
+function populateConsultaDesm(){
+  const desm = STATE.desmembramentos;
+  const keys = Object.keys(desm || {});
+  const sel = $('consultaDesmSel');
+  const prev = sel.value;
+
+  // Remove opções antigas (mantém a primeira)
+  while(sel.options.length > 1) sel.remove(1);
+
+  if(!keys.length){
+    $('consultaDesmWrap').classList.add('hidden');
+    return;
+  }
+
+  // Monta label para cada chave "codigo|cor|prevFat"
+  keys.forEach(key => {
+    const [codigo, cor, prevFat] = key.split('|');
+    // Tenta achar o produto pelo codigo na DISPO
+    const dispoRow = STATE.dispoRows.find(r => sanitizeDisplayText(r.codigo) === sanitizeDisplayText(codigo) && sanitizeDisplayText(r.cor).toUpperCase() === sanitizeDisplayText(cor).toUpperCase());
+    const produto = dispoRow ? dispoRow.produto : codigo;
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = `${produto} · ${cor} · ${prevFat}`;
+    sel.appendChild(opt);
+  });
+
+  if(prev) sel.value = prev;
+  $('consultaDesmWrap').classList.remove('hidden');
+}
+
+function renderConsultaDesm(){
+  const key = $('consultaDesmSel').value;
+  const content = $('consultaDesmContent');
+  const meta = $('consultaDesmMeta');
+
+  if(!key){
+    meta.classList.add('hidden');
+    content.innerHTML = `<div class="py-12 text-center text-slate-400 text-sm font-semibold"><i class="fa-solid fa-magnifying-glass text-3xl block mb-3 text-slate-300"></i>Selecione um produto para ver os desmembramentos.</div>`;
+    return;
+  }
+
+  const [codigo, cor, prevFat] = key.split('|');
+  const saved = STATE.desmembramentos[key] || {};
+  const dispoRow = STATE.dispoRows.find(r => sanitizeDisplayText(r.codigo) === sanitizeDisplayText(codigo) && sanitizeDisplayText(r.cor).toUpperCase() === sanitizeDisplayText(cor).toUpperCase());
+
+  // Reconstrói linhas cruzando com pedidos
+  const fakeRow = { codigo, cor, gci: dispoRow?.gci || '', dataEntrega: dispoRow?.dataEntrega || null, produto: dispoRow?.produto || codigo };
+  const linhas = buildDesmembramentoLinhas(fakeRow).map(l => ({
+    ...l,
+    desmStatus: saved[l.lineKey] || l.desmStatus || 'Pendente'
+  }));
+
+  // Meta
+  const finalizados = linhas.filter(l => l.desmStatus === 'Finalizado').length;
+  const total = linhas.reduce((s,l) => s + Number(l.qtde||0), 0);
+  meta.classList.remove('hidden');
+  meta.innerHTML = [
+    ['Produto', dispoRow?.produto || codigo],
+    ['Cor', cor],
+    ['GCI', dispoRow?.gci || '—'],
+    ['Prev. Fat.', prevFat],
+    ['Lojas', linhas.length],
+    ['Finalizados', `${finalizados}/${linhas.length}`],
+    ['Total unidades', formatInt(total)]
+  ].map(([label, val]) => `
+    <div>
+      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">${safeHtml(label)}</div>
+      <div class="text-sm font-extrabold text-slate-800 mt-0.5">${safeHtml(String(val))}</div>
+    </div>
+  `).join('');
+
+  if(!linhas.length){
+    content.innerHTML = `<div class="py-12 text-center text-slate-400 text-sm font-semibold"><i class="fa-solid fa-inbox text-3xl block mb-3 text-slate-300"></i>Nenhum pedido encontrado para este produto.</div>`;
+    return;
+  }
+
+  content.innerHTML = `
+    <div class="overflow-auto">
+      <table class="desm-table">
+        <thead>
+          <tr>
+            <th>EBM</th><th>GCI</th><th>Cliente</th><th>Prazo</th>
+            <th>Campanha</th><th class="text-right">Qtde</th>
+            <th>Prev Fat</th><th>Status pedido</th><th>Situação</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${linhas.map(l => `
+            <tr>
+              <td class="text-slate-500 font-semibold">${safeHtml(l.ebm)}</td>
+              <td class="font-extrabold text-[var(--brand)]">${safeHtml(l.gci)}</td>
+              <td class="font-extrabold">${safeHtml(l.cliente)}</td>
+              <td class="text-slate-500 font-semibold whitespace-nowrap">${safeHtml(l.prazo)}</td>
+              <td class="text-slate-500 font-semibold">${safeHtml(l.campanha)}</td>
+              <td class="text-right font-extrabold">${l.qtde}</td>
+              <td class="text-slate-500 font-semibold whitespace-nowrap">${safeHtml(l.prevFat)}</td>
+              <td>${renderStatusChipDesm(l.orderStatus)}</td>
+              <td><span class="chip ${l.desmStatus==='Finalizado' ? 'chip-success' : 'chip-warning'}" style="font-size:11px">${safeHtml(l.desmStatus)}</span></td>
+            </tr>
+          `).join('')}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="5" class="font-extrabold">Total</td>
+            <td class="text-right font-extrabold">${formatInt(total)}</td>
+            <td colspan="3"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>`;
 }
 
 // ── EVENT LISTENERS ───────────────────────────────────────────────────────────
