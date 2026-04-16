@@ -330,6 +330,10 @@
     .btn-antecipa-ok:hover{ background:#AFA9EC; }
     .btn-antecipa-warn{ border:1px solid #EF9F27; color:#633806; background:#FAEEDA; }
     .btn-antecipa-warn:hover{ background:#FAC775; }
+    .row-antecipa td { background:#EEEDFE !important; }
+    .row-antecipa td:first-child { border-left:3px solid #534AB7; }
+    .row-nova-dispo td { background:#f0fdf4 !important; }
+    .badge-nova { font-size:10px; background:#EAF3DE; color:#27500A; border-radius:999px; padding:1px 7px; margin-left:5px; font-weight:700; }
     .icon-btn{ width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; border:0.5px solid var(--color-border-secondary,#e2e8f0); background:none; color:#64748b; transition:all .12s; flex-shrink:0; }
     .icon-btn:hover{ background:#f1f5f9; }
     .icon-btn.ocultar:hover{ border-color:#AFA9EC; color:#3C3489; background:#EEEDFE; }
@@ -447,6 +451,21 @@
             </button>
           </div>
           <div class="text-xs font-bold text-slate-400" id="tableCount">— itens</div>
+        </div>
+
+        <!-- BANNER ANTECIPAÇÃO -->
+        <div id="bannerAntecipacao" class="hidden rounded-2xl border border-[#AFA9EC] bg-[#EEEDFE] px-4 py-3 mb-4 flex items-start gap-3">
+          <div class="w-8 h-8 rounded-lg bg-[#534AB7] flex items-center justify-center flex-shrink-0 mt-0.5">
+            <i class="fa-solid fa-angles-up text-white text-sm"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-extrabold text-[#26215C]" id="bannerAntecipacaoTitle"></div>
+            <div class="text-xs font-semibold text-[#3C3489] mt-0.5">Foram detectadas disponibilidades com data anterior. Clique na linha destacada para antecipar.</div>
+            <div class="mt-2 flex flex-wrap gap-2" id="bannerAntecipacaoChips"></div>
+          </div>
+          <button onclick="$('bannerAntecipacao').classList.add('hidden')" class="text-[#3C3489] text-sm flex-shrink-0 opacity-60 hover:opacity-100">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
         </div>
 
         <!-- EMPTY / LOADING -->
@@ -784,10 +803,13 @@ async function loadDispo(){
       const dataEntrega = row['DATA ENTREGA'] || row['DATA_ENTREGA'] || row['Data Entrega'] || row['Prev. Faturamento'] || null;
       const pedidoMae = sanitizeDisplayText(row['PEDIDO MÃE'] || row['PEDIDO MAE'] || row['Pedido Mae'] || '');
       const gci = sanitizeDisplayText(String(row['GCI'] || row['Gci'] || ''));
-      return { codigo, produto, cor, dataEntrega, saldo, pedidoMae, gci };
+      const ebm = sanitizeDisplayText(String(row['EBM'] || row['Ebm'] || ''));
+      const filial = sanitizeDisplayText(String(row['FILIAL'] || row['Filial'] || row['filial'] || ''));
+      return { codigo, produto, cor, dataEntrega, saldo, pedidoMae, gci, ebm, filial };
     }).filter(row => row.codigo || row.produto);
 
     STATE.dispoLoadedAt = new Date();
+    _bannerShownThisLoad = false;
     $('dispoNotLoaded').classList.add('hidden');
     renderDispo();
     showToast('DISPO carregada com sucesso.', 'success');
@@ -914,13 +936,17 @@ function computeAllRows(){
   allRows.forEach(row => {
     row._antecipavel = null;
     if(!row.dataEntrega) return;
-    const siblings = allRows.filter(r =>
-      r !== row &&
-      sanitizeDisplayText(r.codigo) === sanitizeDisplayText(row.codigo) &&
-      sanitizeDisplayText(r.cor).toUpperCase() === sanitizeDisplayText(row.cor).toUpperCase() &&
-      r.gci !== row.gci &&
-      r.dataEntrega && r.dataEntrega < row.dataEntrega
-    );
+    const rowTime = new Date(row.dataEntrega).getTime();
+    if(isNaN(rowTime)) return;
+    const siblings = allRows.filter(r => {
+      if(r === row) return false;
+      if(sanitizeDisplayText(r.codigo) !== sanitizeDisplayText(row.codigo)) return false;
+      if(sanitizeDisplayText(r.cor).toUpperCase() !== sanitizeDisplayText(row.cor).toUpperCase()) return false;
+      if(r.gci === row.gci) return false;
+      if(!r.dataEntrega) return false;
+      const rTime = new Date(r.dataEntrega).getTime();
+      return !isNaN(rTime) && rTime < rowTime;
+    });
     if(!siblings.length) return;
     const novaLinha = siblings.reduce((a,b) => a.dataEntrega < b.dataEntrega ? a : b);
     const pedidosVinculados = STATE.orders.filter(order => {
@@ -961,6 +987,7 @@ function renderDispo(){
 
   renderKpis(rows);
   updateSortHeaders();
+  renderBannerAntecipacao(computeAllRows());
 
   $('tableCount').textContent = `${sorted.length} ${sorted.length === 1 ? 'item' : 'itens'}`;
   $('tableWrap').classList.remove('hidden');
@@ -975,18 +1002,23 @@ function renderDispo(){
 
   $('dispoTableBody').innerHTML = sorted.map((row, idx) => {
     const sit = row.situacao;
+    const isNovaDestinoAntecipacao = sorted.some(r => r._antecipavel?.novaLinha?.gci === row.gci);
+    const rowClass = [sit.rowClass, row._antecipavel ? 'row-antecipa' : '', isNovaDestinoAntecipacao ? 'row-nova-dispo' : ''].filter(Boolean).join(' ');
     const saldoRealDisplay = row.saldoReal < 0
       ? `<span class="${sit.className}">−${formatInt(Math.abs(row.saldoReal))}</span>`
       : `<span class="${sit.className}">${formatInt(row.saldoReal)}</span>`;
 
     return `
-      <tr class="${sit.rowClass}">
+      <tr class="${rowClass}">
         <td class="font-extrabold text-slate-800 tabular-nums">${safeHtml(row.codigo)}</td>
         <td>
           <div class="font-extrabold text-slate-800">${safeHtml(row.produto)}</div>
         </td>
         <td class="text-slate-500 font-semibold">${safeHtml(row.cor)}</td>
-        <td class="tabular-nums text-slate-600 font-semibold">${safeHtml(formatDate(row.dataEntrega))}</td>
+        <td class="tabular-nums font-semibold ${row._antecipavel ? 'text-[#3C3489]' : 'text-slate-600'}">
+          ${safeHtml(formatDate(row.dataEntrega))}
+          ${isNovaDestinoAntecipacao ? '<span class="badge-nova">Nova</span>' : ''}
+        </td>
         <td class="text-right font-extrabold tabular-nums">${formatInt(row.saldo)}</td>
         <td class="text-right tabular-nums ${row.pendente > 0 ? 'text-amber-600 font-extrabold' : 'text-slate-400 font-semibold'}">${formatInt(row.pendente)}</td>
         <td class="text-right tabular-nums ${row.aprovado > 0 ? 'text-emerald-600 font-extrabold' : 'text-slate-400 font-semibold'}">${formatInt(row.aprovado)}</td>
@@ -998,7 +1030,6 @@ function renderDispo(){
             ${safeHtml(sit.label)}
           </span>
         </td>
-        <td>
         <td>
           <div class="btn-group">
             ${STATE.activeFilter === 'ocultos'
@@ -1403,6 +1434,38 @@ async function confirmarAntecipacao(){
   if(ok>0) showToast(`${ok} pedido${ok>1?'s':''} antecipado${ok>1?'s':''}!`, 'success');
   if(fail>0) showToast(`${fail} pedido${fail>1?'s':''} não puderam ser atualizados.`, 'error');
   renderDispo();
+}
+
+// ── BANNER ANTECIPAÇÃO ────────────────────────────────────────────────────────
+
+let _bannerShownThisLoad = false;
+
+function renderBannerAntecipacao(allRows){
+  const antecipаveis = allRows.filter(r => r._antecipavel);
+  const banner = $('bannerAntecipacao');
+  if(!antecipаveis.length){
+    banner.classList.add('hidden');
+    return;
+  }
+  // Monta chips únicos por produto+cor
+  const unicos = [];
+  const seen = new Set();
+  antecipаveis.forEach(r => {
+    const k = `${r.produto}|${r.cor}`;
+    if(!seen.has(k)){ seen.add(k); unicos.push(r); }
+  });
+
+  $('bannerAntecipacaoTitle').textContent = `${antecipаveis.length} produto${antecipаveis.length>1?'s':''} com antecipação disponível`;
+  $('bannerAntecipacaoChips').innerHTML = unicos.map(r =>
+    `<span style="background:#fff;border:0.5px solid #AFA9EC;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;color:#3C3489">${safeHtml(r.produto)} · ${safeHtml(r.cor)}</span>`
+  ).join('');
+  banner.classList.remove('hidden');
+
+  // Toast só uma vez por carregamento
+  if(!_bannerShownThisLoad){
+    _bannerShownThisLoad = true;
+    showToast(`${antecipаveis.length} produto${antecipаveis.length>1?'s':''} com antecipação disponível`, 'info');
+  }
 }
 
 // ── OCULTAR / REEXIBIR ───────────────────────────────────────────────────────
