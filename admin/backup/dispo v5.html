@@ -372,41 +372,35 @@
       </header>
 
       <!-- KPI CARDS -->
-      <div class="grid grid-cols-2 xl:grid-cols-6 gap-3 mb-4">
+      <div class="grid grid-cols-2 xl:grid-cols-5 gap-3 mb-4">
         <div class="kpi-card">
           <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Linhas na DISPO</div>
           <div id="kpiLinhas" class="mt-2 text-3xl font-extrabold">—</div>
           <div id="kpiLinhasAtualizado" class="mt-1 text-[11px] font-semibold text-slate-400">—</div>
         </div>
 
-        <div class="kpi-card cursor-pointer hover:border-[var(--brand)]" onclick="setKpiFilter('com-pedido')" title="Filtrar: com pedidos">
+        <div class="kpi-card">
           <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Com pedidos</div>
           <div id="kpiComPedido" class="mt-2 text-3xl font-extrabold text-[var(--brand)]">—</div>
           <div class="mt-1 text-[11px] font-semibold text-slate-400">itens com movimento</div>
         </div>
 
-        <div class="kpi-card cursor-pointer hover:border-[var(--brand)]" onclick="setKpiFilter('pendente')" title="Filtrar: pendentes">
+        <div class="kpi-card">
           <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Pendentes</div>
           <div id="kpiPendente" class="mt-2 text-3xl font-extrabold text-amber-600">—</div>
           <div class="mt-1 text-[11px] font-semibold text-slate-400">itens aguardando aprovação</div>
         </div>
 
-        <div class="kpi-card cursor-pointer hover:border-[var(--brand)]" onclick="setKpiFilter('aprovado')" title="Filtrar: aprovados">
+        <div class="kpi-card">
           <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Aprovados</div>
           <div id="kpiAprovado" class="mt-2 text-3xl font-extrabold text-emerald-600">—</div>
           <div class="mt-1 text-[11px] font-semibold text-slate-400">itens confirmados</div>
         </div>
 
-        <div class="kpi-card cursor-pointer hover:border-rose-400" onclick="setKpiFilter('critico')" title="Filtrar: críticos">
+        <div class="kpi-card col-span-2 xl:col-span-1">
           <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Críticos</div>
           <div id="kpiCriticos" class="mt-2 text-3xl font-extrabold text-rose-600">—</div>
           <div class="mt-1 text-[11px] font-semibold text-slate-400">saldo real ≤ 0</div>
-        </div>
-
-        <div class="kpi-card col-span-2 xl:col-span-1 cursor-pointer hover:border-emerald-400" onclick="setKpiFilter('saldo-positivo')" title="Filtrar: com saldo">
-          <div class="text-xs font-bold text-emerald-600 uppercase tracking-wide">Saldo Real Total</div>
-          <div id="kpiSaldoReal" class="mt-2 text-3xl font-extrabold text-emerald-600">—</div>
-          <div class="mt-1 text-[11px] font-semibold text-slate-400">pares disponíveis</div>
         </div>
       </div>
 
@@ -761,18 +755,8 @@ function computeRows(){
     if(f === 'pendente') return row.pendente > 0;
     if(f === 'aprovado') return row.aprovado > 0;
     if(f === 'critico') return row.saldoReal <= 0;
-    if(f === 'saldo-positivo') return row.saldoReal > 0;
     return true;
   });
-}
-
-function setKpiFilter(filter){
-  STATE.activeFilter = filter;
-  // Sincroniza pills visuais
-  document.querySelectorAll('.filter-pill').forEach(p => {
-    p.classList.toggle('active', p.dataset.filter === filter);
-  });
-  renderTable();
 }
 
 function sortRows(rows){
@@ -822,7 +806,6 @@ function renderKpis(rows){
   const totalPendUnits = allRows.reduce((s,r)=>s+r.pendente,0);
   const totalAprovUnits = allRows.reduce((s,r)=>s+r.aprovado,0);
   const criticos = allRows.filter(r => r.saldoReal <= 0).length;
-  const saldoRealTotal = allRows.reduce((s,r)=>s+Math.max(0,r.saldoReal),0);
 
   $('kpiLinhas').textContent = formatInt(STATE.dispoRows.length);
   $('kpiLinhasAtualizado').textContent = STATE.dispoLoadedAt
@@ -832,7 +815,6 @@ function renderKpis(rows){
   $('kpiPendente').textContent = formatInt(totalPendUnits);
   $('kpiAprovado').textContent = formatInt(totalAprovUnits);
   $('kpiCriticos').textContent = formatInt(criticos);
-  $('kpiSaldoReal').textContent = formatInt(saldoRealTotal);
 }
 
 function computeAllRows(){
