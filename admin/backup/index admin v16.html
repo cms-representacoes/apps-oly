@@ -585,45 +585,6 @@
     </div>
   </div>
 
-  <!-- MODAL EXCLUSÃO COM SENHA -->
-  <div id="deleteOrderModal" class="hidden fixed inset-0 z-[140] bg-slate-950/45 p-4">
-    <div class="flex min-h-full items-center justify-center">
-      <div class="w-full max-w-sm rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,.24)]">
-        <div id="deleteStep1">
-          <div class="flex items-center gap-3 mb-4">
-            <div class="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center flex-shrink-0">
-              <i class="fa-solid fa-trash text-rose-500"></i>
-            </div>
-            <div>
-              <div class="text-base font-extrabold">Excluir pedido</div>
-              <div class="text-xs font-semibold text-slate-500">Digite a senha do admin para continuar</div>
-            </div>
-          </div>
-          <label class="text-xs font-bold uppercase tracking-[.18em] text-slate-500">Senha do admin</label>
-          <input id="deletePasswordInput" type="password" placeholder="••••••••"
-            class="focus-ring mt-2 w-full rounded-[20px] border border-slate-200 px-4 py-3 text-sm font-semibold"
-            oninput="$('deletePasswordError').classList.add('hidden')"/>
-          <div id="deletePasswordError" class="hidden mt-2 text-xs font-bold text-rose-600">Senha incorreta. Tente novamente.</div>
-          <div class="mt-5 flex justify-end gap-2">
-            <button onclick="closeDeleteModal()" class="focus-ring rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700">Cancelar</button>
-            <button onclick="confirmDeletePassword()" class="focus-ring rounded-2xl bg-rose-600 px-5 py-3 text-sm font-extrabold text-white">Continuar</button>
-          </div>
-        </div>
-        <div id="deleteStep2" class="hidden text-center">
-          <div class="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mx-auto mb-3">
-            <i class="fa-solid fa-triangle-exclamation text-rose-500 text-xl"></i>
-          </div>
-          <div class="text-base font-extrabold mb-2">Tem certeza?</div>
-          <div class="text-sm text-slate-500 leading-relaxed">Esta ação é <span class="font-bold text-slate-700">permanente</span> e não pode ser desfeita. O pedido será removido definitivamente.</div>
-          <div class="mt-5 flex justify-center gap-2">
-            <button onclick="closeDeleteModal()" class="focus-ring rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700">Não, cancelar</button>
-            <button id="btnConfirmDelete" class="focus-ring rounded-2xl bg-rose-600 px-5 py-3 text-sm font-extrabold text-white">Sim, excluir</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
 <script>
 const WORKER_URL = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
 const STORAGE_KEYS = {
@@ -1478,60 +1439,25 @@ async function toggleArchive(id){
   }
 }
 
-function openDeleteModal(id){
-  STATE._pendingDeleteId = id;
-  $('deletePasswordInput').value = '';
-  $('deletePasswordError').classList.add('hidden');
-  $('deleteStep1').classList.remove('hidden');
-  $('deleteStep2').classList.add('hidden');
-  $('deleteOrderModal').classList.remove('hidden');
-}
-
-function closeDeleteModal(){
-  $('deleteOrderModal').classList.add('hidden');
-  STATE._pendingDeleteId = null;
-}
-
-function confirmDeletePassword(){
-  const pw = $('deletePasswordInput').value;
-  if(pw !== ADMIN_PASSWORD){
-    $('deletePasswordError').classList.remove('hidden');
-    $('deletePasswordInput').focus();
-    return;
-  }
-  $('deleteStep1').classList.add('hidden');
-  $('deleteStep2').classList.remove('hidden');
-}
-
 async function deleteOrder(id){
   const target = STATE.orders.find(o => o.id === id);
   if(!target) return;
-  openDeleteModal(id);
-}
 
-$('deleteOrderModal').addEventListener('click', e => {
-  if(e.target === $('deleteOrderModal')) closeDeleteModal();
-});
+  const ok = confirm(`Tem certeza que deseja EXCLUIR FISICAMENTE o pedido ${id}?
 
-$('btnConfirmDelete').addEventListener('click', async () => {
-  const id = STATE._pendingDeleteId;
-  if(!id) return;
-  const btn = $('btnConfirmDelete');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Excluindo...';
+Use isso apenas em testes. O histórico salvo dentro do pedido será perdido após a exclusão.`);
+  if(!ok) return;
+
   try{
     await workerDeleteOrder(id);
-    closeDeleteModal();
     STATE.selectedId = null;
-    showToast('Pedido excluído com sucesso.', 'success');
+    showToast(`Pedido ${id} excluído com sucesso.`, 'success');
     await loadAdmin();
   }catch(err){
     console.error(err);
     showToast('Não foi possível excluir o pedido.', 'error');
-    btn.disabled = false;
-    btn.innerHTML = 'Sim, excluir';
   }
-});
+}
 
 // ── BLOCO 2: RESUMO OPERACIONAL ──────────────────────────────────────────────
 
