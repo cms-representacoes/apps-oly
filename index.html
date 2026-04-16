@@ -1426,9 +1426,16 @@ function sortView(items){
     case 'saldoDesc': arr.sort((a,b)=>remainingUnits(b)-remainingUnits(a)); break;
     case 'saldoAsc': arr.sort((a,b)=>remainingUnits(a)-remainingUnits(b)); break;
     case 'entregaAsc': arr.sort((a,b)=>{
-      const da = parseDate(a.prevFaturamento);
-      const db = parseDate(b.prevFaturamento);
-      return (da?.getTime()||9e15) - (db?.getTime()||9e15);
+      const toMs = v => {
+        if(!v) return 9e15;
+        const n = Number(v);
+        if(!isNaN(n) && n > 40000 && n < 60000){
+          const d = new Date(Date.UTC(1899,11,30)); d.setUTCDate(d.getUTCDate()+n); return d.getTime();
+        }
+        const t = new Date(v).getTime();
+        return isNaN(t) ? 9e15 : t;
+      };
+      return toMs(a.prevFaturamento) - toMs(b.prevFaturamento);
     }); break;
     default: arr.sort((a,b)=>String(a.produto).localeCompare(String(b.produto), 'pt-BR', { sensitivity:'base' })); break;
   }
