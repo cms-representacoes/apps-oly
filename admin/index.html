@@ -166,6 +166,7 @@
       padding:16px;
     }
 
+    @keyframes pulse-badge{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.2)} }
     .toast-wrap{
       position:fixed;
       top:18px;
@@ -321,7 +322,7 @@
     </section>
 
     <section id="adminApp" class="hidden mx-auto max-w-7xl">
-      <header class="rounded-[32px] border border-slate-200 bg-white p-4 sm:p-5 shadow-card">
+      <header class="rounded-[32px] border border-slate-200 bg-white p-4 sm:p-5 shadow-card sticky top-4 z-30">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <div class="text-xs font-bold text-slate-500">Gestão</div>
@@ -343,6 +344,12 @@
 
             <button id="btnRefresh" class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">
               Atualizar
+            </button>
+
+            <button id="btnNotifAdmin" class="focus-ring relative rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 flex items-center gap-2">
+              <i class="fa-solid fa-bell"></i>
+              <span class="hidden sm:inline">Pedidos</span>
+              <span id="badgeNotifAdmin" class="hidden absolute -top-2 -right-2 min-w-[20px] h-[20px] px-1 bg-rose-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white" style="animation:pulse-badge 1s infinite">0</span>
             </button>
 
             <button id="btnExportarTodosPendentes"
@@ -2067,6 +2074,76 @@ $('btnLogout').addEventListener('click', ()=>{
 });
 
 $('btnRefresh').addEventListener('click', async ()=>{ await loadAdmin(); });
+
+// ── NOTIFICAÇÕES ──────────────────────────────────────────────────────────────
+let _notifLastOrderId = null;
+let _notifCount = 0;
+const _notifOrigTitle = document.title;
+
+function notifPlaySound(){
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.setValueAtTime(880, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(440, ctx.currentTime+0.15);
+    g.gain.setValueAtTime(0.25, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.3);
+    o.start(); o.stop(ctx.currentTime+0.3);
+  }catch(_){}
+}
+
+function notifShowToast(msg){
+  const wrap = document.querySelector('.toast-wrap');
+  if(!wrap) return;
+  const el = document.createElement('div');
+  el.className = 'toast toast-info';
+  el.style.pointerEvents = 'auto';
+  el.innerHTML = `<i class="fa-solid fa-bell"></i><span>${msg}</span>`;
+  wrap.appendChild(el);
+  setTimeout(()=>el.remove(), 5000);
+}
+
+function notifUpdateBadge(){
+  const badge = $('badgeNotifAdmin');
+  if(!badge) return;
+  if(_notifCount > 0){
+    badge.textContent = _notifCount;
+    badge.classList.remove('hidden');
+    document.title = `🔴 ${_notifCount} novo${_notifCount>1?'s':''} pedido${_notifCount>1?'s':''}! — Admin`;
+  } else {
+    badge.classList.add('hidden');
+    document.title = _notifOrigTitle;
+  }
+}
+
+async function notifPollAdmin(){
+  try{
+    const remote = await workerRequest('GET');
+    if(!Array.isArray(remote)) return;
+    const novos = remote.filter(o => {
+      if(!o.createdAt) return false;
+      const t = new Date(o.createdAt).getTime();
+      return (Date.now() - t) < 30000; // criado nos últimos 30s
+    });
+    if(novos.length > 0 && _notifLastOrderId !== novos[0]?.id){
+      _notifLastOrderId = novos[0]?.id;
+      _notifCount += novos.length;
+      notifUpdateBadge();
+      notifPlaySound();
+      notifShowToast(`${novos.length} novo${novos.length>1?'s':''} pedido${novos.length>1?'s':''} recebido${novos.length>1?'s':''}!`);
+    }
+  }catch(_){}
+}
+
+$('btnNotifAdmin').addEventListener('click', ()=>{
+  _notifCount = 0;
+  notifUpdateBadge();
+  document.querySelector('[data-status="Pendente"]')?.click() ||
+  $('adminOrdersList')?.scrollIntoView({ behavior:'smooth' });
+});
+
+setInterval(notifPollAdmin, 30000);
 
 // ── Toggle Bloco 2 ────────────────────────────────────────────────────────────
 (()=>{

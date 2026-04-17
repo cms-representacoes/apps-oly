@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dashboard — Repasse Olympikus</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f1f5f9;color:#0f172a}
+  @keyframes pulse-badge{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+  .kpi-card{background:#fff;border:0.5px solid #e2e8f0;border-radius:16px;padding:14px 16px;cursor:pointer;transition:border-color .12s}
+  .kpi-card:hover{border-color:#94a3b8}
+  .kpi-card.active{border-color:#2836d4;background:#eef0ff}
+  .kpi-label{font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em}
+  .kpi-val{font-size:26px;font-weight:500;margin-top:4px;line-height:1}
+  .kpi-sub{font-size:11px;color:#94a3b8;margin-top:3px}
+  .card{background:#fff;border:0.5px solid #e2e8f0;border-radius:16px;padding:16px}
+  .card-title{font-size:13px;font-weight:500;color:#0f172a}
+  .chip{display:inline-flex;align-items:center;gap:3px;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:500}
+  .chip-pend{background:#fef3c7;color:#b45309}
+  .chip-aprov{background:#dcfce7;color:#15803d}
+  .chip-canc{background:#fee2e2;color:#b91c1c}
+  .sit-ok{background:#dcfce7;color:#15803d}
+  .sit-low{background:#fef3c7;color:#b45309}
+  .sit-crit{background:#fee2e2;color:#b91c1c}
+  .badge-crit{background:#fee2e2;color:#991b1b}
+  .badge-atenc{background:#fef3c7;color:#92400e}
+  .badge-ok{background:#dcfce7;color:#166534}
+  .badge-venc{background:#f1f5f9;color:#475569}
+  .eye-btn{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:0.5px solid #e2e8f0;background:none;color:#64748b;flex-shrink:0}
+  .eye-btn:hover{background:#f1f5f9}
+  .rank-bar-wrap{width:60px;height:4px;background:#f1f5f9;border-radius:999px;overflow:hidden}
+  .rank-bar{height:100%;border-radius:999px;background:#2836d4}
+  .expand-box{background:#f8fafc;border-radius:10px;padding:10px 12px;margin-top:8px;font-size:12px}
+  .prazo-bar-wrap{width:100%;height:4px;background:#f1f5f9;border-radius:999px;overflow:hidden;margin-top:4px}
+  .prazo-bar{height:100%;border-radius:999px}
+  .periodo-bar{display:inline-flex;border:0.5px solid #e2e8f0;border-radius:999px;background:#f1f5f9;padding:3px;gap:2px}
+  .periodo-btn{border:none;background:none;border-radius:999px;padding:5px 13px;font-size:12px;font-weight:500;cursor:pointer;color:#64748b;transition:all .12s}
+  .periodo-btn.active{background:#fff;color:#2836d4;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .refresh-spin{animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="min-h-screen p-4">
+
+  <!-- HEADER -->
+  <div class="card flex flex-wrap items-center justify-between gap-3 mb-4 sticky top-4 z-30">
+    <div>
+      <div class="text-lg font-medium">Dashboard — Repasse Olympikus</div>
+      <div class="text-xs text-slate-400 mt-0.5" id="headerSub">Carregando...</div>
+    </div>
+    <div class="flex items-center gap-3 flex-wrap">
+      <div class="periodo-bar">
+        <button class="periodo-btn active" onclick="setPeriod('24h',this)">24h</button>
+        <button class="periodo-btn" onclick="setPeriod('7d',this)">7 dias</button>
+        <button class="periodo-btn" onclick="setPeriod('15d',this)">15 dias</button>
+        <button class="periodo-btn" onclick="setPeriod('30d',this)">30 dias</button>
+      </div>
+      <button id="btnRefresh" onclick="loadAll()" class="flex items-center gap-2 text-xs font-semibold text-slate-500 border border-slate-200 rounded-full px-3 py-2 hover:bg-slate-50">
+        <i class="fa-solid fa-rotate text-xs" id="refreshIcon"></i> Atualizar
+      </button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+    <div class="kpi-card active" onclick="setKpi(this,'todos')">
+      <div class="kpi-label">Total pedidos</div>
+      <div class="kpi-val" id="kTotalPed">—</div>
+      <div class="kpi-sub">no período</div>
+    </div>
+    <div class="kpi-card" onclick="setKpi(this,'pares')">
+      <div class="kpi-label">Total pares</div>
+      <div class="kpi-val text-[#2836d4]" id="kPares">—</div>
+      <div class="kpi-sub">solicitados</div>
+    </div>
+    <div class="kpi-card" onclick="setKpi(this,'Pendente')">
+      <div class="kpi-label">Pendentes</div>
+      <div class="kpi-val text-amber-600" id="kPend">—</div>
+      <div class="kpi-sub">aguardando</div>
+    </div>
+    <div class="kpi-card" onclick="setKpi(this,'Aprovado')">
+      <div class="kpi-label">Aprovados</div>
+      <div class="kpi-val text-emerald-600" id="kAprov">—</div>
+      <div class="kpi-sub">confirmados</div>
+    </div>
+    <div class="kpi-card" onclick="setKpi(this,'Cancelado')">
+      <div class="kpi-label">Cancelados</div>
+      <div class="kpi-val text-rose-600" id="kCanc">—</div>
+      <div class="kpi-sub">no período</div>
+    </div>
+    <div class="kpi-card" onclick="setKpi(this,'saldo')">
+      <div class="kpi-label">Saldo DISPO</div>
+      <div class="kpi-val text-emerald-600" id="kSaldo">—</div>
+      <div class="kpi-sub">pares disponíveis</div>
+    </div>
+  </div>
+
+  <!-- DETALHE KPI -->
+  <div id="kpiDetail" class="card mb-4 hidden">
+    <div class="card-title mb-3" id="kpiDetailTitle"></div>
+    <div id="kpiDetailContent"></div>
+  </div>
+
+  <!-- GRÁFICOS -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+    <div class="card">
+      <div class="flex items-center justify-between mb-2">
+        <div class="card-title">Pedidos por status</div>
+        <button class="eye-btn" onclick="toggleChart('chartStatusWrap',this)" title="Ocultar/exibir">
+          <i class="fa-regular fa-eye text-xs"></i>
+        </button>
+      </div>
+      <div id="chartStatusWrap">
+        <div class="flex gap-3 mb-2 flex-wrap text-xs text-slate-500">
+          <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-amber-400 inline-block"></span>Pendente <span id="lgPend">—</span></span>
+          <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block"></span>Aprovado <span id="lgAprov">—</span></span>
+          <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-rose-500 inline-block"></span>Cancelado <span id="lgCanc">—</span></span>
+        </div>
+        <div style="position:relative;height:180px">
+          <canvas id="chartStatus" role="img" aria-label="Pedidos por status">Pendente, Aprovado, Cancelado</canvas>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="flex items-center justify-between mb-2">
+        <div class="card-title">Pares por vendedor</div>
+        <button class="eye-btn" onclick="toggleChart('chartVendWrap',this)" title="Ocultar/exibir">
+          <i class="fa-regular fa-eye text-xs"></i>
+        </button>
+      </div>
+      <div id="chartVendWrap">
+        <div class="flex gap-3 mb-2 text-xs text-slate-500">
+          <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-blue-500 inline-block"></span>Pares aprovados</span>
+        </div>
+        <div style="position:relative;height:180px">
+          <canvas id="chartVend" role="img" aria-label="Pares por vendedor">Vendedores e pares</canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RANKING + DISPO -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+    <div class="card">
+      <div class="flex items-center justify-between mb-3">
+        <div class="card-title">Ranking de vendedores</div>
+        <span class="text-[10px] font-medium text-slate-400">clique para expandir</span>
+      </div>
+      <div id="rankingList"></div>
+      <div id="vendDetail" class="hidden expand-box"></div>
+    </div>
+    <div class="card">
+      <div class="flex items-center justify-between mb-3">
+        <div class="card-title">Saldo real da DISPO</div>
+        <span id="dispoCount" class="text-[10px] font-medium text-emerald-700 bg-emerald-50 rounded-full px-2 py-0.5"></span>
+      </div>
+      <div id="dispoGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+    </div>
+  </div>
+
+  <!-- PRODUTOS SEM PEDIDO -->
+  <div class="card mb-4">
+    <div class="flex items-center justify-between mb-3">
+      <div>
+        <div class="card-title">Produtos sem pedido — alerta de prazo</div>
+        <div class="text-xs text-slate-400 mt-0.5">Limite de cancelamento = Prev Fat − 45 dias · ordenado por urgência</div>
+      </div>
+      <div class="flex gap-3 flex-wrap text-xs text-slate-400">
+        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500 inline-block"></span>Crítico &lt;15d</span>
+        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>Atenção 15–30d</span>
+        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>Tranquilo &gt;30d</span>
+        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-400 inline-block"></span>Vencido</span>
+      </div>
+    </div>
+    <div id="prazoLista"></div>
+  </div>
+
+  <div class="text-center text-xs text-slate-400 pb-4">
+    Repasse Olympikus · Dashboard · Atualização automática a cada 60 segundos
+  </div>
+</div>
+
+<script>
+const WORKER_URL = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
+const DISPO_URL  = '../DISPO.xlsx';
+const HOJE = new Date();
+
+let STATE = { orders:[], dispoRows:[], period:'24h' };
+let chartStatus=null, chartVend=null;
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function fmt(n){ return Number(n||0).toLocaleString('pt-BR'); }
+function fmtDate(v){
+  if(!v) return '—';
+  const n=Number(v);
+  if(!isNaN(n)&&n>40000&&n<60000){ const d=new Date(Date.UTC(1899,11,30)); d.setUTCDate(d.getUTCDate()+n); return d.toLocaleDateString('pt-BR'); }
+  const d=new Date(v); return isNaN(d)?'—':d.toLocaleDateString('pt-BR');
+}
+function canonicalStatus(s){
+  const n=String(s||'').trim().toLowerCase();
+  if(['aprovado','finalizado','faturado'].includes(n)) return 'Aprovado';
+  if(['cancelado','cancelada'].includes(n)) return 'Cancelado';
+  return 'Pendente';
+}
+function getItemUnits(item){
+  if(!item) return 0;
+  const grade=(item.grade||[]).reduce((s,g)=>s+Number(g.qty||0),0);
+  return grade || Number(item.totalUnits||0);
+}
+function diasAte(dataStr){
+  if(!dataStr) return 999;
+  const d=new Date(dataStr);
+  return isNaN(d)?999:Math.round((d-HOJE)/(1000*60*60*24));
+}
+function getStatusPrazo(dl){
+  if(dl<0)  return{label:'Vencido',         cls:'badge-venc',cor:'#94a3b8'};
+  if(dl<15) return{label:`${dl}d — Crítico`, cls:'badge-crit',cor:'#ef4444'};
+  if(dl<=30)return{label:`${dl}d — Atenção`, cls:'badge-atenc',cor:'#f59e0b'};
+  return      {label:`${dl}d — Tranquilo`,  cls:'badge-ok',  cor:'#22c55e'};
+}
+
+// ── PERÍODO ───────────────────────────────────────────────────────────────────
+function periodMs(p){
+  return{
+    '24h': 24*60*60*1000,
+    '7d':  7*24*60*60*1000,
+    '15d': 15*24*60*60*1000,
+    '30d': 30*24*60*60*1000,
+  }[p]||24*60*60*1000;
+}
+function ordersInPeriod(){
+  const cutoff=Date.now()-periodMs(STATE.period);
+  return STATE.orders.filter(o=>{
+    const t=new Date(o.createdAt||o.updatedAt||0).getTime();
+    return t>=cutoff;
+  });
+}
+
+// ── LOAD ──────────────────────────────────────────────────────────────────────
+async function loadAll(){
+  const icon=document.getElementById('refreshIcon');
+  icon.className='fa-solid fa-rotate text-xs refresh-spin';
+  try{
+    const [ordRes, dispoRes] = await Promise.all([
+      fetch(`${WORKER_URL}?t=${Date.now()}`,{cache:'no-store'}),
+      fetch(`${DISPO_URL}?t=${Date.now()}`,{cache:'no-store'})
+    ]);
+    if(ordRes.ok){ const d=await ordRes.json(); STATE.orders=Array.isArray(d)?d:(d.orders||[]); }
+    if(dispoRes.ok){
+      const buf=await dispoRes.arrayBuffer();
+      const wb=XLSX.read(buf,{type:'array',cellDates:true});
+      const ws=wb.Sheets[wb.SheetNames.find(n=>n.toUpperCase()==='DISPO')||wb.SheetNames[0]];
+      STATE.dispoRows=XLSX.utils.sheet_to_json(ws,{defval:null,raw:false});
+    }
+  }catch(e){ console.error(e); }
+  icon.className='fa-solid fa-rotate text-xs';
+  const now=new Date();
+  document.getElementById('headerSub').textContent=`Atualizado ${now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
+  render();
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function render(){
+  const orders=ordersInPeriod();
+  const pend=orders.filter(o=>canonicalStatus(o.status)==='Pendente');
+  const aprov=orders.filter(o=>canonicalStatus(o.status)==='Aprovado');
+  const canc=orders.filter(o=>canonicalStatus(o.status)==='Cancelado');
+  const totalPares=orders.reduce((s,o)=>(o.items||[]).reduce((ss,i)=>ss+getItemUnits(i),s),0);
+
+  document.getElementById('kTotalPed').textContent=fmt(orders.length);
+  document.getElementById('kPares').textContent=fmt(totalPares);
+  document.getElementById('kPend').textContent=fmt(pend.length);
+  document.getElementById('kAprov').textContent=fmt(aprov.length);
+  document.getElementById('kCanc').textContent=fmt(canc.length);
+
+  // Saldo DISPO
+  const { pendMap, aprovMap } = buildDispoMaps();
+  const saldoTotal=STATE.dispoRows.reduce((s,r)=>{
+    const gci=String(r['GCI']||'').trim();
+    const cod=String(r['Código']||r['CODIGO']||'').trim();
+    const key=gci||cod;
+    const saldo=Number(r['SALDO']||0);
+    const p=pendMap.get(key)||0, a=aprovMap.get(key)||0;
+    return s+Math.max(0,saldo-p-a);
+  },0);
+  document.getElementById('kSaldo').textContent=fmt(saldoTotal);
+
+  const tot=orders.length||1;
+  document.getElementById('lgPend').textContent=Math.round(pend.length/tot*100)+'%';
+  document.getElementById('lgAprov').textContent=Math.round(aprov.length/tot*100)+'%';
+  document.getElementById('lgCanc').textContent=Math.round(canc.length/tot*100)+'%';
+
+  updateChartStatus(pend.length, aprov.length, canc.length);
+  renderRanking(orders);
+  renderDispo(pendMap, aprovMap);
+  renderPrazo();
+}
+
+function buildDispoMaps(){
+  const pendMap=new Map(), aprovMap=new Map();
+  for(const o of STATE.orders){
+    const st=canonicalStatus(o.status);
+    if(st==='Cancelado') continue;
+    for(const item of (o.items||[])){
+      const key=String(item.gci||item.codigo||'').trim();
+      if(!key) continue;
+      const u=getItemUnits(item);
+      if(st==='Pendente') pendMap.set(key,(pendMap.get(key)||0)+u);
+      else if(st==='Aprovado') aprovMap.set(key,(aprovMap.get(key)||0)+u);
+    }
+  }
+  return{pendMap,aprovMap};
+}
+
+function updateChartStatus(p,a,c){
+  if(chartStatus){ chartStatus.data.datasets[0].data=[p,a,c]; chartStatus.update(); return; }
+  chartStatus=new Chart(document.getElementById('chartStatus'),{
+    type:'doughnut',
+    data:{labels:['Pendente','Aprovado','Cancelado'],datasets:[{data:[p,a,c],backgroundColor:['#f59e0b','#22c55e','#ef4444'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'65%'}
+  });
+}
+
+function renderRanking(orders){
+  const PREPOSTOS=['JORGE','MARIANA','RAFAEL','WILLAME','LÉO','MARCOS','CMS'];
+  const map=new Map();
+  for(const o of orders){
+    const nome=o.preposto?.nome||o.preposto?.codigo||'—';
+    if(!map.has(nome)) map.set(nome,{pares:0,pedidos:0,aprov:0,pend:0,canc:0});
+    const e=map.get(nome);
+    e.pedidos++;
+    const st=canonicalStatus(o.status);
+    if(st==='Aprovado') e.aprov++;
+    else if(st==='Pendente') e.pend++;
+    else e.canc++;
+    e.pares+=(o.items||[]).reduce((s,i)=>s+getItemUnits(i),0);
+  }
+  // Vendedores sem pedido
+  for(const p of PREPOSTOS){ if(!map.has(p)) map.set(p,{pares:0,pedidos:0,aprov:0,pend:0,canc:0}); }
+  const sorted=[...map.entries()].sort((a,b)=>b[1].pares-a[1].pares);
+  const maxPares=sorted[0]?.[1]?.pares||1;
+  const vendLabels=[], vendData=[];
+  document.getElementById('rankingList').innerHTML=sorted.map(([nome,d],i)=>{
+    vendLabels.push(nome); vendData.push(d.pares);
+    const pct=Math.round(d.pares/maxPares*100);
+    const semAtiv=d.pedidos===0;
+    return`<div class="flex items-center gap-2 py-2 border-b border-slate-100 last:border-0 cursor-pointer hover:opacity-75 ${semAtiv?'opacity-50':''}" onclick="expandVend('${nome}',${JSON.stringify(d).replace(/'/g,'&#39;')})">
+      <div class="text-xs font-medium text-slate-400 w-4 flex-shrink-0">${semAtiv?'—':i+1}</div>
+      <div class="w-7 h-7 rounded-full bg-blue-50 text-blue-800 text-xs font-medium flex items-center justify-center flex-shrink-0">${nome.slice(0,2)}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-xs font-medium">${nome}</div>
+        <div class="text-[11px] text-slate-400">${d.pedidos} pedido${d.pedidos!==1?'s':''} · ${fmt(d.pares)} pares</div>
+      </div>
+      ${semAtiv?'<span class="chip" style="background:#f1f5f9;color:#64748b;font-size:10px">sem atividade</span>':''}
+      <div class="rank-bar-wrap flex-shrink-0"><div class="rank-bar" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+  // Atualiza gráfico vendedor
+  if(chartVend){ chartVend.data.labels=vendLabels; chartVend.data.datasets[0].data=vendData; chartVend.update(); return; }
+  chartVend=new Chart(document.getElementById('chartVend'),{
+    type:'bar',
+    data:{labels:vendLabels,datasets:[{label:'Pares',data:vendData,backgroundColor:'#3b82f6',borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:10},color:'#64748b'}},y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{font:{size:10},color:'#64748b'}}}}
+  });
+}
+
+function expandVend(nome, d){
+  const detail=document.getElementById('vendDetail');
+  if(detail.dataset.nome===nome&&!detail.classList.contains('hidden')){ detail.classList.add('hidden'); detail.dataset.nome=''; return; }
+  detail.dataset.nome=nome; detail.classList.remove('hidden');
+  if(!d.pedidos){ detail.innerHTML=`<div class="text-slate-400">Nenhum pedido de <strong>${nome}</strong> no período.</div>`; return; }
+  detail.innerHTML=`<div class="font-medium mb-2">${nome}</div>
+    ${[['Total pares',fmt(d.pares),''],['Pedidos',d.pedidos,''],['Aprovados',d.aprov,'text-emerald-600'],['Pendentes',d.pend,'text-amber-600'],['Cancelados',d.canc,'text-rose-600']].map(([l,v,c])=>`
+    <div class="flex justify-between py-1 border-b border-slate-100 last:border-0"><span class="text-slate-500">${l}</span><span class="font-medium ${c}">${v}</span></div>`).join('')}`;
+}
+
+function renderDispo(pendMap, aprovMap){
+  const rows=STATE.dispoRows.map(r=>{
+    const gci=String(r['GCI']||'').trim();
+    const cod=String(r['Código']||r['CODIGO']||'').trim();
+    const key=gci||cod;
+    const saldo=Number(r['SALDO']||0);
+    const p=pendMap.get(key)||0, a=aprovMap.get(key)||0;
+    const saldoReal=saldo-p-a;
+    return{ produto:String(r['Produto']||r['PRODUTO']||'').trim(), cor:String(r['COR']||r['Cor']||'').trim(), saldoReal, saldo };
+  }).filter(r=>r.produto);
+  document.getElementById('dispoCount').textContent=`${rows.length} produto${rows!==1?'s':''}`;
+  document.getElementById('dispoGrid').innerHTML=rows.map(r=>{
+    const sit=r.saldoReal<=0?{cls:'sit-crit',l:'Crítico'}:r.saldoReal<=12?{cls:'sit-low',l:'Baixo'}:{cls:'sit-ok',l:'Saudável'};
+    return`<div class="flex items-center gap-2 bg-slate-50 rounded-xl p-2.5">
+      <div class="flex-1 min-w-0">
+        <div class="text-xs font-medium truncate">${r.produto}</div>
+        <div class="text-[10px] text-slate-400">${r.cor} · ${fmt(r.saldoReal)} pares</div>
+      </div>
+      <span class="chip ${sit.cls}" style="font-size:10px">${sit.l}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderPrazo(){
+  // Produtos sem pedido = sem nenhum pedido Pendente/Aprovado
+  const gciComPedido=new Set();
+  for(const o of STATE.orders){
+    const st=canonicalStatus(o.status);
+    if(st==='Cancelado') continue;
+    for(const item of (o.items||[])){ gciComPedido.add(String(item.gci||item.codigo||'').trim()); }
+  }
+  const semPedido=STATE.dispoRows.filter(r=>{
+    const gci=String(r['GCI']||'').trim();
+    const cod=String(r['Código']||r['CODIGO']||'').trim();
+    return !gciComPedido.has(gci) && !gciComPedido.has(cod);
+  }).map(r=>{
+    const prevFat=r['DATA ENTREGA']||r['DATA_ENTREGA']||null;
+    const diasPrevFat=diasAte(prevFat);
+    const diasLimite=diasPrevFat-45;
+    const status=getStatusPrazo(diasLimite);
+    const limiteDate=prevFat?new Date(prevFat):null;
+    if(limiteDate) limiteDate.setDate(limiteDate.getDate()-45);
+    return{
+      produto:String(r['Produto']||r['PRODUTO']||'').trim(),
+      cor:String(r['COR']||r['Cor']||'').trim(),
+      saldo:Number(r['SALDO']||0),
+      prevStr:fmtDate(prevFat),
+      limiteStr:limiteDate?limiteDate.toLocaleDateString('pt-BR'):'—',
+      diasLimite, status
+    };
+  }).filter(r=>r.produto).sort((a,b)=>a.diasLimite-b.diasLimite);
+
+  if(!semPedido.length){
+    document.getElementById('prazoLista').innerHTML='<div class="text-sm text-slate-400 py-4 text-center">Todos os produtos têm pedidos no período.</div>';
+    return;
+  }
+  document.getElementById('prazoLista').innerHTML=semPedido.map(p=>{
+    const pct=p.diasLimite<0?100:Math.max(5,Math.round((1-Math.min(p.diasLimite,90)/90)*100));
+    return`<div class="flex items-center gap-3 py-2.5 border-b border-slate-100 last:border-0">
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-medium">${p.produto}</div>
+        <div class="text-xs text-slate-400 mt-0.5">${p.cor} · ${fmt(p.saldo)} pares · Prev Fat ${p.prevStr}</div>
+        <div class="prazo-bar-wrap mt-1"><div class="prazo-bar" style="width:${pct}%;background:${p.status.cor}"></div></div>
+      </div>
+      <div class="flex flex-col items-end gap-1 flex-shrink-0">
+        <span class="chip ${p.status.cls}" style="font-size:11px">${p.status.label}</span>
+        <span class="text-[10px] text-slate-400">Limite: ${p.limiteStr}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── INTERATIVIDADE ────────────────────────────────────────────────────────────
+function setPeriod(p, btn){
+  STATE.period=p;
+  document.querySelectorAll('.periodo-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('kpiDetail').classList.add('hidden');
+  document.querySelectorAll('.kpi-card').forEach(k=>k.classList.remove('active'));
+  document.querySelector('.kpi-card').classList.add('active');
+  render();
+}
+
+function setKpi(el, tipo){
+  document.querySelectorAll('.kpi-card').forEach(k=>k.classList.remove('active'));
+  el.classList.add('active');
+  const detail=document.getElementById('kpiDetail');
+  if(['todos','pares','saldo'].includes(tipo)){ detail.classList.add('hidden'); return; }
+  const orders=ordersInPeriod().filter(o=>canonicalStatus(o.status)===tipo);
+  detail.classList.remove('hidden');
+  document.getElementById('kpiDetailTitle').textContent=`${orders.length} pedido${orders.length!==1?'s':''} — ${tipo}`;
+  document.getElementById('kpiDetailContent').innerHTML=orders.map(o=>{
+    const pares=(o.items||[]).reduce((s,i)=>s+getItemUnits(i),0);
+    const nome=o.preposto?.nome||o.preposto?.codigo||'—';
+    const cliente=o.clienteNome?`${o.clienteCodigo} — ${o.clienteNome}`:o.clienteCodigo||'—';
+    return`<div class="flex items-center gap-3 py-2 border-b border-slate-100 last:border-0 text-xs">
+      <div class="flex-1"><span class="font-medium">${nome}</span> · ${cliente}</div>
+      <span class="font-medium">${fmt(pares)} pares</span>
+      <span class="chip chip-${tipo.toLowerCase()}">${tipo}</span>
+    </div>`;
+  }).join('')||'<div class="text-slate-400 text-sm py-2">Nenhum pedido neste status no período.</div>';
+}
+
+function toggleChart(wrapId, btn){
+  const wrap=document.getElementById(wrapId);
+  const icon=btn.querySelector('i');
+  const hidden=wrap.classList.toggle('hidden');
+  icon.className=hidden?'fa-regular fa-eye-slash text-xs':'fa-regular fa-eye text-xs';
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+loadAll();
+setInterval(loadAll, 60000);
+</script>
+</body>
+</html>
