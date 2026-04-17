@@ -35,6 +35,36 @@
       --partial:#c2410c;
       --partial-soft:#ffedd5;
     }
+    .dark{
+      --bg:#0f172a;
+      --card:#1e293b;
+      --text:#e2e8f0;
+      --line:#334155;
+      --brand:#818cf8;
+      --brand-soft:rgba(129,140,248,.15);
+      --shadow:0 18px 42px rgba(0,0,0,.4);
+      --success:#4ade80;
+      --success-soft:#14532d;
+      --warning:#fbbf24;
+      --warning-soft:#451a03;
+      --info:#60a5fa;
+      --info-soft:#1e3a5f;
+      --danger:#f87171;
+      --danger-soft:#450a0a;
+      --muted:#94a3b8;
+      --muted-soft:#1e293b;
+      --partial:#fb923c;
+      --partial-soft:#431407;
+    }
+    .dark body,.dark .kpi-card,.dark .table-wrap,.dark .filter-pill,.dark header,.dark .rounded-\[28px\],.dark .bg-white,.dark select,.dark input{ background:var(--card)!important; color:var(--text)!important; border-color:var(--line)!important; }
+    .dark .table-wrap thead th{ background:#263248!important; color:#94a3b8!important; }
+    .dark .table-wrap tbody tr:hover td{ background:#263248!important; }
+    .dark .table-wrap tbody td{ border-color:#334155!important; }
+    .dark .bg-slate-50,.dark .bg-slate-100{ background:#1e293b!important; }
+    .dark .text-slate-400,.dark .text-slate-500,.dark .text-slate-600{ color:#94a3b8!important; }
+    .dark .text-slate-800,.dark .text-slate-700{ color:#e2e8f0!important; }
+    .dark .border-slate-200{ border-color:#334155!important; }
+    .dark .shadow-card{ box-shadow:0 4px 24px rgba(0,0,0,.4)!important; }
 
     *{ box-sizing:border-box; }
 
@@ -165,6 +195,7 @@
       white-space:nowrap;
       user-select:none;
     }
+    .table-wrap{ max-height:60vh; }
 
     .table-wrap thead th.sortable{
       cursor:pointer;
@@ -334,6 +365,11 @@
     .row-antecipa td:first-child { border-left:3px solid #534AB7; }
     .row-nova-dispo td { background:#f0fdf4 !important; }
     .badge-nova { font-size:10px; background:#EAF3DE; color:#27500A; border-radius:999px; padding:1px 7px; margin-left:5px; font-weight:700; }
+    .badge-parcial { font-size:10px; background:#ffedd5; color:#c2410c; border-radius:999px; padding:1px 7px; margin-left:5px; font-weight:700; border:0.5px solid #fdba74; }
+    .col-hide-pendente .col-pendente { display:none!important; }
+    .col-hide-aprovado .col-aprovado { display:none!important; }
+    .col-hide-pedidoMae .col-pedidoMae { display:none!important; }
+    @keyframes pulse-badge{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
     .icon-btn{ width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; border:0.5px solid var(--color-border-secondary,#e2e8f0); background:none; color:#64748b; transition:all .12s; flex-shrink:0; }
     .icon-btn:hover{ background:#f1f5f9; }
     .icon-btn.ocultar:hover{ border-color:#AFA9EC; color:#3C3489; background:#EEEDFE; }
@@ -380,6 +416,33 @@
               Atualizar DISPO
             </button>
 
+            <!-- Ocultar KPIs -->
+            <button id="btnToggleKpis" onclick="toggleKpis()" title="Ocultar/exibir KPIs"
+              class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2">
+              <i class="fa-regular fa-eye text-slate-400" id="kpiEyeIcon"></i>
+              <span class="hidden sm:inline text-xs">KPIs</span>
+            </button>
+
+            <!-- Ocultar colunas -->
+            <div class="relative" id="colToggleWrap">
+              <button onclick="toggleColMenu()" title="Colunas"
+                class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2">
+                <i class="fa-solid fa-table-columns text-slate-400 text-xs"></i>
+                <span class="hidden sm:inline text-xs">Colunas</span>
+              </button>
+              <div id="colMenu" class="hidden absolute right-0 top-12 bg-white border border-slate-200 rounded-2xl shadow-lg p-3 z-50 flex flex-col gap-2 min-w-[160px]">
+                <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colPendente" checked onchange="toggleCol('pendente',this.checked)"> Pendente</label>
+                <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colAprovado" checked onchange="toggleCol('aprovado',this.checked)"> Aprovado</label>
+                <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colPedidoMae" checked onchange="toggleCol('pedidoMae',this.checked)"> Pedido Mãe</label>
+              </div>
+            </div>
+
+            <!-- Dark mode -->
+            <button id="btnDarkMode" onclick="toggleDark()" title="Modo escuro"
+              class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2">
+              <i class="fa-solid fa-moon text-slate-400 text-xs" id="darkIcon"></i>
+            </button>
+
             <button id="btnLogout"
               class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
               Sair
@@ -389,7 +452,7 @@
       </header>
 
       <!-- KPI CARDS -->
-      <div class="grid grid-cols-2 xl:grid-cols-6 gap-3 mb-4">
+      <div id="kpiBlock" class="grid grid-cols-2 xl:grid-cols-6 gap-3 mb-4">
         <div class="kpi-card">
           <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Linhas na DISPO</div>
           <div id="kpiLinhas" class="mt-2 text-3xl font-extrabold">—</div>
@@ -484,15 +547,16 @@
           <table>
             <thead>
               <tr>
-                <th class="sortable" data-col="codigo">Código<i class="fa-solid fa-sort sort-icon"></i></th>
+                <th class="sortable" data-col="gci">GCI<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th class="sortable" data-col="produto">Produto<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th>Cor</th>
                 <th class="sortable" data-col="dataEntrega">Data entrega<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th class="sortable text-right" data-col="saldo">Saldo DISPO<i class="fa-solid fa-sort sort-icon"></i></th>
-                <th class="sortable text-right" data-col="pendente">Pendente<i class="fa-solid fa-sort sort-icon"></i></th>
-                <th class="sortable text-right" data-col="aprovado">Aprovado<i class="fa-solid fa-sort sort-icon"></i></th>
+                <th class="sortable text-right col-pendente" data-col="pendente">Pendente<i class="fa-solid fa-sort sort-icon"></i></th>
+                <th class="sortable text-right col-aprovado" data-col="aprovado">Aprovado<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th class="sortable text-right" data-col="saldoReal">Saldo real<i class="fa-solid fa-sort sort-icon"></i></th>
-                <th class="sortable" data-col="pedidoMae">Pedido Mãe<i class="fa-solid fa-sort sort-icon"></i></th>
+                <th class="text-right" data-col="desmembrado">Desmembrado</th>
+                <th class="sortable col-pedidoMae" data-col="pedidoMae">Pedido Mãe<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th class="sortable" data-col="situacao">Situação<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th></th>
               </tr>
@@ -756,6 +820,7 @@ async function loadOrders(){
     if(!res.ok) throw new Error(`Worker GET falhou (${res.status})`);
     const data = await res.json();
     STATE.orders = Array.isArray(data) ? data : (data.orders || []);
+    console.log(`[loadOrders] ${STATE.orders.length} pedido(s) carregado(s) do Worker`);
 
     // Carrega desmembramentos via PATCH
     try{
@@ -998,11 +1063,18 @@ function renderDispo(){
       ? `<span class="${sit.className}">−${formatInt(Math.abs(row.saldoReal))}</span>`
       : `<span class="${sit.className}">${formatInt(row.saldoReal)}</span>`;
 
+    // Desmembrado: soma todas as qtdes salvas no desmembramento desta linha
+    const key = desmKey(row);
+    const savedDesm = STATE.desmembramentos && STATE.desmembramentos[key] ? STATE.desmembramentos[key] : {};
+    const totalDesm = Object.values(savedDesm).reduce((s, v) => s + Number(v || 0), 0);
+    const isParcial = totalDesm > 0 && row.saldoReal > 0;
+
     return `
       <tr class="${rowClass}">
-        <td class="font-extrabold text-slate-800 tabular-nums">${safeHtml(row.codigo)}</td>
+        <td class="font-extrabold tabular-nums text-[var(--brand)] text-xs">${safeHtml(row.gci||row.codigo||'—')}</td>
         <td>
-          <div class="font-extrabold text-slate-800">${safeHtml(row.produto)}</div>
+          <div class="font-extrabold text-slate-800">${safeHtml(row.produto)}${isParcial ? '<span class="badge-parcial ml-1">Parcial</span>' : ''}</div>
+          <div class="text-xs text-slate-400 mt-0.5">${safeHtml(row.codigo||'')}</div>
         </td>
         <td class="text-slate-500 font-semibold">${safeHtml(row.cor)}</td>
         <td class="tabular-nums font-semibold ${row._antecipavel ? 'text-[#3C3489]' : 'text-slate-600'}">
@@ -1010,10 +1082,11 @@ function renderDispo(){
           ${isNovaDestinoAntecipacao ? '<span class="badge-nova">Nova</span>' : ''}
         </td>
         <td class="text-right font-extrabold tabular-nums">${formatInt(row.saldo)}</td>
-        <td class="text-right tabular-nums ${row.pendente > 0 ? 'text-amber-600 font-extrabold' : 'text-slate-400 font-semibold'}">${formatInt(row.pendente)}</td>
-        <td class="text-right tabular-nums ${row.aprovado > 0 ? 'text-emerald-600 font-extrabold' : 'text-slate-400 font-semibold'}">${formatInt(row.aprovado)}</td>
+        <td class="col-pendente text-right tabular-nums ${row.pendente > 0 ? 'text-amber-600 font-extrabold' : 'text-slate-400 font-semibold'}">${formatInt(row.pendente)}</td>
+        <td class="col-aprovado text-right tabular-nums ${row.aprovado > 0 ? 'text-emerald-600 font-extrabold' : 'text-slate-400 font-semibold'}">${formatInt(row.aprovado)}</td>
         <td class="text-right tabular-nums">${saldoRealDisplay}</td>
-        <td class="text-center font-semibold text-[11px] ${row.pedidoMae === 'SIM' ? 'text-emerald-600' : 'text-slate-400'}">${safeHtml(row.pedidoMae || '—')}</td>
+        <td class="text-right tabular-nums ${totalDesm > 0 ? 'text-[var(--brand)] font-extrabold' : 'text-slate-300'}">${totalDesm > 0 ? formatInt(totalDesm) : '—'}</td>
+        <td class="col-pedidoMae text-center font-semibold text-[11px] ${row.pedidoMae === 'SIM' ? 'text-emerald-600' : 'text-slate-400'}">${safeHtml(row.pedidoMae || '—')}</td>
         <td>
           <span class="chip ${sit.chipClass} ${sit.sortVal <= 1 ? 'badge-ruptura' : ''}">
             ${sit.sortVal <= 1 ? '<i class="fa-solid fa-triangle-exclamation"></i>' : ''}
@@ -1206,11 +1279,14 @@ function closeDesmModal(){
 
 function populateConsultaDesm(){
   const desm = STATE.desmembramentos;
-  const keys = Object.keys(desm || {});
+  const keys = Object.keys(desm || {}).filter(k => {
+    // Só mostra se tem pelo menos uma loja com qtde > 0
+    const lojas = desm[k] || {};
+    return Object.values(lojas).some(v => Number(v) > 0);
+  });
   const sel = $('consultaDesmSel');
   const prev = sel.value;
 
-  // Remove opções antigas (mantém a primeira)
   while(sel.options.length > 1) sel.remove(1);
 
   if(!keys.length){
@@ -1218,11 +1294,12 @@ function populateConsultaDesm(){
     return;
   }
 
-  // Monta label para cada chave "codigo|cor|prevFat"
   keys.forEach(key => {
     const [codigo, cor, prevFat] = key.split('|');
-    // Tenta achar o produto pelo codigo na DISPO
-    const dispoRow = STATE.dispoRows.find(r => sanitizeDisplayText(r.codigo) === sanitizeDisplayText(codigo) && sanitizeDisplayText(r.cor).toUpperCase() === sanitizeDisplayText(cor).toUpperCase());
+    const dispoRow = STATE.dispoRows.find(r =>
+      sanitizeDisplayText(r.codigo) === sanitizeDisplayText(codigo) &&
+      sanitizeDisplayText(r.cor).toUpperCase() === sanitizeDisplayText(cor).toUpperCase()
+    );
     const produto = dispoRow ? dispoRow.produto : codigo;
     const opt = document.createElement('option');
     opt.value = key;
@@ -1230,7 +1307,7 @@ function populateConsultaDesm(){
     sel.appendChild(opt);
   });
 
-  if(prev) sel.value = prev;
+  if(prev && keys.includes(prev)) sel.value = prev;
   $('consultaDesmWrap').classList.remove('hidden');
 }
 
@@ -1457,6 +1534,70 @@ function renderBannerAntecipacao(allRows){
     showToast(`${antecipаveis.length} produto${antecipаveis.length>1?'s':''} com antecipação disponível`, 'info');
   }
 }
+
+// ── DARK MODE ─────────────────────────────────────────────────────────────────
+function toggleDark(){
+  const isDark = document.documentElement.classList.toggle('dark');
+  localStorage.setItem('dispo_dark', isDark ? '1' : '0');
+  $('darkIcon').className = isDark ? 'fa-solid fa-sun text-amber-400 text-xs' : 'fa-solid fa-moon text-slate-400 text-xs';
+}
+if(localStorage.getItem('dispo_dark') === '1'){
+  document.documentElement.classList.add('dark');
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const icon = $('darkIcon');
+    if(icon) icon.className = 'fa-solid fa-sun text-amber-400 text-xs';
+  });
+}
+
+// ── TOGGLE KPIs ───────────────────────────────────────────────────────────────
+function toggleKpis(){
+  const block = $('kpiBlock');
+  const icon  = $('kpiEyeIcon');
+  const hidden = block.classList.toggle('hidden');
+  icon.className = hidden ? 'fa-regular fa-eye-slash text-slate-400' : 'fa-regular fa-eye text-slate-400';
+  localStorage.setItem('dispo_kpi_hidden', hidden ? '1' : '0');
+}
+
+// ── TOGGLE COLUNAS ────────────────────────────────────────────────────────────
+const _colState = { pendente:true, aprovado:true, pedidoMae:true };
+function toggleColMenu(){
+  $('colMenu').classList.toggle('hidden');
+}
+document.addEventListener('click', e => {
+  if(!$('colToggleWrap').contains(e.target)) $('colMenu').classList.add('hidden');
+});
+function toggleCol(col, visible){
+  _colState[col] = visible;
+  const table = document.querySelector('.table-wrap table');
+  if(!table) return;
+  if(visible) table.classList.remove(`col-hide-${col}`);
+  else        table.classList.add(`col-hide-${col}`);
+  // Salva estado das colunas
+  const saved = JSON.parse(localStorage.getItem('dispo_cols')||'{}');
+  saved[col] = visible;
+  localStorage.setItem('dispo_cols', JSON.stringify(saved));
+  // Sincroniza checkbox
+  const cb = document.getElementById(`col${col.charAt(0).toUpperCase()+col.slice(1)}`);
+  if(cb) cb.checked = visible;
+}
+
+// ── RESTAURAR LAYOUT ──────────────────────────────────────────────────────────
+function restoreLayout(){
+  // KPIs
+  if(localStorage.getItem('dispo_kpi_hidden') === '1'){
+    const block = $('kpiBlock');
+    const icon  = $('kpiEyeIcon');
+    if(block){ block.classList.add('hidden'); }
+    if(icon){ icon.className = 'fa-regular fa-eye-slash text-slate-400'; }
+  }
+  // Colunas
+  const savedCols = JSON.parse(localStorage.getItem('dispo_cols')||'{}');
+  for(const [col, visible] of Object.entries(savedCols)){
+    _colState[col] = visible;
+    if(!visible) toggleCol(col, false);
+  }
+}
+restoreLayout();
 
 // ── OCULTAR / REEXIBIR ───────────────────────────────────────────────────────
 
