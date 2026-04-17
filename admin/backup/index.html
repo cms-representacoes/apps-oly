@@ -103,9 +103,8 @@
       flex:0 0 auto;
     }
 
-    .dot-pendente{ background:#d97706; }
-    .dot-aprovado{ background:#16a34a; }
-    .dot-cancelado{ background:#dc2626; }
+    .chip-duplicate{ background:#fff7ed; color:#c2410c; border-color:#fed7aa; border:1px solid #fed7aa; }
+    .dot-duplicate{ background:#f97316; }
 
     .history-timeline{ position:relative; }
     .history-timeline::before{ content:''; position:absolute; left:11px; top:6px; bottom:6px; width:2px; background:#e2e8f0; border-radius:999px; }
@@ -167,6 +166,7 @@
       padding:16px;
     }
 
+    @keyframes pulse-badge{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.2)} }
     .toast-wrap{
       position:fixed;
       top:18px;
@@ -254,7 +254,14 @@
       font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em;
       text-align:left; padding:11px 14px;
       border-bottom:1px solid var(--line);
+      white-space:nowrap;
     }
+    .relatorio-table thead th.relatorio-sortable{
+      cursor:pointer; user-select:none;
+      transition:color .12s, background .12s;
+    }
+    .relatorio-table thead th.relatorio-sortable:hover{ color:var(--brand); background:#eef0ff; }
+    .relatorio-table thead th.rel-sorted{ color:var(--brand); background:#eef0ff; }
     .relatorio-table tbody td{
       padding:11px 14px; font-size:13px;
       border-bottom:1px solid #edf2f7; vertical-align:middle;
@@ -266,12 +273,30 @@
       background:#f8fafc; border-top:2px solid var(--line);
     }
 
+    .grade-pill-inline{
+      display:inline-flex; align-items:baseline; gap:1px;
+      background:#f1f5f9; border:0.5px solid var(--line);
+      border-radius:4px; padding:1px 5px; font-size:10px;
+      white-space:nowrap; margin:1px;
+    }
+    .grade-pill-inline .gpi-s{ color:#64748b; }
+    .grade-pill-inline .gpi-q{ color:var(--brand); font-weight:800; }
+
+    .relatorio-grade-hidden .relatorio-grade-col{ display:none; }
+    .relatorio-table thead th.th-grade-toggle{
+      cursor:pointer; user-select:none;
+      transition:color .12s, background .12s;
+    }
+    .relatorio-table thead th.th-grade-toggle:hover{ color:var(--brand); background:#eef0ff; }
+    .relatorio-table thead th.th-grade-toggle.grade-active{ color:var(--brand); background:#eef0ff; }
+
     .ranking-bar{ background:#f1f5f9; border-radius:999px; height:6px; overflow:hidden; margin-top:5px; }
     .ranking-fill{ height:100%; border-radius:999px; background:var(--brand); transition:width .4s ease; }
 
     details > summary{ list-style:none; cursor:pointer; }
     details > summary::-webkit-details-marker{ display:none; }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
   <div id="toastWrap" class="toast-wrap"></div>
@@ -297,7 +322,7 @@
     </section>
 
     <section id="adminApp" class="hidden mx-auto max-w-7xl">
-      <header class="rounded-[32px] border border-slate-200 bg-white p-4 sm:p-5 shadow-card">
+      <header class="rounded-[32px] border border-slate-200 bg-white p-4 sm:p-5 shadow-card sticky top-4 z-30">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <div class="text-xs font-bold text-slate-500">Gestão</div>
@@ -319,6 +344,26 @@
 
             <button id="btnRefresh" class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">
               Atualizar
+            </button>
+
+            <button id="btnNotifAdmin" class="focus-ring relative rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 flex items-center gap-2">
+              <i class="fa-solid fa-bell"></i>
+              <span class="hidden sm:inline">Pedidos</span>
+              <span id="badgeNotifAdmin" class="hidden absolute -top-2 -right-2 min-w-[20px] h-[20px] px-1 bg-rose-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white" style="animation:pulse-badge 1s infinite">0</span>
+            </button>
+
+            <button id="btnExportarTodosPendentes"
+              class="focus-ring rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 flex items-center gap-2 hidden">
+              <i class="fa-solid fa-file-excel"></i>
+              Exportar pendentes
+              <span id="badgePendentesExport" class="inline-flex items-center justify-center rounded-full bg-emerald-600 text-white text-[10px] font-extrabold min-w-[18px] h-[18px] px-1">0</span>
+            </button>
+
+            <button id="btnToggleResumo"
+              class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 flex items-center gap-2"
+              title="Exibir/ocultar painel de resumo">
+              <i class="fa-solid fa-chart-bar"></i>
+              <span id="btnToggleResumoLabel">Ocultar resumo</span>
             </button>
 
             <a href="./dispo.html"
@@ -365,19 +410,23 @@
           </div>
         </div>
 
-        <!-- RANKING + RELATÓRIO -->
-        <div class="grid grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)] gap-4 mb-4">
-
-          <!-- RANKING VENDEDORES -->
-          <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-card">
-            <div class="text-sm font-extrabold text-slate-800 mb-3">Ranking de vendedores</div>
-            <div id="rankingVendedores" class="space-y-3">
+        <!-- RANKING — largura total, colapsável, acima do relatório -->
+        <div class="rounded-[28px] border border-slate-200 bg-white shadow-card overflow-hidden mb-4">
+          <button id="btnToggleRanking"
+            class="focus-ring w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+            onclick="(()=>{ const b=$('rankingBody'); const ic=$('rankingIcon'); const vis=b.style.display==='none'; b.style.display=vis?'block':'none'; ic.style.transform=vis?'rotate(0deg)':'rotate(-90deg)'; localStorage.setItem('repasse_ranking_open',vis?'1':'0'); })()">
+            <div class="text-sm font-extrabold text-slate-800">Ranking de vendedores</div>
+            <i id="rankingIcon" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform" style="transform:rotate(-90deg)"></i>
+          </button>
+          <div id="rankingBody" class="px-4 pb-4" style="display:none">
+            <div id="rankingVendedores" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
               <div class="text-xs text-slate-400 font-semibold">Carregando...</div>
             </div>
           </div>
+        </div>
 
-          <!-- RELATÓRIO POR VENDEDOR -->
-          <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-card">
+        <!-- RELATÓRIO POR VENDEDOR — largura total -->
+        <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-card mb-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <div>
                 <div class="text-sm font-extrabold text-slate-800">Relatório por vendedor</div>
@@ -387,13 +436,32 @@
                 <select id="relatorioVendedorSelect"
                   class="focus-ring rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold min-w-[200px]">
                   <option value="">Selecione um vendedor</option>
+                  <option value="__todos__">— Todos os vendedores —</option>
                 </select>
+                <!-- Filtro exportação -->
+                <div class="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1 gap-1">
+                  <button id="filtroNaoExportado" data-filtro="nao"
+                    class="filtro-export-btn focus-ring rounded-full px-3 py-1.5 text-xs font-bold text-slate-600">
+                    Não exportados
+                  </button>
+                  <button id="filtroExportado" data-filtro="exp"
+                    class="filtro-export-btn focus-ring rounded-full px-3 py-1.5 text-xs font-bold text-slate-600">
+                    Exportados
+                  </button>
+                  <button id="filtroTodos" data-filtro="all"
+                    class="filtro-export-btn focus-ring rounded-full px-3 py-1.5 text-xs font-bold text-slate-600">
+                    Todos
+                  </button>
+                </div>
                 <button id="btnGerarRelatorio"
                   class="focus-ring rounded-2xl bg-[var(--brand)] px-4 py-2 text-sm font-extrabold text-white">
                   Gerar
                 </button>
               </div>
             </div>
+
+            <!-- Banner de status de exportação -->
+            <div id="relatorioBanner" class="hidden rounded-2xl px-4 py-3 text-sm font-semibold mb-4 flex items-center gap-2"></div>
 
             <div id="relatorioKpis" class="hidden grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
               <div class="kpi-card"><div class="text-xs font-bold text-slate-500">Total</div><div id="relKpiTotal" class="mt-1 text-2xl font-extrabold">0</div></div>
@@ -403,16 +471,25 @@
             </div>
 
             <div id="relatorioTableWrap" class="hidden overflow-auto rounded-[20px] border border-slate-200">
-              <table class="relatorio-table">
+              <table class="relatorio-table relatorio-grade-hidden" id="relatorioTable">
                 <thead>
-                  <tr>
-                    <th>Pedido</th>
-                    <th>Data</th>
-                    <th>Cliente</th>
-                    <th>Campanha</th>
-                    <th class="text-right">Itens</th>
-                    <th class="text-right">Unidades</th>
-                    <th>Status</th>
+                  <tr id="relatorioThead">
+                    <th class="text-right">Nº</th>
+                    <th class="relatorio-sortable" data-col="vendedor">Vendedor <i class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                    <th class="relatorio-sortable" data-col="cliente">Cod. Cliente <i class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                    <th class="relatorio-sortable" data-col="clienteNome">Nome <i class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                    <th class="relatorio-sortable" data-col="prazo">Prazo <i class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                    <th class="relatorio-sortable" data-col="campanha">Campanha <i class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                    <th class="relatorio-sortable text-right" data-col="qtde">Qtde <i class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                    <th class="relatorio-sortable" data-col="ebm">EBM <i class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                    <th class="relatorio-sortable" data-col="gci">GCI <i class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                    <th class="relatorio-sortable" data-col="produto">Descrição <i class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                    <th class="relatorio-sortable" data-col="cor">Cor <i class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                    <th class="relatorio-sortable" data-col="prevFaturamento">Prev Fat <i class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                    <th class="relatorio-sortable" data-col="status">Status <i class="fa-solid fa-sort text-[9px] opacity-30"></i></th>
+                    <th class="th-grade-toggle" id="thGradeToggle" onclick="toggleRelatorioGrade()">
+                      Grade <i class="fa-regular fa-eye text-[11px]"></i>
+                    </th>
                   </tr>
                 </thead>
                 <tbody id="relatorioTableBody"></tbody>
@@ -435,15 +512,21 @@
                   class="focus-ring rounded-2xl bg-[var(--brand)] px-4 py-2 text-sm font-extrabold text-white flex items-center gap-2">
                   <i class="fa-solid fa-file-pdf"></i> Exportar PDF
                 </button>
+                <button id="btnRelatorioXlsx"
+                  class="focus-ring rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-extrabold text-emerald-700 flex items-center gap-2">
+                  <i class="fa-solid fa-file-excel"></i> Exportar XLSX
+                </button>
               </div>
             </div>
           </div>
-        </div>
       </section>
       <!-- ────────────────────────────────────────────────────────────────────── -->
 
       <section class="mt-4">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="inline-flex rounded-full border border-slate-200 bg-white p-1">
+              <button id="btnScopeActive" class="focus-ring rounded-full px-3 py-2 text-sm font-bold text-slate-700">Ativos</button>
               <button id="btnScopeHistory" class="focus-ring rounded-full px-3 py-2 text-sm font-bold text-slate-700">Histórico</button>
               <button id="btnScopeAll" class="focus-ring rounded-full px-3 py-2 text-sm font-bold text-slate-700">Todos</button>
             </div>
@@ -504,6 +587,45 @@
         <div class="mt-5 flex flex-wrap justify-end gap-2">
           <button id="btnAbortCancelReason" type="button" class="focus-ring rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700">Voltar</button>
           <button id="btnConfirmCancelReason" type="button" class="focus-ring rounded-2xl border border-rose-200 bg-rose-600 px-5 py-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50">Confirmar cancelamento</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL EXCLUSÃO COM SENHA -->
+  <div id="deleteOrderModal" class="hidden fixed inset-0 z-[140] bg-slate-950/45 p-4">
+    <div class="flex min-h-full items-center justify-center">
+      <div class="w-full max-w-sm rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,.24)]">
+        <div id="deleteStep1">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center flex-shrink-0">
+              <i class="fa-solid fa-trash text-rose-500"></i>
+            </div>
+            <div>
+              <div class="text-base font-extrabold">Excluir pedido</div>
+              <div class="text-xs font-semibold text-slate-500">Digite a senha do admin para continuar</div>
+            </div>
+          </div>
+          <label class="text-xs font-bold uppercase tracking-[.18em] text-slate-500">Senha do admin</label>
+          <input id="deletePasswordInput" type="password" placeholder="••••••••"
+            class="focus-ring mt-2 w-full rounded-[20px] border border-slate-200 px-4 py-3 text-sm font-semibold"
+            oninput="$('deletePasswordError').classList.add('hidden')"/>
+          <div id="deletePasswordError" class="hidden mt-2 text-xs font-bold text-rose-600">Senha incorreta. Tente novamente.</div>
+          <div class="mt-5 flex justify-end gap-2">
+            <button onclick="closeDeleteModal()" class="focus-ring rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700">Cancelar</button>
+            <button onclick="confirmDeletePassword()" class="focus-ring rounded-2xl bg-rose-600 px-5 py-3 text-sm font-extrabold text-white">Continuar</button>
+          </div>
+        </div>
+        <div id="deleteStep2" class="hidden text-center">
+          <div class="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mx-auto mb-3">
+            <i class="fa-solid fa-triangle-exclamation text-rose-500 text-xl"></i>
+          </div>
+          <div class="text-base font-extrabold mb-2">Tem certeza?</div>
+          <div class="text-sm text-slate-500 leading-relaxed">Esta ação é <span class="font-bold text-slate-700">permanente</span> e não pode ser desfeita. O pedido será removido definitivamente.</div>
+          <div class="mt-5 flex justify-center gap-2">
+            <button onclick="closeDeleteModal()" class="focus-ring rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700">Não, cancelar</button>
+            <button id="btnConfirmDelete" class="focus-ring rounded-2xl bg-rose-600 px-5 py-3 text-sm font-extrabold text-white">Sim, excluir</button>
+          </div>
         </div>
       </div>
     </div>
@@ -663,6 +785,13 @@ function renderStatusChip(status){
 
 function parseDate(value){
   if(!value) return null;
+  // Número serial do Excel (ex: 46104 = alguma data de 2026)
+  const n = Number(value);
+  if(!isNaN(n) && n > 40000 && n < 60000){
+    const d = new Date(Date.UTC(1899,11,30));
+    d.setUTCDate(d.getUTCDate() + n);
+    return d;
+  }
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
 }
@@ -693,7 +822,7 @@ function setAdminScope(scope){
 }
 
 function isHistoryStatus(status){
-  return ['Aprovado','Cancelado'].includes(canonicalStatus(status));
+  return ['Cancelado'].includes(canonicalStatus(status));
 }
 
 function isOrderHistory(order){
@@ -849,6 +978,7 @@ function normalizeOrder(rawOrder){
   order.campanha = sanitizeDisplayText(order.campanha);
   order.observacoes = sanitizeDisplayText(order.observacoes);
   order.archived = Boolean(order.archived);
+  order.isDuplicate = Boolean(order.isDuplicate);
   order.createdAt = order.createdAt || order.updatedAt || new Date().toISOString();
   order.updatedAt = order.updatedAt || order.createdAt;
 
@@ -869,6 +999,8 @@ function normalizeOrder(rawOrder){
     produto:sanitizeDisplayText(item?.produto || item?.descricao || item?.nome),
     codigo:sanitizeDisplayText(item?.codigo || item?.referencia),
     cor:sanitizeDisplayText(item?.cor),
+    gci:sanitizeDisplayText(item?.gci || ''),
+    ebm:sanitizeDisplayText(item?.ebm || ''),
     prevFaturamento:sanitizeDisplayText(item?.prevFaturamento || item?.prevFat),
     mode:sanitizeDisplayText(item?.mode),
     amount:Number(item?.amount || item?.quantidade || 0),
@@ -877,9 +1009,10 @@ function normalizeOrder(rawOrder){
   }));
 
   order.history = ensureOrderHistory(order);
-  order.lastAction = sanitizeDisplayText(order.lastAction || order.history[0]?.action || 'created');
-  order.lastActionLabel = sanitizeDisplayText(order.lastActionLabel || order.history[0]?.label || 'Pedido criado');
-  order.lastActionAt = order.lastActionAt || order.history[0]?.at || order.updatedAt;
+  const lastHist = order.history[order.history.length - 1];
+  order.lastAction = sanitizeDisplayText(order.lastAction || lastHist?.action || 'created');
+  order.lastActionLabel = sanitizeDisplayText(order.lastActionLabel || lastHist?.label || 'Pedido criado');
+  order.lastActionAt = order.lastActionAt || lastHist?.at || order.updatedAt;
   return order;
 }
 
@@ -926,6 +1059,10 @@ async function workerDeleteOrder(id){
 }
 
 async function applyAuthUI(){
+  // Se voltando do Painel DISPO, já está autenticado — limpa o flag
+  const returning = sessionStorage.getItem('dispo_returning');
+  if(returning) sessionStorage.removeItem('dispo_returning');
+
   const ok = localStorage.getItem(STORAGE_KEYS.adminAuth) === 'ok';
 
   $('loginScreen').classList.toggle('hidden', ok);
@@ -1000,27 +1137,32 @@ function renderList(){
   $('adminOrdersList').innerHTML = STATE.filtered.map(order=>{
     const active = order.id === STATE.selectedId;
     const cardStatus = getStatusVisual(order.status);
+    const clienteDisplay = order.clienteNome
+      ? `Cliente ${safeHtml(order.clienteCodigo)} — ${safeHtml(order.clienteNome)}`
+      : `Cliente ${safeHtml(order.clienteCodigo)}`;
+    const totalUnits = getOrderUnits(order);
 
     return `
       <button data-order-id="${safeHtml(order.id)}"
         class="w-full text-left rounded-[24px] border ${active ? 'border-[var(--brand)] bg-[rgba(40,54,212,.05)]' : 'border-slate-200 bg-slate-50'} p-4">
         <div class="flex items-start justify-between gap-3">
-          <div>
-            <div class="font-extrabold">${safeHtml(order.id)}</div>
+          <div class="min-w-0">
+            <div class="text-[16px] font-extrabold">${safeHtml(order.preposto?.nome || order.preposto?.codigo || '—')}</div>
             <div class="mt-1 text-xs text-slate-500">${safeHtml(formatDateTime(order.createdAt || order.updatedAt || order.data))}</div>
           </div>
-          <span class="chip ${cardStatus.chipClass}">
+          <span class="chip ${cardStatus.chipClass} flex-shrink-0">
             <span class="status-dot ${cardStatus.dotClass}"></span>
             ${safeHtml(cardStatus.label)}
           </span>
         </div>
 
         <div class="mt-3 flex flex-wrap gap-2 text-xs font-bold">
-          <span class="chip chip-blue">Cliente ${safeHtml(order.clienteCodigo)}</span>
-          <span class="chip chip-gray">${safeHtml(order.preposto?.nome || '')}</span>
-          <span class="chip chip-gray">${safeHtml(order.prazo)}</span>
+          <span class="chip chip-blue" style="font-size:14px">${clienteDisplay}</span>
+          ${totalUnits > 0 ? `<span class="chip" style="background:#EEEDFE;color:#3C3489;border-color:#AFA9EC">${formatInt(totalUnits)} pares</span>` : ''}
           <span class="chip chip-blue">${safeHtml(order.lastActionLabel || 'Sem histórico')}</span>
           ${order.archived ? `<span class="chip chip-gray">Arquivado</span>` : ''}
+          ${order.isDuplicate ? `<span class="chip chip-duplicate"><i class="fa-solid fa-triangle-exclamation"></i> Possível duplicata</span>` : ''}
+          ${(order.history||[]).some(h=>h.label==='Antecipado') ? `<span class="chip" style="background:#EEEDFE;color:#3C3489;border:0.5px solid #AFA9EC"><i class="fa-solid fa-angles-up" style="font-size:9px"></i> Antecipado</span>` : ''}
         </div>
       </button>
     `;
@@ -1063,107 +1205,146 @@ function renderDetail(){
   const statusMeta = getStatusVisual(order.status);
 
   $('adminOrderDetail').innerHTML = `
-    <div class="flex flex-col gap-4">
-      <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-        <div>
-          <div class="text-lg sm:text-xl font-extrabold">${safeHtml(order.id)}</div>
-          <div class="mt-1 text-sm text-slate-500">${safeHtml(formatDate(order.createdAt || order.updatedAt || order.data))} às ${safeHtml(parseDate(order.createdAt || order.updatedAt || order.data)?.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) || '—')}</div>
+    <div class="flex flex-col xl:flex-row gap-4 h-full">
 
+      <!-- CONTEÚDO PRINCIPAL -->
+      <div class="flex-1 min-w-0">
+
+        <!-- Cabeçalho compacto -->
+        <div class="mb-4">
+          <div class="text-lg font-extrabold">${safeHtml(order.id)}</div>
+          <div class="mt-1 text-xs text-slate-500">${safeHtml(formatDate(order.createdAt || order.updatedAt))} às ${safeHtml(parseDate(order.createdAt || order.updatedAt)?.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) || '—')}</div>
           <div class="mt-3 flex flex-wrap gap-2">
-            <span class="chip chip-blue">${safeHtml(order.preposto?.codigo || '')} ${order.preposto?.codigo ? '-' : ''} ${safeHtml(order.preposto?.nome || '')}</span>
-            <span class="chip chip-gray">Cliente ${safeHtml(order.clienteCodigo)}</span>
+            <span class="chip chip-blue">${safeHtml(order.preposto?.codigo || '')}${order.preposto?.codigo ? ' — ' : ''}${safeHtml(order.preposto?.nome || '')}</span>
+            <span class="chip chip-gray">Cliente ${safeHtml(order.clienteCodigo)}${order.clienteNome ? ' — ' + safeHtml(order.clienteNome) : ''}</span>
             <span class="chip chip-gray">${safeHtml(order.prazo)}</span>
             ${order.campanha ? `<span class="chip chip-blue">${safeHtml(order.campanha)}</span>` : ''}
             ${renderStatusChip(order.status)}
             ${order.archived ? `<span class="chip chip-gray">Arquivado</span>` : ''}
+            ${order.isDuplicate ? `<span class="chip chip-duplicate"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Possível duplicata — enviado pelo vendedor mesmo assim</span>` : ''}
+            ${(order.history||[]).some(h=>h.label==='Antecipado') ? `<span class="chip" style="background:#EEEDFE;color:#3C3489;border:0.5px solid #AFA9EC"><i class="fa-solid fa-angles-up mr-1" style="font-size:9px"></i>Antecipado</span>` : ''}
+          </div>
+          ${order.observacoes ? `<div class="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600">${safeHtml(order.observacoes)}</div>` : ''}
+        </div>
+
+        <!-- Abas -->
+        <div class="flex border-b border-slate-200 mb-4 gap-1">
+          <button id="tabBtnItens"
+            class="focus-ring px-4 py-2 text-sm font-bold border-b-2 border-[var(--brand)] text-[var(--brand)] -mb-px bg-transparent"
+            onclick="switchDetailTab('itens')">
+            Itens <span class="ml-1 chip chip-blue text-[11px] px-2 py-0.5">${(order.items||[]).length}</span>
+          </button>
+          <button id="tabBtnHistorico"
+            class="focus-ring px-4 py-2 text-sm font-bold border-b-2 border-transparent text-slate-500 -mb-px bg-transparent"
+            onclick="switchDetailTab('historico')">
+            Histórico <span class="ml-1 chip chip-gray text-[11px] px-2 py-0.5">${order.history?.length || 0}</span>
+          </button>
+        </div>
+
+        <!-- Tab: Itens -->
+        <div id="tabItens">
+          <div class="space-y-3">
+            ${(order.items || []).map(item => `
+              <div class="rounded-[20px] border border-slate-200 bg-slate-50 p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="font-extrabold text-slate-800">${safeHtml(item.produto)}</div>
+                    <div class="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500 font-semibold">
+                      <span>${safeHtml(item.codigo)}</span>
+                      <span>${safeHtml(item.cor)}</span>
+                      ${item.gci ? `<span class="text-[var(--brand)] font-extrabold">GCI ${safeHtml(item.gci)}</span>` : ''}
+                      <span>Prev Fat ${safeHtml(formatDate(item.prevFaturamento) || '—')}</span>
+                    </div>
+                  </div>
+                  <div class="text-right flex-shrink-0">
+                    <div class="text-sm font-extrabold">
+                      ${item.mode === 'boxed'
+                        ? `${item.amount} cx`
+                        : `${item.amount} un`}
+                    </div>
+                    <div class="text-xs text-slate-500">${safeHtml(getItemUnits(item))} itens</div>
+                  </div>
+                </div>
+                ${item.grade?.length ? `<div class="mt-3 flex flex-wrap gap-1.5">${gradeHtml(item.grade)}</div>` : ''}
+              </div>
+            `).join('')}
           </div>
         </div>
 
-        <div class="rounded-[24px] border border-slate-200 bg-slate-50 p-4 min-w-[260px]">
-          <div class="text-xs font-bold text-slate-500">Status do pedido</div>
-
-          <select id="detailStatus" class="focus-ring mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold">
-            ${STATUS_OPTIONS.map(s=>`<option value="${safeHtml(s)}" ${s===order.status?'selected':''}>${safeHtml(s)}</option>`).join('')}
-          </select>
-
-          <div class="mt-3 flex flex-col gap-2">
-            <button id="btnToggleArchive" class="focus-ring w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700">
-              ${order.archived ? 'Reativar' : 'Arquivar'}
-            </button>
-
-            <button id="btnDeleteOrder" class="focus-ring w-full rounded-2xl border px-4 py-3 text-sm font-bold btn-danger">
-              Excluir fisicamente (teste)
-            </button>
-          </div>
-
-          <div class="mt-3 rounded-2xl ${statusMeta.chipClass} px-3 py-2 text-xs font-extrabold">
-            Status atual: ${safeHtml(statusMeta.label)}
-          </div>
-          <div class="mt-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-bold text-slate-600">
-            <div>Última ação: <span class="text-slate-900">${safeHtml(order.lastActionLabel || '—')}</span></div>
-            <div class="mt-1">Em: <span class="text-slate-900">${safeHtml(formatDateTime(order.lastActionAt))}</span></div>
-          </div>
+        <!-- Tab: Histórico -->
+        <div id="tabHistorico" class="hidden">
+          ${renderOrderHistory(order)}
         </div>
       </div>
 
-      ${order.observacoes ? `
-        <div class="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
-          <div class="text-xs font-bold text-slate-500">Observações</div>
-          <div class="mt-2 text-sm font-semibold text-slate-700">${safeHtml(order.observacoes)}</div>
+      <!-- COLUNA LATERAL DIREITA: ações -->
+      <div class="flex flex-col gap-3 xl:w-[220px] flex-shrink-0">
+
+        <div class="rounded-[20px] border border-slate-200 bg-slate-50 p-4">
+          <div class="text-xs font-bold text-slate-500 mb-2">Status do pedido</div>
+          <select id="detailStatus" class="focus-ring w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold">
+            ${STATUS_OPTIONS.map(s=>`<option value="${safeHtml(s)}" ${s===order.status?'selected':''}>${safeHtml(s)}</option>`).join('')}
+          </select>
+          <div class="mt-3 rounded-xl ${statusMeta.chipClass} px-3 py-2 text-xs font-extrabold text-center">
+            ${safeHtml(statusMeta.label)}
+          </div>
         </div>
-      ` : ''}
 
-      ${renderOrderHistory(order)}
-
-      <div class="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
-        <div class="text-lg font-extrabold">Itens do pedido</div>
-
-        <div class="mt-4 space-y-3">
-          ${(order.items || []).map(item => `
-            <div class="rounded-[22px] border border-slate-200 bg-white p-4">
-              <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-                <div>
-                  <div class="font-extrabold">${safeHtml(item.produto)}</div>
-                  <div class="mt-1 text-xs text-slate-500">
-                    ${safeHtml(item.codigo)} · ${safeHtml(item.cor)} · Prev. Faturamento ${safeHtml(item.prevFaturamento || '—')}
-                  </div>
-                </div>
-
-                <div class="text-right text-sm font-extrabold">
-                  ${item.mode === 'boxed'
-                    ? `${item.amount} caixa${item.amount > 1 ? 's' : ''}`
-                    : `${item.amount} unidade${item.amount > 1 ? 's' : ''}`}
-                  <div class="mt-1 text-xs text-slate-500">${safeHtml(getItemUnits(item))} itens</div>
-                </div>
-              </div>
-
-              ${item.grade?.length ? `<div class="mt-3 flex flex-wrap gap-2">${gradeHtml(item.grade)}</div>` : ''}
-            </div>
-          `).join('')}
+        <div class="rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-600">
+          <div>Última ação</div>
+          <div class="mt-1 text-slate-900 font-extrabold">${safeHtml(order.lastActionLabel || '—')}</div>
+          <div class="mt-0.5 text-slate-400 font-semibold">${safeHtml(formatDateTime(order.lastActionAt))}</div>
         </div>
+
+        <button id="btnToggleArchive"
+          class="focus-ring w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700">
+          ${order.archived ? 'Reativar pedido' : 'Arquivar pedido'}
+        </button>
+
+        <button id="btnDeleteOrder"
+          class="focus-ring w-full rounded-2xl border px-4 py-2.5 text-sm font-bold btn-danger">
+          Excluir fisicamente
+        </button>
       </div>
     </div>
   `;
 
+  // Listeners
   $('detailStatus').addEventListener('change', async (e)=>{
     const nextStatus = canonicalStatus(e.target.value);
     const currentStatus = canonicalStatus(order.status);
-
     if(nextStatus === 'Cancelado' && currentStatus !== 'Cancelado'){
       openCancelReasonModal(order.id, currentStatus);
       return;
     }
-
     await updateStatus(order.id, nextStatus);
   });
 
-  $('btnToggleArchive').addEventListener('click', async ()=>{
-    await toggleArchive(order.id);
-  });
+  $('btnToggleArchive').addEventListener('click', async ()=>{ await toggleArchive(order.id); });
+  $('btnDeleteOrder').addEventListener('click', async ()=>{ await deleteOrder(order.id); });
+}
 
-  $('btnDeleteOrder').addEventListener('click', async ()=>{
-    await deleteOrder(order.id);
-  });
+function switchDetailTab(tab){
+  const itens = $('tabItens');
+  const hist = $('tabHistorico');
+  const btnI = $('tabBtnItens');
+  const btnH = $('tabBtnHistorico');
+  if(!itens || !hist) return;
+
+  const isItens = tab === 'itens';
+  itens.classList.toggle('hidden', !isItens);
+  hist.classList.toggle('hidden', isItens);
+
+  const activeClass = ['border-[var(--brand)]','text-[var(--brand)]'];
+  const inactiveClass = ['border-transparent','text-slate-500'];
+
+  if(isItens){
+    btnI.classList.add(...activeClass); btnI.classList.remove(...inactiveClass);
+    btnH.classList.add(...inactiveClass); btnH.classList.remove(...activeClass);
+  } else {
+    btnH.classList.add(...activeClass); btnH.classList.remove(...inactiveClass);
+    btnI.classList.add(...inactiveClass); btnI.classList.remove(...activeClass);
+  }
 }
 
 
@@ -1222,6 +1403,13 @@ async function confirmCancelWithReason(){
   await updateStatus(context.orderId, 'Cancelado', { cancelReason: reason });
 }
 
+function showOverwriteWarning(updatedAt, currentStatus){
+  return new Promise(resolve => {
+    const msg = `⚠️ Este pedido foi alterado por outra sessão em ${updatedAt}.\nStatus atual: ${currentStatus}\n\nDeseja salvar mesmo assim?`;
+    resolve(window.confirm(msg));
+  });
+}
+
 async function updateStatus(id, status, options = {}){
   const idx = STATE.orders.findIndex(o => o.id === id);
   if(idx === -1) return;
@@ -1233,6 +1421,24 @@ async function updateStatus(id, status, options = {}){
     showToast('Esse pedido já está nesse status.', 'info');
     return;
   }
+
+  // ── PROTEÇÃO DE SOBRESCRITA — verificar se foi alterado por outra sessão ──
+  if(options._skipTimestampCheck !== true){
+    try{
+      const remote = await workerGetOrders();
+      const remoteOrder = remote.find(o => o.id === id);
+      if(remoteOrder){
+        const localTs = new Date(currentOrder.updatedAt).getTime();
+        const remoteTs = new Date(remoteOrder.updatedAt).getTime();
+        if(remoteTs > localTs + 2000){ // margem de 2s para evitar falso positivo
+          const remoteUpdated = formatDateTime(remoteOrder.updatedAt);
+          const confirmOverwrite = await showOverwriteWarning(remoteUpdated, remoteOrder.status);
+          if(!confirmOverwrite) return;
+        }
+      }
+    }catch(_){ /* se falhar a verificação, deixa salvar normalmente */ }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   const cancelReason = sanitizeDisplayText(options?.cancelReason);
   const eventLabel = nextStatus === 'Aprovado' ? 'Pedido aprovado' : nextStatus === 'Cancelado' ? 'Pedido cancelado' : 'Pedido voltou para pendente';
@@ -1282,25 +1488,60 @@ async function toggleArchive(id){
   }
 }
 
+function openDeleteModal(id){
+  STATE._pendingDeleteId = id;
+  $('deletePasswordInput').value = '';
+  $('deletePasswordError').classList.add('hidden');
+  $('deleteStep1').classList.remove('hidden');
+  $('deleteStep2').classList.add('hidden');
+  $('deleteOrderModal').classList.remove('hidden');
+}
+
+function closeDeleteModal(){
+  $('deleteOrderModal').classList.add('hidden');
+  STATE._pendingDeleteId = null;
+}
+
+function confirmDeletePassword(){
+  const pw = $('deletePasswordInput').value;
+  if(pw !== ADMIN_PASSWORD){
+    $('deletePasswordError').classList.remove('hidden');
+    $('deletePasswordInput').focus();
+    return;
+  }
+  $('deleteStep1').classList.add('hidden');
+  $('deleteStep2').classList.remove('hidden');
+}
+
 async function deleteOrder(id){
   const target = STATE.orders.find(o => o.id === id);
   if(!target) return;
+  openDeleteModal(id);
+}
 
-  const ok = confirm(`Tem certeza que deseja EXCLUIR FISICAMENTE o pedido ${id}?
+$('deleteOrderModal').addEventListener('click', e => {
+  if(e.target === $('deleteOrderModal')) closeDeleteModal();
+});
 
-Use isso apenas em testes. O histórico salvo dentro do pedido será perdido após a exclusão.`);
-  if(!ok) return;
-
+$('btnConfirmDelete').addEventListener('click', async () => {
+  const id = STATE._pendingDeleteId;
+  if(!id) return;
+  const btn = $('btnConfirmDelete');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Excluindo...';
   try{
     await workerDeleteOrder(id);
+    closeDeleteModal();
     STATE.selectedId = null;
-    showToast(`Pedido ${id} excluído com sucesso.`, 'success');
+    showToast('Pedido excluído com sucesso.', 'success');
     await loadAdmin();
   }catch(err){
     console.error(err);
     showToast('Não foi possível excluir o pedido.', 'error');
+    btn.disabled = false;
+    btn.innerHTML = 'Sim, excluir';
   }
-}
+});
 
 // ── BLOCO 2: RESUMO OPERACIONAL ──────────────────────────────────────────────
 
@@ -1361,6 +1602,7 @@ function renderKpisOperacionais(){
 
   renderRanking();
   populateRelatorioSelect();
+  atualizarBadgeGlobal();
 }
 
 function renderRanking(){
@@ -1378,7 +1620,7 @@ function renderRanking(){
   }
 
   $('rankingVendedores').innerHTML = sorted.map(([nome, qtd], idx) => `
-    <div>
+    <div class="rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-3">
       <div class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2 min-w-0">
           <span class="text-xs font-extrabold text-slate-400 w-4">${idx+1}</span>
@@ -1402,7 +1644,7 @@ function populateRelatorioSelect(){
 
   const sel = $('relatorioVendedorSelect');
   const prev = sel.value;
-  sel.innerHTML = '<option value="">Selecione um vendedor</option>';
+  sel.innerHTML = '<option value="">Selecione um vendedor</option><option value="__todos__">— Todos os vendedores —</option>';
   [...vendedores.entries()].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR')).forEach(([key,nome])=>{
     const opt = document.createElement('option');
     opt.value = key;
@@ -1413,6 +1655,7 @@ function populateRelatorioSelect(){
 }
 
 function getRelatorioOrders(codigoKey){
+  if(codigoKey === '__todos__') return [...STATE.orders].sort((a,b)=>(parseDate(b.createdAt)?.getTime()||0)-(parseDate(a.createdAt)?.getTime()||0));
   return STATE.orders.filter(o => {
     const codigo = sanitizeDisplayText(o.preposto?.codigo || '');
     const nome = sanitizeDisplayText(o.preposto?.nome || codigo);
@@ -1420,80 +1663,179 @@ function getRelatorioOrders(codigoKey){
   }).sort((a,b)=>(parseDate(b.createdAt)?.getTime()||0)-(parseDate(a.createdAt)?.getTime()||0));
 }
 
-function renderRelatorio(){
-  const key = $('relatorioVendedorSelect').value;
-  if(!key){
-    showToast('Selecione um vendedor primeiro.', 'info');
-    return;
-  }
+function stripOly(campanha){
+  return sanitizeDisplayText(campanha).replace(/\s*\bOLY\b\s*/gi,'').replace(/\s*\bUA\b\s*/gi,'').trim() || '—';
+}
 
-  const orders = getRelatorioOrders(key);
-  const nomeVendedor = $('relatorioVendedorSelect').options[$('relatorioVendedorSelect').selectedIndex]?.text || key;
+function stripPrazo(prazo){
+  const s = sanitizeDisplayText(prazo);
+  // Remove prefixo "Z99 - " e sufixo " D"
+  const clean = s.replace(/^Z\d+\s*-\s*/i,'').replace(/\s*D\s*$/i,'').trim();
+  return clean || s;
+}
 
-  // KPIs
-  const grupos = { Pendente:0, Aprovado:0, Cancelado:0 };
-  let totalItens = 0, totalUnidades = 0;
+function gradeInlinePills(grade){
+  if(!Array.isArray(grade) || !grade.length) return '—';
+  return `<div style="display:flex;flex-wrap:nowrap;gap:3px">${
+    grade.map(g=>`<div style="display:inline-flex;flex-direction:column;align-items:center;border:0.5px solid #e2e8f0;border-radius:8px;padding:3px 6px;min-width:30px;background:#fff"><span style="font-size:9px;color:#64748b;line-height:1.2">${safeHtml(g.size)}</span><span style="font-size:10px;color:var(--brand);font-weight:800;line-height:1.3">${safeHtml(g.qty)}</span></div>`).join('')
+  }</div>`;
+}
+
+function toggleRelatorioGrade(){
+  const table = $('relatorioTable');
+  const th = $('thGradeToggle');
+  if(!table || !th) return;
+  const hidden = table.classList.contains('relatorio-grade-hidden');
+  table.classList.toggle('relatorio-grade-hidden', !hidden);
+  th.classList.toggle('grade-active', hidden);
+  const icon = th.querySelector('i');
+  if(icon) icon.className = hidden ? 'fa-solid fa-eye text-[11px]' : 'fa-regular fa-eye text-[11px]';
+}
+
+const RELATORIO_SORT = { col: null, dir: 1 };
+
+function buildRelatorioLinhas(orders){
+  const linhas = [];
+  let lineNum = 0;
   for(const o of orders){
-    const s = canonicalStatus(o.status);
-    if(grupos[s] !== undefined) grupos[s]++;
-    totalItens += (o.items||[]).length;
-    totalUnidades += getOrderUnits(o);
+    const vendedor = safeHtml(o.preposto?.nome || o.preposto?.codigo || '—');
+    const codCliente = safeHtml(o.clienteCodigo || '—');
+    const nomeCliente = safeHtml(o.clienteNome || '—');
+    const statusHtml = renderStatusChip(o.status);
+    const campanhaDisplay = safeHtml(stripOly(o.campanha || ''));
+    const prazoDisplay = safeHtml(o.prazo || '—');
+    const items = o.items || [];
+
+    if(!items.length){
+      lineNum++;
+      linhas.push(`<tr>
+        <td class="text-right text-slate-400 font-semibold text-[11px]">${lineNum}</td>
+        <td class="font-semibold">${vendedor}</td>
+        <td class="font-extrabold">${codCliente}</td>
+        <td class="text-slate-500 font-semibold">${nomeCliente}</td>
+        <td class="text-slate-500 font-semibold whitespace-nowrap">${prazoDisplay}</td>
+        <td class="text-slate-500 font-semibold">${campanhaDisplay}</td>
+        <td class="text-right font-extrabold">—</td>
+        <td class="text-slate-400">—</td>
+        <td class="text-slate-400">—</td>
+        <td class="text-slate-400">—</td>
+        <td class="text-slate-400">—</td>
+        <td class="text-slate-400">—</td>
+        <td>${statusHtml}</td>
+        <td class="relatorio-grade-col">—</td>
+      </tr>`);
+    } else {
+      items.forEach((item) => {
+        lineNum++;
+        const units = getItemUnits(item);
+        const prevFat = safeHtml(formatDate(item.prevFaturamento) || '—');
+        linhas.push(`<tr>
+          <td class="text-right text-slate-400 font-semibold text-[11px]">${lineNum}</td>
+          <td class="font-semibold">${vendedor}</td>
+          <td class="font-extrabold">${codCliente}</td>
+          <td class="text-slate-500 font-semibold">${nomeCliente}</td>
+          <td class="text-slate-500 font-semibold whitespace-nowrap">${prazoDisplay}</td>
+          <td class="text-slate-500 font-semibold">${campanhaDisplay}</td>
+          <td class="text-right font-extrabold">${formatInt(units)}</td>
+          <td class="text-slate-500 font-semibold text-[11px]">${safeHtml(item.ebm || '—')}</td>
+          <td class="font-extrabold text-[var(--brand)] text-[11px]">${safeHtml(item.gci || '—')}</td>
+          <td class="font-extrabold text-slate-800">${safeHtml(item.produto || '—')}</td>
+          <td class="text-slate-500 font-semibold">${safeHtml(item.cor || '—')}</td>
+          <td class="text-slate-500 font-semibold whitespace-nowrap">${prevFat}</td>
+          <td>${statusHtml}</td>
+          <td class="relatorio-grade-col">${gradeInlinePills(item.grade)}</td>
+        </tr>`);
+      });
+    }
   }
+  return linhas;
+}
 
-  $('relKpiTotal').textContent = formatInt(orders.length);
-  $('relKpiPendente').textContent = formatInt(grupos.Pendente);
-  $('relKpiAprovado').textContent = formatInt(grupos.Aprovado);
-  $('relKpiCancelado').textContent = formatInt(grupos.Cancelado);
+function sortRelatorioOrders(orders, col, dir){
+  if(!col) return orders;
+  return [...orders].sort((a,b)=>{
+    let va, vb;
+    switch(col){
+      case 'data': return dir*((parseDate(a.createdAt||a.updatedAt)?.getTime()||0)-(parseDate(b.createdAt||b.updatedAt)?.getTime()||0));
+      case 'vendedor': va=a.preposto?.nome||a.preposto?.codigo||''; vb=b.preposto?.nome||b.preposto?.codigo||''; break;
+      case 'cliente': va=a.clienteCodigo||''; vb=b.clienteCodigo||''; break;
+      case 'clienteNome': va=a.clienteNome||''; vb=b.clienteNome||''; break;
+      case 'prazo': va=a.prazo||''; vb=b.prazo||''; break;
+      case 'campanha': va=stripOly(a.campanha||''); vb=stripOly(b.campanha||''); break;
+      case 'status': va=canonicalStatus(a.status); vb=canonicalStatus(b.status); break;
+      case 'qtde': return dir*(getOrderUnits(a)-getOrderUnits(b));
+      default: va=''; vb='';
+    }
+    return dir*String(va).localeCompare(String(vb),'pt-BR');
+  });
+}
 
+function updateRelatorioSortHeaders(col, dir){
+  document.querySelectorAll('.relatorio-sortable').forEach(th=>{
+    th.classList.remove('rel-sorted');
+    const icon=th.querySelector('i');
+    if(icon) icon.className='fa-solid fa-sort text-[9px] opacity-30';
+  });
+  if(!col) return;
+  const th=document.querySelector(`.relatorio-sortable[data-col="${col}"]`);
+  if(th){
+    th.classList.add('rel-sorted');
+    const icon=th.querySelector('i');
+    if(icon) icon.className=`fa-solid fa-sort-${dir===1?'up':'down'} text-[9px] opacity-100`;
+  }
+}
+
+function renderRelatorio(){
+  const key=$('relatorioVendedorSelect').value;
+  if(!key){ showToast('Selecione um vendedor primeiro.','info'); return; }
+  RELATORIO_SORT.col=null; RELATORIO_SORT.dir=1;
+  updateRelatorioSortHeaders(null,1);
+  const orders=getRelatorioOrders(key);
+  const nomeVendedor=$('relatorioVendedorSelect').options[$('relatorioVendedorSelect').selectedIndex]?.text||key;
+  const grupos={Pendente:0,Aprovado:0,Cancelado:0};
+  let totalItens=0,totalUnidades=0;
+  for(const o of orders){
+    const s=canonicalStatus(o.status);
+    if(grupos[s]!==undefined) grupos[s]++;
+    totalItens+=(o.items||[]).length;
+    totalUnidades+=getOrderUnits(o);
+  }
+  $('relKpiTotal').textContent=formatInt(orders.length);
+  $('relKpiPendente').textContent=formatInt(grupos.Pendente);
+  $('relKpiAprovado').textContent=formatInt(grupos.Aprovado);
+  $('relKpiCancelado').textContent=formatInt(grupos.Cancelado);
   $('relatorioKpis').classList.remove('hidden');
   $('relatorioKpis').classList.add('grid');
-
-  // Tabela
   if(!orders.length){
     $('relatorioTableWrap').classList.add('hidden');
     $('relatorioEmpty').classList.remove('hidden');
     $('relatorioAcoes').classList.add('hidden');
     return;
   }
-
   $('relatorioEmpty').classList.add('hidden');
   $('relatorioTableWrap').classList.remove('hidden');
   $('relatorioAcoes').classList.remove('hidden');
-
-  $('relatorioTableBody').innerHTML = orders.map(o => {
-    const statusMeta = getStatusVisual(o.status);
-    const clienteDisplay = o.clienteNome
-      ? `<div class="font-extrabold">${safeHtml(o.clienteCodigo)}</div><div class="text-[11px] text-slate-500 font-semibold">${safeHtml(o.clienteNome)}</div>`
-      : `<div class="font-extrabold">${safeHtml(o.clienteCodigo)}</div>`;
-    const units = getOrderUnits(o);
-    const itens = (o.items||[]).length;
-    return `
-      <tr>
-        <td class="font-extrabold text-slate-700 text-[12px]">${safeHtml(o.id)}</td>
-        <td class="text-slate-500 font-semibold text-[12px] whitespace-nowrap">${safeHtml(formatDate(o.createdAt||o.updatedAt))}</td>
-        <td>${clienteDisplay}</td>
-        <td class="text-slate-500 font-semibold">${safeHtml(o.campanha || '—')}</td>
-        <td class="text-right font-extrabold">${formatInt(itens)}</td>
-        <td class="text-right font-extrabold">${formatInt(units)}</td>
-        <td>${renderStatusChip(o.status)}</td>
-      </tr>
-    `;
-  }).join('');
-
-  $('relatorioTableFoot').innerHTML = `
-    <tr>
-      <td colspan="4" class="font-extrabold">Total</td>
-      <td class="text-right font-extrabold">${formatInt(totalItens)}</td>
-      <td class="text-right font-extrabold">${formatInt(totalUnidades)}</td>
-      <td></td>
-    </tr>
-  `;
-
-  const now = new Date();
-  $('relatorioRodape').textContent = `Gerado em ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · ${orders.length} pedidos · ${formatInt(totalUnidades)} unidades`;
-
-  // Armazena para PDF/WhatsApp
-  STATE._relatorioAtual = { nomeVendedor, orders, totalItens, totalUnidades };
+  // Aplica filtro de exportação
+  const ordersFiltered = FILTRO_EXPORT.value === 'nao'
+    ? orders.filter(o => canonicalStatus(o.status) !== 'Aprovado' || !o.exportedAt)
+    : FILTRO_EXPORT.value === 'exp'
+      ? orders.filter(o => canonicalStatus(o.status) === 'Aprovado' && o.exportedAt)
+      : orders;
+  $('relatorioTableBody').innerHTML=buildRelatorioLinhas(ordersFiltered).join('');
+  $('relatorioTableFoot').innerHTML=`<tr><td colspan="6" class="font-extrabold">Total</td><td class="text-right font-extrabold">${formatInt(totalUnidades)}</td><td colspan="7"></td></tr>`;
+  const now=new Date();
+  $('relatorioRodape').textContent=`Gerado em ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · ${orders.length} pedidos · ${formatInt(totalUnidades)} unidades`;
+  STATE._relatorioAtual={nomeVendedor,orders,totalItens,totalUnidades};
+  atualizarBanner();
+  atualizarBadgeGlobal();
+  document.querySelectorAll('.relatorio-sortable').forEach(th=>{
+    th.onclick=()=>{
+      const col=th.dataset.col;
+      if(RELATORIO_SORT.col===col){ RELATORIO_SORT.dir*=-1; } else { RELATORIO_SORT.col=col; RELATORIO_SORT.dir=1; }
+      updateRelatorioSortHeaders(RELATORIO_SORT.col,RELATORIO_SORT.dir);
+      $('relatorioTableBody').innerHTML=buildRelatorioLinhas(sortRelatorioOrders(STATE._relatorioAtual.orders,RELATORIO_SORT.col,RELATORIO_SORT.dir)).join('');
+    };
+  });
 }
 
 function relatorioWhatsapp(){
@@ -1506,9 +1848,21 @@ function relatorioWhatsapp(){
   for(const o of orders){
     const status = canonicalStatus(o.status);
     const emoji = status==='Aprovado'?'✅':status==='Cancelado'?'❌':'⏳';
-    txt += `${emoji} ${o.id}\n`;
-    txt += `   Cliente: ${o.clienteCodigo}${o.clienteNome?' — '+o.clienteNome:''}\n`;
-    txt += `   Status: ${status} · ${formatInt(getOrderUnits(o))} unidades\n\n`;
+    const cliente = o.clienteNome ? `${o.clienteCodigo} — ${o.clienteNome}` : o.clienteCodigo;
+    txt += `${emoji} *${o.id}*\n`;
+    txt += `   Cliente: ${cliente}\n`;
+    txt += `   Campanha: ${o.campanha || '—'} · Status: ${status}\n`;
+    for(const item of (o.items || [])){
+      const units = getItemUnits(item);
+      const gci = item.gci || item.ebm || '';
+      const grade = Array.isArray(item.grade) && item.grade.length
+        ? item.grade.map(g=>`${g.size}(${g.qty})`).join(' ')
+        : '';
+      txt += `   • ${item.produto || '—'}${item.cor ? ' / '+item.cor : ''}${gci ? ' ['+gci+']' : ''} — ${formatInt(units)} un.`;
+      if(grade) txt += ` | ${grade}`;
+      txt += `\n`;
+    }
+    txt += `\n`;
   }
   txt += `*Total: ${orders.length} pedidos · ${formatInt(totalUnidades)} unidades*`;
   window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, '_blank', 'noopener,noreferrer');
@@ -1517,7 +1871,7 @@ function relatorioWhatsapp(){
 async function relatorioExportPdf(){
   const rel = STATE._relatorioAtual;
   if(!rel) return;
-  const { nomeVendedor, orders, totalItens, totalUnidades } = rel;
+  const { nomeVendedor, orders, totalUnidades } = rel;
   const btn = $('btnRelatorioPdf');
   const prev = btn.innerHTML;
   btn.disabled = true;
@@ -1525,124 +1879,165 @@ async function relatorioExportPdf(){
 
   try{
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    // Landscape para caber todas as colunas
+    const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
     const pw = doc.internal.pageSize.getWidth();
     const ph = doc.internal.pageSize.getHeight();
     const now = new Date();
 
     // Cabeçalho
     doc.setFillColor(40,54,212);
-    doc.rect(0,0,pw,18,'F');
+    doc.rect(0,0,pw,16,'F');
     doc.setTextColor(255,255,255);
     doc.setFont('helvetica','bold');
-    doc.setFontSize(12);
-    doc.text('REPASSE OLYMPIKUS', 12, 11);
+    doc.setFontSize(11);
+    doc.text('REPASSE OLYMPIKUS', 12, 10);
     doc.setFont('helvetica','normal');
-    doc.setFontSize(8);
-    doc.text(`Relatório por vendedor • ${now.toLocaleDateString('pt-BR')}`, pw-12, 11, {align:'right'});
+    doc.setFontSize(7.5);
+    doc.text(`Relatório por vendedor • ${now.toLocaleDateString('pt-BR')}`, pw-12, 10, {align:'right'});
 
     // Vendedor
     doc.setTextColor(15,23,42);
     doc.setFont('helvetica','bold');
-    doc.setFontSize(14);
-    doc.text(nomeVendedor, 12, 28);
+    doc.setFontSize(13);
+    doc.text(nomeVendedor, 12, 26);
     doc.setFont('helvetica','normal');
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setTextColor(71,85,105);
-    doc.text(`${orders.length} pedidos · ${formatInt(totalUnidades)} unidades totais`, 12, 34);
-
-    // Linha
+    doc.text(`${orders.length} pedidos · ${formatInt(totalUnidades)} unidades totais`, 12, 32);
     doc.setDrawColor(226,232,240);
-    doc.line(12, 37, pw-12, 37);
+    doc.line(12, 35, pw-12, 35);
 
-    // Tabela
+    // Colunas — landscape A4 = 297mm, usável = 273mm
     const cols = [
-      { label:'Pedido', w:52 },
-      { label:'Data', w:22 },
-      { label:'Cliente', w:38 },
-      { label:'Campanha', w:30 },
-      { label:'Itens', w:14, align:'right' },
-      { label:'Unid.', w:14, align:'right' },
-      { label:'Status', w:20 }
+      { label:'Nº',        w:8,  align:'right' },
+      { label:'Vendedor',  w:20 },
+      { label:'Cod.Cli',   w:16 },
+      { label:'Nome',      w:22 },
+      { label:'Prazo',     w:16 },
+      { label:'Campanha',  w:20 },
+      { label:'Qtde',      w:10, align:'right' },
+      { label:'EBM',       w:16 },
+      { label:'GCI',       w:14 },
+      { label:'Descrição', w:36 },
+      { label:'Cor',       w:16 },
+      { label:'Prev Fat',  w:16 },
+      { label:'Status',    w:16 },
+      { label:'Grade',     w:37 }
     ];
+
     const startX = 12;
-    let y = 42;
-    const rowH = 8;
+    let y = 39;
+    const rowH = 7;
 
-    // Header tabela
-    doc.setFillColor(248,250,252);
-    doc.rect(startX, y, pw-24, rowH, 'F');
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(71,85,105);
-    let cx = startX + 2;
-    for(const col of cols){
-      const tx = col.align==='right' ? cx+col.w-2 : cx;
-      doc.text(col.label, tx, y+5.5, {align: col.align==='right'?'right':'left'});
-      cx += col.w;
-    }
-    y += rowH;
-
-    // Rows
-    doc.setFont('helvetica','normal');
-    doc.setFontSize(7.5);
-    for(const o of orders){
-      if(y > ph - 20){
-        doc.addPage();
-        y = 15;
-      }
-      doc.setDrawColor(237,242,247);
-      doc.line(startX, y, pw-12, y);
-      const status = canonicalStatus(o.status);
-      const clienteTxt = o.clienteNome ? `${o.clienteCodigo} ${o.clienteNome}` : o.clienteCodigo;
-      const vals = [
-        o.id,
-        formatDate(o.createdAt||o.updatedAt),
-        clienteTxt,
-        o.campanha||'—',
-        String((o.items||[]).length),
-        String(getOrderUnits(o)),
-        status
-      ];
-      cx = startX + 2;
-      doc.setTextColor(15,23,42);
-      for(let i=0;i<cols.length;i++){
-        const col = cols[i];
-        const txt = doc.splitTextToSize(vals[i], col.w-2)[0] || '';
+    function drawTableHeader(){
+      doc.setFillColor(248,250,252);
+      doc.rect(startX, y, pw-24, rowH, 'F');
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(71,85,105);
+      let cx = startX + 1.5;
+      for(const col of cols){
         const tx = col.align==='right' ? cx+col.w-2 : cx;
-        if(i===6){
-          const color = status==='Aprovado'?[21,128,61]:status==='Cancelado'?[185,28,28]:[180,83,9];
-          doc.setTextColor(...color);
-        }else{
-          doc.setTextColor(15,23,42);
-        }
-        doc.text(txt, tx, y+5.5, {align:col.align==='right'?'right':'left'});
+        doc.text(col.label, tx, y+4.8, {align:col.align==='right'?'right':'left'});
         cx += col.w;
       }
       y += rowH;
     }
 
-    // Total
+    drawTableHeader();
+
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(6.5);
+
+    let totalUnidadesPdf = 0;
+
+    for(const o of orders){
+      const data = formatDate(o.createdAt||o.updatedAt);
+      const cliente = o.clienteNome ? `${o.clienteCodigo} ${o.clienteNome}` : o.clienteCodigo;
+      const status = canonicalStatus(o.status);
+      const campanha = o.campanha || '—';
+      const items = o.items || [];
+
+      const renderItems = items.length ? items : [null];
+
+      for(let idx=0; idx<renderItems.length; idx++){
+        const item = renderItems[idx];
+        const units = item ? getItemUnits(item) : 0;
+        totalUnidadesPdf += units;
+
+        const grade = item && Array.isArray(item.grade) && item.grade.length
+          ? item.grade.map(g=>`${g.size}(${g.qty})`).join('  ')
+          : '—';
+
+        if(y > ph - 14){
+          doc.addPage();
+          y = 10;
+          drawTableHeader();
+        }
+
+        doc.setDrawColor(237,242,247);
+        doc.line(startX, y, pw-12, y);
+
+        const vals = [
+          String(idx+1),
+          o.preposto?.nome || o.preposto?.codigo || '—',
+          o.clienteCodigo || '—',
+          o.clienteNome || '—',
+          o.prazo || '—',
+          stripOly(o.campanha || '—'),
+          item ? String(formatInt(units)) : '—',
+          item ? (item.ebm || '—') : '—',
+          item ? (item.gci || '—') : '—',
+          item ? (item.produto || '—') : '—',
+          item ? (item.cor || '—') : '—',
+          item ? (formatDate(item.prevFaturamento) || '—') : '—',
+          status,
+          grade
+        ];
+
+        let cx = startX + 1.5;
+        doc.setTextColor(15,23,42);
+        for(let i=0;i<cols.length;i++){
+          const col = cols[i];
+          const tx = col.align==='right' ? cx+col.w-2 : cx;
+          let txt = doc.splitTextToSize(String(vals[i]), col.w-2)[0] || '';
+          if(i===12 && vals[i]){
+            const color = status==='Aprovado'?[21,128,61]:status==='Cancelado'?[185,28,28]:[180,83,9];
+            doc.setTextColor(...color);
+          } else if(i===8 && vals[i] && vals[i]!=='—'){
+            doc.setTextColor(40,54,212);
+          } else {
+            doc.setTextColor(15,23,42);
+          }
+          doc.text(txt, tx, y+4.8, {align:col.align==='right'?'right':'left'});
+          cx += col.w;
+        }
+        y += rowH;
+      }
+    }
+
+    // Linha total
     doc.setDrawColor(40,54,212);
     doc.line(startX, y, pw-12, y);
     doc.setFont('helvetica','bold');
+    doc.setFontSize(7);
     doc.setTextColor(15,23,42);
-    doc.setFontSize(8);
-    cx = startX+2;
-    const totVals = ['Total','','','',String(totalItens),String(totalUnidades),''];
+    let cx = startX + 1.5;
+    const totVals = ['','Total','','','','',formatInt(totalUnidadesPdf),'','','','','','',''];
     for(let i=0;i<cols.length;i++){
       const col = cols[i];
       const tx = col.align==='right'?cx+col.w-2:cx;
-      doc.text(totVals[i], tx, y+6, {align:col.align==='right'?'right':'left'});
+      doc.text(String(totVals[i]), tx, y+5, {align:col.align==='right'?'right':'left'});
       cx+=col.w;
     }
 
     // Rodapé
     doc.setFont('helvetica','normal');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(148,163,184);
-    doc.text(`Gerado em ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`, 12, ph-6);
-    doc.text('Repasse Olympikus', pw-12, ph-6, {align:'right'});
+    doc.text(`Gerado em ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`, 12, ph-5);
+    doc.text('Repasse Olympikus', pw-12, ph-5, {align:'right'});
 
     const filename = `relatorio_${nomeVendedor.replace(/\s+/g,'_').toLowerCase()}_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.pdf`;
     doc.save(filename);
@@ -1669,12 +2064,115 @@ $('btnAdminLogin').addEventListener('click', async ()=>{
   await applyAuthUI();
 });
 
+$('adminPassword').addEventListener('keydown', async (e)=>{
+  if(e.key === 'Enter') $('btnAdminLogin').click();
+});
+
 $('btnLogout').addEventListener('click', ()=>{
   localStorage.removeItem(STORAGE_KEYS.adminAuth);
   applyAuthUI();
 });
 
 $('btnRefresh').addEventListener('click', async ()=>{ await loadAdmin(); });
+
+// ── NOTIFICAÇÕES ──────────────────────────────────────────────────────────────
+let _notifLastOrderId = null;
+let _notifCount = 0;
+const _notifOrigTitle = document.title;
+
+function notifPlaySound(){
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.setValueAtTime(880, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(440, ctx.currentTime+0.15);
+    g.gain.setValueAtTime(0.25, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.3);
+    o.start(); o.stop(ctx.currentTime+0.3);
+  }catch(_){}
+}
+
+function notifShowToast(msg){
+  const wrap = document.querySelector('.toast-wrap');
+  if(!wrap) return;
+  const el = document.createElement('div');
+  el.className = 'toast toast-info';
+  el.style.pointerEvents = 'auto';
+  el.innerHTML = `<i class="fa-solid fa-bell"></i><span>${msg}</span>`;
+  wrap.appendChild(el);
+  setTimeout(()=>el.remove(), 5000);
+}
+
+function notifUpdateBadge(){
+  const badge = $('badgeNotifAdmin');
+  if(!badge) return;
+  if(_notifCount > 0){
+    badge.textContent = _notifCount;
+    badge.classList.remove('hidden');
+    document.title = `🔴 ${_notifCount} novo${_notifCount>1?'s':''} pedido${_notifCount>1?'s':''}! — Admin`;
+  } else {
+    badge.classList.add('hidden');
+    document.title = _notifOrigTitle;
+  }
+}
+
+async function notifPollAdmin(){
+  try{
+    const remote = await workerRequest('GET');
+    if(!Array.isArray(remote)) return;
+    const novos = remote.filter(o => {
+      if(!o.createdAt) return false;
+      const t = new Date(o.createdAt).getTime();
+      return (Date.now() - t) < 30000; // criado nos últimos 30s
+    });
+    if(novos.length > 0 && _notifLastOrderId !== novos[0]?.id){
+      _notifLastOrderId = novos[0]?.id;
+      _notifCount += novos.length;
+      notifUpdateBadge();
+      notifPlaySound();
+      notifShowToast(`${novos.length} novo${novos.length>1?'s':''} pedido${novos.length>1?'s':''} recebido${novos.length>1?'s':''}!`);
+    }
+  }catch(_){}
+}
+
+$('btnNotifAdmin').addEventListener('click', ()=>{
+  _notifCount = 0;
+  notifUpdateBadge();
+  document.querySelector('[data-status="Pendente"]')?.click() ||
+  $('adminOrdersList')?.scrollIntoView({ behavior:'smooth' });
+});
+
+setInterval(notifPollAdmin, 30000);
+
+// ── Toggle Bloco 2 ────────────────────────────────────────────────────────────
+(()=>{
+  const RESUMO_KEY = 'repasse_admin_resumo_visible_v1';
+  let visible = localStorage.getItem(RESUMO_KEY) !== 'false';
+
+  function applyResumoVisibility(){
+    const section = $('blocoResumo');
+    const label = $('btnToggleResumoLabel');
+    const btn = $('btnToggleResumo');
+    if(!section) return;
+    section.style.display = visible ? '' : 'none';
+    if(label) label.textContent = visible ? 'Ocultar resumo' : 'Mostrar resumo';
+    if(btn){
+      btn.classList.toggle('bg-[var(--brand-soft)]', !visible);
+      btn.classList.toggle('text-[var(--brand)]', !visible);
+      btn.classList.toggle('border-[var(--brand)]', !visible);
+    }
+  }
+
+  $('btnToggleResumo').addEventListener('click', ()=>{
+    visible = !visible;
+    localStorage.setItem(RESUMO_KEY, String(visible));
+    applyResumoVisibility();
+  });
+
+  applyResumoVisibility();
+})();
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ── BLOCO 2 listeners ─────────────────────────────────────────────────────────
 document.querySelectorAll('.kpi-op[data-status-filter]').forEach(card => {
@@ -1687,9 +2185,205 @@ document.querySelectorAll('.kpi-op[data-status-filter]').forEach(card => {
   });
 });
 
+// ── CONTROLE DE EXPORTAÇÃO ────────────────────────────────────────────────────
+const FILTRO_EXPORT = { value: 'all' };
+
+function setFiltroExport(valor){
+  FILTRO_EXPORT.value = valor;
+  document.querySelectorAll('.filtro-export-btn').forEach(btn => {
+    const active = btn.dataset.filtro === valor;
+    btn.classList.toggle('bg-white', active);
+    btn.classList.toggle('text-[var(--brand)]', active);
+    btn.classList.toggle('shadow-sm', active);
+    btn.classList.toggle('text-slate-600', !active);
+  });
+  if(STATE._relatorioAtual) atualizarBanner();
+}
+
+function getOrdersAprovadosNaoExportados(){
+  return STATE.orders.filter(o => canonicalStatus(o.status) === 'Aprovado' && !o.exportedAt);
+}
+
+function atualizarBadgeGlobal(){
+  const pendentes = getOrdersAprovadosNaoExportados();
+  const btn = $('btnExportarTodosPendentes');
+  const badge = $('badgePendentesExport');
+  if(!btn || !badge) return;
+  if(pendentes.length > 0){
+    btn.classList.remove('hidden');
+    badge.textContent = pendentes.length;
+  } else {
+    btn.classList.add('hidden');
+  }
+}
+
+function atualizarBanner(){
+  const banner = $('relatorioBanner');
+  if(!banner || !STATE._relatorioAtual) return;
+  const allOrders = STATE._relatorioAtual.orders.filter(o => canonicalStatus(o.status) === 'Aprovado');
+  const naoExp = allOrders.filter(o => !o.exportedAt).length;
+  const exp = allOrders.filter(o => o.exportedAt).length;
+  if(FILTRO_EXPORT.value === 'nao'){
+    banner.className = 'rounded-2xl px-4 py-3 text-sm font-semibold mb-4 flex items-center gap-2 ' +
+      (naoExp > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-50 text-slate-500 border border-slate-200');
+    banner.innerHTML = naoExp > 0
+      ? `<i class="fa-solid fa-circle-check"></i> ${naoExp} pedido${naoExp>1?'s':''} aprovado${naoExp>1?'s':''} aguardando exportação`
+      : `<i class="fa-solid fa-check-double"></i> Todos os aprovados já foram exportados`;
+    banner.classList.remove('hidden');
+  } else if(FILTRO_EXPORT.value === 'exp'){
+    banner.className = 'rounded-2xl px-4 py-3 text-sm font-semibold mb-4 flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200';
+    banner.innerHTML = `<i class="fa-solid fa-file-export"></i> ${exp} pedido${exp!==1?'s':''} já exportado${exp!==1?'s':''}`;
+    banner.classList.remove('hidden');
+  } else {
+    banner.className = 'rounded-2xl px-4 py-3 text-sm font-semibold mb-4 flex items-center gap-2 bg-slate-50 text-slate-500 border border-slate-200';
+    banner.innerHTML = `<i class="fa-solid fa-layer-group"></i> ${allOrders.length} pedidos aprovados · ${naoExp} não exportados · ${exp} exportados`;
+    banner.classList.remove('hidden');
+  }
+}
+
+async function marcarComoExportado(orders){
+  const aprovados = orders.filter(o => canonicalStatus(o.status) === 'Aprovado' && !o.exportedAt);
+  if(!aprovados.length) return;
+  const now = new Date().toISOString();
+  for(const order of aprovados){
+    const idx = STATE.orders.findIndex(o => o.id === order.id);
+    if(idx !== -1){
+      STATE.orders[idx].exportedAt = now;
+      try{ await workerUpdateOrder(STATE.orders[idx]); }catch(e){ console.error(e); }
+    }
+  }
+  atualizarBadgeGlobal();
+}
+
+function buildRelatorioXlsxRows(orders){
+  const rows = [['Nº','Vendedor','Cod. Cliente','Nome','Prazo','Campanha','Qtde','EBM','GCI','Descrição','Cor','Prev Fat','Status','Grade']];
+  let n = 0;
+  for(const o of orders){
+    const vendedor = o.preposto?.nome || o.preposto?.codigo || '—';
+    const prazo = o.prazo || '—';
+    const campanha = stripOly(o.campanha || '—');
+    const status = canonicalStatus(o.status);
+    for(const item of (o.items||[])){
+      n++;
+      const units = getItemUnits(item);
+      const prevFat = formatDate(item.prevFaturamento) || '—';
+      const grade = Array.isArray(item.grade)&&item.grade.length ? item.grade.map(g=>`${g.size}(${g.qty})`).join(' ') : '—';
+      rows.push([n,vendedor,o.clienteCodigo||'—',o.clienteNome||'—',prazo,campanha,units,item.ebm||'—',item.gci||'—',item.produto||'—',item.cor||'—',prevFat,status,grade]);
+    }
+  }
+  return rows;
+}
+
+async function exportarTodosPendentes(){
+  const pendentes = getOrdersAprovadosNaoExportados();
+  if(!pendentes.length){ showToast('Nenhum aprovado pendente de exportação.','info'); return; }
+  const btn = $('btnExportarTodosPendentes');
+  const prev = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Exportando...';
+  try{
+    const rows = buildRelatorioXlsxRows(pendentes);
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [4,18,12,20,20,16,6,12,10,24,10,20,10,28].map(w=>({wch:w}));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Aprovados');
+    const now = new Date();
+    XLSX.writeFile(wb, `aprovados_pendentes_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.xlsx`);
+    await marcarComoExportado(pendentes);
+    showToast(`${pendentes.length} pedido${pendentes.length>1?'s':''} exportado${pendentes.length>1?'s':''}!`, 'success');
+    if(STATE._relatorioAtual) atualizarBanner();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao exportar.','error');
+  }finally{
+    btn.disabled = false;
+    btn.innerHTML = prev;
+  }
+}
+
+async function relatorioExportXlsx(){
+  const rel = STATE._relatorioAtual;
+  if(!rel){ showToast('Gere o relatório primeiro.','info'); return; }
+  const { nomeVendedor, orders } = rel;
+  const btn = $('btnRelatorioXlsx');
+  const prev = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gerando...';
+
+  try{
+    const rows = [['Nº','Vendedor','Cod. Cliente','Nome','Prazo','Campanha','Qtde','EBM','GCI','Descrição','Cor','Prev Fat','Status','Grade']];
+    let lineNum = 0;
+    for(const o of orders){
+      const vendedor = o.preposto?.nome || o.preposto?.codigo || '—';
+      const codCliente = o.clienteCodigo || '—';
+      const nomeCliente = o.clienteNome || '—';
+      const prazo = o.prazo || '—';
+      const campanha = stripOly(o.campanha || '—');
+      const status = canonicalStatus(o.status);
+      const items = o.items || [];
+      if(!items.length){
+        lineNum++;
+        rows.push([lineNum, vendedor, codCliente, nomeCliente, prazo, campanha,'—','—','—','—','—','—', status,'—']);
+      } else {
+        for(const item of items){
+          lineNum++;
+          const units = getItemUnits(item);
+          const prevFat = formatDate(item.prevFaturamento) || '—';
+          const grade = Array.isArray(item.grade) && item.grade.length
+            ? item.grade.map(g=>`${g.size}(${g.qty})`).join(' ')
+            : '—';
+          rows.push([
+            lineNum, vendedor, codCliente, nomeCliente, prazo, campanha,
+            units, item.ebm || '—', item.gci || '—',
+            item.produto || '—', item.cor || '—',
+            prevFat, status, grade
+          ]);
+        }
+      }
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [4,18,12,20,14,16,12,10,24,10,6,12,10,28].map(w=>({wch:w}));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Relatório');
+    const now = new Date();
+    const filename = `relatorio_${nomeVendedor.replace(/\s+/g,'_').toLowerCase()}_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.xlsx`;
+    XLSX.writeFile(wb, filename);
+    showToast('XLSX gerado com sucesso!', 'success');
+    // Marca aprovados como exportados
+    await marcarComoExportado(orders);
+    atualizarBanner();
+  }catch(err){
+    console.error(err);
+    showToast('Não foi possível gerar o XLSX.','error');
+  }finally{
+    btn.disabled = false;
+    btn.innerHTML = prev;
+  }
+}
+
 $('btnGerarRelatorio').addEventListener('click', renderRelatorio);
 $('btnRelatorioWhatsapp').addEventListener('click', relatorioWhatsapp);
 $('btnRelatorioPdf').addEventListener('click', relatorioExportPdf);
+$('btnRelatorioXlsx').addEventListener('click', relatorioExportXlsx);
+$('btnExportarTodosPendentes').addEventListener('click', exportarTodosPendentes);
+
+// Filtros de exportação
+document.querySelectorAll('.filtro-export-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=> setFiltroExport(btn.dataset.filtro));
+});
+// Estado inicial do filtro
+setFiltroExport('all');
+
+// Aviso ao trocar vendedor se houver não exportados visíveis
+$('relatorioVendedorSelect').addEventListener('change', ()=>{
+  if(!STATE._relatorioAtual) return;
+  const naoExp = STATE._relatorioAtual.orders.filter(o => canonicalStatus(o.status)==='Aprovado' && !o.exportedAt);
+  if(naoExp.length > 0 && FILTRO_EXPORT.value !== 'exp'){
+    if(!window.confirm(`Há ${naoExp.length} pedido${naoExp.length>1?'s':''} aprovado${naoExp.length>1?'s':''} não exportado${naoExp.length>1?'s':''}. Deseja exportar antes de continuar?`)) return;
+    relatorioExportXlsx();
+  }
+});
 // ─────────────────────────────────────────────────────────────────────────────
 
 $('btnScopeActive').addEventListener('click', ()=>{ setAdminScope('active'); applyFilters(); });
@@ -1739,6 +2433,27 @@ document.addEventListener('keydown', (e)=>{
 // ─────────────────────────────────────────────────────────────────────────────
 
 applyAuthUI();
+
+// ── Inicializa estado do ranking ──────────────────────────────────────────────
+(()=>{
+  const open = localStorage.getItem('repasse_ranking_open') === '1';
+  const body = $('rankingBody');
+  const icon = $('rankingIcon');
+  if(body) body.style.display = open ? 'block' : 'none';
+  if(icon) icon.style.transform = open ? 'rotate(0deg)' : 'rotate(-90deg)';
+})();
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Auto-copy ao selecionar texto ────────────────────────────────────────────
+document.addEventListener('mouseup', ()=>{
+  const sel = window.getSelection();
+  const text = sel ? sel.toString().trim() : '';
+  if(!text) return;
+  navigator.clipboard.writeText(text).then(()=>{
+    showToast('Copiado!', 'success');
+  }).catch(()=>{});
+});
+// ─────────────────────────────────────────────────────────────────────────────
 </script>
 </body>
 </html>

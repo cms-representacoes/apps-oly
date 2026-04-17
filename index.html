@@ -107,6 +107,7 @@
       body.mobile-header-ready main{padding-top:calc(var(--mobile-header-offset) + 12px) !important}
       body.filters-open #filtersPanel{top:108px;max-height:calc(100dvh - 122px)}
     }
+    @keyframes pulse-badge{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.2)} }
   </style>
 </head>
 <body>
@@ -187,6 +188,12 @@
           <button id="btnViewCards" class="focus-ring rounded-full px-3 py-2 text-sm font-bold text-slate-700 bg-slate-100">Cards</button>
           <button id="btnViewList" class="focus-ring rounded-full px-3 py-2 text-sm font-bold text-slate-700">Lista</button>
         </div>
+
+        <button id="btnNotifVendedor" class="focus-ring relative icon-btn-mobile inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700" title="Novidades">
+          <i class="fa-solid fa-bell"></i>
+          <span class="hidden sm:inline">Novidades</span>
+          <span id="badgeNotifVendedor" class="hidden absolute -top-2 -right-2 min-w-[20px] h-[20px] px-1 bg-emerald-600 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white" style="animation:pulse-badge 1s infinite">0</span>
+        </button>
 
         <button id="btnOrders" class="focus-ring icon-btn-mobile inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700" aria-label="Meus pedidos" title="Meus pedidos">
           <i class="fa-regular fa-rectangle-list"></i>
@@ -2871,7 +2878,63 @@ updateOrdersScopeButtons();
 renderOrders();
 startStockAutoRefresh();
 
-// Carrega catálogo primeiro (inclui filtro de ocultos), depois sincroniza pedidos
+// ── NOTIFICAÇÕES VENDEDOR ─────────────────────────────────────────────────────
+let _notifVendLastGcis = null;
+let _notifVendCount = 0;
+const _notifVendOrigTitle = document.title;
+
+function notifVendPlaySound(){
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.setValueAtTime(660, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(880, ctx.currentTime+0.15);
+    g.gain.setValueAtTime(0.2, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.3);
+    o.start(); o.stop(ctx.currentTime+0.3);
+  }catch(_){}
+}
+
+function notifVendUpdateBadge(){
+  const badge = $('badgeNotifVendedor');
+  if(!badge) return;
+  if(_notifVendCount > 0){
+    badge.textContent = _notifVendCount;
+    badge.classList.remove('hidden');
+    document.title = `🟢 ${_notifVendCount} produto${_notifVendCount>1?'s':''} novo${_notifVendCount>1?'s':''}! — Repasse Olympikus`;
+  } else {
+    badge.classList.add('hidden');
+    document.title = _notifVendOrigTitle;
+  }
+}
+
+async function notifVendPoll(){
+  if(!STATE.raw?.length) return;
+  const gcisAtual = new Set(STATE.raw.map(i => String(i.gci||'')));
+  if(_notifVendLastGcis === null){ _notifVendLastGcis = gcisAtual; return; }
+  const novos = [...gcisAtual].filter(g => !_notifVendLastGcis.has(g));
+  if(novos.length > 0){
+    _notifVendCount += novos.length;
+    _notifVendLastGcis = gcisAtual;
+    notifVendUpdateBadge();
+    notifVendPlaySound();
+    toast(`${novos.length} produto${novos.length>1?'s':''} novo${novos.length>1?'s':''} disponível${novos.length>1?'is':''}!`, 4000);
+  }
+}
+
+if($('btnNotifVendedor')){
+  $('btnNotifVendedor').addEventListener('click', ()=>{
+    _notifVendCount = 0;
+    notifVendUpdateBadge();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+}
+
+setInterval(async ()=>{
+  await refreshStockFromSource({ silent:true, reason:'poll' });
+  notifVendPoll();
+}, 30000);
 loadCatalog().then(async ()=>{
   applyVendedorSession();
   await refreshStockFromSource({ silent:true, reason:'load', force:true });
