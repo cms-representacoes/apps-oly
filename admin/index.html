@@ -60,6 +60,19 @@
     .chip-gray{ background:#eef2f7; color:#334155; }
     .chip-status-pendente{ background:var(--warning-soft); color:var(--warning); border-color:#fde68a; }
     .chip-status-aprovado{ background:var(--success-soft); color:var(--success); border-color:#bbf7d0; }
+    .filter-status-btn{ display:inline-flex; align-items:center; gap:6px; border:0.5px solid var(--line); border-radius:999px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; background:none; color:#64748b; transition:all .12s; }
+    .filter-status-btn:hover{ background:#f8fafc; }
+    .filter-status-btn.fs-active-todos{ background:#0f172a; color:#fff; border-color:#0f172a; }
+    .filter-status-btn.fs-active-pend{ background:#fef3c7; color:#92400e; border-color:#fde68a; }
+    .filter-status-btn.fs-active-aprov{ background:#dcfce7; color:#166534; border-color:#bbf7d0; }
+    .filter-status-btn.fs-active-export{ background:#dbeafe; color:#1e40af; border-color:#93c5fd; }
+    .filter-status-btn.fs-active-canc{ background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
+    .fs-count{ font-size:10px; font-weight:700; border-radius:999px; padding:1px 6px; }
+    .fs-count-todos{ background:#e2e8f0; color:#475569; }
+    .fs-count-pend{ background:#fde68a; color:#92400e; }
+    .fs-count-aprov{ background:#bbf7d0; color:#166534; }
+    .fs-count-export{ background:#93c5fd; color:#1e40af; }
+    .fs-count-canc{ background:#fca5a5; color:#991b1b; }
     .chip-status-cancelado{ background:var(--danger-soft); color:var(--danger); border-color:#fecaca; }
 
     .shadow-card{ box-shadow:var(--shadow); }
@@ -335,13 +348,6 @@
               <input id="adminSearch" class="focus-ring w-full bg-transparent text-sm outline-none" placeholder="Buscar pedido, cliente ou preposto" />
             </div>
 
-            <select id="adminStatusFilter" class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold">
-              <option value="">Todos os status</option>
-              <option value="Pendente">Pendente</option>
-              <option value="Aprovado">Aprovado</option>
-              <option value="Cancelado">Cancelado</option>
-            </select>
-
             <button id="btnRefresh" class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">
               Atualizar
             </button>
@@ -533,10 +539,26 @@
             <div class="text-xs font-bold text-slate-400">Histórico robusto ativo. Exclusão física: somente testes</div>
           </div>
 
-          <div class="flex flex-wrap gap-2 text-xs font-bold">
-            <span class="chip chip-status-pendente"><span class="status-dot dot-pendente"></span>Pendente</span>
-            <span class="chip chip-status-aprovado"><span class="status-dot dot-aprovado"></span>Aprovado</span>
-            <span class="chip chip-status-cancelado"><span class="status-dot dot-cancelado"></span>Cancelado</span>
+          <div class="flex flex-wrap gap-2">
+            <button class="filter-status-btn fs-active-todos" data-fs="todos" onclick="setStatusFilter('todos',this)">
+              Todos <span class="fs-count fs-count-todos" id="fsCountTodos">0</span>
+            </button>
+            <button class="filter-status-btn" data-fs="Pendente" onclick="setStatusFilter('Pendente',this)">
+              <span style="width:7px;height:7px;border-radius:50%;background:#f59e0b;display:inline-block;flex-shrink:0"></span>
+              Pendente <span class="fs-count fs-count-pend" id="fsCountPend">0</span>
+            </button>
+            <button class="filter-status-btn" data-fs="Aprovado" onclick="setStatusFilter('Aprovado',this)">
+              <span style="width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0"></span>
+              Aprovado <span class="fs-count fs-count-aprov" id="fsCountAprov">0</span>
+            </button>
+            <button class="filter-status-btn" data-fs="Exportado" onclick="setStatusFilter('Exportado',this)">
+              <span style="width:7px;height:7px;border-radius:50%;background:#3b82f6;display:inline-block;flex-shrink:0"></span>
+              Exportado <span class="fs-count fs-count-export" id="fsCountExport">0</span>
+            </button>
+            <button class="filter-status-btn" data-fs="Cancelado" onclick="setStatusFilter('Cancelado',this)">
+              <span style="width:7px;height:7px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0"></span>
+              Cancelado <span class="fs-count fs-count-canc" id="fsCountCanc">0</span>
+            </button>
           </div>
         </div>
       </section>
@@ -644,7 +666,8 @@ const STATE = {
   orders: [],
   filtered: [],
   selectedId: null,
-  cancelReasonContext: null
+  cancelReasonContext: null,
+  statusFilter: 'todos'
 };
 
 const $ = (id)=>document.getElementById(id);
@@ -1096,12 +1119,40 @@ async function loadAdmin(){
   }
 }
 
+function setStatusFilter(f, btn){
+  STATE.statusFilter = f;
+  document.querySelectorAll('.filter-status-btn').forEach(b => {
+    b.className = 'filter-status-btn';
+  });
+  const clsMap = { todos:'fs-active-todos', Pendente:'fs-active-pend', Aprovado:'fs-active-aprov', Exportado:'fs-active-export', Cancelado:'fs-active-canc' };
+  btn.className = `filter-status-btn ${clsMap[f]||''}`;
+  applyFilters();
+}
+
+function updateFilterCounts(){
+  const scope = getAdminScope();
+  const base = STATE.orders.filter(o => orderMatchesScope(o, scope));
+  const c = {
+    todos:    base.length,
+    Pendente: base.filter(o => canonicalStatus(o.status) === 'Pendente').length,
+    Aprovado: base.filter(o => canonicalStatus(o.status) === 'Aprovado' && !o.exportedAt).length,
+    Exportado:base.filter(o => canonicalStatus(o.status) === 'Aprovado' && o.exportedAt).length,
+    Cancelado:base.filter(o => canonicalStatus(o.status) === 'Cancelado').length,
+  };
+  if($('fsCountTodos'))  $('fsCountTodos').textContent  = c.todos;
+  if($('fsCountPend'))   $('fsCountPend').textContent   = c.Pendente;
+  if($('fsCountAprov'))  $('fsCountAprov').textContent  = c.Aprovado;
+  if($('fsCountExport')) $('fsCountExport').textContent = c.Exportado;
+  if($('fsCountCanc'))   $('fsCountCanc').textContent   = c.Cancelado;
+}
+
 function applyFilters(){
   const q = normalizeText($('adminSearch').value).toLowerCase();
-  const status = $('adminStatusFilter').value;
+  const sf = STATE.statusFilter;
   const scope = getAdminScope();
 
   updateScopeButtons();
+  updateFilterCounts();
 
   STATE.filtered = STATE.orders.filter(order=>{
     const hay = [
@@ -1114,9 +1165,15 @@ function applyFilters(){
       ...(order.items || []).flatMap(item => [item.codigo, item.produto, item.cor])
     ].join(' ').toLowerCase();
 
-    return (!q || hay.includes(q))
-      && (!status || order.status === status)
-      && orderMatchesScope(order, scope);
+    const matchQ = !q || hay.includes(q);
+    const matchScope = orderMatchesScope(order, scope);
+    let matchStatus = true;
+    if(sf === 'Pendente')  matchStatus = canonicalStatus(order.status) === 'Pendente';
+    else if(sf === 'Aprovado')  matchStatus = canonicalStatus(order.status) === 'Aprovado' && !order.exportedAt;
+    else if(sf === 'Exportado') matchStatus = canonicalStatus(order.status) === 'Aprovado' && !!order.exportedAt;
+    else if(sf === 'Cancelado') matchStatus = canonicalStatus(order.status) === 'Cancelado';
+
+    return matchQ && matchStatus && matchScope;
   });
 
   $('ordersCountBadge').textContent = `${STATE.filtered.length} pedido${STATE.filtered.length === 1 ? '' : 's'}`;
@@ -2177,11 +2234,12 @@ setInterval(notifPollAdmin, 30000);
 // ── BLOCO 2 listeners ─────────────────────────────────────────────────────────
 document.querySelectorAll('.kpi-op[data-status-filter]').forEach(card => {
   card.addEventListener('click', ()=>{
-    const status = card.dataset.statusFilter;
-    $('adminStatusFilter').value = status;
+    const status = card.dataset.statusFilter || 'todos';
     document.querySelectorAll('.kpi-op').forEach(c => c.classList.remove('active-filter'));
     card.classList.add('active-filter');
-    applyFilters();
+    const btn = document.querySelector(`.filter-status-btn[data-fs="${status}"]`);
+    if(btn) setStatusFilter(status, btn);
+    else applyFilters();
   });
 });
 
@@ -2396,7 +2454,7 @@ $('btnScopeHistory').addEventListener('click', ()=>{ setAdminScope('history'); a
 $('btnScopeAll').addEventListener('click', ()=>{ setAdminScope('all'); applyFilters(); });
 
 $('adminSearch').addEventListener('input', applyFilters);
-$('adminStatusFilter').addEventListener('change', applyFilters);
+$('adminSearch').addEventListener('input', applyFilters);
 
 // ── MODAL DE CANCELAMENTO ─────────────────────────────────────────────────────
 // Registrado uma única vez no carregamento. O modal é HTML estático,
