@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <style>
     :root{
       --bg:#f6f7fb; --card:#ffffff; --text:#0f172a; --line:#e2e8f0;
@@ -110,10 +111,10 @@
     <header class="rounded-[32px] border border-slate-200 bg-white p-4 sm:p-5 shadow-card mb-4 sticky top-4 z-30">
       <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div class="flex items-center gap-4">
-          <a href="./dispo.html" data-tip="Voltar ao DISPO"
+          <button onclick="voltarParaDispo()" data-tip="Voltar ao DISPO"
             class="focus-ring flex items-center justify-center h-10 w-10 rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors">
             <i class="fa-solid fa-arrow-left text-sm"></i>
-          </a>
+          </button>
           <div>
             <div class="text-xs font-bold text-slate-500">Controle de estoque</div>
             <div class="text-2xl sm:text-3xl font-extrabold">Desmembramentos</div>
@@ -139,6 +140,13 @@
             <button class="periodo-btn" data-periodo="1m">1m</button>
             <button class="periodo-btn" data-periodo="6m">6m</button>
           </div>
+
+          <!-- Exportar XLSX selecionados -->
+          <button id="btnExportarXlsx" onclick="exportarSelecionados()" data-tip="Exportar selecionados para XLSX"
+            class="focus-ring rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 flex items-center gap-2 hover:bg-emerald-100 transition-colors hidden">
+            <i class="fa-solid fa-file-excel text-xs"></i>
+            Exportar <span id="badgeExport" class="bg-emerald-600 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
+          </button>
 
           <!-- Tela cheia -->
           <button id="btnFullscreen" onclick="toggleFullscreen()" data-tip="Tela cheia"
@@ -193,6 +201,7 @@
         <table>
           <thead>
             <tr>
+              <th style="width:36px"><input type="checkbox" id="chkAll" title="Selecionar todos" style="cursor:pointer"></th>
               <th>Nº</th>
               <th>GCI</th>
               <th>Produto</th>
@@ -225,19 +234,29 @@ if(localStorage.getItem(STORAGE_KEYS.adminAuth) !== 'ok') window.location.replac
 
 const $ = id => document.getElementById(id);
 
-let _allProdutos = []; // agrupado por chave (produto)
+const DISPO_FILE_URL = '../DISPO.xlsx';
+let _allProdutos = [];
+let _dispoMap = new Map();
 let _periodoAtivo = localStorage.getItem('consulta_desm_periodo') || 'all';
 let _searchQuery  = '';
-const _expandidos = new Set(JSON.parse(localStorage.getItem('consulta_desm_expandidos') || '[]'));
+const _expandidos  = new Set(JSON.parse(localStorage.getItem('consulta_desm_expandidos') || '[]'));
+const _selecionados = new Set();
 
 const PERIODO_MS = { '24h':86400000, '7d':604800000, '15d':1296000000, '1m':2592000000, '6m':15552000000 };
 
-// Restaurar período ativo na UI
 document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.periodo-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.periodo === _periodoAtivo);
-  });
+  document.querySelectorAll('.periodo-btn').forEach(b => b.classList.toggle('active', b.dataset.periodo === _periodoAtivo));
+  const isDark = localStorage.getItem('admin_dark')==='1'||localStorage.getItem('dispo_dark')==='1';
+  if(isDark && $('darkIcon')) $('darkIcon').className = 'fa-solid fa-sun text-amber-400 text-xs';
 });
+
+function voltarParaDispo(){
+  if(document.fullscreenElement){
+    document.exitFullscreen().then(()=>window.location.replace('./dispo.html')).catch(()=>window.location.replace('./dispo.html'));
+  } else {
+    window.location.replace('./dispo.html');
+  }
+}
 
 function showToast(msg, type='info'){
   const t = document.createElement('div');
@@ -248,35 +267,47 @@ function showToast(msg, type='info'){
   setTimeout(()=>t.remove(), 3500);
 }
 
-function formatDate(value){
+function formatDateUTC(value){
   if(!value) return '—';
+  let d = null;
   if(typeof value === 'number' && value > 40000 && value < 60000){
-    const d = new Date(Date.UTC(1899,11,30));
-    d.setUTCDate(d.getUTCDate() + value);
-    return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
+    d = new Date(Date.UTC(1899,11,30)); d.setUTCDate(d.getUTCDate()+value);
+  } else if(typeof value === 'string' && /^\d{4,6}$/.test(value.trim())){
+    const n=Number(value);
+    if(n>40000&&n<60000){ d=new Date(Date.UTC(1899,11,30)); d.setUTCDate(d.getUTCDate()+n); }
   }
-  if(typeof value === 'string' && /^\d{5}$/.test(value.trim())){
-    const n = Number(value);
-    if(n > 40000 && n < 60000){
-      const d = new Date(Date.UTC(1899,11,30));
-      d.setUTCDate(d.getUTCDate() + n);
-      return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
-    }
-  }
-  const d = new Date(value);
+  if(!d) d=new Date(value);
   if(isNaN(d)) return String(value);
-  return d.toLocaleDateString('pt-BR');
+  return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
 }
 
-function safeHtml(v){
-  return String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
-}
+function safeHtml(v){ return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
 
 function canonicalStatus(s){
-  const v = (s||'').toLowerCase();
+  const v=(s||'').toLowerCase();
   if(['aprovado','finalizado','faturado','atendido parcialmente'].includes(v)) return 'Aprovado';
   if(['cancelado','rejeitado'].includes(v)) return 'Cancelado';
   return 'Pendente';
+}
+
+async function loadDispoMap(){
+  try{
+    const res = await fetch(`${DISPO_FILE_URL}?t=${Date.now()}`, { cache:'no-store' });
+    if(!res.ok) return;
+    const buf = await res.arrayBuffer();
+    const wb = XLSX.read(buf, { type:'array', cellDates:true });
+    const ws = wb.Sheets[wb.SheetNames.find(n=>n.toUpperCase()==='DISPO')||wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval:null, raw:false });
+    _dispoMap = new Map();
+    for(const r of rows){
+      const gci  = String(r['GCI']||r['Gci']||'').trim();
+      const ebm  = String(r['EBM']||r['Ebm']||'').trim();
+      const num  = String(r['Nº']??r['N']??r['Numero']??'').trim();
+      const saldo = Number(r['SALDO']||r['Saldo']||0);
+      if(gci) _dispoMap.set(gci, { num, saldo });
+      if(ebm && !_dispoMap.has(ebm)) _dispoMap.set(ebm, { num, saldo });
+    }
+  }catch(e){ console.warn('DISPO.xlsx não carregado:', e); }
 }
 
 async function loadData(){
@@ -284,75 +315,56 @@ async function loadData(){
   $('tableWrap').classList.add('hidden');
   $('emptyState').classList.add('hidden');
   $('pillsResumo').classList.add('hidden');
-
   try{
+    await loadDispoMap();
     const [desmRes, pedidosRes] = await Promise.all([
       fetch(WORKER_URL, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'get'}) }),
       fetch(`${WORKER_URL}?t=${Date.now()}`, { cache:'no-store' })
     ]);
-
     const desm    = desmRes.ok ? await desmRes.json() : {};
     const pedidos = pedidosRes.ok ? await pedidosRes.json() : [];
-
     const pedidoMap = new Map();
-    for(const p of (Array.isArray(pedidos) ? pedidos : [])) pedidoMap.set(p.id, p);
+    for(const p of (Array.isArray(pedidos)?pedidos:[])) pedidoMap.set(p.id, p);
 
-    // Agrupa por chave (codigo|cor|prevFat)
     _allProdutos = [];
-    for(const [chave, lojas] of Object.entries(desm || {})){
+    for(const [chave, lojas] of Object.entries(desm||{})){
       const [codigo, cor, prevFat] = chave.split('|');
       const linhasLojas = [];
-      let totalDesmembrado = 0;
-      let ultimoUpdate = null;
+      let totalDesmembrado=0, ultimoUpdate=null, gciRef='';
 
-      for(const [lineKey, situacao] of Object.entries(lojas || {})){
+      for(const [lineKey, situacao] of Object.entries(lojas||{})){
         const [orderId, gci] = lineKey.split('||');
+        if(!gciRef && gci) gciRef=gci;
         const pedido = pedidoMap.get(orderId);
-        const cliente = pedido
-          ? (pedido.clienteNome ? `${pedido.clienteCodigo} — ${pedido.clienteNome}` : pedido.clienteCodigo||'—')
-          : '—';
-
-        let qtde = 0, produto = '—', prazo = pedido?.prazo||'—';
-        let campanha = (pedido?.campanha||'').replace(/\s*\bOLY\b\s*/gi,'').trim()||'—';
-        let orderStatus = pedido?.status || '—';
-        let updatedAt = pedido?.updatedAt || pedido?.createdAt || null;
-
+        const cliente = pedido ? (pedido.clienteNome?`${pedido.clienteCodigo} — ${pedido.clienteNome}`:pedido.clienteCodigo||'—') : '—';
+        let qtde=0,produto='—',prazo=pedido?.prazo||'—';
+        let campanha=(pedido?.campanha||'').replace(/\s*\bOLY\b\s*/gi,'').trim()||'—';
+        let orderStatus=pedido?.status||'—';
+        let updatedAt=pedido?.updatedAt||pedido?.createdAt||null;
         if(pedido && Array.isArray(pedido.items)){
-          const item = pedido.items.find(it =>
-            String(it.gci||'').trim() === String(gci||'').trim() ||
-            String(it.ebm||'').trim() === String(gci||'').trim()
-          );
-          if(item){
-            produto = item.produto || produto;
-            qtde = Number(item.totalUnits||0) || (item.grade||[]).reduce((s,g)=>s+Number(g.qty||0),0);
-          }
+          const item=pedido.items.find(it=>String(it.gci||'').trim()===String(gci||'').trim()||String(it.ebm||'').trim()===String(gci||'').trim());
+          if(item){ produto=item.produto||produto; qtde=Number(item.totalUnits||0)||(item.grade||[]).reduce((s,g)=>s+Number(g.qty||0),0); }
         }
-
-        totalDesmembrado += qtde;
-        if(updatedAt && (!ultimoUpdate || new Date(updatedAt) > new Date(ultimoUpdate))) ultimoUpdate = updatedAt;
-
-        linhasLojas.push({ lineKey, gci, codigo, cor, prevFat, produto, cliente, prazo, campanha, qtde, situacao, orderStatus, orderId, updatedAt });
+        totalDesmembrado+=qtde;
+        if(updatedAt&&(!ultimoUpdate||new Date(updatedAt)>new Date(ultimoUpdate))) ultimoUpdate=updatedAt;
+        linhasLojas.push({ lineKey,gci,codigo,cor,prevFat,produto,cliente,prazo,campanha,qtde,situacao,orderStatus,orderId,updatedAt });
       }
 
-      // Produto name e GCI do primeiro item
-      const primeiro = linhasLojas[0];
-      const produtoNome = primeiro?.produto || '—';
-      const gciRef = primeiro?.gci || '—';
+      const produtoNome = linhasLojas[0]?.produto||'—';
+      const dispoInfo = _dispoMap.get(gciRef)||{ num:'—', saldo:null };
+      const saldoDispo = dispoInfo.saldo;
+      const num = dispoInfo.num||'—';
 
-      // Situação geral do produto
-      const todasFin = linhasLojas.every(l => (l.situacao||'').toLowerCase() === 'finalizado');
-      const algumFin = linhasLojas.some(l => (l.situacao||'').toLowerCase() === 'finalizado');
-      const situacaoProd = todasFin ? 'total' : algumFin ? 'parcial' : 'pendente';
+      // Situação baseada no saldo real
+      let situacaoProd;
+      if(totalDesmembrado===0){ situacaoProd='pendente'; }
+      else if(saldoDispo!==null && totalDesmembrado>=saldoDispo){ situacaoProd='total'; }
+      else { situacaoProd='parcial'; }
 
-      _allProdutos.push({
-        chave, codigo, cor, prevFat,
-        gci: gciRef, produto: produtoNome,
-        totalDesmembrado, ultimoUpdate,
-        situacao: situacaoProd,
-        lojas: linhasLojas
-      });
+      const saldoRestante = saldoDispo!==null ? Math.max(0,saldoDispo-totalDesmembrado) : null;
+
+      _allProdutos.push({ chave,codigo,cor,prevFat,num,gci:gciRef,produto:produtoNome,saldoDispo,totalDesmembrado,saldoRestante,ultimoUpdate,situacao:situacaoProd,lojas:linhasLojas });
     }
-
     renderTable();
   }catch(err){
     console.error(err);
@@ -363,152 +375,166 @@ async function loadData(){
 }
 
 function filtrarProdutos(){
-  const q = _searchQuery.toLowerCase().trim();
-  const ms = PERIODO_MS[_periodoAtivo];
-  const desde = ms ? Date.now() - ms : null;
-
-  return _allProdutos.filter(p => {
-    if(desde && p.ultimoUpdate){
-      const t = new Date(p.ultimoUpdate).getTime();
-      if(!isNaN(t) && t < desde) return false;
-    }
-    if(q){
-      const hay = `${p.produto} ${p.codigo} ${p.gci} ${p.cor} ${p.prevFat} ${p.lojas.map(l=>l.cliente).join(' ')}`.toLowerCase();
-      if(!hay.includes(q)) return false;
-    }
+  const q=_searchQuery.toLowerCase().trim();
+  const ms=PERIODO_MS[_periodoAtivo];
+  const desde=ms?Date.now()-ms:null;
+  return _allProdutos.filter(p=>{
+    if(desde&&p.ultimoUpdate){ const t=new Date(p.ultimoUpdate).getTime(); if(!isNaN(t)&&t<desde) return false; }
+    if(q){ const hay=`${p.produto} ${p.codigo} ${p.gci} ${p.cor} ${p.prevFat} ${p.num} ${p.lojas.map(l=>l.cliente).join(' ')}`.toLowerCase(); if(!hay.includes(q)) return false; }
     return true;
   });
 }
 
-function salvarExpandidos(){
-  localStorage.setItem('consulta_desm_expandidos', JSON.stringify([..._expandidos]));
+function salvarExpandidos(){ localStorage.setItem('consulta_desm_expandidos', JSON.stringify([..._expandidos])); }
+
+function atualizarBotaoExportar(){
+  const btn=$('btnExportarXlsx'); const badge=$('badgeExport');
+  if(!btn) return;
+  const n=_selecionados.size;
+  btn.classList.toggle('hidden',n===0);
+  if(badge) badge.textContent=n;
 }
 
 function chipSituacao(sit){
-  if(sit==='total')   return `<span class="chip chip-fin" style="font-size:11px"><i class="fa-solid fa-circle-check text-[9px]"></i> Total</span>`;
-  if(sit==='parcial') return `<span class="chip chip-parc" style="font-size:11px"><i class="fa-solid fa-circle-half-stroke text-[9px]"></i> Parcial</span>`;
-  return `<span class="chip chip-pend" style="font-size:11px"><i class="fa-solid fa-clock text-[9px]"></i> Pendente</span>`;
+  if(sit==='total')   return `<span class="chip chip-fin" style="font-size:11px"><i class="fa-solid fa-circle-check" style="font-size:9px"></i> Total</span>`;
+  if(sit==='parcial') return `<span class="chip chip-parc" style="font-size:11px"><i class="fa-solid fa-circle-half-stroke" style="font-size:9px"></i> Parcial</span>`;
+  return `<span class="chip chip-pend" style="font-size:11px"><i class="fa-solid fa-clock" style="font-size:9px"></i> Pendente</span>`;
 }
-
 function chipOrderStatus(s){
-  const cs = canonicalStatus(s);
+  const cs=canonicalStatus(s);
   if(cs==='Aprovado')  return `<span class="chip chip-fin" style="font-size:10px">Aprovado</span>`;
   if(cs==='Cancelado') return `<span class="chip" style="background:#fee2e2;color:#b91c1c;font-size:10px">Cancelado</span>`;
   return `<span class="chip chip-pend" style="font-size:10px">Pendente</span>`;
 }
-
 function chipDesmSit(s){
-  if((s||'').toLowerCase()==='finalizado') return `<span class="chip chip-fin" style="font-size:10px">Finalizado</span>`;
-  return `<span class="chip chip-pend" style="font-size:10px">Pendente</span>`;
+  return (s||'').toLowerCase()==='finalizado'
+    ? `<span class="chip chip-fin" style="font-size:10px">Finalizado</span>`
+    : `<span class="chip chip-pend" style="font-size:10px">Pendente</span>`;
 }
 
 function renderTable(){
   $('loadingState').classList.add('hidden');
-
-  const produtos = filtrarProdutos();
-
-  // Pills
-  const parciais  = produtos.filter(p=>p.situacao==='parcial').length;
-  const totais    = produtos.filter(p=>p.situacao==='total').length;
-  const pendentes = produtos.filter(p=>p.situacao==='pendente').length;
-  $('pillPendente').textContent  = pendentes;
-  $('pillFinalizado').textContent = totais;
+  const produtos=filtrarProdutos();
+  $('pillPendente').textContent  = produtos.filter(p=>p.situacao==='pendente').length;
+  $('pillFinalizado').textContent = produtos.filter(p=>p.situacao==='total').length;
   $('pillTotal').textContent     = produtos.length;
   $('tableCount').textContent    = `${produtos.length} produto${produtos.length!==1?'s':''}`;
-  $('pillsResumo').classList.toggle('hidden', produtos.length === 0);
+  $('pillsResumo').classList.toggle('hidden', produtos.length===0);
 
-  if(!produtos.length){
-    $('tableWrap').classList.add('hidden');
-    $('emptyState').classList.remove('hidden');
-    return;
-  }
-
+  if(!produtos.length){ $('tableWrap').classList.add('hidden'); $('emptyState').classList.remove('hidden'); return; }
   $('emptyState').classList.add('hidden');
   $('tableWrap').classList.remove('hidden');
 
-  const tbody = $('tableBody');
-  tbody.innerHTML = '';
+  const tbody=$('tableBody');
+  tbody.innerHTML='';
 
-  produtos.forEach(p => {
-    const isOpen = _expandidos.has(p.chave);
-    const saldoRestante = p.totalDesmembrado; // saldo DISPO não disponível aqui sem XLSX — mostrar desmembrado e "—" para DISPO
+  produtos.forEach(p=>{
+    const isOpen=_expandidos.has(p.chave);
+    const isSel=_selecionados.has(p.chave);
+    const saldoDispoTxt=p.saldoDispo!==null?p.saldoDispo:'—';
+    const saldoRestTxt=p.saldoRestante!==null?p.saldoRestante:'—';
+    const saldoRestColor=p.saldoRestante===0?'var(--danger)':p.saldoRestante!==null&&p.saldoRestante<12?'var(--warning)':'var(--text)';
 
-    // Linha principal
-    const trMain = document.createElement('tr');
-    trMain.className = `tr-main${isOpen?' open':''}`;
-    trMain.dataset.chave = p.chave;
-    trMain.innerHTML = `
-      <td class="tabular-nums font-semibold text-[11px]" style="color:var(--muted)">—</td>
-      <td class="font-extrabold text-xs" style="color:var(--brand)">${safeHtml(p.gci)}</td>
+    const trMain=document.createElement('tr');
+    trMain.className=`tr-main${isOpen?' open':''}`;
+    trMain.dataset.chave=p.chave;
+    trMain.innerHTML=`
+      <td onclick="event.stopPropagation()" style="padding:0 8px">
+        <input type="checkbox" class="chk-produto" data-chave="${safeHtml(p.chave)}" ${isSel?'checked':''} style="cursor:pointer;width:15px;height:15px">
+      </td>
+      <td class="tabular-nums font-semibold" style="font-size:11px;color:var(--muted)">${safeHtml(p.num)}</td>
+      <td class="font-extrabold" style="font-size:12px;color:var(--brand)">${safeHtml(p.gci)}</td>
       <td style="font-weight:800;color:var(--text)">${safeHtml(p.produto)}</td>
-      <td class="text-xs font-semibold" style="color:var(--muted)">${safeHtml(p.codigo)}</td>
-      <td class="font-semibold" style="color:var(--muted)">${safeHtml(p.cor)}</td>
-      <td class="font-semibold whitespace-nowrap" style="color:var(--muted)">${safeHtml(p.prevFat)}</td>
-      <td class="text-right font-semibold" style="color:var(--muted)">—</td>
-      <td class="text-right font-extrabold" style="color:${p.totalDesmembrado>0?'var(--brand)':'var(--muted)'}">${p.totalDesmembrado||'—'}</td>
-      <td class="text-right font-semibold" style="color:var(--muted)">—</td>
+      <td style="font-size:11px;font-weight:600;color:var(--muted)">${safeHtml(p.codigo)}</td>
+      <td style="font-weight:600;color:var(--muted)">${safeHtml(p.cor)}</td>
+      <td style="font-weight:600;white-space:nowrap;color:var(--muted)">${safeHtml(p.prevFat)}</td>
+      <td style="text-align:right;font-weight:800;color:var(--text)">${saldoDispoTxt}</td>
+      <td style="text-align:right;font-weight:800;color:${p.totalDesmembrado>0?'var(--brand)':'var(--muted)'}">${p.totalDesmembrado||'—'}</td>
+      <td style="text-align:right;font-weight:800;color:${saldoRestColor}">${saldoRestTxt}</td>
       <td>${chipSituacao(p.situacao)}</td>
-      <td>
-        <button class="btn-det${isOpen?' open':''}" data-chave="${safeHtml(p.chave)}">
-          ${isOpen?'↑ Fechar':'↓ Detalhes'}
-          <span class="badge-lojas">${p.lojas.length}</span>
-        </button>
-      </td>`;
+      <td><button class="btn-det${isOpen?' open':''}" data-chave="${safeHtml(p.chave)}">${isOpen?'↑ Fechar':'↓ Detalhes'} <span class="badge-lojas">${p.lojas.length}</span></button></td>`;
 
-    // Linha de expand (lojas)
-    const trExp = document.createElement('tr');
-    trExp.className = 'tr-expand';
-    trExp.style.display = isOpen ? '' : 'none';
-    trExp.dataset.chave = p.chave;
-
-    const subRows = p.lojas.map(l => `
-      <tr>
-        <td style="font-weight:700;color:var(--text)">${safeHtml(l.cliente)}</td>
-        <td style="color:var(--muted);white-space:nowrap;font-size:11px">${safeHtml(l.prazo)}</td>
-        <td style="color:var(--muted);font-size:11px">${safeHtml(l.campanha)}</td>
-        <td style="text-align:right;font-weight:800;color:var(--text)">${l.qtde||0}</td>
-        <td>${chipOrderStatus(l.orderStatus)}</td>
-        <td>${chipDesmSit(l.situacao)}</td>
-      </tr>`).join('');
-
-    trExp.innerHTML = `<td colspan="11">
+    const trExp=document.createElement('tr');
+    trExp.className='tr-expand';
+    trExp.style.display=isOpen?'':'none';
+    trExp.innerHTML=`<td colspan="12">
       <div class="tr-expand-inner">
         <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Lojas que receberam</div>
-        <div style="overflow-x:auto">
-          <table class="sub-table">
-            <thead><tr>
-              <th>Cliente</th><th>Prazo</th><th>Campanha</th>
-              <th style="text-align:right">Qtde</th>
-              <th>Status pedido</th><th>Situação desm.</th>
-            </tr></thead>
-            <tbody>${subRows}</tbody>
-          </table>
-        </div>
-      </div>
-    </td>`;
+        <div style="overflow-x:auto"><table class="sub-table">
+          <thead><tr><th>Cliente</th><th>Prazo</th><th>Campanha</th><th style="text-align:right">Qtde</th><th>Status pedido</th><th>Sit. desm.</th></tr></thead>
+          <tbody>${p.lojas.map(l=>`<tr>
+            <td style="font-weight:700;color:var(--text)">${safeHtml(l.cliente)}</td>
+            <td style="color:var(--muted);white-space:nowrap;font-size:11px">${safeHtml(l.prazo)}</td>
+            <td style="color:var(--muted);font-size:11px">${safeHtml(l.campanha)}</td>
+            <td style="text-align:right;font-weight:800;color:var(--text)">${l.qtde||0}</td>
+            <td>${chipOrderStatus(l.orderStatus)}</td>
+            <td>${chipDesmSit(l.situacao)}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+      </div></td>`;
 
     tbody.appendChild(trMain);
     tbody.appendChild(trExp);
 
-    // Toggle expand
-    trMain.querySelector('.btn-det').addEventListener('click', e => {
-      e.stopPropagation();
-      const chave = e.currentTarget.dataset.chave;
-      const nowOpen = _expandidos.has(chave);
-      if(nowOpen){ _expandidos.delete(chave); } else { _expandidos.add(chave); }
-      salvarExpandidos();
-      trMain.classList.toggle('open', !nowOpen);
-      trExp.style.display = nowOpen ? 'none' : '';
-      e.currentTarget.classList.toggle('open', !nowOpen);
-      e.currentTarget.innerHTML = `${!nowOpen?'↑ Fechar':'↓ Detalhes'} <span class="badge-lojas">${p.lojas.length}</span>`;
+    trMain.querySelector('.chk-produto').addEventListener('change', e=>{
+      const chave=e.target.dataset.chave;
+      if(e.target.checked){_selecionados.add(chave);}else{_selecionados.delete(chave);}
+      atualizarBotaoExportar();
+      const total=document.querySelectorAll('.chk-produto').length;
+      const sel=document.querySelectorAll('.chk-produto:checked').length;
+      if($('chkAll')){ $('chkAll').indeterminate=sel>0&&sel<total; $('chkAll').checked=sel===total; }
     });
 
-    trMain.addEventListener('click', e => {
-      if(e.target.closest('.btn-det')) return;
-      trMain.querySelector('.btn-det').click();
+    trMain.querySelector('.btn-det').addEventListener('click', e=>{
+      e.stopPropagation();
+      const chave=e.currentTarget.dataset.chave;
+      const nowOpen=_expandidos.has(chave);
+      if(nowOpen){_expandidos.delete(chave);}else{_expandidos.add(chave);}
+      salvarExpandidos();
+      trMain.classList.toggle('open',!nowOpen);
+      trExp.style.display=nowOpen?'none':'';
+      e.currentTarget.classList.toggle('open',!nowOpen);
+      e.currentTarget.innerHTML=`${!nowOpen?'↑ Fechar':'↓ Detalhes'} <span class="badge-lojas">${p.lojas.length}</span>`;
     });
+
+    trMain.addEventListener('click', e=>{ if(e.target.closest('.btn-det,.chk-produto')) return; trMain.querySelector('.btn-det').click(); });
   });
+
+  if($('chkAll')){
+    const newChkAll = $('chkAll').cloneNode(true);
+    $('chkAll').parentNode.replaceChild(newChkAll, $('chkAll'));
+    newChkAll.addEventListener('change', e=>{
+      document.querySelectorAll('.chk-produto').forEach(chk=>{
+        chk.checked=e.target.checked;
+        if(e.target.checked){_selecionados.add(chk.dataset.chave);}else{_selecionados.delete(chk.dataset.chave);}
+      });
+      atualizarBotaoExportar();
+    });
+  }
 }
+
+function exportarSelecionados(){
+  if(!_selecionados.size){ showToast('Nenhum produto selecionado.','info'); return; }
+  const produtos=_allProdutos.filter(p=>_selecionados.has(p.chave));
+  const rows=[['Nº','GCI','Produto','Código','Cor','Prev. Fat.','Saldo DISPO','Desmembrado','Saldo restante','Situação','Cliente','Prazo','Campanha','Qtde loja','Status pedido','Sit. desm.']];
+  for(const p of produtos){
+    if(!p.lojas.length){
+      rows.push([p.num,p.gci,p.produto,p.codigo,p.cor,p.prevFat,p.saldoDispo??'—',p.totalDesmembrado,p.saldoRestante??'—',p.situacao,'','','','','','']);
+    } else {
+      p.lojas.forEach((l,i)=>{
+        rows.push([i===0?p.num:'',i===0?p.gci:'',i===0?p.produto:'',i===0?p.codigo:'',i===0?p.cor:'',i===0?p.prevFat:'',i===0?(p.saldoDispo??'—'):'',i===0?p.totalDesmembrado:'',i===0?(p.saldoRestante??'—'):'',i===0?p.situacao:'',l.cliente,l.prazo,l.campanha,l.qtde,canonicalStatus(l.orderStatus),l.situacao]);
+      });
+    }
+  }
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[6,10,20,12,10,10,12,12,14,10,24,16,14,8,14,12].map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Desmembramentos');
+  const now=new Date();
+  XLSX.writeFile(wb,`desmembramentos_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.xlsx`);
+  showToast(`${produtos.length} produto(s) exportado(s)!`,'success');
+}
+
 
 // ── BUSCA ─────────────────────────────────────────────────────────────────────
 $('searchInput').addEventListener('input', e => {
