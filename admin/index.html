@@ -789,7 +789,7 @@ function stripBrokenControlChars(value){
   return String(value ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
 }
 function hasSuspiciousEncoding(value){
-  return /Ã.|Â.|â€™|â€œ|â€|ð|�|ï¿½|Ãƒ|\uFFFD/.test(String(value ?? ''));
+  return /Ã.|Â.|â€™|â€œ|â€|ð|\uFFFD|ï¿½|Ãƒ|\uFFFD/.test(String(value ?? ''));
 }
 
 // Tabela completa de substituição de mojibake para português (Latin-1 → UTF-8 mal interpretado)
@@ -821,38 +821,37 @@ function tryLatin1Utf8Decode(value){
   const bytes = Uint8Array.from([...String(value ?? '')].map(ch => ch.charCodeAt(0) & 0xff));
   return new TextDecoder('utf-8', { fatal:false }).decode(bytes);
 }
+function isReadableText(str){
+  if(!str) return true;
+  for(var i=0;i<str.length;i++){var c=str.charCodeAt(i);if((c<=8)||(c===11)||(c===12)||(c>=14&&c<=31)||(c>=127&&c<=159)||(c===65533))return false;}
+  return true;
+}
 function decodeMojibake(value){
   let str = stripBrokenControlChars(normalizeText(value));
   if(!str) return '';
 
-  for(let i = 0; i < 3; i += 1){
-    const current = str;
-    const suspiciousPattern = /Ã.|Â.|â€™|â€œ|â€|ð|�|ï¿½|Ãƒ|\uFFFD/;
-    if(!suspiciousPattern.test(current)) break;
+  // Detecta mojibake REAL verificando se alguma chave do mapa existe no texto.
+  // As chaves contêm sequências como 'Ã\x81', 'Ã§', 'â€™' — nunca aparecem em texto limpo.
+  // Isso protege nomes com Ã, Ç, Ê válidos em português.
+  const keys = Object.keys(MOJIBAKE_MAP).sort(function(a,b){ return b.length - a.length; });
+  var found = false;
+  for(var k=0; k<keys.length; k++){ if(str.indexOf(keys[k]) !== -1){ found=true; break; } }
+  if(!found) return str;
 
-    const attempts = [];
+  // Aplica apenas substituições do mapa — sem tryLatin1Utf8Decode que corrompe UTF-8 válido
+  let mapped = str;
+  for(var j=0; j<keys.length; j++){
+    var bad = keys[j];
+    if(mapped.indexOf(bad) !== -1) mapped = mapped.split(bad).join(MOJIBAKE_MAP[bad]);
+  }
 
-    try{ attempts.push(tryLatin1Utf8Decode(current)); }catch(_){}
-    try{ attempts.push(decodeURIComponent(escape(current))); }catch(_){}
-
-    const sorted = Object.keys(MOJIBAKE_MAP).sort((a,b) => b.length - a.length);
-    let mapped = current;
-    for(const bad of sorted){
-      if(mapped.includes(bad)) mapped = mapped.split(bad).join(MOJIBAKE_MAP[bad]);
-    }
-    attempts.push(mapped);
-
-    const improved = attempts
-      .map(candidate => stripBrokenControlChars(candidate))
-      .find(candidate => candidate && candidate !== current && (!hasSuspiciousEncoding(candidate) || candidate.split('Ã').length < current.split('Ã').length));
-
-    if(!improved) break;
-    str = improved;
+  // Aceita só se melhorou
+  if(mapped && mapped !== str && !hasSuspiciousEncoding(mapped)){
+    return stripBrokenControlChars(mapped).replace(/\s+/g, ' ').trim();
   }
 
   return stripBrokenControlChars(str).replace(/\s+/g, ' ').trim();
 }
-
 function toUpperPtBR(str){
   // toLocaleUpperCase com locale pt-BR garante Ç, Ã, Ê etc. corretos
   return String(str ?? '').toLocaleUpperCase('pt-BR');
@@ -1154,7 +1153,7 @@ function normalizeOrder(rawOrder){
   order.id = normalizeText(order.id);
   order.status = canonicalStatus(order.status || 'Pendente');
   order.clienteCodigo = sanitizeDisplayText(order.clienteCodigo || order.cliente);
-  order.clienteNome = sanitizeDisplayText(order.clienteNome || order.nomeCliente || order.nome_cliente || '');
+  order.clienteNome = String(order.clienteNome || order.nomeCliente || order.nome_cliente || '').trim();
   order.prazo = sanitizeDisplayText(order.prazo);
   order.campanha = sanitizeDisplayText(order.campanha);
   order.observacoes = sanitizeDisplayText(order.observacoes);
