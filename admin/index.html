@@ -821,33 +821,31 @@ function tryLatin1Utf8Decode(value){
   const bytes = Uint8Array.from([...String(value ?? '')].map(ch => ch.charCodeAt(0) & 0xff));
   return new TextDecoder('utf-8', { fatal:false }).decode(bytes);
 }
+function isReadableText(str){
+  // Texto já legível: contém apenas caracteres imprimíveis válidos (incluindo acentos, ç, ñ etc.)
+  // Rejeita somente se houver bytes de controle ou replacement char
+  return !/[ ---�]/.test(str);
+}
 function decodeMojibake(value){
   let str = stripBrokenControlChars(normalizeText(value));
   if(!str) return '';
 
-  for(let i = 0; i < 3; i += 1){
-    const current = str;
-    const suspiciousPattern = /Ã.|Â.|â€™|â€œ|â€|ð|�|ï¿½|Ãƒ|\uFFFD/;
-    if(!suspiciousPattern.test(current)) break;
+  // Se o texto já é legível e não tem padrões clássicos de mojibake, retorna direto
+  // Isso protege nomes de clientes, cidades e qualquer texto digitado pelo usuário
+  const strictSuspicious = /Ã[^\s]|Â[^\s]|â€™|â€œ|â€|ï¿½|Ãƒ|�/;
+  if(!strictSuspicious.test(str)) return str;
 
-    const attempts = [];
+  // Só aplica correção se houver mojibake real — nunca usa tryLatin1Utf8Decode
+  // pois ele corrompe texto UTF-8 válido interpretando-o como Latin-1
+  const sorted = Object.keys(MOJIBAKE_MAP).sort((a,b) => b.length - a.length);
+  let mapped = str;
+  for(const bad of sorted){
+    if(mapped.includes(bad)) mapped = mapped.split(bad).join(MOJIBAKE_MAP[bad]);
+  }
 
-    try{ attempts.push(tryLatin1Utf8Decode(current)); }catch(_){}
-    try{ attempts.push(decodeURIComponent(escape(current))); }catch(_){}
-
-    const sorted = Object.keys(MOJIBAKE_MAP).sort((a,b) => b.length - a.length);
-    let mapped = current;
-    for(const bad of sorted){
-      if(mapped.includes(bad)) mapped = mapped.split(bad).join(MOJIBAKE_MAP[bad]);
-    }
-    attempts.push(mapped);
-
-    const improved = attempts
-      .map(candidate => stripBrokenControlChars(candidate))
-      .find(candidate => candidate && candidate !== current && (!hasSuspiciousEncoding(candidate) || candidate.split('Ã').length < current.split('Ã').length));
-
-    if(!improved) break;
-    str = improved;
+  // Só aceita o resultado se melhorou (menos padrões suspeitos)
+  if(mapped && mapped !== str && !hasSuspiciousEncoding(mapped)){
+    str = mapped;
   }
 
   return stripBrokenControlChars(str).replace(/\s+/g, ' ').trim();
