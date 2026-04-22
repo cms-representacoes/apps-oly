@@ -830,27 +830,28 @@ function decodeMojibake(value){
   let str = stripBrokenControlChars(normalizeText(value));
   if(!str) return '';
 
-  // Se o texto já é legível e não tem padrões clássicos de mojibake, retorna direto
-  // Isso protege nomes de clientes, cidades e qualquer texto digitado pelo usuário
-  const hasMojibake = (str.indexOf('\u00c3') !== -1 || str.indexOf('\u00ef\u00bf\u00bd') !== -1);
-  if(!hasMojibake) return str;
+  // Detecta mojibake REAL verificando se alguma chave do mapa existe no texto.
+  // As chaves contêm sequências como 'Ã\x81', 'Ã§', 'â€™' — nunca aparecem em texto limpo.
+  // Isso protege nomes com Ã, Ç, Ê válidos em português.
+  const keys = Object.keys(MOJIBAKE_MAP).sort(function(a,b){ return b.length - a.length; });
+  var found = false;
+  for(var k=0; k<keys.length; k++){ if(str.indexOf(keys[k]) !== -1){ found=true; break; } }
+  if(!found) return str;
 
-  // Só aplica correção se houver mojibake real — nunca usa tryLatin1Utf8Decode
-  // pois ele corrompe texto UTF-8 válido interpretando-o como Latin-1
-  const sorted = Object.keys(MOJIBAKE_MAP).sort((a,b) => b.length - a.length);
+  // Aplica apenas substituições do mapa — sem tryLatin1Utf8Decode que corrompe UTF-8 válido
   let mapped = str;
-  for(const bad of sorted){
-    if(mapped.includes(bad)) mapped = mapped.split(bad).join(MOJIBAKE_MAP[bad]);
+  for(var j=0; j<keys.length; j++){
+    var bad = keys[j];
+    if(mapped.indexOf(bad) !== -1) mapped = mapped.split(bad).join(MOJIBAKE_MAP[bad]);
   }
 
-  // Só aceita o resultado se melhorou (menos padrões suspeitos)
+  // Aceita só se melhorou
   if(mapped && mapped !== str && !hasSuspiciousEncoding(mapped)){
-    str = mapped;
+    return stripBrokenControlChars(mapped).replace(/\s+/g, ' ').trim();
   }
 
   return stripBrokenControlChars(str).replace(/\s+/g, ' ').trim();
 }
-
 function toUpperPtBR(str){
   // toLocaleUpperCase com locale pt-BR garante Ç, Ã, Ê etc. corretos
   return String(str ?? '').toLocaleUpperCase('pt-BR');
