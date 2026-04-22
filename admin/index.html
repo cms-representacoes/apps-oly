@@ -413,6 +413,12 @@
 
     details > summary{ list-style:none; cursor:pointer; }
     details > summary::-webkit-details-marker{ display:none; }
+
+    /* ── Nomes de clientes e prepostos sempre em MAIÚSCULAS ── */
+    .nome-cliente,
+    .nome-preposto {
+      text-transform: uppercase;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
@@ -780,29 +786,75 @@ function normalizeText(v){
   return String(v ?? '').trim();
 }
 
+// Tabela completa de substituição de mojibake para português (Latin-1 → UTF-8 mal interpretado)
+const MOJIBAKE_MAP = {
+  // Sequências de 2 bytes mal interpretadas (UTF-8 lido como Latin-1)
+  'Ã\u0081':'Á','Ã\u00A0':'À','Ã\u0082':'Â','Ã\u0083':'Ã','Ã\u0084':'Ä',
+  'Ã\u0089':'É','Ã\u0088':'È','Ã\u008A':'Ê','Ã\u008B':'Ë',
+  'Ã\u008D':'Í','Ã\u008C':'Ì','Ã\u008E':'Î','Ã\u008F':'Ï',
+  'Ã\u0093':'Ó','Ã\u0092':'Ò','Ã\u0094':'Ô','Ã\u0095':'Õ','Ã\u0096':'Ö',
+  'Ã\u009A':'Ú','Ã\u0099':'Ù','Ã\u009B':'Û','Ã\u009C':'Ü',
+  'Ã\u009D':'Ý','Ã\u0087':'Ç','Ã\u0091':'Ñ',
+  'Ã¡':'á','Ã ':'à','Ã¢':'â','Ã£':'ã','Ã¤':'ä',
+  'Ã©':'é','Ã¨':'è','Ãª':'ê','Ã«':'ë',
+  'Ã­':'í','Ã¬':'ì','Ã®':'î','Ã¯':'ï',
+  'Ã³':'ó','Ã²':'ò','Ã´':'ô','Ãµ':'õ','Ã¶':'ö',
+  'Ãº':'ú','Ã¹':'ù','Ã»':'û','Ã¼':'ü',
+  'Ã½':'ý','Ã§':'ç','Ã±':'ñ',
+  // Aspas e travessões mal codificados
+  'â€™':"'",'â€œ':'"','â€\u009D':'"','â€"':'–','â€"':'—','â€¦':'…',
+  // Sequências com Â (byte C2 lido errado)
+  'Â°':'°','Â·':'·','Â»':'»','Â«':'«','Â ':' ',
+  // Casos extras frequentes no Brasil
+  'Ã\u008E':'Î','ÃƒÂ§':'ç','ÃƒÂ£':'ã','ÃƒÂµ':'õ','ÃƒÂ´':'ô','ÃƒÂª':'ê',
+  // Caracteres com ï¿½ (replacement character em cadeia)
+  'ï¿½':''
+};
+
 function decodeMojibake(value){
   let str = String(value ?? '');
   if(!str) return '';
 
-  const suspicious = /Ã|Â|�|â€™|â€œ|â€|ð/g;
-  if(!suspicious.test(str)) return str;
-
-  try{
-    const decoded = decodeURIComponent(escape(str));
-    if(decoded && decoded !== str) return decoded;
-  }catch(_){}
-
-  try{
-    const bytes = Uint8Array.from([...str].map(ch => ch.charCodeAt(0) & 0xff));
-    const decoded = new TextDecoder('utf-8', { fatal:false }).decode(bytes);
-    if(decoded && decoded !== str) return decoded;
-  }catch(_){}
+  // 1) Substituição direta pela tabela de mapeamento (mais confiável)
+  const suspiciousPattern = /Ã|Â|â€|ï¿½|ÃƒÂ|ð/;
+  if(suspiciousPattern.test(str)){
+    // Aplica o mapa do maior para o menor token para evitar colisões
+    const sorted = Object.keys(MOJIBAKE_MAP).sort((a,b) => b.length - a.length);
+    for(const bad of sorted){
+      if(str.includes(bad)) str = str.split(bad).join(MOJIBAKE_MAP[bad]);
+    }
+    // 2) Fallback: decodeURIComponent(escape()) — clássico Latin-1→UTF-8
+    if(suspiciousPattern.test(str)){
+      try{
+        const decoded = decodeURIComponent(escape(str));
+        if(decoded && decoded !== str) str = decoded;
+      }catch(_){}
+    }
+    // 3) Fallback: reinterpretação de bytes via TextDecoder
+    if(suspiciousPattern.test(str)){
+      try{
+        const bytes = Uint8Array.from([...str].map(ch => ch.charCodeAt(0) & 0xff));
+        const decoded = new TextDecoder('utf-8', { fatal:false }).decode(bytes);
+        if(decoded && decoded !== str) str = decoded;
+      }catch(_){}
+    }
+  }
 
   return str;
 }
 
+function toUpperPtBR(str){
+  // toLocaleUpperCase com locale pt-BR garante Ç, Ã, Ê etc. corretos
+  return String(str ?? '').toLocaleUpperCase('pt-BR');
+}
+
 function sanitizeDisplayText(value){
   return decodeMojibake(normalizeText(value));
+}
+
+// Versão que sanitiza E força maiúsculas — usada para nomes de clientes/prepostos
+function sanitizeDisplayName(value){
+  return toUpperPtBR(sanitizeDisplayText(value));
 }
 
 const PREPOSTO_NAME_BY_CODE = {
@@ -823,16 +875,16 @@ function splitPrepostoParts(value){
   if(match){
     return {
       codigo: normalizeText(match[1]),
-      nome: sanitizeDisplayText(match[2])
+      nome: sanitizeDisplayName(match[2])
     };
   }
 
-  return { codigo:'', nome: raw };
+  return { codigo:'', nome: sanitizeDisplayName(raw) };
 }
 
 function getCanonicalPrepostoName(codigo, nome){
   const cleanCodigo = normalizeText(codigo);
-  const cleanNome = sanitizeDisplayText(nome);
+  const cleanNome = sanitizeDisplayName(nome);
   const mapped = PREPOSTO_NAME_BY_CODE[cleanCodigo];
 
   if(mapped) return mapped;
@@ -842,7 +894,7 @@ function getCanonicalPrepostoName(codigo, nome){
 function buildPrepostoDisplay(preposto, vendedor){
   const vendedorParts = splitPrepostoParts(vendedor);
   const baseCodigo = normalizeText(preposto?.codigo) || vendedorParts.codigo;
-  const baseNome = sanitizeDisplayText(preposto?.nome) || vendedorParts.nome;
+  const baseNome = sanitizeDisplayName(preposto?.nome) || sanitizeDisplayName(vendedorParts.nome);
   const nome = getCanonicalPrepostoName(baseCodigo, baseNome);
 
   return {
@@ -1092,6 +1144,7 @@ function normalizeOrder(rawOrder){
   order.id = normalizeText(order.id);
   order.status = canonicalStatus(order.status || 'Pendente');
   order.clienteCodigo = sanitizeDisplayText(order.clienteCodigo || order.cliente);
+  order.clienteNome = sanitizeDisplayName(order.clienteNome || order.nomeCliente || order.nome_cliente || '');
   order.prazo = sanitizeDisplayText(order.prazo);
   order.campanha = sanitizeDisplayText(order.campanha);
   order.observacoes = sanitizeDisplayText(order.observacoes);
@@ -1306,7 +1359,7 @@ function renderList(){
     const st = canonicalStatus(order.status);
     const isExportado = st === 'Aprovado' && !!order.exportedAt;
     const clienteDisplay = order.clienteNome
-      ? `Cliente ${safeHtml(order.clienteCodigo)} — ${safeHtml(order.clienteNome)}`
+      ? `Cliente ${safeHtml(order.clienteCodigo)} — <span class="nome-cliente">${safeHtml(order.clienteNome)}</span>`
       : `Cliente ${safeHtml(order.clienteCodigo)}`;
     const totalUnits = getOrderUnits(order);
     const nItems = (order.items||[]).length;
@@ -1377,7 +1430,7 @@ function renderList(){
             title="Selecionar pedido">
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:700;color:var(--text)">
-              ${safeHtml(order.preposto?.nome || order.preposto?.codigo || '—')}
+              <span class="nome-preposto">${safeHtml(order.preposto?.nome || order.preposto?.codigo || '—')}</span>
               <span style="font-size:11px;font-weight:400;color:var(--muted)">· ${safeHtml(formatDateTime(order.createdAt || order.updatedAt || order.data))}</span>
             </div>
             <div style="font-size:11px;color:var(--muted);margin-top:1px">${clienteDisplay}</div>
@@ -1973,9 +2026,9 @@ function buildRelatorioLinhas(orders){
   const linhas = [];
   let lineNum = 0;
   for(const o of orders){
-    const vendedor = safeHtml(o.preposto?.nome || o.preposto?.codigo || '—');
+    const vendedor = `<span class="nome-preposto">${safeHtml(o.preposto?.nome || o.preposto?.codigo || '—')}</span>`;
     const codCliente = safeHtml(o.clienteCodigo || '—');
-    const nomeCliente = safeHtml(o.clienteNome || '—');
+    const nomeCliente = `<span class="nome-cliente">${safeHtml(o.clienteNome || '—')}</span>`;
     const statusHtml = renderStatusChip(o.status);
     const campanhaDisplay = safeHtml(stripOly(o.campanha || ''));
     const prazoDisplay = safeHtml(o.prazo || '—');
