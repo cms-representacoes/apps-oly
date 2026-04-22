@@ -785,6 +785,12 @@ function safeHtml(v){
 function normalizeText(v){
   return String(v ?? '').trim();
 }
+function stripBrokenControlChars(value){
+  return String(value ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
+}
+function hasSuspiciousEncoding(value){
+  return /Ã.|Â.|â€™|â€œ|â€|ð|�|ï¿½|Ãƒ|\uFFFD/.test(String(value ?? ''));
+}
 
 // Tabela completa de substituição de mojibake para português (Latin-1 → UTF-8 mal interpretado)
 const MOJIBAKE_MAP = {
@@ -811,36 +817,40 @@ const MOJIBAKE_MAP = {
   'ï¿½':''
 };
 
+function tryLatin1Utf8Decode(value){
+  const bytes = Uint8Array.from([...String(value ?? '')].map(ch => ch.charCodeAt(0) & 0xff));
+  return new TextDecoder('utf-8', { fatal:false }).decode(bytes);
+}
 function decodeMojibake(value){
-  let str = String(value ?? '');
+  let str = stripBrokenControlChars(normalizeText(value));
   if(!str) return '';
 
-  // 1) Substituição direta pela tabela de mapeamento (mais confiável)
-  const suspiciousPattern = /Ã|Â|â€|ï¿½|ÃƒÂ|ð/;
-  if(suspiciousPattern.test(str)){
-    // Aplica o mapa do maior para o menor token para evitar colisões
+  for(let i = 0; i < 3; i += 1){
+    const current = str;
+    const suspiciousPattern = /Ã.|Â.|â€™|â€œ|â€|ð|�|ï¿½|Ãƒ|\uFFFD/;
+    if(!suspiciousPattern.test(current)) break;
+
+    const attempts = [];
+
+    try{ attempts.push(tryLatin1Utf8Decode(current)); }catch(_){}
+    try{ attempts.push(decodeURIComponent(escape(current))); }catch(_){}
+
     const sorted = Object.keys(MOJIBAKE_MAP).sort((a,b) => b.length - a.length);
+    let mapped = current;
     for(const bad of sorted){
-      if(str.includes(bad)) str = str.split(bad).join(MOJIBAKE_MAP[bad]);
+      if(mapped.includes(bad)) mapped = mapped.split(bad).join(MOJIBAKE_MAP[bad]);
     }
-    // 2) Fallback: decodeURIComponent(escape()) — clássico Latin-1→UTF-8
-    if(suspiciousPattern.test(str)){
-      try{
-        const decoded = decodeURIComponent(escape(str));
-        if(decoded && decoded !== str) str = decoded;
-      }catch(_){}
-    }
-    // 3) Fallback: reinterpretação de bytes via TextDecoder
-    if(suspiciousPattern.test(str)){
-      try{
-        const bytes = Uint8Array.from([...str].map(ch => ch.charCodeAt(0) & 0xff));
-        const decoded = new TextDecoder('utf-8', { fatal:false }).decode(bytes);
-        if(decoded && decoded !== str) str = decoded;
-      }catch(_){}
-    }
+    attempts.push(mapped);
+
+    const improved = attempts
+      .map(candidate => stripBrokenControlChars(candidate))
+      .find(candidate => candidate && candidate !== current && (!hasSuspiciousEncoding(candidate) || candidate.split('Ã').length < current.split('Ã').length));
+
+    if(!improved) break;
+    str = improved;
   }
 
-  return str;
+  return stripBrokenControlChars(str).replace(/\s+/g, ' ').trim();
 }
 
 function toUpperPtBR(str){
@@ -849,12 +859,12 @@ function toUpperPtBR(str){
 }
 
 function sanitizeDisplayText(value){
-  return decodeMojibake(normalizeText(value));
+  return decodeMojibake(value);
 }
 
-// Versão que sanitiza E força maiúsculas — usada para nomes de clientes/prepostos
+// Mantém a grafia correta para persistência e deixa a UI responsável pelo visual em maiúsculas
 function sanitizeDisplayName(value){
-  return toUpperPtBR(sanitizeDisplayText(value));
+  return sanitizeDisplayText(value);
 }
 
 const PREPOSTO_NAME_BY_CODE = {
@@ -1144,7 +1154,7 @@ function normalizeOrder(rawOrder){
   order.id = normalizeText(order.id);
   order.status = canonicalStatus(order.status || 'Pendente');
   order.clienteCodigo = sanitizeDisplayText(order.clienteCodigo || order.cliente);
-  order.clienteNome = sanitizeDisplayName(order.clienteNome || order.nomeCliente || order.nome_cliente || '');
+  order.clienteNome = sanitizeDisplayText(order.clienteNome || order.nomeCliente || order.nome_cliente || '');
   order.prazo = sanitizeDisplayText(order.prazo);
   order.campanha = sanitizeDisplayText(order.campanha);
   order.observacoes = sanitizeDisplayText(order.observacoes);

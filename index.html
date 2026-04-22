@@ -731,28 +731,40 @@ function normalizeText(v){
 function cleanText(v){
   return String(v ?? '').trim();
 }
+function stripBrokenControlChars(value){
+  return String(value ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
+}
+function hasSuspiciousEncoding(value){
+  return /Ã.|Â.|â€™|â€œ|â€|ð|�|ï¿½|Ãƒ|\uFFFD/.test(String(value ?? ''));
+}
+function tryLatin1Utf8Decode(value){
+  const bytes = Uint8Array.from([...String(value ?? '')].map(ch => ch.charCodeAt(0) & 0xff));
+  return new TextDecoder('utf-8', { fatal:false }).decode(bytes);
+}
 function decodeMojibake(value){
-  let str = String(value ?? '');
+  let str = stripBrokenControlChars(cleanText(value));
   if(!str) return '';
 
-  const suspicious = /Ã|Â|�|â€™|â€œ|â€|ð/g;
-  if(!suspicious.test(str)) return str;
+  for(let i = 0; i < 3; i += 1){
+    const current = str;
+    if(!hasSuspiciousEncoding(current)) break;
 
-  try{
-    const decoded = decodeURIComponent(escape(str));
-    if(decoded && decoded !== str) return decoded;
-  }catch(_){ }
+    const attempts = [];
+    try{ attempts.push(decodeURIComponent(escape(current))); }catch(_){}
+    try{ attempts.push(tryLatin1Utf8Decode(current)); }catch(_){}
 
-  try{
-    const bytes = Uint8Array.from([...str].map(ch => ch.charCodeAt(0) & 0xff));
-    const decoded = new TextDecoder('utf-8', { fatal:false }).decode(bytes);
-    if(decoded && decoded !== str) return decoded;
-  }catch(_){ }
+    const improved = attempts
+      .map(candidate => stripBrokenControlChars(candidate))
+      .find(candidate => candidate && candidate !== current && (!hasSuspiciousEncoding(candidate) || candidate.split('Ã').length < current.split('Ã').length));
 
-  return str;
+    if(!improved) break;
+    str = improved;
+  }
+
+  return stripBrokenControlChars(str).replace(/\s+/g, ' ').trim();
 }
 function sanitizeDisplayText(value){
-  return decodeMojibake(cleanText(value));
+  return decodeMojibake(value);
 }
 const PREPOSTO_NAME_BY_CODE = {
   '114611':'JORGE',
@@ -1027,6 +1039,7 @@ function normalizeOrder(rawOrder){
   order.createdAt = order.createdAt || '';
   order.updatedAt = order.updatedAt || order.createdAt || '';
   order.clienteCodigo = sanitizeDisplayText(order.clienteCodigo || order.cliente);
+  order.clienteNome = sanitizeDisplayText(order.clienteNome || order.nomeCliente || order.nome_cliente || '');
   order.prazo = sanitizeDisplayText(order.prazo);
   order.campanha = sanitizeDisplayText(order.campanha);
   order.observacoes = sanitizeDisplayText(order.observacoes);
@@ -2233,7 +2246,7 @@ async function submitOrder(options = {}){
     const prepostoValue = session ? `${session.codigo} - ${session.nome}` : $('checkoutPreposto').value;
     const preposto = parsePreposto(prepostoValue);
     const clienteCodigo = $('checkoutCliente').value.trim();
-    const clienteNome = ($('checkoutClienteNome')?.value || '').trim();
+    const clienteNome = sanitizeDisplayText(($('checkoutClienteNome')?.value || '').trim());
     const prazo = $('checkoutPrazo').value;
     const campanha = $('checkoutCampanha').value;
     const observacoes = $('checkoutObs').value.trim();
