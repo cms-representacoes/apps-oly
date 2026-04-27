@@ -652,7 +652,7 @@
         </div>
 
         <!-- Corpo -->
-        <div class="max-w-4xl">
+        <div class="max-w-4xl rounded-[28px] p-4 secao-pedidos-bg">
 
           <!-- Seção: Dados e importações -->
           <div class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Dados e importações</div>
@@ -718,7 +718,7 @@
           <!-- Seção: Em breve -->
           <div class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Em breve</div>
           <div class="flex flex-col gap-3">
-            <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 flex items-center gap-3">
+            <div class="rounded-2xl border border-slate-200 bg-white shadow-card px-4 py-3 flex items-center gap-3" style="opacity:.7">
               <div class="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-sm flex-shrink-0">
                 <i class="fa-solid fa-user text-xs"></i>
               </div>
@@ -728,7 +728,7 @@
               </div>
               <span class="text-[10px] font-bold text-slate-400 border border-slate-200 rounded-full px-2 py-0.5">em breve</span>
             </div>
-            <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 flex items-center gap-3">
+            <div class="rounded-2xl border border-slate-200 bg-white shadow-card px-4 py-3 flex items-center gap-3" style="opacity:.7">
               <div class="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-sm flex-shrink-0">
                 <i class="fa-solid fa-bullhorn text-xs"></i>
               </div>
@@ -2371,7 +2371,15 @@ async function processarDispoXlsx(file){
       codigo: String(row['Código'] || row['CODIGO'] || '').trim(),
       produto: String(row['Produto'] || row['PRODUTO'] || '').trim(),
       cor: String(row['COR'] || row['Cor'] || '').trim(),
-      dataEntrega: row['DATA ENTREGA'] ? (row['DATA ENTREGA'] instanceof Date ? row['DATA ENTREGA'].toISOString().split('T')[0] : String(row['DATA ENTREGA'])) : null,
+      dataEntrega: row['DATA ENTREGA'] ? (()=>{
+        const v = row['DATA ENTREGA'];
+        let d = null;
+        if(v instanceof Date){ d = v; }
+        else if(typeof v === 'number' && v > 40000){ d = new Date(Date.UTC(1899,11,30)); d.setUTCDate(d.getUTCDate()+v); }
+        else { d = new Date(v); }
+        if(!d || isNaN(d)) return String(v);
+        return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
+      })() : null,
       pedidoMae: String(row['PEDIDO MÃE'] || row['PEDIDO MAE'] || '').trim(),
       saldo: Number(row['SALDO'] || 0),
       grade
