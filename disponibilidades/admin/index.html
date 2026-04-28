@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>Admin • Disponibilidades</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#fff; --text:#0f172a; --line:#e2e8f0;
+      --brand:#22c55e; --brand-soft:rgba(34,197,94,.10);
+      --accent:#ccff00; --accent-dark:#7db800;
+      --shadow:0 18px 42px rgba(15,23,42,.08);
+      --muted:#475569; --muted-soft:#e2e8f0;
+      --success:#15803d; --success-soft:#dcfce7;
+      --danger:#b91c1c; --danger-soft:#fee2e2;
+      --warning:#b45309; --warning-soft:#fef3c7;
+    }
+    .dark{
+      --bg:#0f172a; --card:#1e293b; --text:#f1f5f9; --line:#334155;
+      --brand:#4ade80; --brand-soft:rgba(74,222,128,.15);
+      --shadow:0 18px 42px rgba(0,0,0,.4);
+      --muted:#94a3b8; --muted-soft:#1e293b;
+      --success:#4ade80; --success-soft:#14532d;
+      --danger:#f87171; --danger-soft:#450a0a;
+      --warning:#fbbf24; --warning-soft:#451a03;
+    }
+    *{ box-sizing:border-box; }
+    body{ font-family:Inter,system-ui,sans-serif; background:var(--bg); color:var(--text); }
+    .focus-ring:focus-visible{ outline:none; box-shadow:0 0 0 4px rgba(204,255,0,.25); }
+    .shadow-card{ box-shadow:var(--shadow); }
+
+    /* Dark mode overrides */
+    .dark .bg-white{ background:var(--card)!important; }
+    .dark .border-slate-200{ border-color:var(--line)!important; }
+    .dark .text-slate-500,.dark .text-slate-400{ color:var(--muted)!important; }
+    .dark .text-slate-800,.dark .text-slate-700{ color:var(--text)!important; }
+    .dark .bg-slate-50,.dark .bg-slate-100{ background:#263248!important; }
+    .dark .hover\:bg-slate-50:hover,.dark .hover\:bg-slate-100:hover{ background:#334155!important; }
+
+    /* Tabela */
+    .table-wrap{ overflow:auto; border-radius:20px; border:1px solid var(--line); background:var(--card); max-height:calc(100vh - 280px); }
+    .table-wrap table{ width:100%; min-width:900px; border-collapse:separate; border-spacing:0; font-size:12px; }
+    .table-wrap thead th{ position:sticky; top:0; z-index:2; background:#f8fafc; color:#475569; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; padding:10px 12px; border-bottom:1px solid var(--line); white-space:nowrap; }
+    .dark .table-wrap thead th{ background:#263248!important; color:#94a3b8!important; }
+    .table-wrap tbody td{ padding:10px 12px; border-bottom:1px solid #edf2f7; vertical-align:middle; }
+    .dark .table-wrap tbody td{ border-color:#334155!important; }
+    .table-wrap tbody tr:last-child td{ border-bottom:none; }
+    .table-wrap tbody tr:hover td{ background:#f8fafc; }
+    .dark .table-wrap tbody tr:hover td{ background:#263248!important; }
+    .table-wrap tbody tr.oculto td{ opacity:.4; }
+
+    /* Filter pills */
+    .filter-pill{ display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:6px 14px; font-size:12px; font-weight:700; border:1px solid var(--line); background:var(--card); color:var(--muted); cursor:pointer; transition:all .12s; white-space:nowrap; }
+    .filter-pill.active{ background:var(--accent); color:#0f172a; border-color:var(--accent-dark); }
+    .filter-pill:hover:not(.active){ background:var(--muted-soft); }
+
+    /* Botões de ação */
+    .icon-btn{ width:30px; height:30px; border-radius:50%; border:1px solid var(--line); background:none; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; color:var(--muted); transition:all .12s; flex-shrink:0; }
+    .icon-btn:hover{ background:var(--muted-soft); }
+    .icon-btn.ocultar:hover{ border-color:#AFA9EC; color:#3C3489; background:#EEEDFE; }
+    .icon-btn.reexibir:hover{ border-color:#AFA9EC; color:#3C3489; background:#EEEDFE; }
+    .icon-btn.excluir:hover{ border-color:#fca5a5; color:#b91c1c; background:#fee2e2; }
+
+    /* Chip empresa */
+    .chip-ua{ background:#1a1a2e; color:#60a5fa; border:1px solid #1e3a5f; border-radius:999px; padding:2px 8px; font-size:10px; font-weight:700; }
+    .chip-oly{ background:#1a2e1a; color:#4ade80; border:1px solid #14532d; border-radius:999px; padding:2px 8px; font-size:10px; font-weight:700; }
+
+    /* Toast */
+    .toast-wrap{ position:fixed; top:18px; right:18px; display:flex; flex-direction:column; gap:10px; z-index:9999; pointer-events:none; }
+    .toast{ pointer-events:auto; min-width:240px; border-radius:16px; padding:12px 16px; box-shadow:0 8px 24px rgba(15,23,42,.14); font-size:13px; font-weight:700; border:1px solid transparent; }
+    .toast-success{ background:#f0fdf4; color:#166534; border-color:#bbf7d0; }
+    .toast-error{ background:#fef2f2; color:#b91c1c; border-color:#fecaca; }
+    .toast-info{ background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+
+    /* Tooltips */
+    [data-tip]{ position:relative; }
+    [data-tip]:hover::after{ content:attr(data-tip); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); background:#0f172a; color:#f8fafc; font-size:11px; font-weight:600; border-radius:8px; padding:4px 9px; white-space:nowrap; z-index:300; pointer-events:none; }
+    .dark [data-tip]:hover::after{ background:#334155; }
+  </style>
+</head>
+<body>
+<div id="toastWrap" class="toast-wrap"></div>
+
+<!-- ── AUTH GUARD ─────────────────────────────────────────────────────────── -->
+<div id="loginScreen" class="fixed inset-0 z-[200] flex items-center justify-center p-4" style="background:var(--bg)">
+  <div class="w-full max-w-sm rounded-[28px] border border-slate-200 bg-white p-8 shadow-card" style="background:var(--card);border-color:var(--line)">
+    <div class="mb-6 text-center">
+      <div class="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style="background:rgba(204,255,0,.15)">
+        <i class="fa-solid fa-warehouse text-2xl" style="color:var(--accent-dark)"></i>
+      </div>
+      <div class="text-xl font-extrabold">Admin • Disponibilidades</div>
+      <div class="text-sm text-slate-500 mt-1">Acesso restrito</div>
+    </div>
+    <div>
+      <label class="text-xs font-bold text-slate-500 block mb-1">Senha</label>
+      <input id="adminPassword" type="password" class="focus-ring w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold mb-4"
+        style="background:var(--card);color:var(--text);border-color:var(--line)"
+        placeholder="Digite a senha" onkeydown="if(event.key==='Enter') doLogin()">
+      <div id="loginError" class="hidden rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700 mb-4">Senha incorreta.</div>
+      <button onclick="doLogin()" class="w-full rounded-2xl py-3 text-sm font-extrabold text-slate-900"
+        style="background:var(--accent)">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<main id="adminApp" class="hidden p-4 sm:p-6 max-w-[1400px] mx-auto">
+
+  <!-- HEADER -->
+  <header id="adminHeader" class="rounded-[32px] border border-slate-200 bg-white p-4 sm:p-5 shadow-card sticky top-4 z-30 mb-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <a href="../../" class="focus-ring flex items-center justify-center h-10 w-10 rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors" data-tip="Voltar ao portal">
+          <i class="fa-solid fa-arrow-left text-sm"></i>
+        </a>
+        <div>
+          <div class="text-xs font-bold text-slate-500">Disponibilidades</div>
+          <div class="text-xl font-extrabold">Painel Admin</div>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- Busca -->
+        <div class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 min-w-[220px]" style="background:var(--card);border-color:var(--line)">
+          <i class="fa-solid fa-magnifying-glass text-slate-400 text-sm"></i>
+          <input id="searchInput" class="bg-transparent text-sm outline-none w-full" style="color:var(--text)" placeholder="Buscar artigo, descrição ou cor..." oninput="applyFilters()">
+        </div>
+        <!-- Importar -->
+        <button onclick="abrirImportar()" data-tip="Importar planilha"
+          class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors"
+          style="border-color:var(--accent-dark);background:rgba(204,255,0,.1);color:var(--accent-dark)">
+          <i class="fa-solid fa-upload text-xs"></i> Importar xlsx
+        </button>
+        <!-- Tela cheia -->
+        <button onclick="toggleFullscreen()" data-tip="Tela cheia"
+          class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
+          <i id="iconFullscreen" class="fa-solid fa-expand text-xs"></i>
+        </button>
+        <!-- Dark mode -->
+        <button onclick="toggleDark()" data-tip="Modo escuro"
+          class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 transition-colors">
+          <i id="darkIcon" class="fa-solid fa-moon text-slate-400 text-xs"></i>
+        </button>
+        <!-- Sair -->
+        <button onclick="doLogout()" data-tip="Sair"
+          class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
+          <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- FILTROS -->
+  <div class="flex flex-wrap items-center gap-2 mb-4">
+    <button class="filter-pill active" data-filter="todos" onclick="setFilter('todos')">Todos <span id="badgeTodos" class="text-[10px] font-extrabold bg-slate-900 text-white rounded-full px-1.5 py-0.5">0</span></button>
+    <button class="filter-pill" data-filter="ua" onclick="setFilter('ua')">Under Armour <span id="badgeUA" class="text-[10px] font-extrabold bg-slate-200 text-slate-700 rounded-full px-1.5 py-0.5">0</span></button>
+    <button class="filter-pill" data-filter="oly" onclick="setFilter('oly')">Olympikus <span id="badgeOLY" class="text-[10px] font-extrabold bg-slate-200 text-slate-700 rounded-full px-1.5 py-0.5">0</span></button>
+    <button class="filter-pill" data-filter="ocultos" onclick="setFilter('ocultos')">
+      <i class="fa-solid fa-eye-slash text-[10px]"></i> Ocultos <span id="badgeOcultos" class="text-[10px] font-extrabold bg-slate-200 text-slate-700 rounded-full px-1.5 py-0.5 hidden">0</span>
+    </button>
+    <div class="ml-auto text-xs font-semibold text-slate-400" id="countLabel">— itens</div>
+  </div>
+
+  <!-- TABELA -->
+  <div class="rounded-[28px] border border-slate-200 bg-white shadow-card p-4" style="background:var(--card);border-color:var(--line)">
+    <div id="emptyState" class="hidden py-16 text-center text-slate-400">
+      <i class="fa-solid fa-box-open text-4xl mb-4 block"></i>
+      <div class="font-semibold">Nenhum produto encontrado.</div>
+      <div class="text-sm mt-1">Importe uma planilha para começar.</div>
+    </div>
+    <div id="tableWrap" class="table-wrap hidden">
+      <table>
+        <thead>
+          <tr>
+            <th>Prev. Fat.</th>
+            <th>Empresa</th>
+            <th>Artigo</th>
+            <th>Descrição</th>
+            <th>Cor</th>
+            <th>Linha</th>
+            <th>Gênero</th>
+            <th>Categoria</th>
+            <th class="text-right">PDV</th>
+            <th class="text-right">T. Geral</th>
+            <th>Grade</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── MODAL IMPORTAR ──────────────────────────────────────────────────────── -->
+<div id="modalImportar" class="hidden fixed inset-0 z-[150] bg-slate-950/45 p-4 flex items-start justify-center overflow-y-auto">
+  <div class="rounded-[28px] bg-white border border-slate-200 shadow-card w-full max-w-3xl my-8 p-6" style="background:var(--card);border-color:var(--line)">
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Disponibilidades</div>
+        <div class="text-xl font-extrabold">Importar planilha</div>
+      </div>
+      <button onclick="fecharImportar()" class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-500">
+        <i class="fa-solid fa-xmark text-xs"></i>
+      </button>
+    </div>
+
+    <!-- Upload -->
+    <div id="uploadArea" class="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center mb-4 cursor-pointer hover:border-green-300 hover:bg-green-50 transition-colors" onclick="$('inputXlsx').click()">
+      <i class="fa-solid fa-upload text-slate-300 text-3xl mb-3 block"></i>
+      <div class="text-sm font-bold text-slate-600">Clique para selecionar a planilha</div>
+      <div class="text-xs text-slate-400 mt-1">UA ou Olympikus (.xlsx, .xls) — pode importar várias vezes</div>
+      <input type="file" id="inputXlsx" accept=".xlsx,.xls" class="hidden" onchange="processarXlsx(this.files[0])">
+    </div>
+
+    <!-- Preview -->
+    <div id="previewArea" class="hidden">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-sm font-extrabold" id="previewTitle">—</div>
+        <button onclick="$('inputXlsx').click()" class="text-xs font-bold hover:underline" style="color:var(--brand)">Trocar arquivo</button>
+      </div>
+
+      <!-- Novos -->
+      <div id="novosBlock" class="hidden mb-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-xs font-bold">Novos produtos</span>
+          <span id="novosCount" class="text-[11px] font-bold bg-green-100 text-green-700 rounded-full px-2 py-0.5">0</span>
+        </div>
+        <div class="rounded-2xl border border-green-200 bg-green-50 overflow-hidden">
+          <div class="overflow-auto max-h-48">
+            <table class="w-full text-xs">
+              <thead><tr class="bg-green-100 text-green-800">
+                <th class="text-left px-3 py-2">Artigo</th>
+                <th class="text-left px-3 py-2">Descrição</th>
+                <th class="text-left px-3 py-2">Cor</th>
+                <th class="text-left px-3 py-2">Empresa</th>
+                <th class="text-right px-3 py-2">T. Geral</th>
+              </tr></thead>
+              <tbody id="novosBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Conflitos -->
+      <div id="conflitosBlock" class="hidden mb-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-xs font-bold">Conflitos</span>
+          <span id="conflitosCount" class="text-[11px] font-bold bg-amber-100 text-amber-700 rounded-full px-2 py-0.5">0</span>
+          <span class="text-[11px] text-slate-400">— mesmo Artigo + Cor já existe</span>
+        </div>
+        <div id="conflitosBody" class="flex flex-col gap-3"></div>
+      </div>
+
+      <div class="flex items-center justify-between pt-4 border-t" style="border-color:var(--line)">
+        <div class="text-xs text-slate-400" id="resumoImport">—</div>
+        <div class="flex gap-2">
+          <button onclick="fecharImportar()" class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold hover:bg-slate-50" style="background:var(--card);color:var(--muted);border-color:var(--line)">Cancelar</button>
+          <button id="btnConfirmar" onclick="confirmarImportar()"
+            class="focus-ring rounded-2xl px-5 py-2 text-sm font-extrabold text-slate-900 flex items-center gap-2"
+            style="background:var(--accent)">
+            <i class="fa-solid fa-floppy-disk"></i> Confirmar importação
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Dark mode imediato
+if(localStorage.getItem('disp_dark')==='1') document.documentElement.classList.add('dark');
+
+const WORKER_URL = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
+const ADMIN_PASSWORD = 'cmsrepasse';
+const STORAGE_KEY_AUTH = 'disp_admin_auth_v1';
+
+const $ = id => document.getElementById(id);
+
+// ── ESTADO ───────────────────────────────────────────────────────────────────
+const STATE = {
+  itens: [],       // todos do JSON
+  ocultos: new Set(),
+  filtro: 'todos',
+  search: ''
+};
+
+let _jsonAtual = [];
+let _novos = [];
+let _conflitos = [];
+
+// ── AUTH ─────────────────────────────────────────────────────────────────────
+function doLogin(){
+  const pwd = $('adminPassword').value;
+  if(pwd === ADMIN_PASSWORD){
+    localStorage.setItem(STORAGE_KEY_AUTH, 'ok');
+    $('loginScreen').classList.add('hidden');
+    $('adminApp').classList.remove('hidden');
+    loadData();
+  } else {
+    $('loginError').classList.remove('hidden');
+  }
+}
+
+function doLogout(){
+  localStorage.removeItem(STORAGE_KEY_AUTH);
+  window.location.replace('../../');
+}
+
+// ── DARK MODE ─────────────────────────────────────────────────────────────────
+function toggleDark(){
+  const isDark = document.documentElement.classList.toggle('dark');
+  localStorage.setItem('disp_dark', isDark ? '1' : '0');
+  $('darkIcon').className = isDark ? 'fa-solid fa-sun text-amber-400 text-xs' : 'fa-solid fa-moon text-slate-400 text-xs';
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  if(localStorage.getItem('disp_dark')==='1') $('darkIcon').className = 'fa-solid fa-sun text-amber-400 text-xs';
+});
+
+// ── TELA CHEIA ────────────────────────────────────────────────────────────────
+function toggleFullscreen(){
+  if(!document.fullscreenElement){ document.documentElement.requestFullscreen().catch(()=>{}); }
+  else { document.exitFullscreen(); }
+}
+document.addEventListener('fullscreenchange', ()=>{
+  const icon = $('iconFullscreen');
+  if(icon) icon.className = document.fullscreenElement ? 'fa-solid fa-compress text-xs' : 'fa-solid fa-expand text-xs';
+});
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function showToast(msg, type='info'){
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  $('toastWrap').appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .2s'; }, 3200);
+  setTimeout(()=>t.remove(), 3500);
+}
+
+function safeHtml(v){ return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
+
+// ── LOAD DATA ─────────────────────────────────────────────────────────────────
+async function loadData(){
+  try{
+    const [dispRes, ocultosRes] = await Promise.all([
+      fetch(WORKER_URL, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'getDisponibilidades'}) }),
+      fetch(WORKER_URL, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'getOcultosDisp'}) })
+    ]);
+    STATE.itens  = dispRes.ok ? await dispRes.json() : [];
+    const oc     = ocultosRes.ok ? await ocultosRes.json() : [];
+    STATE.ocultos = new Set(Array.isArray(oc) ? oc : []);
+    applyFilters();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao carregar dados.', 'error');
+  }
+}
+
+// ── FILTROS ───────────────────────────────────────────────────────────────────
+function ocultarKey(item){ return `${String(item.artigo||'').toUpperCase()}|${String(item.cor||'').toUpperCase()}`; }
+function isOculto(item){ return STATE.ocultos.has(ocultarKey(item)); }
+
+function setFilter(f){
+  STATE.filtro = f;
+  document.querySelectorAll('.filter-pill').forEach(b => b.classList.toggle('active', b.dataset.filter === f));
+  applyFilters();
+}
+
+function applyFilters(){
+  const q = ($('searchInput')?.value || '').toLowerCase().trim();
+  const f = STATE.filtro;
+
+  const filtrados = STATE.itens.filter(item => {
+    if(f === 'ocultos') return isOculto(item);
+    if(isOculto(item)) return false;
+    if(f === 'ua')  return (item.empresa||'').toUpperCase().includes('VULSP') || (item.empresa||'').toUpperCase().includes('VDIST') || (item.categoria||'').toUpperCase().includes('UA') || (item.categoria||'').toUpperCase().includes('UNDER');
+    if(f === 'oly') return !(item.empresa||'').toUpperCase().includes('VULSP') && !(item.empresa||'').toUpperCase().includes('VDIST');
+    return true;
+  }).filter(item => {
+    if(!q) return true;
+    return `${item.artigo} ${item.descricao} ${item.cor} ${item.linha} ${item.categoria}`.toLowerCase().includes(q);
+  });
+
+  // Badges
+  const todos = STATE.itens.filter(i => !isOculto(i));
+  const ua    = todos.filter(i => (i.empresa||'').toUpperCase().includes('VULSP') || (i.empresa||'').toUpperCase().includes('VDIST') || (i.categoria||'').toUpperCase().includes('UA'));
+  const oly   = todos.filter(i => !ua.includes(i));
+  const oc    = STATE.itens.filter(i => isOculto(i));
+
+  if($('badgeTodos')) $('badgeTodos').textContent = todos.length;
+  if($('badgeUA'))    $('badgeUA').textContent    = ua.length;
+  if($('badgeOLY'))   $('badgeOLY').textContent   = oly.length;
+  if($('badgeOcultos')){ $('badgeOcultos').textContent = oc.length; $('badgeOcultos').classList.toggle('hidden', oc.length===0); }
+  if($('countLabel')) $('countLabel').textContent = `${filtrados.length} iten${filtrados.length!==1?'s':''}`;
+
+  renderTable(filtrados);
+}
+
+// ── RENDER TABLE ──────────────────────────────────────────────────────────────
+function renderTable(itens){
+  const tbody = $('tableBody');
+  const wrap  = $('tableWrap');
+  const empty = $('emptyState');
+
+  if(!itens.length){
+    wrap.classList.add('hidden');
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  wrap.classList.remove('hidden');
+
+  const isOcultosView = STATE.filtro === 'ocultos';
+
+  tbody.innerHTML = itens.map(item => {
+    const oculto = isOculto(item);
+    const key    = ocultarKey(item);
+
+    // Grade — mostrar numerações com saldo > 0
+    const grade = item.grade || {};
+    const gradeStr = Object.entries(grade)
+      .filter(([,v]) => Number(v) > 0)
+      .map(([k,v]) => `<span class="inline-flex items-center gap-1 text-[10px] font-semibold bg-slate-100 rounded px-1.5 py-0.5" style="background:var(--muted-soft)">${safeHtml(k)}<span style="color:var(--brand);font-weight:800">${v}</span></span>`)
+      .join(' ') || '<span class="text-slate-400 text-[11px]">—</span>';
+
+    // Chip empresa
+    const isUA = (item.empresa||'').toUpperCase().includes('VULSP') || (item.empresa||'').toUpperCase().includes('VDIST') || (item.categoria||'').toUpperCase().includes('UA');
+    const chipEmpresa = isUA
+      ? `<span class="chip-ua">UA</span>`
+      : `<span class="chip-oly">OLY</span>`;
+
+    // Botões ação
+    const btns = isOcultosView
+      ? `<button class="icon-btn reexibir" data-key="${safeHtml(key)}" onclick="reexibirItem('${safeHtml(key)}')" data-tip="Reexibir"><i class="fa-solid fa-eye text-xs"></i></button>`
+      : `<button class="icon-btn ocultar" data-key="${safeHtml(key)}" onclick="ocultarItem('${safeHtml(key)}')" data-tip="Ocultar"><i class="fa-solid fa-eye-slash text-xs"></i></button>
+         <button class="icon-btn excluir" onclick="excluirItem('${safeHtml(key)}')" data-tip="Excluir"><i class="fa-solid fa-trash-can text-xs"></i></button>`;
+
+    return `<tr class="${oculto?'oculto':''}">
+      <td class="font-semibold text-xs whitespace-nowrap" style="color:var(--muted)">${safeHtml(item.prevFat||'—')}</td>
+      <td>${chipEmpresa}</td>
+      <td class="font-extrabold text-xs" style="color:var(--brand)">${safeHtml(item.artigo||'—')}</td>
+      <td class="font-bold" style="color:var(--text)">${safeHtml(item.descricao||'—')}</td>
+      <td class="text-xs font-semibold" style="color:var(--muted)">${safeHtml(item.cor||'—')}</td>
+      <td class="text-xs" style="color:var(--muted)">${safeHtml(item.linha||'—')}</td>
+      <td class="text-xs" style="color:var(--muted)">${safeHtml(item.genero||'—')}</td>
+      <td class="text-xs" style="color:var(--muted)">${safeHtml(item.categoria||'—')}</td>
+      <td class="text-right font-bold text-xs">R$ ${Number(item.pdv||0).toFixed(2)}</td>
+      <td class="text-right font-extrabold" style="color:var(--brand)">${Number(item.totalGeral||0).toLocaleString('pt-BR')}</td>
+      <td><div class="flex flex-wrap gap-1 max-w-xs">${gradeStr}</div></td>
+      <td><div class="flex items-center gap-1">${btns}</div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── OCULTAR / REEXIBIR ────────────────────────────────────────────────────────
+async function ocultarItem(key){
+  STATE.ocultos.add(key);
+  await salvarOcultos();
+  applyFilters();
+}
+
+async function reexibirItem(key){
+  STATE.ocultos.delete(key);
+  await salvarOcultos();
+  applyFilters();
+}
+
+async function salvarOcultos(){
+  try{
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'saveOcultosDisp', data:[...STATE.ocultos] })
+    });
+    if(!res.ok) throw new Error('Falha ao salvar ocultos');
+  }catch(err){ console.error(err); showToast('Erro ao salvar.','error'); }
+}
+
+// ── EXCLUIR ───────────────────────────────────────────────────────────────────
+async function excluirItem(key){
+  if(!confirm('Excluir este produto?\nEssa ação não pode ser desfeita.')) return;
+  const [artigo, cor] = key.split('|');
+  STATE.itens = STATE.itens.filter(i =>
+    !(String(i.artigo||'').toUpperCase()===artigo && String(i.cor||'').toUpperCase()===cor)
+  );
+  try{
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'saveDisponibilidades', data: STATE.itens })
+    });
+    if(!res.ok) throw new Error();
+    showToast('Produto removido.', 'success');
+    applyFilters();
+  }catch(err){ console.error(err); showToast('Erro ao excluir.','error'); }
+}
+
+// ── IMPORTAR ──────────────────────────────────────────────────────────────────
+function abrirImportar(){ $('modalImportar').classList.remove('hidden'); }
+function fecharImportar(){
+  $('modalImportar').classList.add('hidden');
+  $('previewArea').classList.add('hidden');
+  $('uploadArea').classList.remove('hidden');
+  $('inputXlsx').value='';
+  _novos=[]; _conflitos=[];
+}
+
+const COLS_FIXAS = new Set(['PREV. FAT','EMPRESA','ARTIGO','DESCRIÇÃO','COR','LINHA','GÉNERO','CATEGORIA','PDV','T. GER','T. GRD']);
+
+function rowToItem(row){
+  const grade = {};
+  for(const [col, val] of Object.entries(row)){
+    if(COLS_FIXAS.has(col)) continue;
+    const n = Number(val);
+    if(!isNaN(n) && n > 0) grade[col] = n;
+  }
+  return {
+    prevFat:    String(row['PREV. FAT'] || '').trim(),
+    empresa:    String(row['EMPRESA']   || '').trim(),
+    artigo:     String(row['ARTIGO']    || '').trim().toUpperCase(),
+    descricao:  String(row['DESCRIÇÃO'] || '').trim().toUpperCase(),
+    cor:        String(row['COR']       || '').trim().toUpperCase(),
+    linha:      String(row['LINHA']     || '').trim().toUpperCase(),
+    genero:     String(row['GÉNERO']    || row['GENERO'] || '').trim().toUpperCase(),
+    categoria:  String(row['CATEGORIA'] || '').trim().toUpperCase(),
+    pdv:        Number(row['PDV']       || 0),
+    totalGeral: Number(row['T. GER']   || 0),
+    grade
+  };
+}
+
+async function processarXlsx(file){
+  if(!file) return;
+  // Carrega JSON atual
+  try{
+    const res = await fetch(WORKER_URL, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'getDisponibilidades'}) });
+    _jsonAtual = res.ok ? await res.json() : [];
+  }catch(e){ _jsonAtual = []; }
+
+  const buf = await file.arrayBuffer();
+  const wb  = XLSX.read(buf, { type:'array' });
+  const ws  = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { defval:null });
+
+  const chaveAtual = new Map();
+  for(const r of _jsonAtual){
+    const k = `${String(r.artigo||'').toUpperCase()}|${String(r.cor||'').toUpperCase()}`;
+    chaveAtual.set(k, r);
+  }
+
+  _novos=[]; _conflitos=[];
+
+  for(const row of rows){
+    const item = rowToItem(row);
+    if(!item.artigo) continue;
+    const k = `${item.artigo}|${item.cor}`;
+    if(chaveAtual.has(k)){
+      _conflitos.push({ xlsx:item, atual:chaveAtual.get(k), incluir:false });
+    } else {
+      _novos.push(item);
+    }
+  }
+
+  renderPreview(file.name, rows.length);
+}
+
+function renderPreview(nome, total){
+  $('uploadArea').classList.add('hidden');
+  $('previewArea').classList.remove('hidden');
+  $('previewTitle').textContent = `${nome} — ${total} linha(s) lida(s)`;
+
+  // Novos
+  if(_novos.length){
+    $('novosBlock').classList.remove('hidden');
+    $('novosCount').textContent = _novos.length;
+    $('novosBody').innerHTML = _novos.map(r=>`
+      <tr class="border-t border-green-100">
+        <td class="px-3 py-2 font-bold">${safeHtml(r.artigo)}</td>
+        <td class="px-3 py-2">${safeHtml(r.descricao)}</td>
+        <td class="px-3 py-2 text-slate-500">${safeHtml(r.cor)}</td>
+        <td class="px-3 py-2 text-slate-500">${safeHtml(r.empresa)}</td>
+        <td class="px-3 py-2 text-right font-bold">${Number(r.totalGeral).toLocaleString('pt-BR')}</td>
+      </tr>`).join('');
+  } else { $('novosBlock').classList.add('hidden'); }
+
+  // Conflitos
+  if(_conflitos.length){
+    $('conflitosBlock').classList.remove('hidden');
+    $('conflitosCount').textContent = _conflitos.length;
+    $('conflitosBody').innerHTML = _conflitos.map((c,i)=>`
+      <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div class="font-bold text-sm">${safeHtml(c.xlsx.descricao)} — ${safeHtml(c.xlsx.cor)}</div>
+          <div class="flex gap-2">
+            <button onclick="toggleConflito(${i},false)" class="ci-ign-${i} focus-ring rounded-full px-3 py-1 text-xs font-bold border ${c.incluir?'border-slate-200 bg-white text-slate-500':'border-red-300 bg-red-50 text-red-600'}">Ignorar</button>
+            <button onclick="toggleConflito(${i},true)"  class="ci-inc-${i} focus-ring rounded-full px-3 py-1 text-xs font-bold border ${c.incluir?'border-green-300 bg-green-50 text-green-600':'border-slate-200 bg-white text-slate-500'}">Incluir mesmo assim</button>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <div class="rounded-xl bg-white border border-slate-200 p-3">
+            <div class="text-slate-400 font-bold mb-2 uppercase text-[10px] tracking-wide">Existente</div>
+            <div class="flex justify-between"><span class="text-slate-500">T. Geral</span><span class="font-bold">${Number(c.atual.totalGeral||0).toLocaleString('pt-BR')}</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Prev. Fat</span><span>${safeHtml(c.atual.prevFat||'—')}</span></div>
+          </div>
+          <div class="rounded-xl bg-amber-50 border border-amber-200 p-3">
+            <div class="text-amber-600 font-bold mb-2 uppercase text-[10px] tracking-wide">Chegando</div>
+            <div class="flex justify-between"><span class="text-slate-500">T. Geral</span><span class="font-bold ${c.xlsx.totalGeral!==c.atual.totalGeral?'text-amber-600':''}">${Number(c.xlsx.totalGeral||0).toLocaleString('pt-BR')}</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Prev. Fat</span><span class="${c.xlsx.prevFat!==c.atual.prevFat?'text-amber-600':''}">${safeHtml(c.xlsx.prevFat||'—')}</span></div>
+          </div>
+        </div>
+      </div>`).join('');
+  } else { $('conflitosBlock').classList.add('hidden'); }
+
+  atualizarResumo();
+}
+
+function toggleConflito(idx, incluir){
+  _conflitos[idx].incluir = incluir;
+  const btnIgn = document.querySelector(`.ci-ign-${idx}`);
+  const btnInc = document.querySelector(`.ci-inc-${idx}`);
+  if(btnIgn) btnIgn.className = `ci-ign-${idx} focus-ring rounded-full px-3 py-1 text-xs font-bold border ${!incluir?'border-red-300 bg-red-50 text-red-600':'border-slate-200 bg-white text-slate-500'}`;
+  if(btnInc) btnInc.className = `ci-inc-${idx} focus-ring rounded-full px-3 py-1 text-xs font-bold border ${incluir?'border-green-300 bg-green-50 text-green-600':'border-slate-200 bg-white text-slate-500'}`;
+  atualizarResumo();
+}
+
+function atualizarResumo(){
+  const inc = _conflitos.filter(c=>c.incluir).length;
+  const ign = _conflitos.filter(c=>!c.incluir).length;
+  $('resumoImport').textContent = `${_novos.length} novo(s) + ${inc} conflito(s) incluído(s) — ${ign} ignorado(s). Total a salvar: ${_jsonAtual.length + _novos.length + inc} produto(s).`;
+}
+
+async function confirmarImportar(){
+  const btn = $('btnConfirmar');
+  const prev = btn.innerHTML;
+  btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+  try{
+    const novosParaSalvar = [..._novos, ..._conflitos.filter(c=>c.incluir).map(c=>c.xlsx)];
+    const listaFinal = [..._jsonAtual, ...novosParaSalvar];
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'saveDisponibilidades', data:listaFinal })
+    });
+    if(!res.ok) throw new Error(`Worker falhou (${res.status})`);
+    const result = await res.json();
+    if(!result.success) throw new Error(result.error);
+    STATE.itens = listaFinal;
+    showToast(`${novosParaSalvar.length} produto(s) importado(s)!`, 'success');
+    fecharImportar();
+    applyFilters();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao salvar.','error');
+  }finally{ btn.disabled=false; btn.innerHTML=prev; }
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+if(localStorage.getItem(STORAGE_KEY_AUTH)==='ok'){
+  $('loginScreen').classList.add('hidden');
+  $('adminApp').classList.remove('hidden');
+  loadData();
+}
+
+$('adminPassword').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+</script>
+</body>
+</html>
+
