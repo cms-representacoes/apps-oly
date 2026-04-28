@@ -11,11 +11,11 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <style>
     :root{
-      --bg:#0f172a; --card:#1e293b; --card2:#263248;
-      --text:#f1f5f9; --muted:#94a3b8; --line:#334155;
-      --accent:#ccff00; --accent-dark:#7db800;
-      --brand:#22c55e;
-      --shadow:0 8px 32px rgba(0,0,0,.4);
+      --bg:#f6f7fb; --card:#ffffff; --card2:#f1f5f9;
+      --text:#0f172a; --muted:#64748b; --line:#e2e8f0;
+      --accent:#7db800; --accent-light:#ccff00;
+      --brand:#16a34a;
+      --shadow:0 4px 24px rgba(15,23,42,.08);
     }
     *{ box-sizing:border-box; margin:0; padding:0; }
     body{ font-family:Inter,system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
@@ -23,7 +23,7 @@
     /* Scrollbar */
     ::-webkit-scrollbar{ width:6px; height:6px; }
     ::-webkit-scrollbar-track{ background:transparent; }
-    ::-webkit-scrollbar-thumb{ background:#334155; border-radius:999px; }
+    ::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:999px; }
 
     /* Cards grid */
     .cards-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; }
@@ -36,73 +36,74 @@
       overflow:hidden;
       transition:transform .18s, box-shadow .18s, border-color .18s;
       position:relative;
+      box-shadow:var(--shadow);
     }
     .prod-card:hover{
       transform:translateY(-3px);
-      box-shadow:0 16px 48px rgba(0,0,0,.5);
-      border-color:#475569;
+      box-shadow:0 12px 32px rgba(15,23,42,.12);
+      border-color:#94a3b8;
     }
 
     /* Coração */
     .btn-fav{
       position:absolute; top:10px; left:10px; z-index:10;
       width:32px; height:32px; border-radius:50%;
-      background:rgba(15,23,42,.6); backdrop-filter:blur(4px);
-      border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;
-      transition:all .15s;
+      background:rgba(255,255,255,.85); backdrop-filter:blur(4px);
+      border:1px solid #e2e8f0; cursor:pointer; display:flex; align-items:center; justify-content:center;
+      transition:all .15s; box-shadow:0 2px 8px rgba(0,0,0,.08);
     }
-    .btn-fav:hover{ background:rgba(204,255,0,.2); }
-    .btn-fav i{ font-size:14px; color:#64748b; transition:all .15s; }
-    .btn-fav.ativo i{ color:var(--accent); }
-    .prod-card.selecionado{ border-color:var(--accent); box-shadow:0 0 0 2px rgba(204,255,0,.25); }
+    .btn-fav:hover{ background:#fff; border-color:#94a3b8; }
+    .btn-fav i{ font-size:14px; color:#94a3b8; transition:all .15s; }
+    .btn-fav.ativo i{ color:#ef4444; }
+    .btn-fav.ativo{ border-color:#fca5a5; background:#fff1f2; }
+    .prod-card.selecionado{ border-color:var(--accent); box-shadow:0 0 0 2px rgba(125,184,0,.2); }
 
     /* Lupa */
     .btn-zoom{
       position:absolute; top:10px; right:10px; z-index:10;
       width:32px; height:32px; border-radius:50%;
-      background:rgba(15,23,42,.6); backdrop-filter:blur(4px);
-      border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;
-      transition:all .15s;
+      background:rgba(255,255,255,.85); backdrop-filter:blur(4px);
+      border:1px solid #e2e8f0; cursor:pointer; display:flex; align-items:center; justify-content:center;
+      transition:all .15s; box-shadow:0 2px 8px rgba(0,0,0,.08);
     }
-    .btn-zoom:hover{ background:rgba(204,255,0,.2); }
-    .btn-zoom i{ font-size:13px; color:#94a3b8; }
+    .btn-zoom:hover{ background:#fff; border-color:#94a3b8; }
+    .btn-zoom i{ font-size:13px; color:#64748b; }
 
     /* Imagem */
-    .card-img{ aspect-ratio:1/1; background:#0f172a; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; }
+    .card-img{ aspect-ratio:1/1; background:#f8fafc; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; border-bottom:1px solid #e2e8f0; }
     .card-img img{ width:100%; height:100%; object-fit:contain; }
-    .no-img{ color:#475569; text-align:center; padding:24px; }
+    .no-img{ color:#94a3b8; text-align:center; padding:24px; }
 
     /* Chips */
     .chip{ display:inline-flex; align-items:center; gap:4px; border-radius:999px; padding:3px 10px; font-size:11px; font-weight:700; }
-    .chip-ua{ background:#1a1a2e; color:#60a5fa; border:1px solid #1e3a5f; }
-    .chip-oly{ background:#1a2e1a; color:#4ade80; border:1px solid #14532d; }
-    .chip-grade{ background:#1e293b; color:#94a3b8; border:1px solid #334155; font-size:10px; }
+    .chip-ua{ background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
+    .chip-oly{ background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; }
 
     /* Filtros */
     .filter-pill{ display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:7px 16px; font-size:12px; font-weight:700; border:1px solid var(--line); background:var(--card); color:var(--muted); cursor:pointer; transition:all .12s; white-space:nowrap; }
-    .filter-pill.active{ background:var(--accent); color:#0f172a; border-color:var(--accent-dark); }
-    .filter-pill:hover:not(.active){ border-color:#475569; color:var(--text); }
+    .filter-pill.active{ background:var(--accent); color:#fff; border-color:var(--brand); }
+    .filter-pill:hover:not(.active){ border-color:#94a3b8; color:var(--text); }
 
     /* Header */
-    .main-header{ background:rgba(15,23,42,.9); backdrop-filter:blur(12px); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:50; }
+    .main-header{ background:rgba(255,255,255,.95); backdrop-filter:blur(12px); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:50; box-shadow:0 1px 8px rgba(15,23,42,.06); }
 
     /* Modal zoom */
-    .modal-zoom{ position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.85); display:flex; align-items:center; justify-content:center; padding:24px; }
-    .modal-zoom-inner{ max-width:600px; max-height:90vh; display:flex; align-items:center; justify-content:center; }
-    .modal-zoom img{ max-width:100%; max-height:80vh; object-fit:contain; border-radius:16px; }
+    .modal-zoom{ position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.8); display:flex; align-items:center; justify-content:center; padding:24px; }
+    .modal-zoom-inner{ max-width:600px; max-height:90vh; display:flex; align-items:center; justify-content:center; position:relative; }
+    .modal-zoom img{ max-width:100%; max-height:80vh; object-fit:contain; border-radius:16px; box-shadow:0 24px 64px rgba(0,0,0,.5); }
 
     /* Botão PDF flutuante */
     .fab-pdf{
       position:fixed; bottom:24px; right:24px; z-index:100;
-      background:var(--accent); color:#0f172a;
+      background:var(--accent); color:#fff;
       border:none; border-radius:999px; cursor:pointer;
       padding:14px 24px; font-size:14px; font-weight:800;
       display:flex; align-items:center; gap:8px;
-      box-shadow:0 8px 32px rgba(204,255,0,.35);
+      box-shadow:0 8px 32px rgba(125,184,0,.35);
       transition:all .15s; transform:translateY(80px); opacity:0;
     }
     .fab-pdf.visivel{ transform:translateY(0); opacity:1; }
-    .fab-pdf:hover{ background:#b8e600; box-shadow:0 12px 40px rgba(204,255,0,.5); }
+    .fab-pdf:hover{ background:#6aa100; }
 
     /* Selecionar todos */
     .sel-bar{ display:none; align-items:center; gap:10px; padding:8px 0; }
@@ -113,7 +114,13 @@
     .toast{ pointer-events:auto; min-width:220px; border-radius:14px; padding:10px 16px; font-size:13px; font-weight:700; }
     .toast-success{ background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
     .toast-error{ background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; }
-    .toast-info{ background:#1e293b; color:#f1f5f9; border:1px solid #334155; }
+    .toast-info{ background:#f8fafc; color:#0f172a; border:1px solid #e2e8f0; }
+
+    /* Grade por numeração */
+    .grade-grid{ display:flex; flex-wrap:wrap; gap:4px; margin-top:8px; }
+    .grade-pill{ display:inline-flex; flex-direction:column; align-items:center; background:#f1f5f9; border:0.5px solid #e2e8f0; border-radius:8px; padding:3px 7px; min-width:30px; }
+    .grade-pill .gp-num{ font-size:10px; font-weight:600; color:#64748b; line-height:1.2; }
+    .grade-pill .gp-qty{ font-size:11px; font-weight:800; color:#0f172a; line-height:1.2; }
 
     /* Spinner */
     @keyframes spin{ to{ transform:rotate(360deg); } }
@@ -232,6 +239,16 @@ function showToast(msg, type='info'){
 
 function safeHtml(v){ return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
 
+function fixEncoding(s){
+  return String(s||'')
+    .replace(/\u00c3\u00aa/g,'ª').replace(/\u00c3\u00ba/g,'º')
+    .replace(/\u00c3\u00a7/g,'ç').replace(/\u00c3\u00a3/g,'ã')
+    .replace(/\u00c3\u00a2/g,'â').replace(/\u00c3\u00a9/g,'é')
+    .replace(/Ã\u00aa/g,'ª').replace(/Ã\u00ba/g,'º')
+    .replace(/Ãª/g,'ê').replace(/Ã£/g,'ã').replace(/Ã§/g,'ç')
+    .trim();
+}
+
 // ── CARREGAR DADOS ────────────────────────────────────────────────────────────
 async function loadData(){
   try{
@@ -240,7 +257,9 @@ async function loadData(){
       body: JSON.stringify({ action:'getDisponibilidades' })
     });
     if(!res.ok) throw new Error('Falha ao carregar');
-    STATE.itens = (await res.json()).filter(i => !i._oculto);
+    STATE.itens = (await res.json())
+      .filter(i => !i._oculto)
+      .map(i => ({ ...i, prevFat: fixEncoding(i.prevFat) }));
     applyFilters();
     $('loadingState').classList.add('hidden');
   }catch(err){
@@ -310,19 +329,27 @@ function renderCards(){
     const isSel = STATE.selecionados.has(key);
     const imgSrc = item.imagem ? `${IMG_BASE}${item.imagem}.jpg` : '';
 
-    // Grade resumida — só numerações com saldo > 0
+    // Grade igual ao repasses — pill por numeração
     const grade = item.grade || {};
-    const gradeItems = Object.entries(grade)
-      .filter(([,v]) => Number(v) > 0)
-      .map(([k]) => k);
-    const gradeStr = gradeItems.length
-      ? gradeItems.slice(0,6).join(' · ') + (gradeItems.length > 6 ? ` +${gradeItems.length-6}` : '')
-      : '—';
+    const gradeEntries = Object.entries(grade).filter(([,v]) => Number(v) > 0);
+    const gradeHtml = gradeEntries.length
+      ? `<div class="grade-grid">${gradeEntries.map(([k,v]) =>
+          `<div class="grade-pill"><span class="gp-num">${safeHtml(k)}</span><span class="gp-qty">${v}</span></div>`
+        ).join('')}</div>`
+      : '<span style="font-size:11px;color:var(--muted)">—</span>';
 
-    // Chip empresa
+    // Encoding da quinzena — decodificar caracteres mal formados
+    const prevFatLimpo = (item.prevFat||'')
+      .replace(/Ã\u00aa/g,'ª').replace(/Ã\u00ba/g,'º')
+      .replace(/Ã§/g,'ç').replace(/Ã£/g,'ã').replace(/Ã¢/g,'â')
+      .replace(/Ã©/g,'é').replace(/Ã\u00a3/g,'ã')
+      .replace(/\u00c3\u00aa/g,'ª').replace(/\u00c3\u00ba/g,'º')
+      .trim();
+
+    // Chip empresa modo claro
     const chipEmpresa = isUA(item)
-      ? `<span class="chip chip-ua">UA · ${safeHtml(item.empresa||'')}</span>`
-      : `<span class="chip chip-oly">OLY · ${safeHtml(item.empresa||'')}</span>`;
+      ? `<span class="chip chip-ua"><i class="fa-solid fa-building" style="font-size:9px"></i> UA · ${safeHtml(item.empresa||'')}</span>`
+      : `<span class="chip chip-oly"><i class="fa-solid fa-building" style="font-size:9px"></i> OLY · ${safeHtml(item.empresa||'')}</span>`;
 
     const card = document.createElement('article');
     card.className = `prod-card${isSel?' selecionado':''}`;
@@ -350,20 +377,20 @@ function renderCards(){
 
       <!-- Info -->
       <div class="p-4">
-        <div class="text-base font-extrabold leading-tight mb-1">${safeHtml(item.descricao||'—')}</div>
+        <div class="text-base font-extrabold leading-tight mb-1" style="color:var(--text)">${safeHtml(item.descricao||'—')}</div>
         <div class="text-xs font-semibold mb-3" style="color:var(--muted)">${safeHtml(item.artigo)} · ${safeHtml(item.cor)}</div>
 
         <div class="flex flex-wrap gap-1.5 mb-3">
           ${chipEmpresa}
-          ${item.prevFat ? `<span class="chip" style="background:#1e293b;color:#ccff00;border:1px solid rgba(204,255,0,.2);font-size:10px"><i class="fa-regular fa-calendar" style="font-size:9px"></i> ${safeHtml(item.prevFat)}</span>` : ''}
+          ${prevFatLimpo ? `<span class="chip" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;font-size:10px"><i class="fa-regular fa-calendar" style="font-size:9px"></i> ${safeHtml(prevFatLimpo)}</span>` : ''}
         </div>
 
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between mb-2">
           <div class="text-lg font-black" style="color:var(--accent)">R$ ${Number(item.pdv||0).toFixed(2)}</div>
           <div class="text-xs font-semibold" style="color:var(--muted)">T. ${Number(item.totalGeral||0).toLocaleString('pt-BR')} un</div>
         </div>
 
-        ${gradeItems.length ? `<div class="mt-2 text-[11px] font-semibold rounded-xl px-3 py-1.5" style="background:var(--card2);color:var(--muted)">${safeHtml(gradeStr)}</div>` : ''}
+        ${gradeHtml}
       </div>`;
 
     wrap.appendChild(card);
