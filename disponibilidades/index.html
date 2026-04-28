@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>Disponibilidades · Olympikus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    :root{
+      --bg:#0f172a; --card:#1e293b; --card2:#263248;
+      --text:#f1f5f9; --muted:#94a3b8; --line:#334155;
+      --accent:#ccff00; --accent-dark:#7db800;
+      --brand:#22c55e;
+      --shadow:0 8px 32px rgba(0,0,0,.4);
+    }
+    *{ box-sizing:border-box; margin:0; padding:0; }
+    body{ font-family:Inter,system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar{ width:6px; height:6px; }
+    ::-webkit-scrollbar-track{ background:transparent; }
+    ::-webkit-scrollbar-thumb{ background:#334155; border-radius:999px; }
+
+    /* Cards grid */
+    .cards-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; }
+
+    /* Card produto */
+    .prod-card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:24px;
+      overflow:hidden;
+      transition:transform .18s, box-shadow .18s, border-color .18s;
+      position:relative;
+    }
+    .prod-card:hover{
+      transform:translateY(-3px);
+      box-shadow:0 16px 48px rgba(0,0,0,.5);
+      border-color:#475569;
+    }
+
+    /* Coração */
+    .btn-fav{
+      position:absolute; top:10px; left:10px; z-index:10;
+      width:32px; height:32px; border-radius:50%;
+      background:rgba(15,23,42,.6); backdrop-filter:blur(4px);
+      border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;
+      transition:all .15s;
+    }
+    .btn-fav:hover{ background:rgba(204,255,0,.2); }
+    .btn-fav i{ font-size:14px; color:#64748b; transition:all .15s; }
+    .btn-fav.ativo i{ color:var(--accent); }
+    .prod-card.selecionado{ border-color:var(--accent); box-shadow:0 0 0 2px rgba(204,255,0,.25); }
+
+    /* Lupa */
+    .btn-zoom{
+      position:absolute; top:10px; right:10px; z-index:10;
+      width:32px; height:32px; border-radius:50%;
+      background:rgba(15,23,42,.6); backdrop-filter:blur(4px);
+      border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;
+      transition:all .15s;
+    }
+    .btn-zoom:hover{ background:rgba(204,255,0,.2); }
+    .btn-zoom i{ font-size:13px; color:#94a3b8; }
+
+    /* Imagem */
+    .card-img{ aspect-ratio:1/1; background:#0f172a; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; }
+    .card-img img{ width:100%; height:100%; object-fit:contain; }
+    .no-img{ color:#475569; text-align:center; padding:24px; }
+
+    /* Chips */
+    .chip{ display:inline-flex; align-items:center; gap:4px; border-radius:999px; padding:3px 10px; font-size:11px; font-weight:700; }
+    .chip-ua{ background:#1a1a2e; color:#60a5fa; border:1px solid #1e3a5f; }
+    .chip-oly{ background:#1a2e1a; color:#4ade80; border:1px solid #14532d; }
+    .chip-grade{ background:#1e293b; color:#94a3b8; border:1px solid #334155; font-size:10px; }
+
+    /* Filtros */
+    .filter-pill{ display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:7px 16px; font-size:12px; font-weight:700; border:1px solid var(--line); background:var(--card); color:var(--muted); cursor:pointer; transition:all .12s; white-space:nowrap; }
+    .filter-pill.active{ background:var(--accent); color:#0f172a; border-color:var(--accent-dark); }
+    .filter-pill:hover:not(.active){ border-color:#475569; color:var(--text); }
+
+    /* Header */
+    .main-header{ background:rgba(15,23,42,.9); backdrop-filter:blur(12px); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:50; }
+
+    /* Modal zoom */
+    .modal-zoom{ position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.85); display:flex; align-items:center; justify-content:center; padding:24px; }
+    .modal-zoom-inner{ max-width:600px; max-height:90vh; display:flex; align-items:center; justify-content:center; }
+    .modal-zoom img{ max-width:100%; max-height:80vh; object-fit:contain; border-radius:16px; }
+
+    /* Botão PDF flutuante */
+    .fab-pdf{
+      position:fixed; bottom:24px; right:24px; z-index:100;
+      background:var(--accent); color:#0f172a;
+      border:none; border-radius:999px; cursor:pointer;
+      padding:14px 24px; font-size:14px; font-weight:800;
+      display:flex; align-items:center; gap:8px;
+      box-shadow:0 8px 32px rgba(204,255,0,.35);
+      transition:all .15s; transform:translateY(80px); opacity:0;
+    }
+    .fab-pdf.visivel{ transform:translateY(0); opacity:1; }
+    .fab-pdf:hover{ background:#b8e600; box-shadow:0 12px 40px rgba(204,255,0,.5); }
+
+    /* Selecionar todos */
+    .sel-bar{ display:none; align-items:center; gap:10px; padding:8px 0; }
+    .sel-bar.visivel{ display:flex; }
+
+    /* Toast */
+    .toast-wrap{ position:fixed; top:18px; right:18px; display:flex; flex-direction:column; gap:10px; z-index:9999; pointer-events:none; }
+    .toast{ pointer-events:auto; min-width:220px; border-radius:14px; padding:10px 16px; font-size:13px; font-weight:700; }
+    .toast-success{ background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
+    .toast-error{ background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; }
+    .toast-info{ background:#1e293b; color:#f1f5f9; border:1px solid #334155; }
+
+    /* Spinner */
+    @keyframes spin{ to{ transform:rotate(360deg); } }
+    .spin{ animation:spin 1s linear infinite; }
+  </style>
+</head>
+<body>
+
+<div id="toastWrap" class="toast-wrap"></div>
+
+<!-- Modal Zoom -->
+<div id="modalZoom" class="modal-zoom hidden" onclick="fecharZoom()">
+  <div class="modal-zoom-inner" onclick="event.stopPropagation()">
+    <button onclick="fecharZoom()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,.15);border:none;color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center">✕</button>
+    <img id="zoomImg" src="" alt="">
+  </div>
+</div>
+
+<!-- Header -->
+<header class="main-header px-4 py-3 sm:px-6">
+  <div class="max-w-[1400px] mx-auto flex items-center justify-between gap-4 flex-wrap">
+    <div class="flex items-center gap-3">
+      <a href="../" style="color:var(--muted);display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;text-decoration:none" class="hover:text-white">
+        <i class="fa-solid fa-arrow-left text-xs"></i> Portal
+      </a>
+      <div class="w-px h-5" style="background:var(--line)"></div>
+      <div>
+        <div class="text-xs font-bold" style="color:var(--muted)">Catálogo</div>
+        <div class="text-lg font-extrabold leading-tight">Disponibilidades</div>
+      </div>
+    </div>
+
+    <!-- Busca -->
+    <div class="flex items-center gap-2 rounded-full px-4 py-2 flex-1 max-w-sm" style="background:var(--card);border:1px solid var(--line)">
+      <i class="fa-solid fa-magnifying-glass text-sm" style="color:var(--muted)"></i>
+      <input id="searchInput" class="bg-transparent text-sm outline-none w-full" style="color:var(--text)" placeholder="Buscar produto, artigo ou cor..." oninput="applyFilters()">
+      <button id="btnClearSearch" class="hidden" onclick="limparBusca()" style="color:var(--muted);background:none;border:none;cursor:pointer;font-size:14px">✕</button>
+    </div>
+
+    <!-- Contador + PDF -->
+    <div class="flex items-center gap-2">
+      <div class="text-xs font-semibold" style="color:var(--muted)" id="countLabel">Carregando...</div>
+      <button onclick="gerarPDF()" id="btnPDF" class="fab-pdf" style="position:static;transform:none;opacity:1;display:none">
+        <i class="fa-solid fa-file-pdf text-sm"></i>
+        PDF <span id="pdfCount" class="bg-slate-900 text-[var(--accent)] text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
+
+  <!-- Filtros -->
+  <div class="flex flex-wrap items-center gap-2 mb-4">
+    <button class="filter-pill active" data-filter="todos" onclick="setFilter('todos')">Todos</button>
+    <button class="filter-pill" data-filter="ua" onclick="setFilter('ua')">Under Armour</button>
+    <button class="filter-pill" data-filter="oly" onclick="setFilter('oly')">Olympikus</button>
+    <div class="ml-auto flex items-center gap-2">
+      <!-- Selecionar todos -->
+      <div class="sel-bar" id="selBar">
+        <label class="flex items-center gap-2 cursor-pointer text-xs font-bold" style="color:var(--muted)">
+          <input type="checkbox" id="chkTodos" onchange="toggleSelecionarTodos(this.checked)" style="accent-color:var(--accent);width:15px;height:15px">
+          Selecionar todos
+        </label>
+        <span class="text-xs font-semibold" style="color:var(--accent)" id="selCount"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div id="loadingState" class="text-center py-24">
+    <i class="fa-solid fa-circle-notch fa-spin text-3xl" style="color:var(--accent)"></i>
+    <div class="mt-4 text-sm font-semibold" style="color:var(--muted)">Carregando disponibilidades...</div>
+  </div>
+
+  <!-- Empty -->
+  <div id="emptyState" class="hidden text-center py-24">
+    <i class="fa-solid fa-box-open text-4xl" style="color:var(--muted)"></i>
+    <div class="mt-4 text-sm font-semibold" style="color:var(--muted)">Nenhum produto encontrado.</div>
+  </div>
+
+  <!-- Cards -->
+  <div id="cardsWrap" class="cards-grid hidden"></div>
+
+</main>
+
+<!-- FAB PDF -->
+<button class="fab-pdf" id="fabPDF" onclick="gerarPDF()">
+  <i class="fa-solid fa-file-pdf"></i>
+  Gerar PDF <span id="fabCount" class="bg-slate-900 text-[var(--accent)] text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
+</button>
+
+<script>
+const WORKER_URL  = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
+const IMG_BASE    = '../Catalogo/';
+const LOGO_PATH   = '../logo-olympikus.png';
+
+const $ = id => document.getElementById(id);
+
+const STATE = {
+  itens:      [],
+  filtrados:  [],
+  filtro:     'todos',
+  search:     '',
+  selecionados: new Set()
+};
+
+function showToast(msg, type='info'){
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  $('toastWrap').appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .2s'; }, 3000);
+  setTimeout(()=>t.remove(), 3300);
+}
+
+function safeHtml(v){ return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+
+// ── CARREGAR DADOS ────────────────────────────────────────────────────────────
+async function loadData(){
+  try{
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'getDisponibilidades' })
+    });
+    if(!res.ok) throw new Error('Falha ao carregar');
+    STATE.itens = (await res.json()).filter(i => !i._oculto);
+    applyFilters();
+    $('loadingState').classList.add('hidden');
+  }catch(err){
+    console.error(err);
+    $('loadingState').innerHTML = `<i class="fa-solid fa-triangle-exclamation text-3xl" style="color:#f87171"></i><div class="mt-4 text-sm font-semibold" style="color:#f87171">Erro ao carregar. Tente novamente.</div>`;
+  }
+}
+
+// ── FILTROS ───────────────────────────────────────────────────────────────────
+function isUA(item){
+  return (item.empresa||'').toUpperCase().includes('VULSP') ||
+         (item.empresa||'').toUpperCase().includes('VDIST') ||
+         (item.categoria||'').toUpperCase().includes('UA');
+}
+
+function setFilter(f){
+  STATE.filtro = f;
+  document.querySelectorAll('.filter-pill').forEach(b => b.classList.toggle('active', b.dataset.filter === f));
+  applyFilters();
+}
+
+function limparBusca(){
+  STATE.search = '';
+  $('searchInput').value = '';
+  $('btnClearSearch').classList.add('hidden');
+  applyFilters();
+}
+
+function applyFilters(){
+  const q = ($('searchInput')?.value || '').toLowerCase().trim();
+  STATE.search = q;
+  $('btnClearSearch').classList.toggle('hidden', !q);
+
+  STATE.filtrados = STATE.itens.filter(item => {
+    if(STATE.filtro === 'ua')  return isUA(item);
+    if(STATE.filtro === 'oly') return !isUA(item);
+    return true;
+  }).filter(item => {
+    if(!q) return true;
+    return `${item.descricao} ${item.artigo} ${item.cor} ${item.linha} ${item.empresa}`.toLowerCase().includes(q);
+  });
+
+  $('countLabel').textContent = `${STATE.filtrados.length} produto${STATE.filtrados.length!==1?'s':''}`;
+  renderCards();
+}
+
+// ── RENDER CARDS ──────────────────────────────────────────────────────────────
+function prodKey(item){ return `${item.artigo}|${item.cor}`; }
+
+function renderCards(){
+  const wrap = $('cardsWrap');
+  wrap.innerHTML = '';
+
+  if(!STATE.filtrados.length){
+    wrap.classList.add('hidden');
+    $('emptyState').classList.remove('hidden');
+    return;
+  }
+  $('emptyState').classList.add('hidden');
+  wrap.classList.remove('hidden');
+
+  // Selecionar todos bar
+  $('selBar').classList.toggle('visivel', STATE.itens.length > 0);
+
+  STATE.filtrados.forEach(item => {
+    const key = prodKey(item);
+    const isSel = STATE.selecionados.has(key);
+    const imgSrc = item.imagem ? `${IMG_BASE}${item.imagem}.jpg` : '';
+
+    // Grade resumida — só numerações com saldo > 0
+    const grade = item.grade || {};
+    const gradeItems = Object.entries(grade)
+      .filter(([,v]) => Number(v) > 0)
+      .map(([k]) => k);
+    const gradeStr = gradeItems.length
+      ? gradeItems.slice(0,6).join(' · ') + (gradeItems.length > 6 ? ` +${gradeItems.length-6}` : '')
+      : '—';
+
+    // Chip empresa
+    const chipEmpresa = isUA(item)
+      ? `<span class="chip chip-ua">UA · ${safeHtml(item.empresa||'')}</span>`
+      : `<span class="chip chip-oly">OLY · ${safeHtml(item.empresa||'')}</span>`;
+
+    const card = document.createElement('article');
+    card.className = `prod-card${isSel?' selecionado':''}`;
+    card.dataset.key = key;
+
+    card.innerHTML = `
+      <!-- Coração -->
+      <button class="btn-fav${isSel?' ativo':''}" onclick="toggleFav('${safeHtml(key)}',this)" title="${isSel?'Remover do PDF':'Adicionar ao PDF'}">
+        <i class="fa-${isSel?'solid':'regular'} fa-heart"></i>
+      </button>
+
+      <!-- Lupa -->
+      ${imgSrc ? `<button class="btn-zoom" onclick="abrirZoom('${safeHtml(imgSrc)}')" title="Zoom"><i class="fa-solid fa-magnifying-glass-plus"></i></button>` : ''}
+
+      <!-- Imagem -->
+      <div class="card-img">
+        ${imgSrc
+          ? `<img src="${safeHtml(imgSrc)}" alt="${safeHtml(item.descricao)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden')">`
+          : ''}
+        <div class="no-img${imgSrc?' hidden':''}">
+          <i class="fa-solid fa-image text-2xl"></i>
+          <div class="text-xs mt-2 font-semibold">Sem imagem</div>
+        </div>
+      </div>
+
+      <!-- Info -->
+      <div class="p-4">
+        <div class="text-base font-extrabold leading-tight mb-1">${safeHtml(item.descricao||'—')}</div>
+        <div class="text-xs font-semibold mb-3" style="color:var(--muted)">${safeHtml(item.artigo)} · ${safeHtml(item.cor)}</div>
+
+        <div class="flex flex-wrap gap-1.5 mb-3">
+          ${chipEmpresa}
+          ${item.prevFat ? `<span class="chip" style="background:#1e293b;color:#ccff00;border:1px solid rgba(204,255,0,.2);font-size:10px"><i class="fa-regular fa-calendar" style="font-size:9px"></i> ${safeHtml(item.prevFat)}</span>` : ''}
+        </div>
+
+        <div class="flex items-center justify-between">
+          <div class="text-lg font-black" style="color:var(--accent)">R$ ${Number(item.pdv||0).toFixed(2)}</div>
+          <div class="text-xs font-semibold" style="color:var(--muted)">T. ${Number(item.totalGeral||0).toLocaleString('pt-BR')} un</div>
+        </div>
+
+        ${gradeItems.length ? `<div class="mt-2 text-[11px] font-semibold rounded-xl px-3 py-1.5" style="background:var(--card2);color:var(--muted)">${safeHtml(gradeStr)}</div>` : ''}
+      </div>`;
+
+    wrap.appendChild(card);
+  });
+
+  atualizarFAB();
+  sincronizarChkTodos();
+}
+
+// ── FAVORITOS (SELEÇÃO PARA PDF) ──────────────────────────────────────────────
+function toggleFav(key, btn){
+  const isSel = STATE.selecionados.has(key);
+  if(isSel){ STATE.selecionados.delete(key); }
+  else      { STATE.selecionados.add(key); }
+
+  // Atualizar visual do card
+  const card = document.querySelector(`[data-key="${key}"]`);
+  if(card){
+    card.classList.toggle('selecionado', !isSel);
+    if(btn){
+      btn.classList.toggle('ativo', !isSel);
+      btn.querySelector('i').className = `fa-${!isSel?'solid':'regular'} fa-heart`;
+    }
+  }
+  atualizarFAB();
+  sincronizarChkTodos();
+}
+
+function toggleSelecionarTodos(checked){
+  STATE.filtrados.forEach(item => {
+    const key = prodKey(item);
+    if(checked){ STATE.selecionados.add(key); }
+    else        { STATE.selecionados.delete(key); }
+  });
+  renderCards();
+}
+
+function sincronizarChkTodos(){
+  const chk = $('chkTodos');
+  if(!chk) return;
+  const total = STATE.filtrados.length;
+  const sel   = STATE.filtrados.filter(i => STATE.selecionados.has(prodKey(i))).length;
+  chk.checked       = total > 0 && sel === total;
+  chk.indeterminate = sel > 0 && sel < total;
+  $('selCount').textContent = sel > 0 ? `${sel} selecionado${sel>1?'s':''}` : '';
+}
+
+function atualizarFAB(){
+  const n = STATE.selecionados.size;
+  const fab = $('fabPDF');
+  if(fab) fab.classList.toggle('visivel', n > 0);
+  if($('fabCount'))  $('fabCount').textContent  = n;
+}
+
+// ── ZOOM ──────────────────────────────────────────────────────────────────────
+function abrirZoom(src){
+  $('zoomImg').src = src;
+  $('modalZoom').classList.remove('hidden');
+}
+function fecharZoom(){
+  $('modalZoom').classList.add('hidden');
+  $('zoomImg').src = '';
+}
+document.addEventListener('keydown', e => { if(e.key==='Escape') fecharZoom(); });
+
+// ── GERAR PDF ─────────────────────────────────────────────────────────────────
+async function gerarPDF(){
+  const selecionados = STATE.filtrados.filter(i => STATE.selecionados.has(prodKey(i)));
+  if(!selecionados.length){ showToast('Selecione ao menos um produto.','info'); return; }
+
+  const fab = $('fabPDF');
+  const prev = fab.innerHTML;
+  fab.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Gerando...';
+  fab.disabled = true;
+
+  try{
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const PW = 210, PH = 297;
+    const COLS = 3, ROWS = 3;
+    const CARD_W = (PW - 20) / COLS;
+    const CARD_H = (PH - 30) / ROWS;
+    const MARGIN = 10;
+
+    // Logo
+    let logoData = null;
+    try{
+      const lres = await fetch(LOGO_PATH);
+      if(lres.ok){
+        const buf = await lres.arrayBuffer();
+        const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+        logoData = `data:image/png;base64,${b64}`;
+      }
+    }catch(_){}
+
+    let page = 0;
+    for(let i = 0; i < selecionados.length; i++){
+      const idx  = i % (COLS * ROWS);
+      const col  = idx % COLS;
+      const row  = Math.floor(idx / COLS);
+
+      if(i > 0 && idx === 0){
+        doc.addPage();
+        page++;
+      }
+
+      const x = MARGIN + col * CARD_W;
+      const y = 18 + row * CARD_H;
+      const item = selecionados[i];
+
+      // Fundo do card
+      doc.setFillColor(30, 41, 59);
+      doc.roundedRect(x+1, y+1, CARD_W-2, CARD_H-2, 4, 4, 'F');
+
+      // Imagem
+      if(item.imagem){
+        try{
+          const ires = await fetch(`${IMG_BASE}${item.imagem}.jpg`);
+          if(ires.ok){
+            const buf = await ires.arrayBuffer();
+            const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+            const imgH = CARD_H * 0.48;
+            doc.addImage(`data:image/jpeg;base64,${b64}`, 'JPEG', x+2, y+2, CARD_W-4, imgH, '', 'FAST');
+          }
+        }catch(_){}
+      }
+
+      const tY = y + CARD_H * 0.52;
+
+      // Descrição
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica','bold');
+      doc.setTextColor(241,245,249);
+      const desc = item.descricao || '—';
+      doc.text(desc.length > 22 ? desc.slice(0,21)+'…' : desc, x+3, tY+4);
+
+      // Artigo · Cor
+      doc.setFontSize(6);
+      doc.setFont('helvetica','normal');
+      doc.setTextColor(148,163,184);
+      doc.text(`${item.artigo||''} · ${item.cor||''}`, x+3, tY+8.5);
+
+      // Empresa
+      doc.setFontSize(6);
+      doc.setTextColor(96,165,250);
+      doc.text(item.empresa||'', x+3, tY+12.5);
+
+      // Prev. Fat.
+      if(item.prevFat){
+        doc.setFontSize(5.5);
+        doc.setTextColor(204,255,0);
+        doc.text(`📅 ${item.prevFat}`, x+3, tY+16.5);
+      }
+
+      // PDV
+      doc.setFontSize(9);
+      doc.setFont('helvetica','bold');
+      doc.setTextColor(204,255,0);
+      doc.text(`R$ ${Number(item.pdv||0).toFixed(2)}`, x+3, tY+21.5);
+
+      // Grade
+      const grade = item.grade || {};
+      const gradeItems = Object.entries(grade).filter(([,v])=>Number(v)>0).map(([k,v])=>`${k}:${v}`);
+      if(gradeItems.length){
+        doc.setFontSize(5);
+        doc.setFont('helvetica','normal');
+        doc.setTextColor(148,163,184);
+        const gradeStr = gradeItems.slice(0,8).join('  ');
+        doc.text(gradeStr, x+3, tY+26);
+      }
+    }
+
+    // Cabeçalho em cada página
+    for(let p = 0; p <= page; p++){
+      doc.setPage(p+1);
+      doc.setFillColor(15,23,42);
+      doc.rect(0,0,PW,14,'F');
+      if(logoData) try{ doc.addImage(logoData,'PNG',MARGIN,2,20,10); }catch(_){}
+      doc.setFontSize(7);
+      doc.setFont('helvetica','normal');
+      doc.setTextColor(148,163,184);
+      doc.text(`Catálogo de Disponibilidades · ${new Date().toLocaleDateString('pt-BR')}`, PW-MARGIN, 8, { align:'right' });
+      // Linha separadora
+      doc.setDrawColor(51,65,85);
+      doc.line(MARGIN, 14, PW-MARGIN, 14);
+    }
+
+    doc.save(`disponibilidades_${new Date().toISOString().slice(0,10)}.pdf`);
+    showToast(`PDF gerado com ${selecionados.length} produto(s)!`, 'success');
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao gerar PDF.', 'error');
+  }finally{
+    fab.innerHTML = prev;
+    fab.disabled = false;
+  }
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
