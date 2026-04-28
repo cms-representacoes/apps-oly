@@ -228,6 +228,12 @@
         <div class="text-xs text-slate-500 mt-0.5" id="uploadProdutoCor">—</div>
       </div>
 
+      <!-- Banner aviso imagem existente -->
+      <div id="uploadAvisoBanner" class="hidden rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 mb-4 flex items-center gap-3 text-sm font-semibold text-amber-700">
+        <i class="fa-solid fa-triangle-exclamation text-amber-500 flex-shrink-0"></i>
+        Este produto já tem imagem cadastrada. A nova imagem irá substituir a existente.
+      </div>
+
       <!-- Preview -->
       <div id="uploadPreviewWrap" class="hidden mb-4 flex justify-center">
         <div class="relative">
@@ -537,8 +543,8 @@ let _uploadItem = null;
 let _uploadBase64 = null;
 let _uploadExt = 'jpg';
 
-function abrirUploadImagem(artigo, cor, descricao){
-  _uploadItem = { artigo, cor, descricao };
+function abrirUploadImagem(artigo, cor, descricao, temImagem=false){
+  _uploadItem = { artigo, cor, descricao, temImagem };
   _uploadBase64 = null;
   _uploadExt = 'jpg';
 
@@ -548,6 +554,11 @@ function abrirUploadImagem(artigo, cor, descricao){
   $('uploadPreviewWrap').classList.add('hidden');
   $('uploadArea2').classList.remove('hidden');
   $('inputImagemProd').value = '';
+
+  // Banner de aviso se já tem imagem
+  const banner = $('uploadAvisoBanner');
+  if(banner) banner.classList.toggle('hidden', !temImagem);
+
   $('modalUploadImagem').classList.remove('hidden');
 }
 
@@ -608,8 +619,23 @@ async function enviarImagem(){
     if(!res.ok) throw new Error('Falha no upload');
     const result = await res.json();
     if(!result.success) throw new Error(result.error);
+
+    // Atualiza campo imagem no item local e salva no JSON
+    const idx = STATE.itens.findIndex(i =>
+      String(i.artigo||'').toUpperCase() === _uploadItem.artigo.toUpperCase() &&
+      String(i.cor||'').toUpperCase()    === _uploadItem.cor.toUpperCase()
+    );
+    if(idx !== -1){
+      STATE.itens[idx].imagem = nomeBase;
+      await fetch(WORKER_URL, {
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ action:'saveDisponibilidades', data: STATE.itens })
+      });
+    }
+
     showToast(`Imagem "${nomeArquivo}" enviada!`, 'success');
     fecharUploadImagem();
+    applyFilters();
   }catch(err){
     console.error(err);
     showToast(`Erro: ${err.message}`, 'error');
@@ -653,7 +679,7 @@ function renderTable(itens){
     // Botões ação
     const btns = isOcultosView
       ? `<button class="icon-btn reexibir" onclick="reexibirItem('${safeHtml(key)}')" data-tip="Reexibir"><i class="fa-solid fa-eye text-xs"></i></button>`
-      : `<button class="icon-btn" onclick="abrirUploadImagem('${safeHtml(item.artigo)}','${safeHtml(item.cor)}','${safeHtml(item.descricao)}')" data-tip="Upload de imagem" style="color:var(--brand)"><i class="fa-solid fa-image text-xs"></i></button>
+      : `<button class="icon-btn ${item.imagem?'tem-imagem':''}" onclick="abrirUploadImagem('${safeHtml(item.artigo)}','${safeHtml(item.cor)}','${safeHtml(item.descricao)}',${item.imagem?'true':'false'})" data-tip="${item.imagem?'Imagem cadastrada — clique para substituir':'Adicionar imagem'}" style="${item.imagem?'color:#16a34a;border-color:#bbf7d0;background:#dcfce7':'color:var(--muted)'}"><i class="fa-solid ${item.imagem?'fa-circle-check':'fa-image'} text-xs"></i></button>
          <button class="icon-btn ocultar" onclick="ocultarItem('${safeHtml(key)}')" data-tip="Ocultar"><i class="fa-solid fa-eye-slash text-xs"></i></button>
          <button class="icon-btn excluir" onclick="excluirItem('${safeHtml(key)}')" data-tip="Excluir"><i class="fa-solid fa-trash-can text-xs"></i></button>`;
 
@@ -747,6 +773,7 @@ function rowToItem(row){
     categoria:  String(row['CATEGORIA'] || '').trim().toUpperCase(),
     pdv:        Number(row['PDV']       || 0),
     totalGeral: Number(row['T. GER']   || 0),
+    imagem:     '', // preenchido ao fazer upload
     grade
   };
 }
