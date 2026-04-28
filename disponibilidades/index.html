@@ -456,6 +456,56 @@ function fecharZoom(){
 }
 document.addEventListener('keydown', e => { if(e.key==='Escape') fecharZoom(); });
 
+// ── HELPERS PDF ───────────────────────────────────────────────────────────────
+async function imageUrlToDataUrl(url){
+  if(!url) return '';
+  try{
+    const res = await fetch(url, { cache:'no-store' });
+    if(!res.ok) return '';
+    const blob = await res.blob();
+    return await new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = ()=> resolve(String(reader.result||''));
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }catch(_){ return ''; }
+}
+
+async function loadImgForPdfCrop(dataUrl){
+  return new Promise(resolve=>{
+    if(!dataUrl){ resolve(null); return; }
+    const img = new Image();
+    img.onload = ()=>{
+      try{
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img,0,0);
+        const idata = ctx.getImageData(0,0,c.width,c.height);
+        const d=idata.data, W=c.width, H=c.height, thr=240;
+        let minX=W,minY=H,maxX=0,maxY=0;
+        for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+          const i=(y*W+x)*4;
+          if(d[i+3]<10||( d[i]>thr&&d[i+1]>thr&&d[i+2]>thr)) continue;
+          if(x<minX)minX=x; if(x>maxX)maxX=x;
+          if(y<minY)minY=y; if(y>maxY)maxY=y;
+        }
+        if(maxX<=minX||maxY<=minY){ resolve({dataUrl:c.toDataURL('image/png'),w:W,h:H}); return; }
+        const px=Math.ceil((maxX-minX)*.04), py=Math.ceil((maxY-minY)*.04);
+        const cx=Math.max(0,minX-px), cy=Math.max(0,minY-py);
+        const cw=Math.min(W,maxX+px)-cx, ch=Math.min(H,maxY+py)-cy;
+        const c2=document.createElement('canvas');
+        c2.width=cw; c2.height=ch;
+        c2.getContext('2d').drawImage(c,cx,cy,cw,ch,0,0,cw,ch);
+        resolve({dataUrl:c2.toDataURL('image/png'),w:cw,h:ch});
+      }catch(e){ resolve(null); }
+    };
+    img.onerror=()=>resolve(null);
+    img.src=dataUrl;
+  });
+}
+
 // ── GERAR PDF ─────────────────────────────────────────────────────────────────
 async function gerarPDF(){
   const selecionados = STATE.filtrados.filter(i => STATE.selecionados.has(prodKey(i)));
@@ -468,117 +518,175 @@ async function gerarPDF(){
 
   try{
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-    const PW = 210, PH = 297;
-    const COLS = 3, ROWS = 3;
-    const CARD_W = (PW - 20) / COLS;
-    const CARD_H = (PH - 30) / ROWS;
-    const MARGIN = 10;
+    const doc = new jsPDF({ orientation:'landscape', unit:'pt', format:'a4', compress:true });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
 
-    // Logo
-    let logoData = null;
-    try{
-      const lres = await fetch(LOGO_PATH);
-      if(lres.ok){
-        const buf = await lres.arrayBuffer();
-        const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
-        logoData = `data:image/png;base64,${b64}`;
-      }
-    }catch(_){}
+    const now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    const dateStr = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
-    let page = 0;
-    for(let i = 0; i < selecionados.length; i++){
-      const idx  = i % (COLS * ROWS);
-      const col  = idx % COLS;
-      const row  = Math.floor(idx / COLS);
+    const margin   = 28;
+    const contentW = pageW - margin*2;
+    const headerH  = 38;
+    const bodyY    = headerH + 10;
+    const bodyH    = pageH - bodyY - 10;
+    const cardH    = Math.floor((bodyH-8)/2);
 
-      if(i > 0 && idx === 0){
-        doc.addPage();
-        page++;
-      }
+    // Cores — verde limão para disponibilidades
+    const C = {
+      green:  [125, 184, 0],
+      text:   [15, 23, 42],
+      muted:  [100, 116, 139],
+      border: [226, 232, 240],
+      bg:     [248, 250, 252],
+      white:  [255, 255, 255],
+    };
+    const sc = (rgb, type='text') => {
+      if(type==='fill')      doc.setFillColor(...rgb);
+      else if(type==='draw') doc.setDrawColor(...rgb);
+      else                   doc.setTextColor(...rgb);
+    };
 
-      const x = MARGIN + col * CARD_W;
-      const y = 18 + row * CARD_H;
-      const item = selecionados[i];
+    function drawHeader(){
+      sc(C.green,'fill');
+      doc.rect(0,0,pageW,headerH,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(13);
+      doc.setTextColor(255,255,255);
+      doc.text('Catálogo Olympikus — Disponibilidades', margin, 24);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9);
+      doc.setTextColor(220,255,150);
+      doc.text(dateStr, pageW-margin, 24, {align:'right'});
+      sc(C.text);
+    }
 
-      // Fundo do card
-      doc.setFillColor(30, 41, 59);
-      doc.roundedRect(x+1, y+1, CARD_W-2, CARD_H-2, 4, 4, 'F');
+    const imgAreaW  = 560;
+    const infoGap   = 14;
+    const infoAreaX = margin + imgAreaW + infoGap;
+    const infoAreaW = contentW - imgAreaW - infoGap;
 
-      // Imagem
+    async function drawCard(item, cardY){
+      sc(C.border,'draw'); doc.setLineWidth(0.4);
+      sc(C.bg,'fill');
+      doc.roundedRect(margin, cardY, contentW, cardH, 6, 6, 'FD');
+
+      // Área da imagem
+      const ip=6, ibX=margin+ip, ibY=cardY+ip;
+      const ibW=imgAreaW-ip*2, ibH=cardH-ip*2;
+      sc(C.white,'fill'); sc(C.border,'draw');
+      doc.roundedRect(ibX,ibY,ibW,ibH,4,4,'FD');
+
       if(item.imagem){
-        try{
-          const ires = await fetch(`${IMG_BASE}${item.imagem}.jpg`);
-          if(ires.ok){
-            const buf = await ires.arrayBuffer();
-            const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
-            const imgH = CARD_H * 0.48;
-            doc.addImage(`data:image/jpeg;base64,${b64}`, 'JPEG', x+2, y+2, CARD_W-4, imgH, '', 'FAST');
-          }
-        }catch(_){}
+        const rawData = await imageUrlToDataUrl(`${IMG_BASE}${item.imagem}.jpg`);
+        const img = await loadImgForPdfCrop(rawData);
+        if(img?.dataUrl){
+          const targetH = ibH*0.85;
+          const scale   = targetH/img.h;
+          const drawW   = img.w*scale;
+          const drawH   = targetH;
+          const drawX   = ibX+(ibW-drawW)/2;
+          const drawY   = ibY+(ibH-drawH)/2;
+          doc.addImage(img.dataUrl,'PNG',drawX,drawY,drawW,drawH,undefined,'FAST');
+        }
       }
 
-      const tY = y + CARD_H * 0.52;
+      const tx = infoAreaX;
+      let ty = cardY + 18;
 
       // Descrição
-      doc.setFontSize(7.5);
-      doc.setFont('helvetica','bold');
-      doc.setTextColor(241,245,249);
-      const desc = item.descricao || '—';
-      doc.text(desc.length > 22 ? desc.slice(0,21)+'…' : desc, x+3, tY+4);
+      sc(C.text);
+      doc.setFont('helvetica','bold'); doc.setFontSize(13);
+      const nameLines = doc.splitTextToSize(String(item.descricao||''), infoAreaW-4);
+      doc.text(nameLines.slice(0,2), tx, ty);
+      ty += nameLines.slice(0,2).length*15 + 6;
 
-      // Artigo · Cor
-      doc.setFontSize(6);
-      doc.setFont('helvetica','normal');
-      doc.setTextColor(148,163,184);
-      doc.text(`${item.artigo||''} · ${item.cor||''}`, x+3, tY+8.5);
+      // Artigo
+      doc.setFont('helvetica','normal'); doc.setFontSize(9);
+      sc(C.muted); doc.text('Artigo:', tx, ty);
+      sc(C.text); doc.text(String(item.artigo||'—'), tx+38, ty);
+      ty += 13;
+
+      // Cor
+      sc(C.muted); doc.text('Cor:', tx, ty);
+      sc(C.text); doc.text(String(item.cor||'—'), tx+24, ty);
+      ty += 13;
 
       // Empresa
-      doc.setFontSize(6);
-      doc.setTextColor(96,165,250);
-      doc.text(item.empresa||'', x+3, tY+12.5);
+      sc(C.muted); doc.text('Empresa:', tx, ty);
+      sc(C.text); doc.text(String(item.empresa||'—'), tx+44, ty);
+      ty += 14;
+
+      // Divisor
+      sc(C.border,'draw'); doc.setLineWidth(0.4);
+      doc.line(tx, ty, tx+infoAreaW, ty);
+      ty += 10;
+
+      // Boxes: Prev. Fat. | PDV | T. Geral
+      const boxGap=6, boxW=(infoAreaW-boxGap*2)/3, boxH=32;
 
       // Prev. Fat.
-      if(item.prevFat){
-        doc.setFontSize(5.5);
-        doc.setTextColor(204,255,0);
-        doc.text(`📅 ${item.prevFat}`, x+3, tY+16.5);
-      }
+      sc(C.white,'fill'); sc(C.border,'draw'); doc.setLineWidth(0.4);
+      doc.roundedRect(tx, ty, boxW, boxH, 4,4,'FD');
+      doc.setFont('helvetica','bold'); doc.setFontSize(6.5); sc(C.muted);
+      doc.text('PREV. FATURAMENTO', tx+6, ty+8);
+      doc.setFont('helvetica','bold'); doc.setFontSize(9); sc(C.text);
+      doc.text(fixEncoding(item.prevFat||'—'), tx+6, ty+22);
 
       // PDV
-      doc.setFontSize(9);
-      doc.setFont('helvetica','bold');
-      doc.setTextColor(204,255,0);
-      doc.text(`R$ ${Number(item.pdv||0).toFixed(2)}`, x+3, tY+21.5);
+      const bx2 = tx+boxW+boxGap;
+      sc(C.white,'fill'); sc(C.border,'draw');
+      doc.roundedRect(bx2, ty, boxW, boxH, 4,4,'FD');
+      doc.setFont('helvetica','bold'); doc.setFontSize(6.5); sc(C.muted);
+      doc.text('PDV', bx2+6, ty+8);
+      doc.setFont('helvetica','bold'); doc.setFontSize(14); sc(C.green);
+      doc.text(`R$ ${Number(item.pdv||0).toFixed(2)}`, bx2+6, ty+24);
 
-      // Grade
+      // T. Geral
+      const bx3 = bx2+boxW+boxGap;
+      sc(C.white,'fill'); sc(C.border,'draw');
+      doc.roundedRect(bx3, ty, boxW, boxH, 4,4,'FD');
+      doc.setFont('helvetica','bold'); doc.setFontSize(6.5); sc(C.muted);
+      doc.text('T. GERAL', bx3+6, ty+8);
+      doc.setFont('helvetica','bold'); doc.setFontSize(14); sc(C.text);
+      doc.text(Number(item.totalGeral||0).toLocaleString('pt-BR'), bx3+6, ty+24);
+
+      ty += boxH+10;
+
+      // Grade — células igual ao repasses
       const grade = item.grade || {};
-      const gradeItems = Object.entries(grade).filter(([,v])=>Number(v)>0).map(([k,v])=>`${k}:${v}`);
-      if(gradeItems.length){
-        doc.setFontSize(5);
-        doc.setFont('helvetica','normal');
-        doc.setTextColor(148,163,184);
-        const gradeStr = gradeItems.slice(0,8).join('  ');
-        doc.text(gradeStr, x+3, tY+26);
+      const gradeEntries = Object.entries(grade).filter(([,v])=>Number(v)>0);
+      if(gradeEntries.length){
+        doc.setFont('helvetica','bold'); doc.setFontSize(7);
+        sc(C.muted); doc.text('GRADE DISPONÍVEL', tx, ty);
+        ty += 9;
+        const cellW=34, cellH=24, cellGap=4;
+        const perRow = Math.floor(infoAreaW/(cellW+cellGap));
+        let cx=tx, col=0;
+        for(const [size,qty] of gradeEntries){
+          if(col>=perRow){ col=0; cx=tx; ty+=cellH+cellGap; }
+          sc(C.border,'draw'); sc(C.white,'fill');
+          doc.roundedRect(cx, ty, cellW, cellH, 3,3,'FD');
+          doc.setFont('helvetica','bold'); doc.setFontSize(7); sc(C.muted);
+          const sStr=String(size);
+          doc.text(sStr, cx+(cellW-doc.getTextWidth(sStr))/2, ty+9);
+          doc.setFontSize(9.5); sc(C.green);
+          const qStr=String(qty);
+          doc.text(qStr, cx+(cellW-doc.getTextWidth(qStr))/2, ty+20);
+          cx+=cellW+cellGap; col++;
+        }
       }
     }
 
-    // Cabeçalho em cada página
-    for(let p = 0; p <= page; p++){
-      doc.setPage(p+1);
-      doc.setFillColor(15,23,42);
-      doc.rect(0,0,PW,14,'F');
-      if(logoData) try{ doc.addImage(logoData,'PNG',MARGIN,2,20,10); }catch(_){}
-      doc.setFontSize(7);
-      doc.setFont('helvetica','normal');
-      doc.setTextColor(148,163,184);
-      doc.text(`Catálogo de Disponibilidades · ${new Date().toLocaleDateString('pt-BR')}`, PW-MARGIN, 8, { align:'right' });
-      // Linha separadora
-      doc.setDrawColor(51,65,85);
-      doc.line(MARGIN, 14, PW-MARGIN, 14);
+    for(let i=0; i<selecionados.length; i+=2){
+      if(i>0) doc.addPage();
+      drawHeader();
+      await drawCard(selecionados[i], bodyY);
+      if(selecionados[i+1]) await drawCard(selecionados[i+1], bodyY+cardH+8);
     }
 
-    doc.save(`disponibilidades_${new Date().toISOString().slice(0,10)}.pdf`);
+    const now2 = new Date();
+    const fname = `disponibilidades_${now2.getFullYear()}${pad(now2.getMonth()+1)}${pad(now2.getDate())}.pdf`;
+    doc.save(fname);
     showToast(`PDF gerado com ${selecionados.length} produto(s)!`, 'success');
   }catch(err){
     console.error(err);
