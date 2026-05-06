@@ -327,7 +327,8 @@ function renderCards(){
   STATE.filtrados.forEach(item => {
     const key = prodKey(item);
     const isSel = STATE.selecionados.has(key);
-    const imgSrc = item.imagem ? `${IMG_BASE}${item.imagem}.jpg` : '';
+    const corSafe = String(item.cor || '').replace(/\//g, '_').toUpperCase();
+    const imgSrc = (item.artigo && corSafe) ? `${IMG_BASE}${item.artigo}_${corSafe}.jpg` : '';
 
     // Grade igual ao repasses — pill por numeração
     const grade = item.grade || {};
@@ -576,8 +577,9 @@ async function gerarPDF(){
       sc(C.white,'fill'); sc(C.border,'draw');
       doc.roundedRect(ibX,ibY,ibW,ibH,4,4,'FD');
 
-      if(item.imagem){
-        const rawData = await imageUrlToDataUrl(`${IMG_BASE}${item.imagem}.jpg`);
+      const corSafePdf = String(item.cor || '').replace(/\//g, '_').toUpperCase();
+      if(item.artigo && corSafePdf){
+        const rawData = await imageUrlToDataUrl(`${IMG_BASE}${item.artigo}_${corSafePdf}.jpg`);
         const img = await loadImgForPdfCrop(rawData);
         if(img?.dataUrl){
           const targetH = ibH*0.85;
