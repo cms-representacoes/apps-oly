@@ -81,6 +81,76 @@
     [data-tip]{ position:relative; }
     [data-tip]:hover::after{ content:attr(data-tip); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); background:#0f172a; color:#f8fafc; font-size:11px; font-weight:600; border-radius:8px; padding:4px 9px; white-space:nowrap; z-index:300; pointer-events:none; }
     .dark [data-tip]:hover::after{ background:#334155; }
+
+    /* Indicador de imagem (badge nas ações) */
+    .img-badge.has:hover{ background:#bbf7d0!important; transform:scale(1.05); }
+    .img-badge.miss:hover{ background:#fecaca!important; transform:scale(1.05); }
+    .img-badge.checking{ cursor:wait; }
+
+    /* Popover de miniatura */
+    .img-mini-overlay{
+      position:fixed; inset:0; z-index:180;
+      background:rgba(15,23,42,.4);
+      backdrop-filter:blur(2px);
+      display:none; align-items:center; justify-content:center;
+      padding:16px;
+    }
+    .img-mini-overlay.open{ display:flex; }
+    .img-mini-card{
+      background:var(--card); border:1px solid var(--line);
+      border-radius:16px; padding:14px;
+      width:240px;
+      box-shadow:0 12px 32px rgba(15,23,42,.18);
+      animation: imgMiniIn .18s ease;
+    }
+    @keyframes imgMiniIn { from{ transform:translateY(8px) scale(.96); opacity:0; } to{ transform:none; opacity:1; } }
+    .img-mini-thumb{
+      width:100%; aspect-ratio:1/1;
+      border-radius:12px;
+      background:#f1f5f9;
+      display:flex; align-items:center; justify-content:center;
+      overflow:hidden; margin-bottom:10px;
+    }
+    .dark .img-mini-thumb{ background:#1e293b; }
+    .img-mini-thumb img{ width:100%; height:100%; object-fit:contain; }
+    .img-mini-title{ font-size:13px; font-weight:800; line-height:1.2; }
+    .img-mini-meta{ font-size:11px; color:var(--muted); margin-top:2px; margin-bottom:12px; }
+    .img-mini-actions{ display:flex; gap:8px; }
+    .img-mini-btn{
+      flex:1; padding:8px 10px; border-radius:10px;
+      font-size:12px; font-weight:800; cursor:pointer;
+      border:1px solid var(--line); background:var(--bg); color:var(--muted);
+      transition:all .12s;
+    }
+    .img-mini-btn:hover{ background:var(--muted-soft); }
+    .img-mini-btn.primary{ background:var(--accent); color:#0f172a; border-color:var(--accent-dark); }
+    .img-mini-btn.primary:hover{ background:var(--accent-dark); color:#0f172a; }
+
+    /* Barra de progresso da verificação */
+    .img-check-progress{
+      background:var(--card); border:1px solid var(--line);
+      border-radius:14px; padding:12px 14px;
+      margin-bottom:12px;
+      font-size:12px;
+    }
+    .img-check-progress .icp-head{
+      display:flex; align-items:center; justify-content:space-between;
+      font-weight:800; margin-bottom:6px;
+    }
+    .img-check-progress .icp-bar{
+      background:var(--muted-soft); border-radius:999px; height:6px; overflow:hidden;
+    }
+    .img-check-progress .icp-fill{
+      background:var(--accent); height:100%; width:0%;
+      border-radius:999px; transition:width .3s;
+    }
+    .img-check-progress .icp-stats{
+      display:flex; gap:14px; margin-top:8px;
+      font-size:11px;
+    }
+    .img-check-progress .icp-stats strong.ok{ color:#15803d; }
+    .img-check-progress .icp-stats strong.miss{ color:#b91c1c; }
+    .img-check-progress .icp-stats span{ color:var(--muted); }
   </style>
 </head>
 <body>
@@ -169,6 +239,19 @@
     <div class="ml-auto text-xs font-semibold text-slate-400" id="countLabel">— itens</div>
   </div>
 
+  <!-- PROGRESSO DE VERIFICAÇÃO DE IMAGENS -->
+  <div id="imgCheckProgress" class="img-check-progress hidden">
+    <div class="icp-head">
+      <span><i class="fa-solid fa-image text-xs mr-1" style="color:var(--accent-dark)"></i> Verificando imagens na pasta Catálogo...</span>
+      <span id="imgCheckText" style="color:var(--muted)">0 / 0</span>
+    </div>
+    <div class="icp-bar"><div id="imgCheckBar" class="icp-fill"></div></div>
+    <div class="icp-stats">
+      <div><strong class="ok" id="imgCheckOk">0</strong> <span>com imagem</span></div>
+      <div><strong class="miss" id="imgCheckMiss">0</strong> <span>faltando</span></div>
+    </div>
+  </div>
+
   <!-- TABELA -->
   <div class="rounded-[28px] border border-slate-200 bg-white shadow-card p-4" style="background:var(--card);border-color:var(--line)">
     <div id="emptyState" class="hidden py-16 text-center text-slate-400">
@@ -209,6 +292,21 @@
         <button onclick="resetarColunas()" class="text-xs font-bold hover:underline" style="color:var(--brand)">Resetar</button>
       </div>
       <div id="listaColunas" class="flex flex-col gap-2"></div>
+    </div>
+  </div>
+
+  <!-- POPOVER MINIATURA DE IMAGEM -->
+  <div id="imgMiniOverlay" class="img-mini-overlay" onclick="fecharMiniaturaImagem(event)">
+    <div class="img-mini-card" onclick="event.stopPropagation()">
+      <div class="img-mini-thumb">
+        <img id="imgMiniThumb" alt="">
+      </div>
+      <div class="img-mini-title" id="imgMiniTitle">—</div>
+      <div class="img-mini-meta" id="imgMiniMeta">—</div>
+      <div class="img-mini-actions">
+        <button class="img-mini-btn" onclick="substituirImagemDoMini()">Substituir</button>
+        <button class="img-mini-btn primary" onclick="fecharMiniaturaImagem()">Fechar</button>
+      </div>
     </div>
   </div>
 
@@ -348,6 +446,8 @@ if(localStorage.getItem('disp_dark')==='1') document.documentElement.classList.a
 const WORKER_URL = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
 const ADMIN_PASSWORD = 'cmsrepasse';
 const STORAGE_KEY_AUTH = 'disp_admin_auth_v1';
+// Base pública das imagens (mesma pasta usada pelo catálogo de Disponibilidades)
+const IMG_BASE = 'https://marcosrepcms-max.github.io/Catalogo-Olympikus/Catalogo/';
 
 const $ = id => document.getElementById(id);
 
@@ -357,7 +457,8 @@ const STATE = {
   ocultos: new Set(),
   filtro: 'todos',
   search: '',
-  imgHist: {}      // mapa "artigo|cor" → nome da imagem (histórico persistente)
+  imgHist: {},     // mapa "artigo|cor" → nome da imagem (histórico persistente)
+  imgChecks: new Map() // mapa "artigo|cor" → "has" | "miss" | "checking"
 };
 
 let _jsonAtual = [];
@@ -427,11 +528,131 @@ async function loadData(){
     STATE.ocultos = new Set(Array.isArray(oc) ? oc : []);
     STATE.imgHist = histRes.ok ? await histRes.json() : {};
     applyFilters();
+    // Após renderizar, dispara check de imagens em background
+    verifyAllImages();
   }catch(err){
     console.error(err);
     showToast('Erro ao carregar dados.', 'error');
   }
 }
+
+// ── VERIFICAÇÃO DE IMAGENS ───────────────────────────────────────────────────
+// Monta o nome do arquivo padrão pra um item (artigo_cor.jpg, com / virando _)
+function getProductImageName(item){
+  if(item.imagem) return String(item.imagem); // já tem nome cadastrado, prioridade
+  const art = String(item.artigo || '').trim();
+  const cor = String(item.cor || '').trim().replace(/\//g, '_').toUpperCase();
+  if(!art || !cor) return '';
+  return `${art}_${cor}`;
+}
+function getProductImageUrl(item){
+  const name = getProductImageName(item);
+  return name ? `${IMG_BASE}${name}.jpg` : '';
+}
+function imgCheckKey(item){
+  return `${String(item.artigo||'').toUpperCase()}|${String(item.cor||'').toUpperCase()}`;
+}
+
+// HEAD request — true se imagem existe (200), false se 404
+async function checkImageExists(url){
+  try{
+    const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+    return res.ok;
+  }catch(_){ return false; }
+}
+
+// Verifica todas as imagens em batches de 10 em paralelo
+async function verifyAllImages(){
+  const items = STATE.itens.filter(i => !isOculto(i));
+  if(!items.length) return;
+  // Marca tudo como "checking" pra UI mostrar spinner
+  items.forEach(i => STATE.imgChecks.set(imgCheckKey(i), 'checking'));
+  refreshImageBadges();
+  updateImportProgressUI(0, items.length);
+  showImportProgress(true);
+
+  const BATCH = 10;
+  let done = 0, has = 0, miss = 0;
+  for(let i = 0; i < items.length; i += BATCH){
+    const slice = items.slice(i, i + BATCH);
+    await Promise.all(slice.map(async (item) => {
+      const url = getProductImageUrl(item);
+      const ok = url ? await checkImageExists(url) : false;
+      STATE.imgChecks.set(imgCheckKey(item), ok ? 'has' : 'miss');
+      if(ok) has++; else miss++;
+      done++;
+    }));
+    updateImportProgressUI(done, items.length, has, miss);
+    refreshImageBadges();
+  }
+  showImportProgress(false);
+}
+
+// Atualiza somente os badges de imagem na tabela (sem re-renderizar a tabela inteira)
+function refreshImageBadges(){
+  document.querySelectorAll('[data-img-key]').forEach(btn => {
+    const key = btn.dataset.imgKey;
+    const status = STATE.imgChecks.get(key) || 'checking';
+    btn.dataset.imgStatus = status;
+    const tooltip = ({
+      has: 'Imagem encontrada — clique para ver',
+      miss: 'Imagem faltando — clique para enviar',
+      checking: 'Verificando...'
+    })[status];
+    btn.setAttribute('data-tip', tooltip);
+  });
+}
+
+// UI de progresso (durante verificação inicial)
+function showImportProgress(visible){
+  const el = $('imgCheckProgress');
+  if(!el) return;
+  el.classList.toggle('hidden', !visible);
+}
+function updateImportProgressUI(done, total, has = 0, miss = 0){
+  const fill = $('imgCheckBar');
+  const txt  = $('imgCheckText');
+  const ok   = $('imgCheckOk');
+  const ko   = $('imgCheckMiss');
+  if(fill) fill.style.width = `${total ? (done/total*100) : 0}%`;
+  if(txt)  txt.textContent  = `${done} / ${total}`;
+  if(ok)   ok.textContent   = String(has);
+  if(ko)   ko.textContent   = String(miss);
+}
+
+// ── MINIATURA DA IMAGEM (popover) ────────────────────────────────────────────
+let _miniCtx = null; // { artigo, cor, descricao }
+
+function abrirMiniaturaImagem(ev, artigo, cor, descricao){
+  ev?.stopPropagation();
+  _miniCtx = { artigo, cor, descricao };
+  // Procura o item real pra montar a URL correta (usa item.imagem se cadastrado)
+  const item = STATE.itens.find(i =>
+    String(i.artigo||'').toUpperCase() === String(artigo||'').toUpperCase() &&
+    String(i.cor||'').toUpperCase()    === String(cor||'').toUpperCase()
+  );
+  const url = item ? getProductImageUrl(item) : '';
+  $('imgMiniThumb').src = url;
+  $('imgMiniTitle').textContent = descricao || artigo;
+  $('imgMiniMeta').textContent  = `Artigo ${artigo} · ${cor}`;
+  $('imgMiniOverlay').classList.add('open');
+}
+function fecharMiniaturaImagem(ev){
+  if(ev && ev.target.id !== 'imgMiniOverlay' && ev.type === 'click') return;
+  $('imgMiniOverlay').classList.remove('open');
+  _miniCtx = null;
+}
+function substituirImagemDoMini(){
+  if(!_miniCtx) return;
+  const { artigo, cor, descricao } = _miniCtx;
+  fecharMiniaturaImagem();
+  // Reaproveita o modal de upload existente
+  abrirUploadImagem(artigo, cor, descricao, true);
+}
+// ESC fecha popover
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape' && $('imgMiniOverlay')?.classList.contains('open')) fecharMiniaturaImagem();
+});
 
 // ── FILTROS ───────────────────────────────────────────────────────────────────
 function ocultarKey(item){ return `${String(item.artigo||'').toUpperCase()}|${String(item.cor||'').toUpperCase()}`; }
@@ -688,9 +909,22 @@ function renderTable(itens){
     const empresaVal = item.empresa ? `<div class="text-[10px] mt-0.5" style="color:var(--muted)">${safeHtml(item.empresa)}</div>` : '';
 
     // Botões ação
+    const imgKey = imgCheckKey(item);
+    const imgStatus = STATE.imgChecks.get(imgKey) || (item.imagem ? 'has' : 'checking');
+    const btnImagem = (() => {
+      if(imgStatus === 'has'){
+        return `<button class="icon-btn img-badge has" data-img-key="${safeHtml(imgKey)}" data-img-status="has" onclick="abrirMiniaturaImagem(event,'${safeHtml(item.artigo)}','${safeHtml(item.cor)}','${safeHtml(item.descricao)}')" data-tip="Imagem encontrada — clique para ver" style="color:#15803d;border-color:#bbf7d0;background:#dcfce7"><i class="fa-solid fa-check text-xs"></i></button>`;
+      }
+      if(imgStatus === 'miss'){
+        return `<button class="icon-btn img-badge miss" data-img-key="${safeHtml(imgKey)}" data-img-status="miss" onclick="abrirUploadImagem('${safeHtml(item.artigo)}','${safeHtml(item.cor)}','${safeHtml(item.descricao)}',false)" data-tip="Imagem faltando — clique para enviar" style="color:#b91c1c;border-color:#fecaca;background:#fee2e2"><i class="fa-solid fa-xmark text-xs"></i></button>`;
+      }
+      // checking
+      return `<button class="icon-btn img-badge checking" data-img-key="${safeHtml(imgKey)}" data-img-status="checking" data-tip="Verificando..." style="color:#a16207;border-color:#fde68a;background:#fef3c7"><i class="fa-solid fa-circle-notch fa-spin text-xs"></i></button>`;
+    })();
+
     const btns = isOcultosView
       ? `<button class="icon-btn reexibir" onclick="reexibirItem('${safeHtml(key)}')" data-tip="Reexibir"><i class="fa-solid fa-eye text-xs"></i></button>`
-      : `<button class="icon-btn ${item.imagem?'tem-imagem':''}" onclick="abrirUploadImagem('${safeHtml(item.artigo)}','${safeHtml(item.cor)}','${safeHtml(item.descricao)}',${item.imagem?'true':'false'})" data-tip="${item.imagem?'Imagem cadastrada — clique para substituir':'Adicionar imagem'}" style="${item.imagem?'color:#16a34a;border-color:#bbf7d0;background:#dcfce7':'color:var(--muted)'}"><i class="fa-solid ${item.imagem?'fa-circle-check':'fa-image'} text-xs"></i></button>
+      : `${btnImagem}
          <button class="icon-btn ocultar" onclick="ocultarItem('${safeHtml(key)}')" data-tip="Ocultar"><i class="fa-solid fa-eye-slash text-xs"></i></button>
          <button class="icon-btn excluir" onclick="excluirItem('${safeHtml(key)}')" data-tip="Excluir"><i class="fa-solid fa-trash-can text-xs"></i></button>`;
 
@@ -906,6 +1140,27 @@ async function confirmarImportar(){
       imagem: STATE.imgHist[`${item.artigo}|${item.cor}`] || ''
     }));
 
+    // Auto-vincular: pra novos sem imagem no histórico, verifica se já existe na pasta Catálogo
+    btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Verificando imagens...';
+    const semImagem = novosParaSalvar.filter(i => !i.imagem);
+    let autoVinculadas = 0;
+    if(semImagem.length){
+      const BATCH = 10;
+      for(let i = 0; i < semImagem.length; i += BATCH){
+        const slice = semImagem.slice(i, i + BATCH);
+        await Promise.all(slice.map(async (item) => {
+          const nome = getProductImageName(item); // ex: 43343458_ARTPTO
+          if(!nome) return;
+          const exists = await checkImageExists(`${IMG_BASE}${nome}.jpg`);
+          if(exists){
+            item.imagem = nome;
+            autoVinculadas++;
+          }
+        }));
+      }
+    }
+
+    btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
     const listaFinal = [..._jsonAtual, ...novosParaSalvar, ...conflitosParaSalvar];
     const res = await fetch(WORKER_URL, {
       method:'PATCH', headers:{'Content-Type':'application/json'},
@@ -916,14 +1171,15 @@ async function confirmarImportar(){
     if(!result.success) throw new Error(result.error);
     STATE.itens = listaFinal;
 
-    // Contar quantos tiveram imagem restaurada
+    // Contar quantos tiveram imagem restaurada (do histórico) ou auto-vinculada (da pasta)
     const restauradas = [...novosParaSalvar, ...conflitosParaSalvar].filter(i=>i.imagem).length;
-    const msg = restauradas > 0
-      ? `${novosParaSalvar.length + conflitosParaSalvar.length} produto(s) importado(s) — ${restauradas} imagem(ns) restaurada(s) automaticamente!`
-      : `${novosParaSalvar.length + conflitosParaSalvar.length} produto(s) importado(s)!`;
-    showToast(msg, 'success');
+    const partes = [`${novosParaSalvar.length + conflitosParaSalvar.length} produto(s) importado(s)`];
+    if(autoVinculadas > 0) partes.push(`${autoVinculadas} imagem(ns) vinculada(s) automaticamente da pasta`);
+    else if(restauradas > 0) partes.push(`${restauradas} imagem(ns) restaurada(s) do histórico`);
+    showToast(partes.join(' — ') + '!', 'success');
     fecharImportar();
     applyFilters();
+    verifyAllImages(); // re-verifica tudo após importar
   }catch(err){
     console.error(err);
     showToast('Erro ao salvar.','error');
