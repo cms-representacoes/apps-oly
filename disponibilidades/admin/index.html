@@ -46,6 +46,13 @@
     .table-wrap{ overflow:auto; border-radius:20px; border:1px solid var(--line); background:var(--card); max-height:calc(100vh - 280px); }
     .table-wrap table{ width:100%; min-width:900px; border-collapse:separate; border-spacing:0; font-size:12px; }
     .table-wrap thead th{ position:sticky; top:0; z-index:2; background:#f8fafc; color:#475569; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; padding:10px 12px; border-bottom:1px solid var(--line); white-space:nowrap; }
+    .table-wrap thead th.sortable{ cursor:pointer; user-select:none; transition:background .12s; }
+    .table-wrap thead th.sortable:hover{ background:#e2e8f0; }
+    .dark .table-wrap thead th.sortable:hover{ background:#334155!important; }
+    .sort-icon{ display:inline-block; width:8px; margin-left:4px; opacity:0; font-size:9px; }
+    .table-wrap thead th.sortable.sort-asc .sort-icon::after{ content:'▲'; opacity:1; color:var(--brand); }
+    .table-wrap thead th.sortable.sort-desc .sort-icon::after{ content:'▼'; opacity:1; color:var(--brand); }
+    .table-wrap thead th.sortable.sort-asc .sort-icon, .table-wrap thead th.sortable.sort-desc .sort-icon{ opacity:1; }
     .dark .table-wrap thead th{ background:#263248!important; color:#94a3b8!important; }
     .table-wrap tbody td{ padding:10px 12px; border-bottom:1px solid #edf2f7; vertical-align:middle; }
     .dark .table-wrap tbody td{ border-color:#334155!important; }
@@ -53,11 +60,29 @@
     .table-wrap tbody tr:hover td{ background:#f8fafc; }
     .dark .table-wrap tbody tr:hover td{ background:#263248!important; }
     .table-wrap tbody tr.oculto td{ opacity:.4; }
+    .table-wrap tbody tr.row-selected td{ background:rgba(204,255,0,.12)!important; }
+    .dark .table-wrap tbody tr.row-selected td{ background:rgba(204,255,0,.08)!important; }
 
     /* Filter pills */
     .filter-pill{ display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:6px 14px; font-size:12px; font-weight:700; border:1px solid var(--line); background:var(--card); color:var(--muted); cursor:pointer; transition:all .12s; white-space:nowrap; }
     .filter-pill.active{ background:var(--accent); color:#0f172a; border-color:var(--accent-dark); }
     .filter-pill:hover:not(.active){ background:var(--muted-soft); }
+
+    /* Selects de filtro secundário */
+    .filter-select{
+      border-radius:999px; padding:6px 30px 6px 14px;
+      font-size:12px; font-weight:700;
+      border:1px solid var(--line);
+      background:var(--card); color:var(--muted);
+      cursor:pointer; transition:all .12s;
+      appearance:none; -webkit-appearance:none;
+      background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='none' stroke='%23475569' stroke-width='1.5' d='M1 1l4 4 4-4'/></svg>");
+      background-repeat:no-repeat;
+      background-position:right 12px center;
+    }
+    .filter-select:hover{ background-color:var(--muted-soft); }
+    .filter-select.has-value{ background-color:var(--accent); color:#0f172a; border-color:var(--accent-dark); }
+    .dark .filter-select{ background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='none' stroke='%2394a3b8' stroke-width='1.5' d='M1 1l4 4 4-4'/></svg>"); }
 
     /* Botões de ação */
     .icon-btn{ width:30px; height:30px; border-radius:50%; border:1px solid var(--line); background:none; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; color:var(--muted); transition:all .12s; flex-shrink:0; }
@@ -82,7 +107,58 @@
     [data-tip]:hover::after{ content:attr(data-tip); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); background:#0f172a; color:#f8fafc; font-size:11px; font-weight:600; border-radius:8px; padding:4px 9px; white-space:nowrap; z-index:300; pointer-events:none; }
     .dark [data-tip]:hover::after{ background:#334155; }
 
-    /* Indicador de imagem (badge nas ações) */
+    /* Modal de confirmação destrutiva */
+    .confirm-overlay{
+      position:fixed; inset:0; z-index:200;
+      background:rgba(15,23,42,.55);
+      backdrop-filter:blur(3px);
+      display:none; align-items:center; justify-content:center;
+      padding:16px;
+    }
+    .confirm-overlay.open{ display:flex; }
+    .confirm-card{
+      background:var(--card); border:1px solid var(--line);
+      border-radius:18px; padding:24px;
+      width:100%; max-width:380px;
+      box-shadow:0 16px 40px rgba(15,23,42,.25);
+      animation: imgMiniIn .18s ease;
+    }
+    .confirm-icon{
+      width:48px;height:48px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      margin-bottom:14px;font-size:20px;
+    }
+    .confirm-card.danger .confirm-icon{ background:#fee2e2; color:#b91c1c; }
+    .confirm-card.warning .confirm-icon{ background:#fef3c7; color:#a16207; }
+    .confirm-card.info .confirm-icon{ background:#dbeafe; color:#1d4ed8; }
+    .confirm-title{ font-size:17px; font-weight:800; margin-bottom:6px; }
+    .confirm-message{ font-size:13px; color:var(--muted); line-height:1.5; margin-bottom:16px; }
+    .confirm-require-label{ font-size:12px; color:var(--muted); margin-bottom:6px; }
+    .confirm-require-input{
+      width:100%; padding:10px 12px; border-radius:10px;
+      border:1px solid var(--line); background:var(--bg);
+      font-size:13px; font-weight:700; color:var(--text);
+      margin-bottom:14px;
+      letter-spacing:1px;
+    }
+    .confirm-require-input:focus{ outline:none; border-color:#dc2626; box-shadow:0 0 0 3px rgba(220,38,38,.18); }
+    .confirm-actions{ display:flex; gap:8px; }
+    .confirm-btn{
+      flex:1; padding:10px; border-radius:10px;
+      font-size:13px; font-weight:800; cursor:pointer;
+      border:1px solid var(--line); background:var(--bg); color:var(--muted);
+      transition:all .12s;
+    }
+    .confirm-btn:hover{ background:var(--muted-soft); }
+    .confirm-btn.primary{ background:var(--accent); color:#0f172a; border-color:var(--accent-dark); }
+    .confirm-btn.primary:hover{ background:var(--accent-dark); color:#0f172a; }
+    .confirm-card.danger .confirm-btn.primary{ background:#dc2626; color:#fff; border-color:#b91c1c; }
+    .confirm-card.danger .confirm-btn.primary:hover{ background:#b91c1c; }
+    .confirm-btn.primary:disabled{ opacity:.4; cursor:not-allowed; }
+
+    /* Last sync */
+    #lastSyncLabel{ cursor:pointer; padding:6px 10px; border-radius:999px; transition:all .12s; border:1px solid transparent; }
+    #lastSyncLabel:hover{ background:var(--muted-soft); border-color:var(--line); color:var(--text); }
     .img-badge.has:hover{ background:#bbf7d0!important; transform:scale(1.05); }
     .img-badge.miss:hover{ background:#fecaca!important; transform:scale(1.05); }
     .img-badge.checking{ cursor:wait; }
@@ -193,10 +269,16 @@
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-2">
+        <!-- Last sync -->
+        <span id="lastSyncLabel" class="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold mr-1" style="color:var(--muted)" data-tip="Atualizar agora" onclick="loadData()" role="button" tabindex="0">
+          <i class="fa-solid fa-clock-rotate-left text-[10px]"></i>
+          <span id="lastSyncText">—</span>
+        </span>
         <!-- Busca -->
         <div class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 min-w-[220px]" style="background:var(--card);border-color:var(--line)">
           <i class="fa-solid fa-magnifying-glass text-slate-400 text-sm"></i>
           <input id="searchInput" class="bg-transparent text-sm outline-none w-full" style="color:var(--text)" placeholder="Buscar artigo, descrição ou cor..." oninput="applyFilters()">
+          <kbd class="hidden sm:inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold border" style="border-color:var(--line);background:var(--bg);color:var(--muted);min-width:18px;height:18px">/</kbd>
         </div>
         <!-- Colunas -->
         <button onclick="togglePainelColunas()" data-tip="Ocultar/exibir colunas"
@@ -229,14 +311,47 @@
   </header>
 
   <!-- FILTROS -->
-  <div class="flex flex-wrap items-center gap-2 mb-4">
+  <div class="flex flex-wrap items-center gap-2 mb-3">
     <button class="filter-pill active" data-filter="todos" onclick="setFilter('todos')">Todos <span id="badgeTodos" class="text-[10px] font-extrabold bg-slate-900 text-white rounded-full px-1.5 py-0.5">0</span></button>
     <button class="filter-pill" data-filter="ua" onclick="setFilter('ua')">Under Armour <span id="badgeUA" class="text-[10px] font-extrabold bg-slate-200 text-slate-700 rounded-full px-1.5 py-0.5">0</span></button>
     <button class="filter-pill" data-filter="oly" onclick="setFilter('oly')">Olympikus <span id="badgeOLY" class="text-[10px] font-extrabold bg-slate-200 text-slate-700 rounded-full px-1.5 py-0.5">0</span></button>
+    <button class="filter-pill" data-filter="semimg" onclick="setFilter('semimg')">
+      <i class="fa-solid fa-image text-[10px]" style="color:#dc2626"></i> Sem imagem <span id="badgeSemImg" class="text-[10px] font-extrabold bg-rose-100 text-rose-700 rounded-full px-1.5 py-0.5 hidden">0</span>
+    </button>
     <button class="filter-pill" data-filter="ocultos" onclick="setFilter('ocultos')">
       <i class="fa-solid fa-eye-slash text-[10px]"></i> Ocultos <span id="badgeOcultos" class="text-[10px] font-extrabold bg-slate-200 text-slate-700 rounded-full px-1.5 py-0.5 hidden">0</span>
     </button>
     <div class="ml-auto text-xs font-semibold text-slate-400" id="countLabel">— itens</div>
+  </div>
+
+  <!-- FILTROS SECUNDÁRIOS (categoria, gênero, linha) -->
+  <div class="flex flex-wrap items-center gap-2 mb-4">
+    <select id="filterCategoria" class="filter-select" onchange="applyFilters()">
+      <option value="">Categoria: todas</option>
+    </select>
+    <select id="filterGenero" class="filter-select" onchange="applyFilters()">
+      <option value="">Gênero: todos</option>
+    </select>
+    <select id="filterLinha" class="filter-select" onchange="applyFilters()">
+      <option value="">Linha: todas</option>
+    </select>
+    <button id="btnLimparFiltros" class="filter-pill" onclick="limparFiltrosSec()" style="display:none">
+      <i class="fa-solid fa-xmark text-[10px]"></i> Limpar
+    </button>
+
+    <!-- Bulk actions (aparece quando há seleção) -->
+    <div id="bulkBar" class="ml-auto flex items-center gap-2" style="display:none">
+      <span class="text-xs font-bold" style="color:var(--muted)"><span id="bulkCount">0</span> selecionado(s)</span>
+      <button onclick="bulkOcultar()" class="focus-ring rounded-full border px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors" style="border-color:var(--line);background:var(--card);color:var(--muted)">
+        <i class="fa-solid fa-eye-slash text-[10px]"></i> Ocultar
+      </button>
+      <button onclick="bulkExcluir()" class="focus-ring rounded-full border px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors" style="border-color:#fecaca;background:#fef2f2;color:#b91c1c">
+        <i class="fa-solid fa-trash-can text-[10px]"></i> Excluir
+      </button>
+      <button onclick="bulkLimpar()" class="focus-ring w-7 h-7 rounded-full border flex items-center justify-center" style="border-color:var(--line);background:var(--card);color:var(--muted)" data-tip="Limpar seleção">
+        <i class="fa-solid fa-xmark text-[10px]"></i>
+      </button>
+    </div>
   </div>
 
   <!-- PROGRESSO DE VERIFICAÇÃO DE IMAGENS -->
@@ -263,16 +378,17 @@
       <table>
         <thead>
           <tr id="theadRow">
-            <th data-col="prevFat">Prev. Fat.</th>
-            <th data-col="empresa">Empresa</th>
-            <th data-col="artigo">Artigo</th>
-            <th data-col="descricao">Descrição</th>
-            <th data-col="cor">Cor</th>
-            <th data-col="linha">Linha</th>
-            <th data-col="genero">Gênero</th>
-            <th data-col="categoria">Categoria</th>
-            <th data-col="pdv" class="text-right">PDV</th>
-            <th data-col="totalGeral" class="text-right">T. Geral</th>
+            <th class="th-bulk" style="width:32px;text-align:center;padding-left:14px"><input type="checkbox" id="bulkSelectAll" onchange="bulkSelectAll(this.checked)" style="accent-color:var(--accent);cursor:pointer"></th>
+            <th data-col="prevFat" class="sortable" onclick="setSort('prevFat')">Prev. Fat. <span class="sort-icon"></span></th>
+            <th data-col="empresa" class="sortable" onclick="setSort('empresa')">Empresa <span class="sort-icon"></span></th>
+            <th data-col="artigo" class="sortable" onclick="setSort('artigo')">Artigo <span class="sort-icon"></span></th>
+            <th data-col="descricao" class="sortable" onclick="setSort('descricao')">Descrição <span class="sort-icon"></span></th>
+            <th data-col="cor" class="sortable" onclick="setSort('cor')">Cor <span class="sort-icon"></span></th>
+            <th data-col="linha" class="sortable" onclick="setSort('linha')">Linha <span class="sort-icon"></span></th>
+            <th data-col="genero" class="sortable" onclick="setSort('genero')">Gênero <span class="sort-icon"></span></th>
+            <th data-col="categoria" class="sortable" onclick="setSort('categoria')">Categoria <span class="sort-icon"></span></th>
+            <th data-col="pdv" class="sortable text-right" onclick="setSort('pdv')">PDV <span class="sort-icon"></span></th>
+            <th data-col="totalGeral" class="sortable text-right" onclick="setSort('totalGeral')">T. Geral <span class="sort-icon"></span></th>
             <th data-col="grade">Grade</th>
             <th data-col="acoes"></th>
           </tr>
@@ -306,6 +422,25 @@
       <div class="img-mini-actions">
         <button class="img-mini-btn" onclick="substituirImagemDoMini()">Substituir</button>
         <button class="img-mini-btn primary" onclick="fecharMiniaturaImagem()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE CONFIRMAÇÃO -->
+  <div id="confirmOverlay" class="confirm-overlay" onclick="confirmDialogClose(event)">
+    <div class="confirm-card" onclick="event.stopPropagation()">
+      <div class="confirm-icon" id="confirmIcon">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <div class="confirm-title" id="confirmTitle">Confirmação</div>
+      <div class="confirm-message" id="confirmMessage">Tem certeza?</div>
+      <div id="confirmRequireWordWrap" style="display:none">
+        <div class="confirm-require-label">Digite <strong id="confirmRequireWord">EXCLUIR</strong> para confirmar:</div>
+        <input id="confirmRequireInput" type="text" class="confirm-require-input" autocomplete="off" oninput="confirmDialogValidate()">
+      </div>
+      <div class="confirm-actions">
+        <button id="confirmCancelBtn" class="confirm-btn" onclick="confirmDialogResolve(false)">Cancelar</button>
+        <button id="confirmOkBtn" class="confirm-btn primary" onclick="confirmDialogResolve(true)">Confirmar</button>
       </div>
     </div>
   </div>
@@ -458,7 +593,11 @@ const STATE = {
   filtro: 'todos',
   search: '',
   imgHist: {},     // mapa "artigo|cor" → nome da imagem (histórico persistente)
-  imgChecks: new Map() // mapa "artigo|cor" → "has" | "miss" | "checking"
+  imgChecks: new Map(), // mapa "artigo|cor" → "has" | "miss" | "checking"
+  selecionados: new Set(), // chaves dos itens selecionados (bulk actions)
+  sortCol: null,        // coluna para ordenação
+  sortDir: 'asc',       // 'asc' | 'desc'
+  lastSync: null        // timestamp do último loadData/save
 };
 
 let _jsonAtual = [];
@@ -527,7 +666,10 @@ async function loadData(){
     const oc      = ocultosRes.ok ? await ocultosRes.json() : [];
     STATE.ocultos = new Set(Array.isArray(oc) ? oc : []);
     STATE.imgHist = histRes.ok ? await histRes.json() : {};
+    STATE.lastSync = Date.now();
+    popularFiltrosSec();
     applyFilters();
+    updateLastSyncLabel();
     // Após renderizar, dispara check de imagens em background
     verifyAllImages();
   }catch(err){
@@ -586,6 +728,8 @@ async function verifyAllImages(){
     refreshImageBadges();
   }
   showImportProgress(false);
+  // Atualiza badge "sem imagem" agora que sabemos o status real
+  applyFilters();
 }
 
 // Atualiza somente os badges de imagem na tabela (sem re-renderizar a tabela inteira)
@@ -654,6 +798,53 @@ document.addEventListener('keydown', (e) => {
   if(e.key === 'Escape' && $('imgMiniOverlay')?.classList.contains('open')) fecharMiniaturaImagem();
 });
 
+// ── LAST SYNC ────────────────────────────────────────────────────────────────
+function updateLastSyncLabel(){
+  const el = $('lastSyncText');
+  if(!el || !STATE.lastSync){ if(el) el.textContent = '—'; return; }
+  const diff = Math.floor((Date.now() - STATE.lastSync) / 1000);
+  let txt;
+  if(diff < 5)        txt = 'agora';
+  else if(diff < 60)  txt = `há ${diff}s`;
+  else if(diff < 3600) txt = `há ${Math.floor(diff/60)}min`;
+  else                txt = `há ${Math.floor(diff/3600)}h`;
+  el.textContent = `Atualizado ${txt}`;
+}
+// Atualiza o label a cada 30s
+setInterval(updateLastSyncLabel, 30000);
+
+
+document.addEventListener('keydown', (e) => {
+  // Não captura quando está digitando em input/textarea
+  const tag = (e.target.tagName || '').toUpperCase();
+  const isTyping = ['INPUT','TEXTAREA','SELECT'].includes(tag) || e.target.isContentEditable;
+
+  // "/" foca a busca
+  if(e.key === '/' && !isTyping){
+    e.preventDefault();
+    $('searchInput')?.focus();
+    return;
+  }
+
+  // ESC fecha modais abertos (em ordem de prioridade)
+  if(e.key === 'Escape'){
+    if($('confirmOverlay')?.classList.contains('open')){ confirmDialogResolve(false); return; }
+    if(!$('modalUploadImagem')?.classList.contains('hidden')){ fecharUploadImagem(); return; }
+    if(!$('modalImportar')?.classList.contains('hidden')){ fecharImportar(); return; }
+    if(!$('painelColunas')?.classList.contains('hidden')){ $('painelColunas').classList.add('hidden'); return; }
+    if($('searchInput') === document.activeElement && $('searchInput').value){
+      $('searchInput').value = '';
+      applyFilters();
+      $('searchInput').blur();
+      return;
+    }
+    if(STATE.selecionados.size){
+      bulkLimpar();
+      return;
+    }
+  }
+});
+
 // ── FILTROS ───────────────────────────────────────────────────────────────────
 function ocultarKey(item){ return `${String(item.artigo||'').toUpperCase()}|${String(item.cor||'').toUpperCase()}`; }
 function isOculto(item){ return STATE.ocultos.has(ocultarKey(item)); }
@@ -667,12 +858,25 @@ function setFilter(f){
 function applyFilters(){
   const q = ($('searchInput')?.value || '').toLowerCase().trim();
   const f = STATE.filtro;
+  const fCat = $('filterCategoria')?.value || '';
+  const fGen = $('filterGenero')?.value || '';
+  const fLinha = $('filterLinha')?.value || '';
 
   const filtrados = STATE.itens.filter(item => {
     if(f === 'ocultos') return isOculto(item);
     if(isOculto(item)) return false;
     if(f === 'ua')  return (item.empresa||'').toUpperCase().includes('VULSP') || (item.empresa||'').toUpperCase().includes('VDIST') || (item.categoria||'').toUpperCase().includes('UA') || (item.categoria||'').toUpperCase().includes('UNDER');
     if(f === 'oly') return !(item.empresa||'').toUpperCase().includes('VULSP') && !(item.empresa||'').toUpperCase().includes('VDIST');
+    if(f === 'semimg'){
+      // sem campo imagem cadastrado E status do check é miss (ou ainda não checado)
+      const status = STATE.imgChecks.get(imgCheckKey(item));
+      return !item.imagem && status !== 'has';
+    }
+    return true;
+  }).filter(item => {
+    if(fCat   && (item.categoria||'') !== fCat) return false;
+    if(fGen   && (item.genero||'')    !== fGen) return false;
+    if(fLinha && (item.linha||'')     !== fLinha) return false;
     return true;
   }).filter(item => {
     if(!q) return true;
@@ -684,14 +888,233 @@ function applyFilters(){
   const ua    = todos.filter(i => (i.empresa||'').toUpperCase().includes('VULSP') || (i.empresa||'').toUpperCase().includes('VDIST') || (i.categoria||'').toUpperCase().includes('UA'));
   const oly   = todos.filter(i => !ua.includes(i));
   const oc    = STATE.itens.filter(i => isOculto(i));
+  const semImg = todos.filter(i => !i.imagem && STATE.imgChecks.get(imgCheckKey(i)) !== 'has');
 
   if($('badgeTodos')) $('badgeTodos').textContent = todos.length;
   if($('badgeUA'))    $('badgeUA').textContent    = ua.length;
   if($('badgeOLY'))   $('badgeOLY').textContent   = oly.length;
   if($('badgeOcultos')){ $('badgeOcultos').textContent = oc.length; $('badgeOcultos').classList.toggle('hidden', oc.length===0); }
+  if($('badgeSemImg')){ $('badgeSemImg').textContent = semImg.length; $('badgeSemImg').classList.toggle('hidden', semImg.length===0); }
   if($('countLabel')) $('countLabel').textContent = `${filtrados.length} iten${filtrados.length!==1?'s':''}`;
 
+  // Ordenação
+  if(STATE.sortCol){
+    const col = STATE.sortCol;
+    const dir = STATE.sortDir === 'desc' ? -1 : 1;
+    const numeric = ['pdv','totalGeral'].includes(col);
+    filtrados.sort((a, b) => {
+      const va = a[col]; const vb = b[col];
+      if(numeric){
+        return ((Number(va)||0) - (Number(vb)||0)) * dir;
+      }
+      return String(va||'').localeCompare(String(vb||''), 'pt-BR', { numeric:true }) * dir;
+    });
+  }
+
+  // Estado visual dos selects (cor de "ativo")
+  ['filterCategoria','filterGenero','filterLinha'].forEach(id => {
+    const el = $(id);
+    if(el) el.classList.toggle('has-value', !!el.value);
+  });
+  // Botão limpar filtros
+  const btnLimpar = $('btnLimparFiltros');
+  if(btnLimpar) btnLimpar.style.display = (fCat || fGen || fLinha) ? '' : 'none';
+
+  // Limpa seleção bulk se algum item selecionado saiu da view
+  if(STATE.selecionados && STATE.selecionados.size){
+    const visiveis = new Set(filtrados.map(ocultarKey));
+    [...STATE.selecionados].forEach(k => { if(!visiveis.has(k)) STATE.selecionados.delete(k); });
+    refreshBulkBar();
+  }
+
   renderTable(filtrados);
+}
+
+// Popula os selects de filtro com valores únicos do dataset
+function popularFiltrosSec(){
+  const cats   = new Set();
+  const gens   = new Set();
+  const linhas = new Set();
+  STATE.itens.forEach(i => {
+    if(i.categoria) cats.add(i.categoria);
+    if(i.genero)    gens.add(i.genero);
+    if(i.linha)     linhas.add(i.linha);
+  });
+  const fillSelect = (id, label, values) => {
+    const el = $(id);
+    if(!el) return;
+    const current = el.value;
+    el.innerHTML = `<option value="">${label}: todas</option>` +
+      [...values].sort().map(v => `<option value="${safeHtml(v)}">${safeHtml(v)}</option>`).join('');
+    if(current && [...values].includes(current)) el.value = current;
+  };
+  fillSelect('filterCategoria', 'Categoria', cats);
+  fillSelect('filterGenero',    'Gênero',    gens);
+  fillSelect('filterLinha',     'Linha',     linhas);
+}
+
+function limparFiltrosSec(){
+  ['filterCategoria','filterGenero','filterLinha'].forEach(id => { const el = $(id); if(el) el.value = ''; });
+  applyFilters();
+}
+
+// ── MODAL DE CONFIRMAÇÃO ─────────────────────────────────────────────────────
+let _confirmResolver = null;
+function confirmDialog({ title='Confirmação', message='Tem certeza?', confirmLabel='Confirmar', cancelLabel='Cancelar', type='warning', requireWord=null } = {}){
+  return new Promise(resolve => {
+    _confirmResolver = resolve;
+    $('confirmTitle').textContent = title;
+    $('confirmMessage').textContent = message;
+    $('confirmOkBtn').textContent = confirmLabel;
+    $('confirmCancelBtn').textContent = cancelLabel;
+    const card = document.querySelector('.confirm-card');
+    card.classList.remove('danger','warning','info');
+    card.classList.add(type);
+    const icon = $('confirmIcon').querySelector('i');
+    if(icon) icon.className = ({
+      danger: 'fa-solid fa-trash-can',
+      warning: 'fa-solid fa-triangle-exclamation',
+      info: 'fa-solid fa-circle-info'
+    })[type] || 'fa-solid fa-triangle-exclamation';
+
+    const wrap = $('confirmRequireWordWrap');
+    const inp  = $('confirmRequireInput');
+    if(requireWord){
+      $('confirmRequireWord').textContent = requireWord;
+      wrap.style.display = '';
+      inp.value = '';
+      $('confirmOkBtn').disabled = true;
+      inp.dataset.requireWord = requireWord;
+      setTimeout(() => inp.focus(), 60);
+    } else {
+      wrap.style.display = 'none';
+      $('confirmOkBtn').disabled = false;
+    }
+
+    $('confirmOverlay').classList.add('open');
+    setTimeout(() => {
+      if(!requireWord) $('confirmOkBtn').focus();
+    }, 60);
+  });
+}
+function confirmDialogValidate(){
+  const inp = $('confirmRequireInput');
+  const word = inp.dataset.requireWord || '';
+  $('confirmOkBtn').disabled = inp.value.trim().toUpperCase() !== word.toUpperCase();
+}
+function confirmDialogResolve(value){
+  $('confirmOverlay').classList.remove('open');
+  if(_confirmResolver){ _confirmResolver(value); _confirmResolver = null; }
+}
+function confirmDialogClose(ev){
+  if(ev && ev.target.id !== 'confirmOverlay') return;
+  confirmDialogResolve(false);
+}
+
+
+function bulkToggleItem(key, checked){
+  if(checked) STATE.selecionados.add(key);
+  else STATE.selecionados.delete(key);
+  document.querySelector(`tr[data-row-key="${CSS.escape(key)}"]`)?.classList.toggle('row-selected', checked);
+  refreshBulkBar();
+}
+function bulkSelectAll(checked){
+  document.querySelectorAll('#tableBody tr').forEach(tr => {
+    const key = tr.dataset.rowKey;
+    if(!key) return;
+    const cb = tr.querySelector('input[type="checkbox"]');
+    if(checked){ STATE.selecionados.add(key); tr.classList.add('row-selected'); if(cb) cb.checked = true; }
+    else       { STATE.selecionados.delete(key); tr.classList.remove('row-selected'); if(cb) cb.checked = false; }
+  });
+  refreshBulkBar();
+}
+function bulkLimpar(){
+  STATE.selecionados.clear();
+  document.querySelectorAll('#tableBody tr').forEach(tr => {
+    tr.classList.remove('row-selected');
+    const cb = tr.querySelector('input[type="checkbox"]');
+    if(cb) cb.checked = false;
+  });
+  const all = $('bulkSelectAll'); if(all) all.checked = false;
+  refreshBulkBar();
+}
+function refreshBulkBar(){
+  const n = STATE.selecionados.size;
+  const bar = $('bulkBar');
+  if(bar) bar.style.display = n > 0 ? '' : 'none';
+  const lbl = $('bulkCount'); if(lbl) lbl.textContent = String(n);
+  // Sincroniza o checkbox "selecionar todos"
+  const all = $('bulkSelectAll');
+  if(all){
+    const visible = document.querySelectorAll('#tableBody tr[data-row-key]').length;
+    const selectedVisible = [...document.querySelectorAll('#tableBody tr[data-row-key]')]
+      .filter(tr => STATE.selecionados.has(tr.dataset.rowKey)).length;
+    all.checked = visible > 0 && selectedVisible === visible;
+    all.indeterminate = selectedVisible > 0 && selectedVisible < visible;
+  }
+}
+async function bulkOcultar(){
+  const keys = [...STATE.selecionados];
+  if(!keys.length) return;
+  const ok = await confirmDialog({
+    title: 'Ocultar produtos',
+    message: `Ocultar ${keys.length} produto(s) selecionado(s)? Eles podem ser reexibidos depois pelo filtro "Ocultos".`,
+    confirmLabel: 'Ocultar',
+    type: 'warning'
+  });
+  if(!ok) return;
+  keys.forEach(k => STATE.ocultos.add(k));
+  await salvarOcultos();
+  STATE.selecionados.clear();
+  showToast(`${keys.length} produto(s) ocultado(s).`, 'success');
+  applyFilters();
+}
+async function bulkExcluir(){
+  const keys = [...STATE.selecionados];
+  if(!keys.length) return;
+  const ok = await confirmDialog({
+    title: 'Excluir produtos',
+    message: `Excluir ${keys.length} produto(s) permanentemente? Esta ação não pode ser desfeita.`,
+    confirmLabel: 'Excluir',
+    type: 'danger',
+    requireWord: 'EXCLUIR'
+  });
+  if(!ok) return;
+  const setKeys = new Set(keys);
+  STATE.itens = STATE.itens.filter(i => !setKeys.has(ocultarKey(i)));
+  try{
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'saveDisponibilidades', data: STATE.itens })
+    });
+    if(!res.ok) throw new Error();
+    STATE.lastSync = Date.now();
+    updateLastSyncLabel();
+    STATE.selecionados.clear();
+    showToast(`${keys.length} produto(s) excluído(s).`, 'success');
+    applyFilters();
+  }catch(err){ console.error(err); showToast('Erro ao excluir.','error'); }
+}
+
+
+function setSort(col){
+  if(STATE.sortCol === col){
+    // mesmo col: alterna asc → desc → none
+    if(STATE.sortDir === 'asc'){ STATE.sortDir = 'desc'; }
+    else if(STATE.sortDir === 'desc'){ STATE.sortCol = null; STATE.sortDir = 'asc'; }
+    else { STATE.sortDir = 'asc'; }
+  } else {
+    STATE.sortCol = col;
+    STATE.sortDir = 'asc';
+  }
+  // Atualiza ícones nos headers
+  document.querySelectorAll('#theadRow th.sortable').forEach(th => {
+    th.classList.remove('sort-asc','sort-desc');
+    if(STATE.sortCol && th.dataset.col === STATE.sortCol){
+      th.classList.add(STATE.sortDir === 'desc' ? 'sort-desc' : 'sort-asc');
+    }
+  });
+  applyFilters();
 }
 
 // ── COLUNAS ───────────────────────────────────────────────────────────────────
@@ -928,7 +1351,9 @@ function renderTable(itens){
          <button class="icon-btn ocultar" onclick="ocultarItem('${safeHtml(key)}')" data-tip="Ocultar"><i class="fa-solid fa-eye-slash text-xs"></i></button>
          <button class="icon-btn excluir" onclick="excluirItem('${safeHtml(key)}')" data-tip="Excluir"><i class="fa-solid fa-trash-can text-xs"></i></button>`;
 
-    return `<tr class="${oculto?'oculto':''}">
+    const isSel = STATE.selecionados.has(key);
+    return `<tr class="${oculto?'oculto':''} ${isSel?'row-selected':''}" data-row-key="${safeHtml(key)}">
+      <td class="td-bulk" style="width:32px;text-align:center;padding-left:14px"><input type="checkbox" ${isSel?'checked':''} onchange="bulkToggleItem('${safeHtml(key)}',this.checked)" style="accent-color:var(--accent);cursor:pointer" onclick="event.stopPropagation()"></td>
       <td data-col="prevFat" class="font-semibold text-xs whitespace-nowrap" style="color:var(--muted)">${safeHtml(item.prevFat||'—')}</td>
       <td data-col="empresa">${chipEmpresa}${empresaVal}</td>
       <td data-col="artigo" class="font-extrabold text-xs" style="color:var(--brand)">${safeHtml(item.artigo||'—')}</td>
@@ -945,6 +1370,7 @@ function renderTable(itens){
   }).join('');
 
   aplicarColunas();
+  refreshBulkBar();
 }
 
 // ── OCULTAR / REEXIBIR ────────────────────────────────────────────────────────
@@ -967,12 +1393,20 @@ async function salvarOcultos(){
       body: JSON.stringify({ action:'saveOcultosDisp', data:[...STATE.ocultos] })
     });
     if(!res.ok) throw new Error('Falha ao salvar ocultos');
+    STATE.lastSync = Date.now();
+    updateLastSyncLabel();
   }catch(err){ console.error(err); showToast('Erro ao salvar.','error'); }
 }
 
 // ── EXCLUIR ───────────────────────────────────────────────────────────────────
 async function excluirItem(key){
-  if(!confirm('Excluir este produto?\nEssa ação não pode ser desfeita.')) return;
+  const ok = await confirmDialog({
+    title: 'Excluir produto',
+    message: 'Esta ação não pode ser desfeita. O produto será removido permanentemente.',
+    confirmLabel: 'Excluir',
+    type: 'danger'
+  });
+  if(!ok) return;
   const [artigo, cor] = key.split('|');
   STATE.itens = STATE.itens.filter(i =>
     !(String(i.artigo||'').toUpperCase()===artigo && String(i.cor||'').toUpperCase()===cor)
@@ -983,6 +1417,8 @@ async function excluirItem(key){
       body: JSON.stringify({ action:'saveDisponibilidades', data: STATE.itens })
     });
     if(!res.ok) throw new Error();
+    STATE.lastSync = Date.now();
+    updateLastSyncLabel();
     showToast('Produto removido.', 'success');
     applyFilters();
   }catch(err){ console.error(err); showToast('Erro ao excluir.','error'); }
@@ -1170,6 +1606,9 @@ async function confirmarImportar(){
     const result = await res.json();
     if(!result.success) throw new Error(result.error);
     STATE.itens = listaFinal;
+    STATE.lastSync = Date.now();
+    updateLastSyncLabel();
+    popularFiltrosSec();
 
     // Contar quantos tiveram imagem restaurada (do histórico) ou auto-vinculada (da pasta)
     const restauradas = [...novosParaSalvar, ...conflitosParaSalvar].filter(i=>i.imagem).length;
