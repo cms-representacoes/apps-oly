@@ -1,0 +1,830 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>Disponibilidades · Olympikus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#ffffff; --card2:#f1f5f9;
+      --text:#0f172a; --muted:#64748b; --line:#e2e8f0;
+      --accent:#7db800; --accent-light:#ccff00;
+      --brand:#16a34a;
+      --shadow:0 4px 24px rgba(15,23,42,.08);
+    }
+    *{ box-sizing:border-box; margin:0; padding:0; }
+    body{ font-family:Inter,system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar{ width:6px; height:6px; }
+    ::-webkit-scrollbar-track{ background:transparent; }
+    ::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:999px; }
+
+    /* Cards grid */
+    .cards-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; }
+
+    /* Indicador de progresso da listagem */
+    .pagination-status{
+      display:flex;align-items:center;justify-content:center;gap:8px;
+      margin:24px auto 8px;
+      padding:10px 18px;
+      max-width:fit-content;
+      font-size:12px; font-weight:700;
+      color:var(--muted);
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:999px;
+      box-shadow:0 1px 4px rgba(15,23,42,.04);
+      transition:opacity .2s;
+    }
+    .pagination-status::before{
+      content:''; display:inline-block;
+      width:6px; height:6px; border-radius:50%;
+      background:var(--accent);
+    }
+    .pagination-status.complete::before{ background:#16a34a; }
+    .pagination-status.complete{ color:#16a34a; border-color:rgba(22,163,74,.25); background:rgba(22,163,74,.06); }
+    .pagination-status .ps-bold{ color:var(--text); font-weight:800; }
+    .pagination-status.complete .ps-bold{ color:#16a34a; }
+    @media (max-width:480px){
+      .pagination-status{ font-size:11px; padding:8px 14px; }
+    }
+
+    /* Card produto */
+    .prod-card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:24px;
+      overflow:hidden;
+      transition:transform .18s, box-shadow .18s, border-color .18s;
+      position:relative;
+      box-shadow:var(--shadow);
+    }
+    .prod-card:hover{
+      transform:translateY(-3px);
+      box-shadow:0 12px 32px rgba(15,23,42,.12);
+      border-color:#94a3b8;
+    }
+
+    /* Coração */
+    .btn-fav{
+      position:absolute; top:10px; left:10px; z-index:10;
+      width:32px; height:32px; border-radius:50%;
+      background:rgba(255,255,255,.85); backdrop-filter:blur(4px);
+      border:1px solid #e2e8f0; cursor:pointer; display:flex; align-items:center; justify-content:center;
+      transition:all .15s; box-shadow:0 2px 8px rgba(0,0,0,.08);
+    }
+    .btn-fav:hover{ background:#fff; border-color:#94a3b8; }
+    .btn-fav i{ font-size:14px; color:#94a3b8; transition:all .15s; }
+    .btn-fav.ativo i{ color:#ef4444; }
+    .btn-fav.ativo{ border-color:#fca5a5; background:#fff1f2; }
+    .prod-card.selecionado{ border-color:var(--accent); box-shadow:0 0 0 2px rgba(125,184,0,.2); }
+
+    /* Lupa */
+    .btn-zoom{
+      position:absolute; top:10px; right:10px; z-index:10;
+      width:32px; height:32px; border-radius:50%;
+      background:rgba(255,255,255,.85); backdrop-filter:blur(4px);
+      border:1px solid #e2e8f0; cursor:pointer; display:flex; align-items:center; justify-content:center;
+      transition:all .15s; box-shadow:0 2px 8px rgba(0,0,0,.08);
+    }
+    .btn-zoom:hover{ background:#fff; border-color:#94a3b8; }
+    .btn-zoom i{ font-size:13px; color:#64748b; }
+
+    /* Imagem */
+    .card-img{ aspect-ratio:1/1; background:#f8fafc; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; border-bottom:1px solid #e2e8f0; }
+    .card-img img{ width:100%; height:100%; object-fit:contain; }
+    .no-img{ color:#94a3b8; text-align:center; padding:24px; }
+
+    /* Chips */
+    .chip{ display:inline-flex; align-items:center; gap:4px; border-radius:999px; padding:3px 10px; font-size:11px; font-weight:700; }
+    .chip-ua{ background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
+    .chip-oly{ background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; }
+
+    /* Filtros */
+    .filter-pill{ display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:7px 16px; font-size:12px; font-weight:700; border:1px solid var(--line); background:var(--card); color:var(--muted); cursor:pointer; transition:all .12s; white-space:nowrap; }
+    .filter-pill.active{ background:var(--accent); color:#fff; border-color:var(--brand); }
+    .filter-pill:hover:not(.active){ border-color:#94a3b8; color:var(--text); }
+
+    /* Header */
+    .main-header{ background:rgba(255,255,255,.95); backdrop-filter:blur(12px); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:50; box-shadow:0 1px 8px rgba(15,23,42,.06); }
+    .filters-bar{
+      position:sticky;
+      top: 64px;
+      z-index:40;
+      background: rgba(247,248,250,.92);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom:1px solid var(--line);
+      margin:0 -16px;
+      padding:10px 16px;
+    }
+    @media(min-width:640px){ .filters-bar{ top:72px; margin:0 -24px; padding:10px 24px; } }
+
+    /* Modal zoom */
+    .modal-zoom{ position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.8); display:flex; align-items:center; justify-content:center; padding:24px; }
+    .modal-zoom-inner{ max-width:600px; max-height:90vh; display:flex; align-items:center; justify-content:center; position:relative; }
+    .modal-zoom img{ max-width:100%; max-height:80vh; object-fit:contain; border-radius:16px; box-shadow:0 24px 64px rgba(0,0,0,.5); }
+
+    /* Botão PDF flutuante */
+    .fab-pdf{
+      position:fixed; bottom:24px; right:24px; z-index:100;
+      background:var(--accent); color:#fff;
+      border:none; border-radius:999px; cursor:pointer;
+      padding:14px 24px; font-size:14px; font-weight:800;
+      display:flex; align-items:center; gap:8px;
+      box-shadow:0 8px 32px rgba(125,184,0,.35);
+      transition:all .15s; transform:translateY(80px); opacity:0;
+    }
+    .fab-pdf.visivel{ transform:translateY(0); opacity:1; }
+    .fab-pdf:hover{ background:#6aa100; }
+
+    /* Selecionar todos */
+    .sel-bar{ display:none; align-items:center; gap:10px; padding:8px 0; }
+    .sel-bar.visivel{ display:flex; }
+
+    /* Toast */
+    .toast-wrap{ position:fixed; top:18px; right:18px; display:flex; flex-direction:column; gap:10px; z-index:9999; pointer-events:none; }
+    .toast{ pointer-events:auto; min-width:220px; border-radius:14px; padding:10px 16px; font-size:13px; font-weight:700; }
+    .toast-success{ background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
+    .toast-error{ background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; }
+    .toast-info{ background:#f8fafc; color:#0f172a; border:1px solid #e2e8f0; }
+
+    /* Grade por numeração */
+    .grade-grid{ display:flex; flex-wrap:wrap; gap:4px; margin-top:8px; }
+    .grade-pill{ display:inline-flex; flex-direction:column; align-items:center; background:#f1f5f9; border:0.5px solid #e2e8f0; border-radius:8px; padding:3px 7px; min-width:30px; }
+    .grade-pill .gp-num{ font-size:10px; font-weight:600; color:#64748b; line-height:1.2; }
+    .grade-pill .gp-qty{ font-size:11px; font-weight:800; color:#0f172a; line-height:1.2; }
+
+    /* Spinner */
+    @keyframes spin{ to{ transform:rotate(360deg); } }
+    .spin{ animation:spin 1s linear infinite; }
+  </style>
+</head>
+<body>
+
+<div id="toastWrap" class="toast-wrap"></div>
+
+<!-- Modal Zoom -->
+<div id="modalZoom" class="modal-zoom hidden" onclick="fecharZoom()">
+  <div class="modal-zoom-inner" onclick="event.stopPropagation()">
+    <button onclick="fecharZoom()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,.15);border:none;color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center">✕</button>
+    <img id="zoomImg" src="" alt="">
+  </div>
+</div>
+
+<!-- Header -->
+<header class="main-header px-4 py-3 sm:px-6">
+  <div class="max-w-[1400px] mx-auto flex items-center justify-between gap-4 flex-wrap">
+    <div class="flex items-center gap-3">
+      <a href="../" style="color:var(--muted);display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;text-decoration:none" class="hover:text-white">
+        <i class="fa-solid fa-arrow-left text-xs"></i> Portal
+      </a>
+      <div class="w-px h-5" style="background:var(--line)"></div>
+      <div>
+        <div class="text-xs font-bold" style="color:var(--muted)">Catálogo</div>
+        <div class="text-lg font-extrabold leading-tight">Disponibilidades</div>
+      </div>
+    </div>
+
+    <!-- Busca -->
+    <div class="flex items-center gap-2 rounded-full px-4 py-2 flex-1 max-w-sm" style="background:var(--card);border:1px solid var(--line)">
+      <i class="fa-solid fa-magnifying-glass text-sm" style="color:var(--muted)"></i>
+      <input id="searchInput" class="bg-transparent text-sm outline-none w-full" style="color:var(--text)" placeholder="Buscar produto, artigo ou cor..." oninput="applyFilters()">
+      <button id="btnClearSearch" class="hidden" onclick="limparBusca()" style="color:var(--muted);background:none;border:none;cursor:pointer;font-size:14px">✕</button>
+    </div>
+
+    <!-- Contador + PDF -->
+    <div class="flex items-center gap-2">
+      <div class="text-xs font-semibold" style="color:var(--muted)" id="countLabel">Carregando...</div>
+      <button onclick="gerarPDF()" id="btnPDF" class="fab-pdf" style="position:static;transform:none;opacity:1;display:none">
+        <i class="fa-solid fa-file-pdf text-sm"></i>
+        PDF <span id="pdfCount" class="bg-slate-900 text-[var(--accent)] text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
+
+  <!-- Filtros (sticky) -->
+  <div class="filters-bar flex flex-wrap items-center gap-2 mb-4">
+    <button class="filter-pill active" data-filter="todos" onclick="setFilter('todos')">Todos</button>
+    <button class="filter-pill" data-filter="ua" onclick="setFilter('ua')">Under Armour</button>
+    <button class="filter-pill" data-filter="oly" onclick="setFilter('oly')">Olympikus</button>
+    <div class="ml-auto flex items-center gap-2">
+      <!-- Selecionar todos -->
+      <div class="sel-bar" id="selBar">
+        <label class="flex items-center gap-2 cursor-pointer text-xs font-bold" style="color:var(--muted)">
+          <input type="checkbox" id="chkTodos" onchange="toggleSelecionarTodos(this.checked)" style="accent-color:var(--accent);width:15px;height:15px">
+          Selecionar todos
+        </label>
+        <span class="text-xs font-semibold" style="color:var(--accent)" id="selCount"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div id="loadingState" class="text-center py-24">
+    <i class="fa-solid fa-circle-notch fa-spin text-3xl" style="color:var(--accent)"></i>
+    <div class="mt-4 text-sm font-semibold" style="color:var(--muted)">Carregando disponibilidades...</div>
+  </div>
+
+  <!-- Empty -->
+  <div id="emptyState" class="hidden text-center py-24">
+    <i class="fa-solid fa-box-open text-4xl" style="color:var(--muted)"></i>
+    <div class="mt-4 text-sm font-semibold" style="color:var(--muted)">Nenhum produto encontrado.</div>
+  </div>
+
+  <!-- Cards -->
+  <div id="cardsWrap" class="cards-grid hidden"></div>
+
+  <!-- Indicador de progresso da listagem (Mostrando X de Y) -->
+  <div id="paginationStatus" class="pagination-status hidden" aria-live="polite">
+    <span id="paginationStatusText"></span>
+  </div>
+
+</main>
+
+<!-- FAB PDF -->
+<button class="fab-pdf" id="fabPDF" onclick="gerarPDF()">
+  <i class="fa-solid fa-file-pdf"></i>
+  Gerar PDF <span id="fabCount" class="bg-slate-900 text-[var(--accent)] text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
+</button>
+
+<script>
+const WORKER_URL  = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
+const IMG_BASE    = '../Catalogo/';
+const LOGO_PATH   = '../logo-olympikus.png';
+
+const $ = id => document.getElementById(id);
+
+const STATE = {
+  itens:      [],
+  filtrados:  [],
+  filtro:     'todos',
+  search:     '',
+  selecionados: new Set(),
+  // Paginação
+  pageSize:    24,        // produtos por "página" (lote)
+  rendered:    0,         // quantos já estão no DOM
+  io:          null       // IntersectionObserver da sentinela
+};
+
+function showToast(msg, type='info'){
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  $('toastWrap').appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .2s'; }, 3000);
+  setTimeout(()=>t.remove(), 3300);
+}
+
+function safeHtml(v){ return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+
+function fixEncoding(s){
+  return String(s||'')
+    .replace(/\u00c3\u00aa/g,'ª').replace(/\u00c3\u00ba/g,'º')
+    .replace(/\u00c3\u00a7/g,'ç').replace(/\u00c3\u00a3/g,'ã')
+    .replace(/\u00c3\u00a2/g,'â').replace(/\u00c3\u00a9/g,'é')
+    .replace(/Ã\u00aa/g,'ª').replace(/Ã\u00ba/g,'º')
+    .replace(/Ãª/g,'ê').replace(/Ã£/g,'ã').replace(/Ã§/g,'ç')
+    .trim();
+}
+
+// ── CARREGAR DADOS ────────────────────────────────────────────────────────────
+async function loadData(){
+  try{
+    // Carrega disponibilidades + lista de ocultos em paralelo
+    const [dispRes, ocultosRes] = await Promise.all([
+      fetch(WORKER_URL, {
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ action:'getDisponibilidades' })
+      }),
+      fetch(WORKER_URL, {
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ action:'getOcultosDisp' })
+      })
+    ]);
+    if(!dispRes.ok) throw new Error('Falha ao carregar');
+    const itens = await dispRes.json();
+    const ocultosArr = ocultosRes.ok ? await ocultosRes.json() : [];
+    const ocultosSet = new Set(Array.isArray(ocultosArr) ? ocultosArr : []);
+    const ocultarKey = (i) => `${String(i.artigo||'').toUpperCase()}|${String(i.cor||'').toUpperCase()}`;
+
+    STATE.itens = itens
+      .filter(i => !i._oculto)                        // legado: flag inline
+      .filter(i => !ocultosSet.has(ocultarKey(i)))    // novo: lista do admin
+      .map(i => ({ ...i, prevFat: fixEncoding(i.prevFat) }));
+    applyFilters();
+    $('loadingState').classList.add('hidden');
+  }catch(err){
+    console.error(err);
+    $('loadingState').innerHTML = `<i class="fa-solid fa-triangle-exclamation text-3xl" style="color:#f87171"></i><div class="mt-4 text-sm font-semibold" style="color:#f87171">Erro ao carregar. Tente novamente.</div>`;
+  }
+}
+
+// ── FILTROS ───────────────────────────────────────────────────────────────────
+function isUA(item){
+  return (item.empresa||'').toUpperCase().includes('VULSP') ||
+         (item.empresa||'').toUpperCase().includes('VDIST') ||
+         (item.categoria||'').toUpperCase().includes('UA');
+}
+
+function setFilter(f){
+  STATE.filtro = f;
+  document.querySelectorAll('.filter-pill').forEach(b => b.classList.toggle('active', b.dataset.filter === f));
+  applyFilters();
+}
+
+function limparBusca(){
+  STATE.search = '';
+  $('searchInput').value = '';
+  $('btnClearSearch').classList.add('hidden');
+  applyFilters();
+}
+
+function applyFilters(){
+  const q = ($('searchInput')?.value || '').toLowerCase().trim();
+  STATE.search = q;
+  $('btnClearSearch').classList.toggle('hidden', !q);
+
+  STATE.filtrados = STATE.itens.filter(item => {
+    if(STATE.filtro === 'ua')  return isUA(item);
+    if(STATE.filtro === 'oly') return !isUA(item);
+    return true;
+  }).filter(item => {
+    if(!q) return true;
+    return `${item.descricao} ${item.artigo} ${item.cor} ${item.linha} ${item.empresa}`.toLowerCase().includes(q);
+  });
+
+  $('countLabel').textContent = `${STATE.filtrados.length} produto${STATE.filtrados.length!==1?'s':''}`;
+  renderCards();
+}
+
+// ── RENDER CARDS ──────────────────────────────────────────────────────────────
+function prodKey(item){ return `${item.artigo}|${item.cor}`; }
+
+// Cria o HTML de UM card (extraído pra reuso entre lotes)
+function buildCardHtml(item){
+  const key = prodKey(item);
+  const isSel = STATE.selecionados.has(key);
+  const corSafe = String(item.cor || '').replace(/\//g, '_').toUpperCase();
+  const imgSrc = (item.artigo && corSafe) ? `${IMG_BASE}${item.artigo}_${corSafe}.jpg` : '';
+
+  const grade = item.grade || {};
+  const gradeEntries = Object.entries(grade).filter(([,v]) => Number(v) > 0);
+  const gradeHtml = gradeEntries.length
+    ? `<div class="grade-grid">${gradeEntries.map(([k,v]) =>
+        `<div class="grade-pill"><span class="gp-num">${safeHtml(k)}</span><span class="gp-qty">${v}</span></div>`
+      ).join('')}</div>`
+    : '<span style="font-size:11px;color:var(--muted)">—</span>';
+
+  const prevFatLimpo = (item.prevFat||'')
+    .replace(/Ã\u00aa/g,'ª').replace(/Ã\u00ba/g,'º')
+    .replace(/Ã§/g,'ç').replace(/Ã£/g,'ã').replace(/Ã¢/g,'â')
+    .replace(/Ã©/g,'é').replace(/Ã\u00a3/g,'ã')
+    .replace(/\u00c3\u00aa/g,'ª').replace(/\u00c3\u00ba/g,'º')
+    .trim();
+
+  const chipEmpresa = isUA(item)
+    ? `<span class="chip chip-ua"><i class="fa-solid fa-building" style="font-size:9px"></i> UA · ${safeHtml(item.empresa||'')}</span>`
+    : `<span class="chip chip-oly"><i class="fa-solid fa-building" style="font-size:9px"></i> OLY · ${safeHtml(item.empresa||'')}</span>`;
+
+  const card = document.createElement('article');
+  card.className = `prod-card${isSel?' selecionado':''}`;
+  card.dataset.key = key;
+  card.innerHTML = `
+    <button class="btn-fav${isSel?' ativo':''}" onclick="toggleFav('${safeHtml(key)}',this)" title="${isSel?'Remover do PDF':'Adicionar ao PDF'}">
+      <i class="fa-${isSel?'solid':'regular'} fa-heart"></i>
+    </button>
+    ${imgSrc ? `<button class="btn-zoom" onclick="abrirZoom('${safeHtml(imgSrc)}')" title="Zoom"><i class="fa-solid fa-magnifying-glass-plus"></i></button>` : ''}
+    <div class="card-img">
+      ${imgSrc
+        ? `<img src="${safeHtml(imgSrc)}" alt="${safeHtml(item.descricao)}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden')">`
+        : ''}
+      <div class="no-img${imgSrc?' hidden':''}">
+        <i class="fa-solid fa-image text-2xl"></i>
+        <div class="text-xs mt-2 font-semibold">Sem imagem</div>
+      </div>
+    </div>
+    <div class="p-4">
+      <div class="text-base font-extrabold leading-tight mb-1" style="color:var(--text)">${safeHtml(item.descricao||'—')}</div>
+      <div class="text-xs font-semibold mb-3" style="color:var(--muted)">${safeHtml(item.artigo)} · ${safeHtml(item.cor)}</div>
+      <div class="flex flex-wrap gap-1.5 mb-3">
+        ${chipEmpresa}
+        ${prevFatLimpo ? `<span class="chip" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;font-size:10px"><i class="fa-regular fa-calendar" style="font-size:9px"></i> ${safeHtml(prevFatLimpo)}</span>` : ''}
+      </div>
+      <div class="flex items-center justify-between mb-2">
+        <div class="text-lg font-black" style="color:var(--accent)">R$ ${Number(item.pdv||0).toFixed(2)}</div>
+        <div class="text-xs font-semibold" style="color:var(--muted)">T. ${Number(item.totalGeral||0).toLocaleString('pt-BR')} un</div>
+      </div>
+      ${gradeHtml}
+    </div>`;
+  return card;
+}
+
+// Cria/posiciona a sentinela usada pelo IntersectionObserver
+function ensureScrollSentinel(wrap){
+  let sentinel = $('cardsSentinel');
+  if(!sentinel){
+    sentinel = document.createElement('div');
+    sentinel.id = 'cardsSentinel';
+    sentinel.style.cssText = 'grid-column:1/-1;height:1px;';
+  }
+  wrap.appendChild(sentinel); // sempre move pro final do wrap
+  return sentinel;
+}
+
+// Atualiza o indicador "Mostrando X de Y produtos"
+function updatePaginationStatus(){
+  const el = $('paginationStatus');
+  const txt = $('paginationStatusText');
+  if(!el || !txt) return;
+  const total = STATE.filtrados.length;
+  const shown = STATE.rendered;
+  if(total === 0){
+    el.classList.add('hidden');
+    el.classList.remove('complete');
+    return;
+  }
+  el.classList.remove('hidden');
+  if(shown >= total){
+    el.classList.add('complete');
+    txt.innerHTML = `Todos os <span class="ps-bold">${total}</span> produto${total!==1?'s':''} carregado${total!==1?'s':''} ✓`;
+  } else {
+    el.classList.remove('complete');
+    txt.innerHTML = `Mostrando <span class="ps-bold">${shown}</span> de <span class="ps-bold">${total}</span> · role para ver mais`;
+  }
+}
+
+// Renderiza o próximo lote (até pageSize itens)
+function renderNextBatch(){
+  const wrap = $('cardsWrap');
+  if(!wrap) return;
+  const start = STATE.rendered;
+  const end = Math.min(start + STATE.pageSize, STATE.filtrados.length);
+  if(start >= end) return;
+
+  const frag = document.createDocumentFragment();
+  for(let i = start; i < end; i++){
+    frag.appendChild(buildCardHtml(STATE.filtrados[i]));
+  }
+  // Insere antes da sentinela pra ela continuar sendo o último filho
+  const sentinel = $('cardsSentinel');
+  if(sentinel) wrap.insertBefore(frag, sentinel);
+  else wrap.appendChild(frag);
+  STATE.rendered = end;
+
+  // Se não há mais itens, desconecta o observer
+  if(STATE.rendered >= STATE.filtrados.length && STATE.io){
+    STATE.io.disconnect();
+    STATE.io = null;
+    if(sentinel) sentinel.remove();
+  }
+  updatePaginationStatus();
+}
+
+function renderCards(){
+  const wrap = $('cardsWrap');
+  wrap.innerHTML = '';
+  STATE.rendered = 0;
+  if(STATE.io){ STATE.io.disconnect(); STATE.io = null; }
+
+  if(!STATE.filtrados.length){
+    wrap.classList.add('hidden');
+    $('emptyState').classList.remove('hidden');
+    updatePaginationStatus();
+    return;
+  }
+  $('emptyState').classList.add('hidden');
+  wrap.classList.remove('hidden');
+
+  // Selecionar todos bar
+  $('selBar').classList.toggle('visivel', STATE.itens.length > 0);
+
+  // Primeiro lote
+  ensureScrollSentinel(wrap);
+  renderNextBatch();
+
+  // Observer para lotes seguintes
+  if(STATE.rendered < STATE.filtrados.length){
+    const sentinel = $('cardsSentinel');
+    STATE.io = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if(e.isIntersecting) renderNextBatch(); });
+    }, { rootMargin: '600px 0px' }); // dispara 600px antes de aparecer
+    if(sentinel) STATE.io.observe(sentinel);
+  }
+
+  atualizarFAB();
+  sincronizarChkTodos();
+}
+
+// ── FAVORITOS (SELEÇÃO PARA PDF) ──────────────────────────────────────────────
+function toggleFav(key, btn){
+  const isSel = STATE.selecionados.has(key);
+  if(isSel){ STATE.selecionados.delete(key); }
+  else      { STATE.selecionados.add(key); }
+
+  // Atualizar visual do card
+  const card = document.querySelector(`[data-key="${key}"]`);
+  if(card){
+    card.classList.toggle('selecionado', !isSel);
+    if(btn){
+      btn.classList.toggle('ativo', !isSel);
+      btn.querySelector('i').className = `fa-${!isSel?'solid':'regular'} fa-heart`;
+    }
+  }
+  atualizarFAB();
+  sincronizarChkTodos();
+}
+
+function toggleSelecionarTodos(checked){
+  STATE.filtrados.forEach(item => {
+    const key = prodKey(item);
+    if(checked){ STATE.selecionados.add(key); }
+    else        { STATE.selecionados.delete(key); }
+  });
+  renderCards();
+}
+
+function sincronizarChkTodos(){
+  const chk = $('chkTodos');
+  if(!chk) return;
+  const total = STATE.filtrados.length;
+  const sel   = STATE.filtrados.filter(i => STATE.selecionados.has(prodKey(i))).length;
+  chk.checked       = total > 0 && sel === total;
+  chk.indeterminate = sel > 0 && sel < total;
+  $('selCount').textContent = sel > 0 ? `${sel} selecionado${sel>1?'s':''}` : '';
+}
+
+function atualizarFAB(){
+  const n = STATE.selecionados.size;
+  const fab = $('fabPDF');
+  if(fab) fab.classList.toggle('visivel', n > 0);
+  if($('fabCount'))  $('fabCount').textContent  = n;
+}
+
+// ── ZOOM ──────────────────────────────────────────────────────────────────────
+function abrirZoom(src){
+  $('zoomImg').src = src;
+  $('modalZoom').classList.remove('hidden');
+}
+function fecharZoom(){
+  $('modalZoom').classList.add('hidden');
+  $('zoomImg').src = '';
+}
+document.addEventListener('keydown', e => { if(e.key==='Escape') fecharZoom(); });
+
+// ── HELPERS PDF ───────────────────────────────────────────────────────────────
+async function imageUrlToDataUrl(url){
+  if(!url) return '';
+  try{
+    const res = await fetch(url, { cache:'no-store' });
+    if(!res.ok) return '';
+    const blob = await res.blob();
+    return await new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = ()=> resolve(String(reader.result||''));
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }catch(_){ return ''; }
+}
+
+async function loadImgForPdfCrop(dataUrl){
+  return new Promise(resolve=>{
+    if(!dataUrl){ resolve(null); return; }
+    const img = new Image();
+    img.onload = ()=>{
+      try{
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img,0,0);
+        const idata = ctx.getImageData(0,0,c.width,c.height);
+        const d=idata.data, W=c.width, H=c.height, thr=240;
+        let minX=W,minY=H,maxX=0,maxY=0;
+        for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+          const i=(y*W+x)*4;
+          if(d[i+3]<10||( d[i]>thr&&d[i+1]>thr&&d[i+2]>thr)) continue;
+          if(x<minX)minX=x; if(x>maxX)maxX=x;
+          if(y<minY)minY=y; if(y>maxY)maxY=y;
+        }
+        if(maxX<=minX||maxY<=minY){ resolve({dataUrl:c.toDataURL('image/png'),w:W,h:H}); return; }
+        const px=Math.ceil((maxX-minX)*.04), py=Math.ceil((maxY-minY)*.04);
+        const cx=Math.max(0,minX-px), cy=Math.max(0,minY-py);
+        const cw=Math.min(W,maxX+px)-cx, ch=Math.min(H,maxY+py)-cy;
+        const c2=document.createElement('canvas');
+        c2.width=cw; c2.height=ch;
+        c2.getContext('2d').drawImage(c,cx,cy,cw,ch,0,0,cw,ch);
+        resolve({dataUrl:c2.toDataURL('image/png'),w:cw,h:ch});
+      }catch(e){ resolve(null); }
+    };
+    img.onerror=()=>resolve(null);
+    img.src=dataUrl;
+  });
+}
+
+// ── GERAR PDF ─────────────────────────────────────────────────────────────────
+async function gerarPDF(){
+  const selecionados = STATE.filtrados.filter(i => STATE.selecionados.has(prodKey(i)));
+  if(!selecionados.length){ showToast('Selecione ao menos um produto.','info'); return; }
+
+  const fab = $('fabPDF');
+  const prev = fab.innerHTML;
+  fab.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Gerando...';
+  fab.disabled = true;
+
+  try{
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation:'landscape', unit:'pt', format:'a4', compress:true });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+
+    const now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    const dateStr = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+    const margin   = 28;
+    const contentW = pageW - margin*2;
+    const headerH  = 38;
+    const bodyY    = headerH + 10;
+    const bodyH    = pageH - bodyY - 10;
+    const cardH    = Math.floor((bodyH-8)/2);
+
+    // Cores — verde limão para disponibilidades
+    const C = {
+      green:  [125, 184, 0],
+      text:   [15, 23, 42],
+      muted:  [100, 116, 139],
+      border: [226, 232, 240],
+      bg:     [248, 250, 252],
+      white:  [255, 255, 255],
+    };
+    const sc = (rgb, type='text') => {
+      if(type==='fill')      doc.setFillColor(...rgb);
+      else if(type==='draw') doc.setDrawColor(...rgb);
+      else                   doc.setTextColor(...rgb);
+    };
+
+    function drawHeader(){
+      sc(C.green,'fill');
+      doc.rect(0,0,pageW,headerH,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(13);
+      doc.setTextColor(255,255,255);
+      doc.text('Catálogo Olympikus — Disponibilidades', margin, 24);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9);
+      doc.setTextColor(220,255,150);
+      doc.text(dateStr, pageW-margin, 24, {align:'right'});
+      sc(C.text);
+    }
+
+    const imgAreaW  = 560;
+    const infoGap   = 14;
+    const infoAreaX = margin + imgAreaW + infoGap;
+    const infoAreaW = contentW - imgAreaW - infoGap;
+
+    async function drawCard(item, cardY){
+      sc(C.border,'draw'); doc.setLineWidth(0.4);
+      sc(C.bg,'fill');
+      doc.roundedRect(margin, cardY, contentW, cardH, 6, 6, 'FD');
+
+      // Área da imagem
+      const ip=6, ibX=margin+ip, ibY=cardY+ip;
+      const ibW=imgAreaW-ip*2, ibH=cardH-ip*2;
+      sc(C.white,'fill'); sc(C.border,'draw');
+      doc.roundedRect(ibX,ibY,ibW,ibH,4,4,'FD');
+
+      const corSafePdf = String(item.cor || '').replace(/\//g, '_').toUpperCase();
+      if(item.artigo && corSafePdf){
+        const rawData = await imageUrlToDataUrl(`${IMG_BASE}${item.artigo}_${corSafePdf}.jpg`);
+        const img = await loadImgForPdfCrop(rawData);
+        if(img?.dataUrl){
+          const targetH = ibH*0.85;
+          const scale   = targetH/img.h;
+          const drawW   = img.w*scale;
+          const drawH   = targetH;
+          const drawX   = ibX+(ibW-drawW)/2;
+          const drawY   = ibY+(ibH-drawH)/2;
+          doc.addImage(img.dataUrl,'PNG',drawX,drawY,drawW,drawH,undefined,'FAST');
+        }
+      }
+
+      const tx = infoAreaX;
+      let ty = cardY + 18;
+
+      // Descrição
+      sc(C.text);
+      doc.setFont('helvetica','bold'); doc.setFontSize(13);
+      const nameLines = doc.splitTextToSize(String(item.descricao||''), infoAreaW-4);
+      doc.text(nameLines.slice(0,2), tx, ty);
+      ty += nameLines.slice(0,2).length*15 + 6;
+
+      // Artigo
+      doc.setFont('helvetica','normal'); doc.setFontSize(9);
+      sc(C.muted); doc.text('Artigo:', tx, ty);
+      sc(C.text); doc.text(String(item.artigo||'—'), tx+38, ty);
+      ty += 13;
+
+      // Cor
+      sc(C.muted); doc.text('Cor:', tx, ty);
+      sc(C.text); doc.text(String(item.cor||'—'), tx+24, ty);
+      ty += 13;
+
+      // Empresa
+      sc(C.muted); doc.text('Empresa:', tx, ty);
+      sc(C.text); doc.text(String(item.empresa||'—'), tx+44, ty);
+      ty += 14;
+
+      // Divisor
+      sc(C.border,'draw'); doc.setLineWidth(0.4);
+      doc.line(tx, ty, tx+infoAreaW, ty);
+      ty += 10;
+
+      // Boxes: Prev. Fat. | PDV | T. Geral
+      const boxGap=6, boxW=(infoAreaW-boxGap*2)/3, boxH=32;
+
+      // Prev. Fat.
+      sc(C.white,'fill'); sc(C.border,'draw'); doc.setLineWidth(0.4);
+      doc.roundedRect(tx, ty, boxW, boxH, 4,4,'FD');
+      doc.setFont('helvetica','bold'); doc.setFontSize(6.5); sc(C.muted);
+      doc.text('PREV. FATURAMENTO', tx+6, ty+8);
+      doc.setFont('helvetica','bold'); doc.setFontSize(9); sc(C.text);
+      doc.text(fixEncoding(item.prevFat||'—'), tx+6, ty+22);
+
+      // PDV
+      const bx2 = tx+boxW+boxGap;
+      sc(C.white,'fill'); sc(C.border,'draw');
+      doc.roundedRect(bx2, ty, boxW, boxH, 4,4,'FD');
+      doc.setFont('helvetica','bold'); doc.setFontSize(6.5); sc(C.muted);
+      doc.text('PDV', bx2+6, ty+8);
+      doc.setFont('helvetica','bold'); doc.setFontSize(14); sc(C.green);
+      doc.text(`R$ ${Number(item.pdv||0).toFixed(2)}`, bx2+6, ty+24);
+
+      // T. Geral
+      const bx3 = bx2+boxW+boxGap;
+      sc(C.white,'fill'); sc(C.border,'draw');
+      doc.roundedRect(bx3, ty, boxW, boxH, 4,4,'FD');
+      doc.setFont('helvetica','bold'); doc.setFontSize(6.5); sc(C.muted);
+      doc.text('T. GERAL', bx3+6, ty+8);
+      doc.setFont('helvetica','bold'); doc.setFontSize(14); sc(C.text);
+      doc.text(Number(item.totalGeral||0).toLocaleString('pt-BR'), bx3+6, ty+24);
+
+      ty += boxH+10;
+
+      // Grade — células igual ao repasses
+      const grade = item.grade || {};
+      const gradeEntries = Object.entries(grade).filter(([,v])=>Number(v)>0);
+      if(gradeEntries.length){
+        doc.setFont('helvetica','bold'); doc.setFontSize(7);
+        sc(C.muted); doc.text('GRADE DISPONÍVEL', tx, ty);
+        ty += 9;
+        const cellW=34, cellH=24, cellGap=4;
+        const perRow = Math.floor(infoAreaW/(cellW+cellGap));
+        let cx=tx, col=0;
+        for(const [size,qty] of gradeEntries){
+          if(col>=perRow){ col=0; cx=tx; ty+=cellH+cellGap; }
+          sc(C.border,'draw'); sc(C.white,'fill');
+          doc.roundedRect(cx, ty, cellW, cellH, 3,3,'FD');
+          doc.setFont('helvetica','bold'); doc.setFontSize(7); sc(C.muted);
+          const sStr=String(size);
+          doc.text(sStr, cx+(cellW-doc.getTextWidth(sStr))/2, ty+9);
+          doc.setFontSize(9.5); sc(C.green);
+          const qStr=String(qty);
+          doc.text(qStr, cx+(cellW-doc.getTextWidth(qStr))/2, ty+20);
+          cx+=cellW+cellGap; col++;
+        }
+      }
+    }
+
+    for(let i=0; i<selecionados.length; i+=2){
+      if(i>0) doc.addPage();
+      drawHeader();
+      await drawCard(selecionados[i], bodyY);
+      if(selecionados[i+1]) await drawCard(selecionados[i+1], bodyY+cardH+8);
+    }
+
+    const now2 = new Date();
+    const fname = `disponibilidades_${now2.getFullYear()}${pad(now2.getMonth()+1)}${pad(now2.getDate())}.pdf`;
+    doc.save(fname);
+    showToast(`PDF gerado com ${selecionados.length} produto(s)!`, 'success');
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao gerar PDF.', 'error');
+  }finally{
+    fab.innerHTML = prev;
+    fab.disabled = false;
+  }
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>

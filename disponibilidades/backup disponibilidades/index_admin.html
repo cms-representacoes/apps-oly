@@ -1,0 +1,1655 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>Admin • Disponibilidades</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#fff; --text:#0f172a; --line:#e2e8f0;
+      --brand:#22c55e; --brand-soft:rgba(34,197,94,.10);
+      --accent:#ccff00; --accent-dark:#7db800;
+      --shadow:0 18px 42px rgba(15,23,42,.08);
+      --muted:#475569; --muted-soft:#e2e8f0;
+      --success:#15803d; --success-soft:#dcfce7;
+      --danger:#b91c1c; --danger-soft:#fee2e2;
+      --warning:#b45309; --warning-soft:#fef3c7;
+    }
+    .dark{
+      --bg:#0f172a; --card:#1e293b; --text:#f1f5f9; --line:#334155;
+      --brand:#4ade80; --brand-soft:rgba(74,222,128,.15);
+      --shadow:0 18px 42px rgba(0,0,0,.4);
+      --muted:#94a3b8; --muted-soft:#1e293b;
+      --success:#4ade80; --success-soft:#14532d;
+      --danger:#f87171; --danger-soft:#450a0a;
+      --warning:#fbbf24; --warning-soft:#451a03;
+    }
+    *{ box-sizing:border-box; }
+    body{ font-family:Inter,system-ui,sans-serif; background:var(--bg); color:var(--text); }
+    .focus-ring:focus-visible{ outline:none; box-shadow:0 0 0 4px rgba(204,255,0,.25); }
+    .shadow-card{ box-shadow:var(--shadow); }
+
+    /* Dark mode overrides */
+    .dark .bg-white{ background:var(--card)!important; }
+    .dark .border-slate-200{ border-color:var(--line)!important; }
+    .dark .text-slate-500,.dark .text-slate-400{ color:var(--muted)!important; }
+    .dark .text-slate-800,.dark .text-slate-700{ color:var(--text)!important; }
+    .dark .bg-slate-50,.dark .bg-slate-100{ background:#263248!important; }
+    .dark .hover\:bg-slate-50:hover,.dark .hover\:bg-slate-100:hover{ background:#334155!important; }
+
+    /* Tabela */
+    .table-wrap{ overflow:auto; border-radius:20px; border:1px solid var(--line); background:var(--card); max-height:calc(100vh - 280px); }
+    .table-wrap table{ width:100%; min-width:900px; border-collapse:separate; border-spacing:0; font-size:12px; }
+    .table-wrap thead th{ position:sticky; top:0; z-index:2; background:#f8fafc; color:#475569; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; padding:10px 12px; border-bottom:1px solid var(--line); white-space:nowrap; }
+    .table-wrap thead th.sortable{ cursor:pointer; user-select:none; transition:background .12s; }
+    .table-wrap thead th.sortable:hover{ background:#e2e8f0; }
+    .dark .table-wrap thead th.sortable:hover{ background:#334155!important; }
+    .sort-icon{ display:inline-block; width:8px; margin-left:4px; opacity:0; font-size:9px; }
+    .table-wrap thead th.sortable.sort-asc .sort-icon::after{ content:'▲'; opacity:1; color:var(--brand); }
+    .table-wrap thead th.sortable.sort-desc .sort-icon::after{ content:'▼'; opacity:1; color:var(--brand); }
+    .table-wrap thead th.sortable.sort-asc .sort-icon, .table-wrap thead th.sortable.sort-desc .sort-icon{ opacity:1; }
+    .dark .table-wrap thead th{ background:#263248!important; color:#94a3b8!important; }
+    .table-wrap tbody td{ padding:10px 12px; border-bottom:1px solid #edf2f7; vertical-align:middle; }
+    .dark .table-wrap tbody td{ border-color:#334155!important; }
+    .table-wrap tbody tr:last-child td{ border-bottom:none; }
+    .table-wrap tbody tr:hover td{ background:#f8fafc; }
+    .dark .table-wrap tbody tr:hover td{ background:#263248!important; }
+    .table-wrap tbody tr.oculto td{ opacity:.4; }
+    .table-wrap tbody tr.row-selected td{ background:rgba(204,255,0,.12)!important; }
+    .dark .table-wrap tbody tr.row-selected td{ background:rgba(204,255,0,.08)!important; }
+
+    /* Filter pills */
+    .filter-pill{ display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:6px 14px; font-size:12px; font-weight:700; border:1px solid var(--line); background:var(--card); color:var(--muted); cursor:pointer; transition:all .12s; white-space:nowrap; }
+    .filter-pill.active{ background:var(--accent); color:#0f172a; border-color:var(--accent-dark); }
+    .filter-pill:hover:not(.active){ background:var(--muted-soft); }
+
+    /* Selects de filtro secundário */
+    .filter-select{
+      border-radius:999px; padding:6px 30px 6px 14px;
+      font-size:12px; font-weight:700;
+      border:1px solid var(--line);
+      background:var(--card); color:var(--muted);
+      cursor:pointer; transition:all .12s;
+      appearance:none; -webkit-appearance:none;
+      background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='none' stroke='%23475569' stroke-width='1.5' d='M1 1l4 4 4-4'/></svg>");
+      background-repeat:no-repeat;
+      background-position:right 12px center;
+    }
+    .filter-select:hover{ background-color:var(--muted-soft); }
+    .filter-select.has-value{ background-color:var(--accent); color:#0f172a; border-color:var(--accent-dark); }
+    .dark .filter-select{ background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='none' stroke='%2394a3b8' stroke-width='1.5' d='M1 1l4 4 4-4'/></svg>"); }
+
+    /* Botões de ação */
+    .icon-btn{ width:30px; height:30px; border-radius:50%; border:1px solid var(--line); background:none; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; color:var(--muted); transition:all .12s; flex-shrink:0; }
+    .icon-btn:hover{ background:var(--muted-soft); }
+    .icon-btn.ocultar:hover{ border-color:#AFA9EC; color:#3C3489; background:#EEEDFE; }
+    .icon-btn.reexibir:hover{ border-color:#AFA9EC; color:#3C3489; background:#EEEDFE; }
+    .icon-btn.excluir:hover{ border-color:#fca5a5; color:#b91c1c; background:#fee2e2; }
+
+    /* Chip empresa */
+    .chip-ua{ background:#1a1a2e; color:#60a5fa; border:1px solid #1e3a5f; border-radius:999px; padding:2px 8px; font-size:10px; font-weight:700; }
+    .chip-oly{ background:#1a2e1a; color:#4ade80; border:1px solid #14532d; border-radius:999px; padding:2px 8px; font-size:10px; font-weight:700; }
+
+    /* Toast */
+    .toast-wrap{ position:fixed; top:18px; right:18px; display:flex; flex-direction:column; gap:10px; z-index:9999; pointer-events:none; }
+    .toast{ pointer-events:auto; min-width:240px; border-radius:16px; padding:12px 16px; box-shadow:0 8px 24px rgba(15,23,42,.14); font-size:13px; font-weight:700; border:1px solid transparent; }
+    .toast-success{ background:#f0fdf4; color:#166534; border-color:#bbf7d0; }
+    .toast-error{ background:#fef2f2; color:#b91c1c; border-color:#fecaca; }
+    .toast-info{ background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+
+    /* Tooltips */
+    [data-tip]{ position:relative; }
+    [data-tip]:hover::after{ content:attr(data-tip); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); background:#0f172a; color:#f8fafc; font-size:11px; font-weight:600; border-radius:8px; padding:4px 9px; white-space:nowrap; z-index:300; pointer-events:none; }
+    .dark [data-tip]:hover::after{ background:#334155; }
+
+    /* Modal de confirmação destrutiva */
+    .confirm-overlay{
+      position:fixed; inset:0; z-index:200;
+      background:rgba(15,23,42,.55);
+      backdrop-filter:blur(3px);
+      display:none; align-items:center; justify-content:center;
+      padding:16px;
+    }
+    .confirm-overlay.open{ display:flex; }
+    .confirm-card{
+      background:var(--card); border:1px solid var(--line);
+      border-radius:18px; padding:24px;
+      width:100%; max-width:380px;
+      box-shadow:0 16px 40px rgba(15,23,42,.25);
+      animation: imgMiniIn .18s ease;
+    }
+    .confirm-icon{
+      width:48px;height:48px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      margin-bottom:14px;font-size:20px;
+    }
+    .confirm-card.danger .confirm-icon{ background:#fee2e2; color:#b91c1c; }
+    .confirm-card.warning .confirm-icon{ background:#fef3c7; color:#a16207; }
+    .confirm-card.info .confirm-icon{ background:#dbeafe; color:#1d4ed8; }
+    .confirm-title{ font-size:17px; font-weight:800; margin-bottom:6px; }
+    .confirm-message{ font-size:13px; color:var(--muted); line-height:1.5; margin-bottom:16px; }
+    .confirm-require-label{ font-size:12px; color:var(--muted); margin-bottom:6px; }
+    .confirm-require-input{
+      width:100%; padding:10px 12px; border-radius:10px;
+      border:1px solid var(--line); background:var(--bg);
+      font-size:13px; font-weight:700; color:var(--text);
+      margin-bottom:14px;
+      letter-spacing:1px;
+    }
+    .confirm-require-input:focus{ outline:none; border-color:#dc2626; box-shadow:0 0 0 3px rgba(220,38,38,.18); }
+    .confirm-actions{ display:flex; gap:8px; }
+    .confirm-btn{
+      flex:1; padding:10px; border-radius:10px;
+      font-size:13px; font-weight:800; cursor:pointer;
+      border:1px solid var(--line); background:var(--bg); color:var(--muted);
+      transition:all .12s;
+    }
+    .confirm-btn:hover{ background:var(--muted-soft); }
+    .confirm-btn.primary{ background:var(--accent); color:#0f172a; border-color:var(--accent-dark); }
+    .confirm-btn.primary:hover{ background:var(--accent-dark); color:#0f172a; }
+    .confirm-card.danger .confirm-btn.primary{ background:#dc2626; color:#fff; border-color:#b91c1c; }
+    .confirm-card.danger .confirm-btn.primary:hover{ background:#b91c1c; }
+    .confirm-btn.primary:disabled{ opacity:.4; cursor:not-allowed; }
+
+    /* Last sync */
+    #lastSyncLabel{ cursor:pointer; padding:6px 10px; border-radius:999px; transition:all .12s; border:1px solid transparent; }
+    #lastSyncLabel:hover{ background:var(--muted-soft); border-color:var(--line); color:var(--text); }
+    .img-badge.has:hover{ background:#bbf7d0!important; transform:scale(1.05); }
+    .img-badge.miss:hover{ background:#fecaca!important; transform:scale(1.05); }
+    .img-badge.checking{ cursor:wait; }
+
+    /* Popover de miniatura */
+    .img-mini-overlay{
+      position:fixed; inset:0; z-index:180;
+      background:rgba(15,23,42,.4);
+      backdrop-filter:blur(2px);
+      display:none; align-items:center; justify-content:center;
+      padding:16px;
+    }
+    .img-mini-overlay.open{ display:flex; }
+    .img-mini-card{
+      background:var(--card); border:1px solid var(--line);
+      border-radius:16px; padding:14px;
+      width:240px;
+      box-shadow:0 12px 32px rgba(15,23,42,.18);
+      animation: imgMiniIn .18s ease;
+    }
+    @keyframes imgMiniIn { from{ transform:translateY(8px) scale(.96); opacity:0; } to{ transform:none; opacity:1; } }
+    .img-mini-thumb{
+      width:100%; aspect-ratio:1/1;
+      border-radius:12px;
+      background:#f1f5f9;
+      display:flex; align-items:center; justify-content:center;
+      overflow:hidden; margin-bottom:10px;
+    }
+    .dark .img-mini-thumb{ background:#1e293b; }
+    .img-mini-thumb img{ width:100%; height:100%; object-fit:contain; }
+    .img-mini-title{ font-size:13px; font-weight:800; line-height:1.2; }
+    .img-mini-meta{ font-size:11px; color:var(--muted); margin-top:2px; margin-bottom:12px; }
+    .img-mini-actions{ display:flex; gap:8px; }
+    .img-mini-btn{
+      flex:1; padding:8px 10px; border-radius:10px;
+      font-size:12px; font-weight:800; cursor:pointer;
+      border:1px solid var(--line); background:var(--bg); color:var(--muted);
+      transition:all .12s;
+    }
+    .img-mini-btn:hover{ background:var(--muted-soft); }
+    .img-mini-btn.primary{ background:var(--accent); color:#0f172a; border-color:var(--accent-dark); }
+    .img-mini-btn.primary:hover{ background:var(--accent-dark); color:#0f172a; }
+
+    /* Barra de progresso da verificação */
+    .img-check-progress{
+      background:var(--card); border:1px solid var(--line);
+      border-radius:14px; padding:12px 14px;
+      margin-bottom:12px;
+      font-size:12px;
+    }
+    .img-check-progress .icp-head{
+      display:flex; align-items:center; justify-content:space-between;
+      font-weight:800; margin-bottom:6px;
+    }
+    .img-check-progress .icp-bar{
+      background:var(--muted-soft); border-radius:999px; height:6px; overflow:hidden;
+    }
+    .img-check-progress .icp-fill{
+      background:var(--accent); height:100%; width:0%;
+      border-radius:999px; transition:width .3s;
+    }
+    .img-check-progress .icp-stats{
+      display:flex; gap:14px; margin-top:8px;
+      font-size:11px;
+    }
+    .img-check-progress .icp-stats strong.ok{ color:#15803d; }
+    .img-check-progress .icp-stats strong.miss{ color:#b91c1c; }
+    .img-check-progress .icp-stats span{ color:var(--muted); }
+  </style>
+</head>
+<body>
+<div id="toastWrap" class="toast-wrap"></div>
+
+<!-- ── AUTH GUARD ─────────────────────────────────────────────────────────── -->
+<div id="loginScreen" class="fixed inset-0 z-[200] flex items-center justify-center p-4" style="background:var(--bg)">
+  <div class="w-full max-w-sm rounded-[28px] border border-slate-200 bg-white p-8 shadow-card" style="background:var(--card);border-color:var(--line)">
+    <div class="mb-6 text-center">
+      <div class="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style="background:rgba(204,255,0,.15)">
+        <i class="fa-solid fa-warehouse text-2xl" style="color:var(--accent-dark)"></i>
+      </div>
+      <div class="text-xl font-extrabold">Admin • Disponibilidades</div>
+      <div class="text-sm text-slate-500 mt-1">Acesso restrito</div>
+    </div>
+    <div>
+      <label class="text-xs font-bold text-slate-500 block mb-1">Senha</label>
+      <input id="adminPassword" type="password" class="focus-ring w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold mb-4"
+        style="background:var(--card);color:var(--text);border-color:var(--line)"
+        placeholder="Digite a senha" onkeydown="if(event.key==='Enter') doLogin()">
+      <div id="loginError" class="hidden rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700 mb-4">Senha incorreta.</div>
+      <button onclick="doLogin()" class="w-full rounded-2xl py-3 text-sm font-extrabold text-slate-900"
+        style="background:var(--accent)">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<main id="adminApp" class="hidden p-4 sm:p-6 max-w-[1400px] mx-auto">
+
+  <!-- HEADER -->
+  <header id="adminHeader" class="rounded-[32px] border border-slate-200 bg-white p-4 sm:p-5 shadow-card sticky top-4 z-30 mb-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <a href="../../" class="focus-ring flex items-center justify-center h-10 w-10 rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors" data-tip="Voltar ao portal">
+          <i class="fa-solid fa-arrow-left text-sm"></i>
+        </a>
+        <div>
+          <div class="text-xs font-bold text-slate-500">Disponibilidades</div>
+          <div class="text-xl font-extrabold">Painel Admin</div>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- Last sync -->
+        <span id="lastSyncLabel" class="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold mr-1" style="color:var(--muted)" data-tip="Atualizar agora" onclick="loadData()" role="button" tabindex="0">
+          <i class="fa-solid fa-clock-rotate-left text-[10px]"></i>
+          <span id="lastSyncText">—</span>
+        </span>
+        <!-- Busca -->
+        <div class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 min-w-[220px]" style="background:var(--card);border-color:var(--line)">
+          <i class="fa-solid fa-magnifying-glass text-slate-400 text-sm"></i>
+          <input id="searchInput" class="bg-transparent text-sm outline-none w-full" style="color:var(--text)" placeholder="Buscar artigo, descrição ou cor..." oninput="applyFilters()">
+          <kbd class="hidden sm:inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold border" style="border-color:var(--line);background:var(--bg);color:var(--muted);min-width:18px;height:18px">/</kbd>
+        </div>
+        <!-- Colunas -->
+        <button onclick="togglePainelColunas()" data-tip="Ocultar/exibir colunas"
+          class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
+          <i class="fa-solid fa-table-columns text-xs"></i> Colunas
+        </button>
+        <!-- Importar -->
+        <button onclick="abrirImportar()" data-tip="Importar planilha"
+          class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors"
+          style="border-color:var(--accent-dark);background:rgba(204,255,0,.1);color:var(--accent-dark)">
+          <i class="fa-solid fa-upload text-xs"></i> Importar xlsx
+        </button>
+        <!-- Tela cheia -->
+        <button onclick="toggleFullscreen()" data-tip="Tela cheia"
+          class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
+          <i id="iconFullscreen" class="fa-solid fa-expand text-xs"></i>
+        </button>
+        <!-- Dark mode -->
+        <button onclick="toggleDark()" data-tip="Modo escuro"
+          class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 transition-colors">
+          <i id="darkIcon" class="fa-solid fa-moon text-slate-400 text-xs"></i>
+        </button>
+        <!-- Sair -->
+        <button onclick="doLogout()" data-tip="Sair"
+          class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
+          <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- FILTROS -->
+  <div class="flex flex-wrap items-center gap-2 mb-3">
+    <button class="filter-pill active" data-filter="todos" onclick="setFilter('todos')">Todos <span id="badgeTodos" class="text-[10px] font-extrabold bg-slate-900 text-white rounded-full px-1.5 py-0.5">0</span></button>
+    <button class="filter-pill" data-filter="ua" onclick="setFilter('ua')">Under Armour <span id="badgeUA" class="text-[10px] font-extrabold bg-slate-200 text-slate-700 rounded-full px-1.5 py-0.5">0</span></button>
+    <button class="filter-pill" data-filter="oly" onclick="setFilter('oly')">Olympikus <span id="badgeOLY" class="text-[10px] font-extrabold bg-slate-200 text-slate-700 rounded-full px-1.5 py-0.5">0</span></button>
+    <button class="filter-pill" data-filter="semimg" onclick="setFilter('semimg')">
+      <i class="fa-solid fa-image text-[10px]" style="color:#dc2626"></i> Sem imagem <span id="badgeSemImg" class="text-[10px] font-extrabold bg-rose-100 text-rose-700 rounded-full px-1.5 py-0.5 hidden">0</span>
+    </button>
+    <button class="filter-pill" data-filter="ocultos" onclick="setFilter('ocultos')">
+      <i class="fa-solid fa-eye-slash text-[10px]"></i> Ocultos <span id="badgeOcultos" class="text-[10px] font-extrabold bg-slate-200 text-slate-700 rounded-full px-1.5 py-0.5 hidden">0</span>
+    </button>
+    <div class="ml-auto text-xs font-semibold text-slate-400" id="countLabel">— itens</div>
+  </div>
+
+  <!-- FILTROS SECUNDÁRIOS (categoria, gênero, linha) -->
+  <div class="flex flex-wrap items-center gap-2 mb-4">
+    <select id="filterCategoria" class="filter-select" onchange="applyFilters()">
+      <option value="">Categoria: todas</option>
+    </select>
+    <select id="filterGenero" class="filter-select" onchange="applyFilters()">
+      <option value="">Gênero: todos</option>
+    </select>
+    <select id="filterLinha" class="filter-select" onchange="applyFilters()">
+      <option value="">Linha: todas</option>
+    </select>
+    <button id="btnLimparFiltros" class="filter-pill" onclick="limparFiltrosSec()" style="display:none">
+      <i class="fa-solid fa-xmark text-[10px]"></i> Limpar
+    </button>
+
+    <!-- Bulk actions (aparece quando há seleção) -->
+    <div id="bulkBar" class="ml-auto flex items-center gap-2" style="display:none">
+      <span class="text-xs font-bold" style="color:var(--muted)"><span id="bulkCount">0</span> selecionado(s)</span>
+      <button onclick="bulkOcultar()" class="focus-ring rounded-full border px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors" style="border-color:var(--line);background:var(--card);color:var(--muted)">
+        <i class="fa-solid fa-eye-slash text-[10px]"></i> Ocultar
+      </button>
+      <button onclick="bulkExcluir()" class="focus-ring rounded-full border px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors" style="border-color:#fecaca;background:#fef2f2;color:#b91c1c">
+        <i class="fa-solid fa-trash-can text-[10px]"></i> Excluir
+      </button>
+      <button onclick="bulkLimpar()" class="focus-ring w-7 h-7 rounded-full border flex items-center justify-center" style="border-color:var(--line);background:var(--card);color:var(--muted)" data-tip="Limpar seleção">
+        <i class="fa-solid fa-xmark text-[10px]"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- PROGRESSO DE VERIFICAÇÃO DE IMAGENS -->
+  <div id="imgCheckProgress" class="img-check-progress hidden">
+    <div class="icp-head">
+      <span><i class="fa-solid fa-image text-xs mr-1" style="color:var(--accent-dark)"></i> Verificando imagens na pasta Catálogo...</span>
+      <span id="imgCheckText" style="color:var(--muted)">0 / 0</span>
+    </div>
+    <div class="icp-bar"><div id="imgCheckBar" class="icp-fill"></div></div>
+    <div class="icp-stats">
+      <div><strong class="ok" id="imgCheckOk">0</strong> <span>com imagem</span></div>
+      <div><strong class="miss" id="imgCheckMiss">0</strong> <span>faltando</span></div>
+    </div>
+  </div>
+
+  <!-- TABELA -->
+  <div class="rounded-[28px] border border-slate-200 bg-white shadow-card p-4" style="background:var(--card);border-color:var(--line)">
+    <div id="emptyState" class="hidden py-16 text-center text-slate-400">
+      <i class="fa-solid fa-box-open text-4xl mb-4 block"></i>
+      <div class="font-semibold">Nenhum produto encontrado.</div>
+      <div class="text-sm mt-1">Importe uma planilha para começar.</div>
+    </div>
+    <div id="tableWrap" class="table-wrap hidden">
+      <table>
+        <thead>
+          <tr id="theadRow">
+            <th class="th-bulk" style="width:32px;text-align:center;padding-left:14px"><input type="checkbox" id="bulkSelectAll" onchange="bulkSelectAll(this.checked)" style="accent-color:var(--accent);cursor:pointer"></th>
+            <th data-col="prevFat" class="sortable" onclick="setSort('prevFat')">Prev. Fat. <span class="sort-icon"></span></th>
+            <th data-col="empresa" class="sortable" onclick="setSort('empresa')">Empresa <span class="sort-icon"></span></th>
+            <th data-col="artigo" class="sortable" onclick="setSort('artigo')">Artigo <span class="sort-icon"></span></th>
+            <th data-col="descricao" class="sortable" onclick="setSort('descricao')">Descrição <span class="sort-icon"></span></th>
+            <th data-col="cor" class="sortable" onclick="setSort('cor')">Cor <span class="sort-icon"></span></th>
+            <th data-col="linha" class="sortable" onclick="setSort('linha')">Linha <span class="sort-icon"></span></th>
+            <th data-col="genero" class="sortable" onclick="setSort('genero')">Gênero <span class="sort-icon"></span></th>
+            <th data-col="categoria" class="sortable" onclick="setSort('categoria')">Categoria <span class="sort-icon"></span></th>
+            <th data-col="pdv" class="sortable text-right" onclick="setSort('pdv')">PDV <span class="sort-icon"></span></th>
+            <th data-col="totalGeral" class="sortable text-right" onclick="setSort('totalGeral')">T. Geral <span class="sort-icon"></span></th>
+            <th data-col="grade">Grade</th>
+            <th data-col="acoes"></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+  <!-- PAINEL DE COLUNAS -->
+  <div id="painelColunas" class="hidden fixed inset-0 z-[100]" onclick="fecharPainelColunas(event)">
+    <div class="absolute top-20 right-6 rounded-2xl border border-slate-200 bg-white shadow-card p-4 w-64" style="background:var(--card);border-color:var(--line)" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Colunas visíveis</div>
+        <button onclick="resetarColunas()" class="text-xs font-bold hover:underline" style="color:var(--brand)">Resetar</button>
+      </div>
+      <div id="listaColunas" class="flex flex-col gap-2"></div>
+    </div>
+  </div>
+
+  <!-- POPOVER MINIATURA DE IMAGEM -->
+  <div id="imgMiniOverlay" class="img-mini-overlay" onclick="fecharMiniaturaImagem(event)">
+    <div class="img-mini-card" onclick="event.stopPropagation()">
+      <div class="img-mini-thumb">
+        <img id="imgMiniThumb" alt="">
+      </div>
+      <div class="img-mini-title" id="imgMiniTitle">—</div>
+      <div class="img-mini-meta" id="imgMiniMeta">—</div>
+      <div class="img-mini-actions">
+        <button class="img-mini-btn" onclick="substituirImagemDoMini()">Substituir</button>
+        <button class="img-mini-btn primary" onclick="fecharMiniaturaImagem()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE CONFIRMAÇÃO -->
+  <div id="confirmOverlay" class="confirm-overlay" onclick="confirmDialogClose(event)">
+    <div class="confirm-card" onclick="event.stopPropagation()">
+      <div class="confirm-icon" id="confirmIcon">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <div class="confirm-title" id="confirmTitle">Confirmação</div>
+      <div class="confirm-message" id="confirmMessage">Tem certeza?</div>
+      <div id="confirmRequireWordWrap" style="display:none">
+        <div class="confirm-require-label">Digite <strong id="confirmRequireWord">EXCLUIR</strong> para confirmar:</div>
+        <input id="confirmRequireInput" type="text" class="confirm-require-input" autocomplete="off" oninput="confirmDialogValidate()">
+      </div>
+      <div class="confirm-actions">
+        <button id="confirmCancelBtn" class="confirm-btn" onclick="confirmDialogResolve(false)">Cancelar</button>
+        <button id="confirmOkBtn" class="confirm-btn primary" onclick="confirmDialogResolve(true)">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL UPLOAD IMAGEM -->
+  <div id="modalUploadImagem" class="hidden fixed inset-0 z-[150] bg-slate-950/45 p-4 flex items-center justify-center">
+    <div class="rounded-[28px] bg-white border border-slate-200 shadow-card w-full max-w-sm p-6" style="background:var(--card);border-color:var(--line)">
+      <div class="flex items-center justify-between mb-5">
+        <div class="text-lg font-extrabold">Upload de imagem</div>
+        <button onclick="fecharUploadImagem()" class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-500" style="border-color:var(--line);background:var(--bg)">
+          <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+      </div>
+
+      <!-- Info do produto -->
+      <div id="uploadProdutoInfo" class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 mb-4 text-sm" style="border-color:var(--line);background:var(--bg)">
+        <div class="font-bold" id="uploadProdutoNome">—</div>
+        <div class="text-xs text-slate-500 mt-0.5" id="uploadProdutoCor">—</div>
+      </div>
+
+      <!-- Banner aviso imagem existente -->
+      <div id="uploadAvisoBanner" class="hidden rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 mb-4 flex items-center gap-3 text-sm font-semibold text-amber-700">
+        <i class="fa-solid fa-triangle-exclamation text-amber-500 flex-shrink-0"></i>
+        Este produto já tem imagem cadastrada. A nova imagem irá substituir a existente.
+      </div>
+
+      <!-- Preview -->
+      <div id="uploadPreviewWrap" class="hidden mb-4 flex justify-center">
+        <div class="relative">
+          <img id="uploadPreview" src="" alt="Preview" class="w-28 h-28 object-contain rounded-xl border border-slate-200 bg-slate-50" style="border-color:var(--line)">
+          <button onclick="limparUploadImagem()" class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs">✕</button>
+        </div>
+      </div>
+
+      <!-- Upload area -->
+      <div id="uploadArea2" class="border-2 border-dashed border-slate-200 rounded-2xl p-5 text-center mb-4 cursor-pointer hover:border-green-300 transition-colors" onclick="$('inputImagemProd').click()" style="border-color:var(--line)">
+        <i class="fa-solid fa-image text-slate-300 text-2xl mb-2 block"></i>
+        <div class="text-xs font-bold" style="color:var(--muted)">Clique para selecionar a imagem</div>
+        <div class="text-[11px] text-slate-400 mt-0.5">JPG, PNG ou WEBP</div>
+        <input type="file" id="inputImagemProd" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="previewUploadImagem(this)">
+      </div>
+
+      <!-- Nome do arquivo -->
+      <div class="mb-4">
+        <label class="text-xs font-bold block mb-1" style="color:var(--muted)">Nome do arquivo</label>
+        <input id="uploadNomeArquivo" class="focus-ring w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" style="background:var(--card);color:var(--text);border-color:var(--line)" placeholder="1326799_BLKBK">
+        <div class="text-[11px] text-slate-400 mt-1">Gerado automaticamente. Edite se necessário.</div>
+      </div>
+
+      <div class="flex gap-2 justify-end">
+        <button onclick="fecharUploadImagem()" class="focus-ring rounded-full border border-slate-200 px-4 py-2 text-sm font-bold hover:bg-slate-50" style="background:var(--card);color:var(--muted);border-color:var(--line)">Cancelar</button>
+        <button id="btnEnviarImagem" onclick="enviarImagem()" class="focus-ring rounded-2xl px-5 py-2 text-sm font-extrabold text-slate-900 flex items-center gap-2" style="background:var(--accent)">
+          <i class="fa-solid fa-upload text-xs"></i> Enviar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Importar -->
+<div id="modalImportar" class="hidden fixed inset-0 z-[150] bg-slate-950/45 p-4 flex items-start justify-center overflow-y-auto">
+  <div class="rounded-[28px] bg-white border border-slate-200 shadow-card w-full max-w-3xl my-8 p-6" style="background:var(--card);border-color:var(--line)">
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Disponibilidades</div>
+        <div class="text-xl font-extrabold">Importar planilha</div>
+      </div>
+      <button onclick="fecharImportar()" class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-500">
+        <i class="fa-solid fa-xmark text-xs"></i>
+      </button>
+    </div>
+
+    <!-- Upload -->
+    <div id="uploadArea" class="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center mb-4 cursor-pointer hover:border-green-300 hover:bg-green-50 transition-colors" onclick="$('inputXlsx').click()">
+      <i class="fa-solid fa-upload text-slate-300 text-3xl mb-3 block"></i>
+      <div class="text-sm font-bold text-slate-600">Clique para selecionar a planilha</div>
+      <div class="text-xs text-slate-400 mt-1">UA ou Olympikus (.xlsx, .xls) — pode importar várias vezes</div>
+      <input type="file" id="inputXlsx" accept=".xlsx,.xls" class="hidden" onchange="processarXlsx(this.files[0])">
+    </div>
+
+    <!-- Preview -->
+    <div id="previewArea" class="hidden">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-sm font-extrabold" id="previewTitle">—</div>
+        <button onclick="$('inputXlsx').click()" class="text-xs font-bold hover:underline" style="color:var(--brand)">Trocar arquivo</button>
+      </div>
+
+      <!-- Novos -->
+      <div id="novosBlock" class="hidden mb-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-xs font-bold">Novos produtos</span>
+          <span id="novosCount" class="text-[11px] font-bold bg-green-100 text-green-700 rounded-full px-2 py-0.5">0</span>
+        </div>
+        <div class="rounded-2xl border border-green-200 bg-green-50 overflow-hidden">
+          <div class="overflow-auto max-h-48">
+            <table class="w-full text-xs">
+              <thead><tr class="bg-green-100 text-green-800">
+                <th class="text-left px-3 py-2">Artigo</th>
+                <th class="text-left px-3 py-2">Descrição</th>
+                <th class="text-left px-3 py-2">Cor</th>
+                <th class="text-left px-3 py-2">Empresa</th>
+                <th class="text-right px-3 py-2">T. Geral</th>
+              </tr></thead>
+              <tbody id="novosBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Conflitos -->
+      <div id="conflitosBlock" class="hidden mb-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-xs font-bold">Conflitos</span>
+          <span id="conflitosCount" class="text-[11px] font-bold bg-amber-100 text-amber-700 rounded-full px-2 py-0.5">0</span>
+          <span class="text-[11px] text-slate-400">— mesmo Artigo + Cor já existe</span>
+        </div>
+        <div id="conflitosBody" class="flex flex-col gap-3"></div>
+      </div>
+
+      <div class="flex items-center justify-between pt-4 border-t" style="border-color:var(--line)">
+        <div class="text-xs text-slate-400" id="resumoImport">—</div>
+        <div class="flex gap-2">
+          <button onclick="fecharImportar()" class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold hover:bg-slate-50" style="background:var(--card);color:var(--muted);border-color:var(--line)">Cancelar</button>
+          <button id="btnConfirmar" onclick="confirmarImportar()"
+            class="focus-ring rounded-2xl px-5 py-2 text-sm font-extrabold text-slate-900 flex items-center gap-2"
+            style="background:var(--accent)">
+            <i class="fa-solid fa-floppy-disk"></i> Confirmar importação
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Dark mode imediato
+if(localStorage.getItem('disp_dark')==='1') document.documentElement.classList.add('dark');
+
+const WORKER_URL = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
+// Token de autenticação enviado nas writes do Worker
+// IMPORTANTE: este token também precisa estar configurado como variável ADMIN_TOKEN no Cloudflare Worker
+const ADMIN_TOKEN = '1b489c97-7bc7-466a-a675-f559e1226371d9bea53d-a920-4059-a31c-6bc0b6d8c4c8';
+
+// Wrapper de fetch que adiciona X-Admin-Token automaticamente em todas as chamadas
+function workerFetch(opts = {}){
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(opts.headers || {})
+  };
+  // Só adiciona o token se for uma chamada autenticada (write)
+  if(ADMIN_TOKEN && ADMIN_TOKEN !== '__COLAR_TOKEN_AQUI__'){
+    headers['X-Admin-Token'] = ADMIN_TOKEN;
+  }
+  return fetch(WORKER_URL, { ...opts, headers });
+}
+const ADMIN_PASSWORD = 'cmsrepasse';
+const STORAGE_KEY_AUTH = 'disp_admin_auth_v1';
+// Base pública das imagens (mesma pasta usada pelo catálogo de Disponibilidades)
+const IMG_BASE = 'https://marcosrepcms-max.github.io/Catalogo-Olympikus/Catalogo/';
+
+const $ = id => document.getElementById(id);
+
+// ── ESTADO ───────────────────────────────────────────────────────────────────
+const STATE = {
+  itens: [],       // todos do JSON
+  ocultos: new Set(),
+  filtro: 'todos',
+  search: '',
+  imgHist: {},     // mapa "artigo|cor" → nome da imagem (histórico persistente)
+  imgChecks: new Map(), // mapa "artigo|cor" → "has" | "miss" | "checking"
+  selecionados: new Set(), // chaves dos itens selecionados (bulk actions)
+  sortCol: null,        // coluna para ordenação
+  sortDir: 'asc',       // 'asc' | 'desc'
+  lastSync: null        // timestamp do último loadData/save
+};
+
+let _jsonAtual = [];
+let _novos = [];
+let _conflitos = [];
+
+// ── AUTH ─────────────────────────────────────────────────────────────────────
+function doLogin(){
+  const pwd = $('adminPassword').value;
+  if(pwd === ADMIN_PASSWORD){
+    localStorage.setItem(STORAGE_KEY_AUTH, 'ok');
+    $('loginScreen').classList.add('hidden');
+    $('adminApp').classList.remove('hidden');
+    loadData();
+  } else {
+    $('loginError').classList.remove('hidden');
+  }
+}
+
+function doLogout(){
+  localStorage.removeItem(STORAGE_KEY_AUTH);
+  window.location.replace('../../');
+}
+
+// ── DARK MODE ─────────────────────────────────────────────────────────────────
+function toggleDark(){
+  const isDark = document.documentElement.classList.toggle('dark');
+  localStorage.setItem('disp_dark', isDark ? '1' : '0');
+  $('darkIcon').className = isDark ? 'fa-solid fa-sun text-amber-400 text-xs' : 'fa-solid fa-moon text-slate-400 text-xs';
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  if(localStorage.getItem('disp_dark')==='1') $('darkIcon').className = 'fa-solid fa-sun text-amber-400 text-xs';
+});
+
+// ── TELA CHEIA ────────────────────────────────────────────────────────────────
+function toggleFullscreen(){
+  if(!document.fullscreenElement){ document.documentElement.requestFullscreen().catch(()=>{}); }
+  else { document.exitFullscreen(); }
+}
+document.addEventListener('fullscreenchange', ()=>{
+  const icon = $('iconFullscreen');
+  if(icon) icon.className = document.fullscreenElement ? 'fa-solid fa-compress text-xs' : 'fa-solid fa-expand text-xs';
+});
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function showToast(msg, type='info'){
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  $('toastWrap').appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .2s'; }, 3200);
+  setTimeout(()=>t.remove(), 3500);
+}
+
+function safeHtml(v){ return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
+
+// ── LOAD DATA ─────────────────────────────────────────────────────────────────
+async function loadData(){
+  try{
+    const [dispRes, ocultosRes, histRes] = await Promise.all([
+      workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'getDisponibilidades'}) }),
+      workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'getOcultosDisp'}) }),
+      workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'getImagensHistorico'}) })
+    ]);
+    STATE.itens   = dispRes.ok ? await dispRes.json() : [];
+    const oc      = ocultosRes.ok ? await ocultosRes.json() : [];
+    STATE.ocultos = new Set(Array.isArray(oc) ? oc : []);
+    STATE.imgHist = histRes.ok ? await histRes.json() : {};
+    STATE.lastSync = Date.now();
+    popularFiltrosSec();
+    applyFilters();
+    updateLastSyncLabel();
+    // Após renderizar, dispara check de imagens em background
+    verifyAllImages();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao carregar dados.', 'error');
+  }
+}
+
+// ── VERIFICAÇÃO DE IMAGENS ───────────────────────────────────────────────────
+// Monta o nome do arquivo padrão pra um item (artigo_cor.jpg, com / virando _)
+function getProductImageName(item){
+  if(item.imagem) return String(item.imagem); // já tem nome cadastrado, prioridade
+  const art = String(item.artigo || '').trim();
+  const cor = String(item.cor || '').trim().replace(/\//g, '_').toUpperCase();
+  if(!art || !cor) return '';
+  return `${art}_${cor}`;
+}
+function getProductImageUrl(item){
+  const name = getProductImageName(item);
+  return name ? `${IMG_BASE}${name}.jpg` : '';
+}
+function imgCheckKey(item){
+  return `${String(item.artigo||'').toUpperCase()}|${String(item.cor||'').toUpperCase()}`;
+}
+
+// HEAD request — true se imagem existe (200), false se 404
+async function checkImageExists(url){
+  try{
+    const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+    return res.ok;
+  }catch(_){ return false; }
+}
+
+// Verifica todas as imagens em batches de 10 em paralelo
+async function verifyAllImages(){
+  const items = STATE.itens.filter(i => !isOculto(i));
+  if(!items.length) return;
+  // Marca tudo como "checking" pra UI mostrar spinner
+  items.forEach(i => STATE.imgChecks.set(imgCheckKey(i), 'checking'));
+  refreshImageBadges();
+  updateImportProgressUI(0, items.length);
+  showImportProgress(true);
+
+  const BATCH = 10;
+  let done = 0, has = 0, miss = 0;
+  for(let i = 0; i < items.length; i += BATCH){
+    const slice = items.slice(i, i + BATCH);
+    await Promise.all(slice.map(async (item) => {
+      const url = getProductImageUrl(item);
+      const ok = url ? await checkImageExists(url) : false;
+      STATE.imgChecks.set(imgCheckKey(item), ok ? 'has' : 'miss');
+      if(ok) has++; else miss++;
+      done++;
+    }));
+    updateImportProgressUI(done, items.length, has, miss);
+    refreshImageBadges();
+  }
+  showImportProgress(false);
+  // Atualiza badge "sem imagem" agora que sabemos o status real
+  applyFilters();
+}
+
+// Atualiza somente os badges de imagem na tabela (sem re-renderizar a tabela inteira)
+function refreshImageBadges(){
+  document.querySelectorAll('[data-img-key]').forEach(btn => {
+    const key = btn.dataset.imgKey;
+    const status = STATE.imgChecks.get(key) || 'checking';
+    btn.dataset.imgStatus = status;
+    const tooltip = ({
+      has: 'Imagem encontrada — clique para ver',
+      miss: 'Imagem faltando — clique para enviar',
+      checking: 'Verificando...'
+    })[status];
+    btn.setAttribute('data-tip', tooltip);
+  });
+}
+
+// UI de progresso (durante verificação inicial)
+function showImportProgress(visible){
+  const el = $('imgCheckProgress');
+  if(!el) return;
+  el.classList.toggle('hidden', !visible);
+}
+function updateImportProgressUI(done, total, has = 0, miss = 0){
+  const fill = $('imgCheckBar');
+  const txt  = $('imgCheckText');
+  const ok   = $('imgCheckOk');
+  const ko   = $('imgCheckMiss');
+  if(fill) fill.style.width = `${total ? (done/total*100) : 0}%`;
+  if(txt)  txt.textContent  = `${done} / ${total}`;
+  if(ok)   ok.textContent   = String(has);
+  if(ko)   ko.textContent   = String(miss);
+}
+
+// ── MINIATURA DA IMAGEM (popover) ────────────────────────────────────────────
+let _miniCtx = null; // { artigo, cor, descricao }
+
+function abrirMiniaturaImagem(ev, artigo, cor, descricao){
+  ev?.stopPropagation();
+  _miniCtx = { artigo, cor, descricao };
+  // Procura o item real pra montar a URL correta (usa item.imagem se cadastrado)
+  const item = STATE.itens.find(i =>
+    String(i.artigo||'').toUpperCase() === String(artigo||'').toUpperCase() &&
+    String(i.cor||'').toUpperCase()    === String(cor||'').toUpperCase()
+  );
+  const url = item ? getProductImageUrl(item) : '';
+  $('imgMiniThumb').src = url;
+  $('imgMiniTitle').textContent = descricao || artigo;
+  $('imgMiniMeta').textContent  = `Artigo ${artigo} · ${cor}`;
+  $('imgMiniOverlay').classList.add('open');
+}
+function fecharMiniaturaImagem(ev){
+  if(ev && ev.target.id !== 'imgMiniOverlay' && ev.type === 'click') return;
+  $('imgMiniOverlay').classList.remove('open');
+  _miniCtx = null;
+}
+function substituirImagemDoMini(){
+  if(!_miniCtx) return;
+  const { artigo, cor, descricao } = _miniCtx;
+  fecharMiniaturaImagem();
+  // Reaproveita o modal de upload existente
+  abrirUploadImagem(artigo, cor, descricao, true);
+}
+// ESC fecha popover
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape' && $('imgMiniOverlay')?.classList.contains('open')) fecharMiniaturaImagem();
+});
+
+// ── LAST SYNC ────────────────────────────────────────────────────────────────
+function updateLastSyncLabel(){
+  const el = $('lastSyncText');
+  if(!el || !STATE.lastSync){ if(el) el.textContent = '—'; return; }
+  const diff = Math.floor((Date.now() - STATE.lastSync) / 1000);
+  let txt;
+  if(diff < 5)        txt = 'agora';
+  else if(diff < 60)  txt = `há ${diff}s`;
+  else if(diff < 3600) txt = `há ${Math.floor(diff/60)}min`;
+  else                txt = `há ${Math.floor(diff/3600)}h`;
+  el.textContent = `Atualizado ${txt}`;
+}
+// Atualiza o label a cada 30s
+setInterval(updateLastSyncLabel, 30000);
+
+
+document.addEventListener('keydown', (e) => {
+  // Não captura quando está digitando em input/textarea
+  const tag = (e.target.tagName || '').toUpperCase();
+  const isTyping = ['INPUT','TEXTAREA','SELECT'].includes(tag) || e.target.isContentEditable;
+
+  // "/" foca a busca
+  if(e.key === '/' && !isTyping){
+    e.preventDefault();
+    $('searchInput')?.focus();
+    return;
+  }
+
+  // ESC fecha modais abertos (em ordem de prioridade)
+  if(e.key === 'Escape'){
+    if($('confirmOverlay')?.classList.contains('open')){ confirmDialogResolve(false); return; }
+    if(!$('modalUploadImagem')?.classList.contains('hidden')){ fecharUploadImagem(); return; }
+    if(!$('modalImportar')?.classList.contains('hidden')){ fecharImportar(); return; }
+    if(!$('painelColunas')?.classList.contains('hidden')){ $('painelColunas').classList.add('hidden'); return; }
+    if($('searchInput') === document.activeElement && $('searchInput').value){
+      $('searchInput').value = '';
+      applyFilters();
+      $('searchInput').blur();
+      return;
+    }
+    if(STATE.selecionados.size){
+      bulkLimpar();
+      return;
+    }
+  }
+});
+
+// ── FILTROS ───────────────────────────────────────────────────────────────────
+function ocultarKey(item){ return `${String(item.artigo||'').toUpperCase()}|${String(item.cor||'').toUpperCase()}`; }
+function isOculto(item){ return STATE.ocultos.has(ocultarKey(item)); }
+
+function setFilter(f){
+  STATE.filtro = f;
+  document.querySelectorAll('.filter-pill').forEach(b => b.classList.toggle('active', b.dataset.filter === f));
+  applyFilters();
+}
+
+function applyFilters(){
+  const q = ($('searchInput')?.value || '').toLowerCase().trim();
+  const f = STATE.filtro;
+  const fCat = $('filterCategoria')?.value || '';
+  const fGen = $('filterGenero')?.value || '';
+  const fLinha = $('filterLinha')?.value || '';
+
+  const filtrados = STATE.itens.filter(item => {
+    if(f === 'ocultos') return isOculto(item);
+    if(isOculto(item)) return false;
+    if(f === 'ua')  return (item.empresa||'').toUpperCase().includes('VULSP') || (item.empresa||'').toUpperCase().includes('VDIST') || (item.categoria||'').toUpperCase().includes('UA') || (item.categoria||'').toUpperCase().includes('UNDER');
+    if(f === 'oly') return !(item.empresa||'').toUpperCase().includes('VULSP') && !(item.empresa||'').toUpperCase().includes('VDIST');
+    if(f === 'semimg'){
+      // sem campo imagem cadastrado E status do check é miss (ou ainda não checado)
+      const status = STATE.imgChecks.get(imgCheckKey(item));
+      return !item.imagem && status !== 'has';
+    }
+    return true;
+  }).filter(item => {
+    if(fCat   && (item.categoria||'') !== fCat) return false;
+    if(fGen   && (item.genero||'')    !== fGen) return false;
+    if(fLinha && (item.linha||'')     !== fLinha) return false;
+    return true;
+  }).filter(item => {
+    if(!q) return true;
+    return `${item.artigo} ${item.descricao} ${item.cor} ${item.linha} ${item.categoria}`.toLowerCase().includes(q);
+  });
+
+  // Badges
+  const todos = STATE.itens.filter(i => !isOculto(i));
+  const ua    = todos.filter(i => (i.empresa||'').toUpperCase().includes('VULSP') || (i.empresa||'').toUpperCase().includes('VDIST') || (i.categoria||'').toUpperCase().includes('UA'));
+  const oly   = todos.filter(i => !ua.includes(i));
+  const oc    = STATE.itens.filter(i => isOculto(i));
+  const semImg = todos.filter(i => !i.imagem && STATE.imgChecks.get(imgCheckKey(i)) !== 'has');
+
+  if($('badgeTodos')) $('badgeTodos').textContent = todos.length;
+  if($('badgeUA'))    $('badgeUA').textContent    = ua.length;
+  if($('badgeOLY'))   $('badgeOLY').textContent   = oly.length;
+  if($('badgeOcultos')){ $('badgeOcultos').textContent = oc.length; $('badgeOcultos').classList.toggle('hidden', oc.length===0); }
+  if($('badgeSemImg')){ $('badgeSemImg').textContent = semImg.length; $('badgeSemImg').classList.toggle('hidden', semImg.length===0); }
+  if($('countLabel')) $('countLabel').textContent = `${filtrados.length} iten${filtrados.length!==1?'s':''}`;
+
+  // Ordenação
+  if(STATE.sortCol){
+    const col = STATE.sortCol;
+    const dir = STATE.sortDir === 'desc' ? -1 : 1;
+    const numeric = ['pdv','totalGeral'].includes(col);
+    filtrados.sort((a, b) => {
+      const va = a[col]; const vb = b[col];
+      if(numeric){
+        return ((Number(va)||0) - (Number(vb)||0)) * dir;
+      }
+      return String(va||'').localeCompare(String(vb||''), 'pt-BR', { numeric:true }) * dir;
+    });
+  }
+
+  // Estado visual dos selects (cor de "ativo")
+  ['filterCategoria','filterGenero','filterLinha'].forEach(id => {
+    const el = $(id);
+    if(el) el.classList.toggle('has-value', !!el.value);
+  });
+  // Botão limpar filtros
+  const btnLimpar = $('btnLimparFiltros');
+  if(btnLimpar) btnLimpar.style.display = (fCat || fGen || fLinha) ? '' : 'none';
+
+  // Limpa seleção bulk se algum item selecionado saiu da view
+  if(STATE.selecionados && STATE.selecionados.size){
+    const visiveis = new Set(filtrados.map(ocultarKey));
+    [...STATE.selecionados].forEach(k => { if(!visiveis.has(k)) STATE.selecionados.delete(k); });
+    refreshBulkBar();
+  }
+
+  renderTable(filtrados);
+}
+
+// Popula os selects de filtro com valores únicos do dataset
+function popularFiltrosSec(){
+  const cats   = new Set();
+  const gens   = new Set();
+  const linhas = new Set();
+  STATE.itens.forEach(i => {
+    if(i.categoria) cats.add(i.categoria);
+    if(i.genero)    gens.add(i.genero);
+    if(i.linha)     linhas.add(i.linha);
+  });
+  const fillSelect = (id, label, values) => {
+    const el = $(id);
+    if(!el) return;
+    const current = el.value;
+    el.innerHTML = `<option value="">${label}: todas</option>` +
+      [...values].sort().map(v => `<option value="${safeHtml(v)}">${safeHtml(v)}</option>`).join('');
+    if(current && [...values].includes(current)) el.value = current;
+  };
+  fillSelect('filterCategoria', 'Categoria', cats);
+  fillSelect('filterGenero',    'Gênero',    gens);
+  fillSelect('filterLinha',     'Linha',     linhas);
+}
+
+function limparFiltrosSec(){
+  ['filterCategoria','filterGenero','filterLinha'].forEach(id => { const el = $(id); if(el) el.value = ''; });
+  applyFilters();
+}
+
+// ── MODAL DE CONFIRMAÇÃO ─────────────────────────────────────────────────────
+let _confirmResolver = null;
+function confirmDialog({ title='Confirmação', message='Tem certeza?', confirmLabel='Confirmar', cancelLabel='Cancelar', type='warning', requireWord=null } = {}){
+  return new Promise(resolve => {
+    _confirmResolver = resolve;
+    $('confirmTitle').textContent = title;
+    $('confirmMessage').textContent = message;
+    $('confirmOkBtn').textContent = confirmLabel;
+    $('confirmCancelBtn').textContent = cancelLabel;
+    const card = document.querySelector('.confirm-card');
+    card.classList.remove('danger','warning','info');
+    card.classList.add(type);
+    const icon = $('confirmIcon').querySelector('i');
+    if(icon) icon.className = ({
+      danger: 'fa-solid fa-trash-can',
+      warning: 'fa-solid fa-triangle-exclamation',
+      info: 'fa-solid fa-circle-info'
+    })[type] || 'fa-solid fa-triangle-exclamation';
+
+    const wrap = $('confirmRequireWordWrap');
+    const inp  = $('confirmRequireInput');
+    if(requireWord){
+      $('confirmRequireWord').textContent = requireWord;
+      wrap.style.display = '';
+      inp.value = '';
+      $('confirmOkBtn').disabled = true;
+      inp.dataset.requireWord = requireWord;
+      setTimeout(() => inp.focus(), 60);
+    } else {
+      wrap.style.display = 'none';
+      $('confirmOkBtn').disabled = false;
+    }
+
+    $('confirmOverlay').classList.add('open');
+    setTimeout(() => {
+      if(!requireWord) $('confirmOkBtn').focus();
+    }, 60);
+  });
+}
+function confirmDialogValidate(){
+  const inp = $('confirmRequireInput');
+  const word = inp.dataset.requireWord || '';
+  $('confirmOkBtn').disabled = inp.value.trim().toUpperCase() !== word.toUpperCase();
+}
+function confirmDialogResolve(value){
+  $('confirmOverlay').classList.remove('open');
+  if(_confirmResolver){ _confirmResolver(value); _confirmResolver = null; }
+}
+function confirmDialogClose(ev){
+  if(ev && ev.target.id !== 'confirmOverlay') return;
+  confirmDialogResolve(false);
+}
+
+
+function bulkToggleItem(key, checked){
+  if(checked) STATE.selecionados.add(key);
+  else STATE.selecionados.delete(key);
+  document.querySelector(`tr[data-row-key="${CSS.escape(key)}"]`)?.classList.toggle('row-selected', checked);
+  refreshBulkBar();
+}
+function bulkSelectAll(checked){
+  document.querySelectorAll('#tableBody tr').forEach(tr => {
+    const key = tr.dataset.rowKey;
+    if(!key) return;
+    const cb = tr.querySelector('input[type="checkbox"]');
+    if(checked){ STATE.selecionados.add(key); tr.classList.add('row-selected'); if(cb) cb.checked = true; }
+    else       { STATE.selecionados.delete(key); tr.classList.remove('row-selected'); if(cb) cb.checked = false; }
+  });
+  refreshBulkBar();
+}
+function bulkLimpar(){
+  STATE.selecionados.clear();
+  document.querySelectorAll('#tableBody tr').forEach(tr => {
+    tr.classList.remove('row-selected');
+    const cb = tr.querySelector('input[type="checkbox"]');
+    if(cb) cb.checked = false;
+  });
+  const all = $('bulkSelectAll'); if(all) all.checked = false;
+  refreshBulkBar();
+}
+function refreshBulkBar(){
+  const n = STATE.selecionados.size;
+  const bar = $('bulkBar');
+  if(bar) bar.style.display = n > 0 ? '' : 'none';
+  const lbl = $('bulkCount'); if(lbl) lbl.textContent = String(n);
+  // Sincroniza o checkbox "selecionar todos"
+  const all = $('bulkSelectAll');
+  if(all){
+    const visible = document.querySelectorAll('#tableBody tr[data-row-key]').length;
+    const selectedVisible = [...document.querySelectorAll('#tableBody tr[data-row-key]')]
+      .filter(tr => STATE.selecionados.has(tr.dataset.rowKey)).length;
+    all.checked = visible > 0 && selectedVisible === visible;
+    all.indeterminate = selectedVisible > 0 && selectedVisible < visible;
+  }
+}
+async function bulkOcultar(){
+  const keys = [...STATE.selecionados];
+  if(!keys.length) return;
+  const ok = await confirmDialog({
+    title: 'Ocultar produtos',
+    message: `Ocultar ${keys.length} produto(s) selecionado(s)? Eles podem ser reexibidos depois pelo filtro "Ocultos".`,
+    confirmLabel: 'Ocultar',
+    type: 'warning'
+  });
+  if(!ok) return;
+  keys.forEach(k => STATE.ocultos.add(k));
+  await salvarOcultos();
+  STATE.selecionados.clear();
+  showToast(`${keys.length} produto(s) ocultado(s).`, 'success');
+  applyFilters();
+}
+async function bulkExcluir(){
+  const keys = [...STATE.selecionados];
+  if(!keys.length) return;
+  const ok = await confirmDialog({
+    title: 'Excluir produtos',
+    message: `Excluir ${keys.length} produto(s) permanentemente? Esta ação não pode ser desfeita.`,
+    confirmLabel: 'Excluir',
+    type: 'danger',
+    requireWord: 'EXCLUIR'
+  });
+  if(!ok) return;
+  const setKeys = new Set(keys);
+  STATE.itens = STATE.itens.filter(i => !setKeys.has(ocultarKey(i)));
+  try{
+    const res = await workerFetch({
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'saveDisponibilidades', data: STATE.itens })
+    });
+    if(!res.ok) throw new Error();
+    STATE.lastSync = Date.now();
+    updateLastSyncLabel();
+    STATE.selecionados.clear();
+    showToast(`${keys.length} produto(s) excluído(s).`, 'success');
+    applyFilters();
+  }catch(err){ console.error(err); showToast('Erro ao excluir.','error'); }
+}
+
+
+function setSort(col){
+  if(STATE.sortCol === col){
+    // mesmo col: alterna asc → desc → none
+    if(STATE.sortDir === 'asc'){ STATE.sortDir = 'desc'; }
+    else if(STATE.sortDir === 'desc'){ STATE.sortCol = null; STATE.sortDir = 'asc'; }
+    else { STATE.sortDir = 'asc'; }
+  } else {
+    STATE.sortCol = col;
+    STATE.sortDir = 'asc';
+  }
+  // Atualiza ícones nos headers
+  document.querySelectorAll('#theadRow th.sortable').forEach(th => {
+    th.classList.remove('sort-asc','sort-desc');
+    if(STATE.sortCol && th.dataset.col === STATE.sortCol){
+      th.classList.add(STATE.sortDir === 'desc' ? 'sort-desc' : 'sort-asc');
+    }
+  });
+  applyFilters();
+}
+
+// ── COLUNAS ───────────────────────────────────────────────────────────────────
+const COLUNAS_DEF = [
+  { id:'prevFat',    label:'Prev. Fat.' },
+  { id:'empresa',    label:'Empresa' },
+  { id:'artigo',     label:'Artigo' },
+  { id:'descricao',  label:'Descrição' },
+  { id:'cor',        label:'Cor' },
+  { id:'linha',      label:'Linha' },
+  { id:'genero',     label:'Gênero' },
+  { id:'categoria',  label:'Categoria' },
+  { id:'pdv',        label:'PDV' },
+  { id:'totalGeral', label:'T. Geral' },
+  { id:'grade',      label:'Grade' },
+  { id:'acoes',      label:'' },
+];
+
+let _colsOcultas = new Set(JSON.parse(localStorage.getItem('disp_cols_ocultas')||'[]'));
+
+function salvarColunas(){ localStorage.setItem('disp_cols_ocultas', JSON.stringify([..._colsOcultas])); }
+
+function aplicarColunas(){
+  const ths = document.querySelectorAll('#theadRow th[data-col]');
+  ths.forEach(th => {
+    const col = th.dataset.col;
+    const oculto = _colsOcultas.has(col);
+    th.style.display = oculto ? 'none' : '';
+  });
+  document.querySelectorAll('#tableBody tr').forEach(tr => {
+    tr.querySelectorAll('td[data-col]').forEach(td => {
+      td.style.display = _colsOcultas.has(td.dataset.col) ? 'none' : '';
+    });
+  });
+}
+
+function togglePainelColunas(){
+  const painel = $('painelColunas');
+  if(painel.classList.contains('hidden')){
+    renderListaColunas();
+    painel.classList.remove('hidden');
+  } else {
+    painel.classList.add('hidden');
+  }
+}
+
+function fecharPainelColunas(e){ $('painelColunas').classList.add('hidden'); }
+
+function renderListaColunas(){
+  $('listaColunas').innerHTML = COLUNAS_DEF.filter(c => c.id !== 'acoes').map(c => `
+    <label class="flex items-center gap-2 cursor-pointer">
+      <input type="checkbox" ${!_colsOcultas.has(c.id)?'checked':''} onchange="toggleColuna('${c.id}',this.checked)"
+        class="rounded" style="accent-color:var(--accent)">
+      <span class="text-sm font-semibold" style="color:var(--text)">${c.label}</span>
+    </label>`).join('');
+}
+
+function toggleColuna(col, visivel){
+  if(visivel){ _colsOcultas.delete(col); } else { _colsOcultas.add(col); }
+  salvarColunas();
+  aplicarColunas();
+}
+
+function resetarColunas(){
+  _colsOcultas.clear();
+  salvarColunas();
+  renderListaColunas();
+  aplicarColunas();
+}
+
+// ── UPLOAD IMAGEM POR LINHA ───────────────────────────────────────────────────
+let _uploadItem = null;
+let _uploadBase64 = null;
+let _uploadExt = 'jpg';
+
+function abrirUploadImagem(artigo, cor, descricao, temImagem=false){
+  _uploadItem = { artigo, cor, descricao, temImagem };
+  _uploadBase64 = null;
+  _uploadExt = 'jpg';
+
+  $('uploadProdutoNome').textContent = descricao || artigo;
+  $('uploadProdutoCor').textContent  = cor;
+  $('uploadNomeArquivo').value       = `${artigo}_${cor.replace(/\//g,'_')}`;
+  $('uploadPreviewWrap').classList.add('hidden');
+  $('uploadArea2').classList.remove('hidden');
+  $('inputImagemProd').value = '';
+
+  // Banner de aviso se já tem imagem
+  const banner = $('uploadAvisoBanner');
+  if(banner) banner.classList.toggle('hidden', !temImagem);
+
+  $('modalUploadImagem').classList.remove('hidden');
+}
+
+function fecharUploadImagem(){
+  $('modalUploadImagem').classList.add('hidden');
+  _uploadItem = null; _uploadBase64 = null;
+}
+
+function limparUploadImagem(){
+  _uploadBase64 = null;
+  $('uploadPreview').src = '';
+  $('uploadPreviewWrap').classList.add('hidden');
+  $('uploadArea2').classList.remove('hidden');
+  $('inputImagemProd').value = '';
+}
+
+function previewUploadImagem(input){
+  const file = input.files[0];
+  if(!file) return;
+  _uploadExt = 'jpg'; // sempre salva como jpg após compressão
+  const reader = new FileReader();
+  reader.onload = e => {
+    // Comprimir via canvas antes de exibir e enviar
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if(w > MAX || h > MAX){
+        if(w > h){ h = Math.round(h * MAX/w); w = MAX; }
+        else      { w = Math.round(w * MAX/h); h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+      _uploadBase64 = dataUrl.split(',')[1];
+      $('uploadPreview').src = dataUrl;
+      $('uploadPreviewWrap').classList.remove('hidden');
+      $('uploadArea2').classList.add('hidden');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function enviarImagem(){
+  if(!_uploadBase64){ showToast('Selecione uma imagem primeiro.','error'); return; }
+  const nomeBase    = $('uploadNomeArquivo').value.trim() || `${_uploadItem.artigo}_${_uploadItem.cor.replace(/\//g,'_')}`;
+  const nomeArquivo = `${nomeBase}.jpg`; // sempre jpg após compressão
+  const btn = $('btnEnviarImagem');
+  const prev = btn.innerHTML;
+  btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Enviando...';
+  try{
+    const res = await workerFetch({
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'uploadImagem', nome:nomeArquivo, nomeArquivo, base64:_uploadBase64 })
+    });
+    if(!res.ok) throw new Error('Falha no upload');
+    const result = await res.json();
+    if(!result.success) throw new Error(result.error);
+
+    // Atualiza campo imagem no item local e salva no JSON
+    const idx = STATE.itens.findIndex(i =>
+      String(i.artigo||'').toUpperCase() === _uploadItem.artigo.toUpperCase() &&
+      String(i.cor||'').toUpperCase()    === _uploadItem.cor.toUpperCase()
+    );
+    if(idx !== -1){
+      STATE.itens[idx].imagem = nomeBase;
+      await workerFetch({
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ action:'saveDisponibilidades', data: STATE.itens })
+      });
+    }
+
+    // Salva no histórico de imagens — persiste mesmo se produto for excluído
+    const histKey = `${_uploadItem.artigo}|${_uploadItem.cor}`;
+    STATE.imgHist[histKey] = nomeBase;
+    await workerFetch({
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'saveImagensHistorico', data: { [histKey]: nomeBase } })
+    });
+
+    showToast(`Imagem "${nomeArquivo}" enviada!`, 'success');
+    fecharUploadImagem();
+    applyFilters();
+  }catch(err){
+    console.error(err);
+    showToast(`Erro: ${err.message}`, 'error');
+  }finally{ btn.disabled=false; btn.innerHTML=prev; }
+}
+
+// ── RENDER TABLE ──────────────────────────────────────────────────────────────
+function renderTable(itens){
+  const tbody = $('tableBody');
+  const wrap  = $('tableWrap');
+  const empty = $('emptyState');
+
+  if(!itens.length){
+    wrap.classList.add('hidden');
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  wrap.classList.remove('hidden');
+
+  const isOcultosView = STATE.filtro === 'ocultos';
+
+  tbody.innerHTML = itens.map(item => {
+    const oculto = isOculto(item);
+    const key    = ocultarKey(item);
+
+    // Grade — numerações com saldo > 0
+    const grade = item.grade || {};
+    const gradeStr = Object.entries(grade)
+      .filter(([,v]) => Number(v) > 0)
+      .map(([k,v]) => `<span class="inline-flex items-center gap-1 text-[10px] font-semibold rounded px-1.5 py-0.5" style="background:var(--muted-soft)">${safeHtml(k)}<span style="color:var(--brand);font-weight:800">${v}</span></span>`)
+      .join(' ') || '<span class="text-[11px]" style="color:var(--muted)">—</span>';
+
+    // Empresa — chip + valor real
+    const isUA = (item.empresa||'').toUpperCase().includes('VULSP') || (item.empresa||'').toUpperCase().includes('VDIST') || (item.categoria||'').toUpperCase().includes('UA');
+    const chipEmpresa = isUA
+      ? `<span class="chip-ua">UA</span>`
+      : `<span class="chip-oly">OLY</span>`;
+    const empresaVal = item.empresa ? `<div class="text-[10px] mt-0.5" style="color:var(--muted)">${safeHtml(item.empresa)}</div>` : '';
+
+    // Botões ação
+    const imgKey = imgCheckKey(item);
+    const imgStatus = STATE.imgChecks.get(imgKey) || (item.imagem ? 'has' : 'checking');
+    const btnImagem = (() => {
+      if(imgStatus === 'has'){
+        return `<button class="icon-btn img-badge has" data-img-key="${safeHtml(imgKey)}" data-img-status="has" onclick="abrirMiniaturaImagem(event,'${safeHtml(item.artigo)}','${safeHtml(item.cor)}','${safeHtml(item.descricao)}')" data-tip="Imagem encontrada — clique para ver" style="color:#15803d;border-color:#bbf7d0;background:#dcfce7"><i class="fa-solid fa-check text-xs"></i></button>`;
+      }
+      if(imgStatus === 'miss'){
+        return `<button class="icon-btn img-badge miss" data-img-key="${safeHtml(imgKey)}" data-img-status="miss" onclick="abrirUploadImagem('${safeHtml(item.artigo)}','${safeHtml(item.cor)}','${safeHtml(item.descricao)}',false)" data-tip="Imagem faltando — clique para enviar" style="color:#b91c1c;border-color:#fecaca;background:#fee2e2"><i class="fa-solid fa-xmark text-xs"></i></button>`;
+      }
+      // checking
+      return `<button class="icon-btn img-badge checking" data-img-key="${safeHtml(imgKey)}" data-img-status="checking" data-tip="Verificando..." style="color:#a16207;border-color:#fde68a;background:#fef3c7"><i class="fa-solid fa-circle-notch fa-spin text-xs"></i></button>`;
+    })();
+
+    const btns = isOcultosView
+      ? `<button class="icon-btn reexibir" onclick="reexibirItem('${safeHtml(key)}')" data-tip="Reexibir"><i class="fa-solid fa-eye text-xs"></i></button>`
+      : `${btnImagem}
+         <button class="icon-btn ocultar" onclick="ocultarItem('${safeHtml(key)}')" data-tip="Ocultar"><i class="fa-solid fa-eye-slash text-xs"></i></button>
+         <button class="icon-btn excluir" onclick="excluirItem('${safeHtml(key)}')" data-tip="Excluir"><i class="fa-solid fa-trash-can text-xs"></i></button>`;
+
+    const isSel = STATE.selecionados.has(key);
+    return `<tr class="${oculto?'oculto':''} ${isSel?'row-selected':''}" data-row-key="${safeHtml(key)}">
+      <td class="td-bulk" style="width:32px;text-align:center;padding-left:14px"><input type="checkbox" ${isSel?'checked':''} onchange="bulkToggleItem('${safeHtml(key)}',this.checked)" style="accent-color:var(--accent);cursor:pointer" onclick="event.stopPropagation()"></td>
+      <td data-col="prevFat" class="font-semibold text-xs whitespace-nowrap" style="color:var(--muted)">${safeHtml(item.prevFat||'—')}</td>
+      <td data-col="empresa">${chipEmpresa}${empresaVal}</td>
+      <td data-col="artigo" class="font-extrabold text-xs" style="color:var(--brand)">${safeHtml(item.artigo||'—')}</td>
+      <td data-col="descricao" class="font-bold" style="color:var(--text)">${safeHtml(item.descricao||'—')}</td>
+      <td data-col="cor" class="text-xs font-semibold" style="color:var(--muted)">${safeHtml(item.cor||'—')}</td>
+      <td data-col="linha" class="text-xs" style="color:var(--muted)">${safeHtml(item.linha||'—')}</td>
+      <td data-col="genero" class="text-xs" style="color:var(--muted)">${safeHtml(item.genero||'—')}</td>
+      <td data-col="categoria" class="text-xs" style="color:var(--muted)">${safeHtml(item.categoria||'—')}</td>
+      <td data-col="pdv" class="text-right font-bold text-xs">R$ ${Number(item.pdv||0).toFixed(2)}</td>
+      <td data-col="totalGeral" class="text-right font-extrabold" style="color:var(--brand)">${Number(item.totalGeral||0).toLocaleString('pt-BR')}</td>
+      <td data-col="grade"><div class="flex flex-wrap gap-1 max-w-xs">${gradeStr}</div></td>
+      <td data-col="acoes"><div class="flex items-center gap-1">${btns}</div></td>
+    </tr>`;
+  }).join('');
+
+  aplicarColunas();
+  refreshBulkBar();
+}
+
+// ── OCULTAR / REEXIBIR ────────────────────────────────────────────────────────
+async function ocultarItem(key){
+  STATE.ocultos.add(key);
+  await salvarOcultos();
+  applyFilters();
+}
+
+async function reexibirItem(key){
+  STATE.ocultos.delete(key);
+  await salvarOcultos();
+  applyFilters();
+}
+
+async function salvarOcultos(){
+  try{
+    const res = await workerFetch({
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'saveOcultosDisp', data:[...STATE.ocultos] })
+    });
+    if(!res.ok) throw new Error('Falha ao salvar ocultos');
+    STATE.lastSync = Date.now();
+    updateLastSyncLabel();
+  }catch(err){ console.error(err); showToast('Erro ao salvar.','error'); }
+}
+
+// ── EXCLUIR ───────────────────────────────────────────────────────────────────
+async function excluirItem(key){
+  const ok = await confirmDialog({
+    title: 'Excluir produto',
+    message: 'Esta ação não pode ser desfeita. O produto será removido permanentemente.',
+    confirmLabel: 'Excluir',
+    type: 'danger'
+  });
+  if(!ok) return;
+  const [artigo, cor] = key.split('|');
+  STATE.itens = STATE.itens.filter(i =>
+    !(String(i.artigo||'').toUpperCase()===artigo && String(i.cor||'').toUpperCase()===cor)
+  );
+  try{
+    const res = await workerFetch({
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'saveDisponibilidades', data: STATE.itens })
+    });
+    if(!res.ok) throw new Error();
+    STATE.lastSync = Date.now();
+    updateLastSyncLabel();
+    showToast('Produto removido.', 'success');
+    applyFilters();
+  }catch(err){ console.error(err); showToast('Erro ao excluir.','error'); }
+}
+
+// ── IMPORTAR ──────────────────────────────────────────────────────────────────
+function abrirImportar(){ $('modalImportar').classList.remove('hidden'); }
+function fecharImportar(){
+  $('modalImportar').classList.add('hidden');
+  $('previewArea').classList.add('hidden');
+  $('uploadArea').classList.remove('hidden');
+  $('inputXlsx').value='';
+  _novos=[]; _conflitos=[];
+}
+
+const COLS_FIXAS = new Set(['PREV. FAT','EMPRESA','ARTIGO','DESCRIÇÃO','COR','LINHA','GÉNERO','CATEGORIA','PDV','T. GER','T. GRD']);
+
+function rowToItem(row){
+  const grade = {};
+  for(const [col, val] of Object.entries(row)){
+    if(COLS_FIXAS.has(col)) continue;
+    const n = Number(val);
+    if(!isNaN(n) && n > 0) grade[col] = n;
+  }
+  return {
+    prevFat:    String(row['PREV. FAT'] || '').trim(),
+    empresa:    String(row['EMPRESA']   || '').trim(),
+    artigo:     String(row['ARTIGO']    || '').trim().toUpperCase(),
+    descricao:  String(row['DESCRIÇÃO'] || '').trim().toUpperCase(),
+    cor:        String(row['COR']       || '').trim().toUpperCase(),
+    linha:      String(row['LINHA']     || '').trim().toUpperCase(),
+    genero:     String(row['GÉNERO']    || row['GENERO'] || '').trim().toUpperCase(),
+    categoria:  String(row['CATEGORIA'] || '').trim().toUpperCase(),
+    pdv:        Number(row['PDV']       || 0),
+    totalGeral: Number(row['T. GER']   || 0),
+    imagem:     '', // preenchido ao fazer upload
+    grade
+  };
+}
+
+async function processarXlsx(file){
+  if(!file) return;
+  // Carrega JSON atual
+  try{
+    const res = await workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'getDisponibilidades'}) });
+    _jsonAtual = res.ok ? await res.json() : [];
+  }catch(e){ _jsonAtual = []; }
+
+  const buf = await file.arrayBuffer();
+  const wb  = XLSX.read(buf, { type:'array' });
+  const ws  = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { defval:null });
+
+  const chaveAtual = new Map();
+  for(const r of _jsonAtual){
+    const k = `${String(r.artigo||'').toUpperCase()}|${String(r.cor||'').toUpperCase()}`;
+    chaveAtual.set(k, r);
+  }
+
+  _novos=[]; _conflitos=[];
+
+  for(const row of rows){
+    const item = rowToItem(row);
+    if(!item.artigo) continue;
+    const k = `${item.artigo}|${item.cor}`;
+    if(chaveAtual.has(k)){
+      _conflitos.push({ xlsx:item, atual:chaveAtual.get(k), incluir:false });
+    } else {
+      _novos.push(item);
+    }
+  }
+
+  renderPreview(file.name, rows.length);
+}
+
+function renderPreview(nome, total){
+  $('uploadArea').classList.add('hidden');
+  $('previewArea').classList.remove('hidden');
+  $('previewTitle').textContent = `${nome} — ${total} linha(s) lida(s)`;
+
+  // Novos
+  if(_novos.length){
+    $('novosBlock').classList.remove('hidden');
+    $('novosCount').textContent = _novos.length;
+    $('novosBody').innerHTML = _novos.map(r=>`
+      <tr class="border-t border-green-100">
+        <td class="px-3 py-2 font-bold">${safeHtml(r.artigo)}</td>
+        <td class="px-3 py-2">${safeHtml(r.descricao)}</td>
+        <td class="px-3 py-2 text-slate-500">${safeHtml(r.cor)}</td>
+        <td class="px-3 py-2 text-slate-500">${safeHtml(r.empresa)}</td>
+        <td class="px-3 py-2 text-right font-bold">${Number(r.totalGeral).toLocaleString('pt-BR')}</td>
+      </tr>`).join('');
+  } else { $('novosBlock').classList.add('hidden'); }
+
+  // Conflitos
+  if(_conflitos.length){
+    $('conflitosBlock').classList.remove('hidden');
+    $('conflitosCount').textContent = _conflitos.length;
+    $('conflitosBody').innerHTML = _conflitos.map((c,i)=>`
+      <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div class="font-bold text-sm">${safeHtml(c.xlsx.descricao)} — ${safeHtml(c.xlsx.cor)}</div>
+          <div class="flex gap-2">
+            <button onclick="toggleConflito(${i},false)" class="ci-ign-${i} focus-ring rounded-full px-3 py-1 text-xs font-bold border ${c.incluir?'border-slate-200 bg-white text-slate-500':'border-red-300 bg-red-50 text-red-600'}">Ignorar</button>
+            <button onclick="toggleConflito(${i},true)"  class="ci-inc-${i} focus-ring rounded-full px-3 py-1 text-xs font-bold border ${c.incluir?'border-green-300 bg-green-50 text-green-600':'border-slate-200 bg-white text-slate-500'}">Incluir mesmo assim</button>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <div class="rounded-xl bg-white border border-slate-200 p-3">
+            <div class="text-slate-400 font-bold mb-2 uppercase text-[10px] tracking-wide">Existente</div>
+            <div class="flex justify-between"><span class="text-slate-500">T. Geral</span><span class="font-bold">${Number(c.atual.totalGeral||0).toLocaleString('pt-BR')}</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Prev. Fat</span><span>${safeHtml(c.atual.prevFat||'—')}</span></div>
+          </div>
+          <div class="rounded-xl bg-amber-50 border border-amber-200 p-3">
+            <div class="text-amber-600 font-bold mb-2 uppercase text-[10px] tracking-wide">Chegando</div>
+            <div class="flex justify-between"><span class="text-slate-500">T. Geral</span><span class="font-bold ${c.xlsx.totalGeral!==c.atual.totalGeral?'text-amber-600':''}">${Number(c.xlsx.totalGeral||0).toLocaleString('pt-BR')}</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Prev. Fat</span><span class="${c.xlsx.prevFat!==c.atual.prevFat?'text-amber-600':''}">${safeHtml(c.xlsx.prevFat||'—')}</span></div>
+          </div>
+        </div>
+      </div>`).join('');
+  } else { $('conflitosBlock').classList.add('hidden'); }
+
+  atualizarResumo();
+}
+
+function toggleConflito(idx, incluir){
+  _conflitos[idx].incluir = incluir;
+  const btnIgn = document.querySelector(`.ci-ign-${idx}`);
+  const btnInc = document.querySelector(`.ci-inc-${idx}`);
+  if(btnIgn) btnIgn.className = `ci-ign-${idx} focus-ring rounded-full px-3 py-1 text-xs font-bold border ${!incluir?'border-red-300 bg-red-50 text-red-600':'border-slate-200 bg-white text-slate-500'}`;
+  if(btnInc) btnInc.className = `ci-inc-${idx} focus-ring rounded-full px-3 py-1 text-xs font-bold border ${incluir?'border-green-300 bg-green-50 text-green-600':'border-slate-200 bg-white text-slate-500'}`;
+  atualizarResumo();
+}
+
+function atualizarResumo(){
+  const inc = _conflitos.filter(c=>c.incluir).length;
+  const ign = _conflitos.filter(c=>!c.incluir).length;
+  $('resumoImport').textContent = `${_novos.length} novo(s) + ${inc} conflito(s) incluído(s) — ${ign} ignorado(s). Total a salvar: ${_jsonAtual.length + _novos.length + inc} produto(s).`;
+}
+
+async function confirmarImportar(){
+  const btn = $('btnConfirmar');
+  const prev = btn.innerHTML;
+  btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+  try{
+    // Para conflitos incluídos, preservar imagem do existente
+    const conflitosParaSalvar = _conflitos.filter(c=>c.incluir).map(c=>({
+      ...c.xlsx,
+      imagem: c.atual.imagem || STATE.imgHist[`${c.xlsx.artigo}|${c.xlsx.cor}`] || ''
+    }));
+
+    // Para novos, restaurar imagem do histórico se existir
+    const novosParaSalvar = _novos.map(item => ({
+      ...item,
+      imagem: STATE.imgHist[`${item.artigo}|${item.cor}`] || ''
+    }));
+
+    // Auto-vincular: pra novos sem imagem no histórico, verifica se já existe na pasta Catálogo
+    btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Verificando imagens...';
+    const semImagem = novosParaSalvar.filter(i => !i.imagem);
+    let autoVinculadas = 0;
+    if(semImagem.length){
+      const BATCH = 10;
+      for(let i = 0; i < semImagem.length; i += BATCH){
+        const slice = semImagem.slice(i, i + BATCH);
+        await Promise.all(slice.map(async (item) => {
+          const nome = getProductImageName(item); // ex: 43343458_ARTPTO
+          if(!nome) return;
+          const exists = await checkImageExists(`${IMG_BASE}${nome}.jpg`);
+          if(exists){
+            item.imagem = nome;
+            autoVinculadas++;
+          }
+        }));
+      }
+    }
+
+    btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+    const listaFinal = [..._jsonAtual, ...novosParaSalvar, ...conflitosParaSalvar];
+    const res = await workerFetch({
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'saveDisponibilidades', data:listaFinal })
+    });
+    if(!res.ok) throw new Error(`Worker falhou (${res.status})`);
+    const result = await res.json();
+    if(!result.success) throw new Error(result.error);
+    STATE.itens = listaFinal;
+    STATE.lastSync = Date.now();
+    updateLastSyncLabel();
+    popularFiltrosSec();
+
+    // Contar quantos tiveram imagem restaurada (do histórico) ou auto-vinculada (da pasta)
+    const restauradas = [...novosParaSalvar, ...conflitosParaSalvar].filter(i=>i.imagem).length;
+    const partes = [`${novosParaSalvar.length + conflitosParaSalvar.length} produto(s) importado(s)`];
+    if(autoVinculadas > 0) partes.push(`${autoVinculadas} imagem(ns) vinculada(s) automaticamente da pasta`);
+    else if(restauradas > 0) partes.push(`${restauradas} imagem(ns) restaurada(s) do histórico`);
+    showToast(partes.join(' — ') + '!', 'success');
+    fecharImportar();
+    applyFilters();
+    verifyAllImages(); // re-verifica tudo após importar
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao salvar.','error');
+  }finally{ btn.disabled=false; btn.innerHTML=prev; }
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+if(localStorage.getItem(STORAGE_KEY_AUTH)==='ok'){
+  $('loginScreen').classList.add('hidden');
+  $('adminApp').classList.remove('hidden');
+  loadData();
+}
+
+$('adminPassword').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+</script>
+</body>
+</html>
+
