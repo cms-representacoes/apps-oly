@@ -761,8 +761,10 @@ async function loadData(){
 // Monta o nome do arquivo padrão pra um item (artigo_cor.jpg, com / virando _)
 function getProductImageName(item){
   if(item.imagem) return String(item.imagem); // já tem nome cadastrado, prioridade
-  const art = String(item.artigo || '').trim();
-  const cor = String(item.cor || '').trim().replace(/\//g, '_').toUpperCase();
+  // Fallback: gera com regra normalizada (mesma usada no import em lote)
+  // Usa typeof check pois chaveImagemDoProduto pode não estar definida ainda em alguns paths
+  const art = String(item.artigo || '').toUpperCase().replace(/[\/\-\s.]+/g,'_').replace(/_+/g,'_').replace(/^_+|_+$/g,'');
+  const cor = String(item.cor    || '').toUpperCase().replace(/[\/\-\s.]+/g,'_').replace(/_+/g,'_').replace(/^_+|_+$/g,'');
   if(!art || !cor) return '';
   return `${art}_${cor}`;
 }
@@ -1668,20 +1670,29 @@ function atualizarResumo(){
 let _imagensLote = new Map();
 let _imagensOrfas = []; // nomes que não casaram com nenhum produto
 
+// Normalizador único — trata /, -, espaço, ponto como separadores equivalentes (_)
+// Resolve divergência entre planilha (CH/BLK), arquivo (1361518_CH-BLK.jpg), etc.
+function normalizarChave(str){
+  return String(str || '')
+    .replace(/\.(jpe?g|png|webp)$/i, '')   // remove extensão
+    .toUpperCase()
+    .replace(/[\/\-\s.]+/g, '_')           // /, -, espaço, . → _
+    .replace(/_+/g, '_')                   // _ duplicados → _
+    .replace(/^_+|_+$/g, '')               // _ nas pontas
+    .trim();
+}
+
 // Normaliza nome de arquivo → chave de matching
-// "5310A_PRETO.jpg" → "5310A_PRETO"  (uppercase, sem extensão, troca / por _)
+// Ex: "1361518_CH-BLK.jpg" → "1361518_CH_BLK"
 function normalizarChaveImagem(nomeArquivo){
-  return String(nomeArquivo || '')
-    .replace(/\.(jpe?g|png|webp)$/i, '')
-    .replace(/\//g, '_')
-    .trim()
-    .toUpperCase();
+  return normalizarChave(nomeArquivo);
 }
 
 // Gera chave de matching a partir de um produto (artigo+cor)
+// Ex: artigo="1361518" cor="CH/BLK" → "1361518_CH_BLK"
 function chaveImagemDoProduto(item){
-  const art = String(item.artigo || '').trim().toUpperCase();
-  const cor = String(item.cor || '').trim().replace(/\//g, '_').toUpperCase();
+  const art = normalizarChave(item.artigo);
+  const cor = normalizarChave(item.cor);
   if(!art || !cor) return '';
   return `${art}_${cor}`;
 }
