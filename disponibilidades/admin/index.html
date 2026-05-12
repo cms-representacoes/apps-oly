@@ -524,60 +524,60 @@
       <input type="file" id="inputXlsx" accept=".xlsx,.xls" class="hidden" onchange="processarXlsx(this.files[0])">
     </div>
 
-    <!-- Upload Imagens em Lote (Passo 2 — opcional, aparece após XLSX) -->
-    <div id="uploadImagensArea" class="hidden border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center mb-4 cursor-pointer hover:border-green-300 hover:bg-green-50 transition-colors" onclick="$('inputImagensLote').click()">
-      <i class="fa-solid fa-images text-slate-300 text-2xl mb-2 block"></i>
-      <div class="text-sm font-bold text-slate-600">Passo 2 — Selecionar imagens (opcional)</div>
-      <div class="text-xs text-slate-400 mt-1">Formato esperado: <strong>ARTIGO_COR.jpg</strong> · pode selecionar várias</div>
-      <input type="file" id="inputImagensLote" accept="image/jpeg,image/png,image/webp" multiple class="hidden" onchange="processarImagensLote(this.files)">
-    </div>
-
-    <!-- Resumo de matching das imagens -->
-    <div id="resumoImagensBlock" class="hidden mb-4 rounded-2xl border border-slate-200 p-4" style="border-color:var(--line);background:var(--card)">
-      <div class="flex items-center justify-between mb-3">
-        <div class="text-sm font-extrabold flex items-center gap-2">
-          <i class="fa-solid fa-images" style="color:var(--brand)"></i>
-          Imagens selecionadas — <span id="imagensTotalCount">0</span>
-        </div>
-        <button onclick="$('inputImagensLote').click()" class="text-xs font-bold hover:underline" style="color:var(--brand)">Trocar</button>
-      </div>
-      <div class="grid grid-cols-3 gap-2 text-xs">
-        <div class="rounded-xl bg-green-50 border border-green-200 p-3 text-center">
-          <div class="text-[10px] font-bold uppercase tracking-wide text-green-700">Casadas</div>
-          <div class="text-2xl font-extrabold text-green-700" id="imagensOkCount">0</div>
-        </div>
-        <div class="rounded-xl bg-amber-50 border border-amber-200 p-3 text-center">
-          <div class="text-[10px] font-bold uppercase tracking-wide text-amber-700">Produtos sem img</div>
-          <div class="text-2xl font-extrabold text-amber-700" id="imagensSemProdCount">0</div>
-        </div>
-        <div class="rounded-xl bg-rose-50 border border-rose-200 p-3 text-center">
-          <div class="text-[10px] font-bold uppercase tracking-wide text-rose-700">Órfãs</div>
-          <div class="text-2xl font-extrabold text-rose-700" id="imagensOrfasCount">0</div>
-        </div>
-      </div>
-      <details id="imagensDetalhes" class="mt-3" style="display:none">
-        <summary class="text-xs font-bold cursor-pointer" style="color:var(--muted)">Ver detalhes das órfãs</summary>
-        <div id="imagensOrfasList" class="mt-2 text-xs flex flex-wrap gap-1.5"></div>
-      </details>
-    </div>
-
-    <!-- Progresso de envio das imagens -->
-    <div id="imgUploadProgress" class="hidden mb-4 rounded-2xl border border-slate-200 p-4" style="border-color:var(--line);background:var(--card)">
-      <div class="flex items-center justify-between text-xs mb-2">
-        <span class="font-bold">Enviando imagens...</span>
-        <span id="imgUploadProgressText" style="color:var(--muted)">0 / 0</span>
-      </div>
-      <div style="height:6px;border-radius:999px;background:var(--muted-soft);overflow:hidden">
-        <div id="imgUploadProgressBar" style="height:100%;width:0%;background:var(--brand);transition:width .25s"></div>
-      </div>
-      <div id="imgUploadProgressCurrent" class="text-[11px] mt-2 truncate" style="color:var(--muted)">—</div>
-    </div>
-
     <!-- Preview -->
     <div id="previewArea" class="hidden">
       <div class="flex items-center justify-between mb-3">
         <div class="text-sm font-extrabold" id="previewTitle">—</div>
         <button onclick="$('inputXlsx').click()" class="text-xs font-bold hover:underline" style="color:var(--brand)">Trocar arquivo</button>
+      </div>
+
+      <!-- Upload Imagens em Lote (Passo 2 — opcional) -->
+      <div id="uploadImagensArea" class="border-2 border-dashed border-slate-200 rounded-2xl p-5 text-center mb-4 cursor-pointer hover:border-green-300 hover:bg-green-50 transition-colors" onclick="$('inputImagensLote').click()" style="border-color:var(--brand);background:rgba(34,197,94,.04)">
+        <i class="fa-solid fa-images text-3xl mb-2 block" style="color:var(--brand)"></i>
+        <div class="text-sm font-extrabold" style="color:var(--brand)">Passo 2 — Selecionar imagens (opcional)</div>
+        <div class="text-xs text-slate-500 mt-1">Formato esperado: <strong>ARTIGO_COR.jpg</strong> · pode selecionar várias de uma vez</div>
+        <input type="file" id="inputImagensLote" accept="image/jpeg,image/png,image/webp" multiple class="hidden" onchange="processarImagensLote(this.files)">
+      </div>
+
+      <!-- Resumo de matching das imagens -->
+      <div id="resumoImagensBlock" class="hidden mb-4 rounded-2xl border border-slate-200 p-4" style="border-color:var(--line);background:var(--card)">
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-sm font-extrabold flex items-center gap-2">
+            <i class="fa-solid fa-images" style="color:var(--brand)"></i>
+            Imagens selecionadas — <span id="imagensTotalCount">0</span>
+          </div>
+          <button onclick="$('inputImagensLote').click()" class="text-xs font-bold hover:underline" style="color:var(--brand)">Trocar</button>
+        </div>
+        <div class="grid grid-cols-3 gap-2 text-xs">
+          <div class="rounded-xl bg-green-50 border border-green-200 p-3 text-center">
+            <div class="text-[10px] font-bold uppercase tracking-wide text-green-700">Casadas</div>
+            <div class="text-2xl font-extrabold text-green-700" id="imagensOkCount">0</div>
+          </div>
+          <div class="rounded-xl bg-amber-50 border border-amber-200 p-3 text-center">
+            <div class="text-[10px] font-bold uppercase tracking-wide text-amber-700">Produtos sem img</div>
+            <div class="text-2xl font-extrabold text-amber-700" id="imagensSemProdCount">0</div>
+          </div>
+          <div class="rounded-xl bg-rose-50 border border-rose-200 p-3 text-center">
+            <div class="text-[10px] font-bold uppercase tracking-wide text-rose-700">Órfãs</div>
+            <div class="text-2xl font-extrabold text-rose-700" id="imagensOrfasCount">0</div>
+          </div>
+        </div>
+        <details id="imagensDetalhes" class="mt-3" style="display:none">
+          <summary class="text-xs font-bold cursor-pointer" style="color:var(--muted)">Ver detalhes das órfãs</summary>
+          <div id="imagensOrfasList" class="mt-2 text-xs flex flex-wrap gap-1.5"></div>
+        </details>
+      </div>
+
+      <!-- Progresso de envio das imagens -->
+      <div id="imgUploadProgress" class="hidden mb-4 rounded-2xl border border-slate-200 p-4" style="border-color:var(--line);background:var(--card)">
+        <div class="flex items-center justify-between text-xs mb-2">
+          <span class="font-bold">Enviando imagens...</span>
+          <span id="imgUploadProgressText" style="color:var(--muted)">0 / 0</span>
+        </div>
+        <div style="height:6px;border-radius:999px;background:var(--muted-soft);overflow:hidden">
+          <div id="imgUploadProgressBar" style="height:100%;width:0%;background:var(--brand);transition:width .25s"></div>
+        </div>
+        <div id="imgUploadProgressCurrent" class="text-[11px] mt-2 truncate" style="color:var(--muted)">—</div>
       </div>
 
       <!-- Novos -->
@@ -1524,7 +1524,6 @@ function fecharImportar(){
   $('modalImportar').classList.add('hidden');
   $('previewArea').classList.add('hidden');
   $('uploadArea').classList.remove('hidden');
-  $('uploadImagensArea').classList.add('hidden');
   $('resumoImagensBlock').classList.add('hidden');
   $('imgUploadProgress').classList.add('hidden');
   $('inputXlsx').value='';
@@ -1601,7 +1600,6 @@ async function processarXlsx(file){
 function renderPreview(nome, total){
   $('uploadArea').classList.add('hidden');
   $('previewArea').classList.remove('hidden');
-  $('uploadImagensArea').classList.remove('hidden'); // habilita Passo 2
   $('previewTitle').textContent = `${nome} — ${total} linha(s) lida(s)`;
 
   // Novos
