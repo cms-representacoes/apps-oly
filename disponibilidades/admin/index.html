@@ -756,13 +756,10 @@ function showToastAcao(msg, labelBotao, onClick, type='info'){
 function safeHtml(v){ return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
 
 // ── CLASSIFICAÇÃO DE MARCA (fonte única de verdade) ───────────────────────────
-// Regra: é Under Armour se marca='UA' OU empresa contém VULSP/VDIST.
-// (categoria.includes('UA') foi REMOVIDO — causava falso positivo em CASUAL, AQUA, etc.)
+// Regra estrita: baseia-se APENAS na coluna `marca` do produto.
+// Todos os produtos importados a partir de agora têm a marca preenchida.
 function isUA(item){
-  if(!item) return false;
-  if(item.marca === 'UA') return true;
-  const emp = (item.empresa || '').toUpperCase();
-  return emp.includes('VULSP') || emp.includes('VDIST');
+  return String(item?.marca || '').trim().toUpperCase() === 'UA';
 }
 
 // ── LOAD DATA ─────────────────────────────────────────────────────────────────
@@ -979,7 +976,7 @@ function applyFilters(){
     if(f === 'ocultos') return isOculto(item);
     if(isOculto(item)) return false;
     if(f === 'ua')  return isUA(item);
-    if(f === 'oly') return !isUA(item);
+    if(f === 'oly') return String(item.marca||'').trim().toUpperCase() === 'OLY';
     if(f === 'semimg'){
       // sem campo imagem cadastrado E status do check é miss (ou ainda não checado)
       const status = STATE.imgChecks.get(imgCheckKey(item));
@@ -999,7 +996,7 @@ function applyFilters(){
   // Badges
   const todos = STATE.itens.filter(i => !isOculto(i));
   const ua    = todos.filter(i => isUA(i));
-  const oly   = todos.filter(i => !isUA(i));
+  const oly   = todos.filter(i => String(i.marca||'').trim().toUpperCase() === 'OLY');
   const oc    = STATE.itens.filter(i => isOculto(i));
   const semImg = todos.filter(i => !i.imagem && STATE.imgChecks.get(imgCheckKey(i)) !== 'has');
 
