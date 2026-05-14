@@ -214,9 +214,9 @@
 
   <!-- Filtros (sticky) -->
   <div class="filters-bar flex flex-wrap items-center gap-2 mb-4">
-    <button class="filter-pill active" data-filter="todos" onclick="setFilter('todos')">Todos</button>
-    <button class="filter-pill" data-filter="ua" onclick="setFilter('ua')">Under Armour</button>
-    <button class="filter-pill" data-filter="oly" onclick="setFilter('oly')">Olympikus</button>
+    <button class="filter-pill active" data-marca="todos" onclick="setMarca('todos')">Todos</button>
+    <button class="filter-pill" data-marca="ua" onclick="setMarca('ua')">Under Armour</button>
+    <button class="filter-pill" data-marca="oly" onclick="setMarca('oly')">Olympikus</button>
     <!-- Separador -->
     <div class="w-px h-5 bg-slate-200 mx-1"></div>
     <!-- Filtros de tabela especial — gerados dinamicamente -->
@@ -273,14 +273,16 @@ const $ = id => document.getElementById(id);
 const STATE = {
   itens:      [],
   filtrados:  [],
-  filtro:     'todos',
-  categoria:  '',           // '' = todas; senão valor da categoria
+  // 3 filtros independentes (AND entre si)
+  filtroMarca:     'todos',   // 'todos' | 'ua' | 'oly'
+  filtroTabela:    '',        // '' = sem filtro de tabela; 'corre' | 'tabela_XYZ'
+  filtroCategoria: '',        // '' = sem filtro de categoria; 'calcados' | 'vestuario' | 'acessorios'
   search:     '',
   selecionados: new Set(),
   // Paginação
-  pageSize:    24,        // produtos por "página" (lote)
-  rendered:    0,         // quantos já estão no DOM
-  io:          null       // IntersectionObserver da sentinela
+  pageSize:    24,
+  rendered:    0,
+  io:          null
 };
 
 function showToast(msg, type='info'){
@@ -353,10 +355,10 @@ function renderFiltrosTabela(){
   if(!wrap) return;
   let html = '';
   if(temCorre){
-    html += `<button class="filter-pill" data-filter="corre" onclick="setFilter('corre')" style="border-color:#bbf7d0;color:#15803d"><i class="fa-solid fa-shoe-prints" style="font-size:10px"></i> Corre</button>`;
+    html += `<button class="filter-pill" data-tabela="corre" onclick="setTabela('corre')" style="border-color:#bbf7d0;color:#15803d"><i class="fa-solid fa-shoe-prints" style="font-size:10px"></i> Corre</button>`;
   }
   html += codigos.map(cod => `
-    <button class="filter-pill" data-filter="tabela_${cod}" onclick="setFilter('tabela_${cod}')" style="border-color:#d1d5db;color:#374151">
+    <button class="filter-pill" data-tabela="tabela_${cod}" onclick="setTabela('tabela_${cod}')" style="border-color:#d1d5db;color:#374151">
       <i class="fa-solid fa-tag" style="font-size:10px"></i> ${cod}
     </button>`).join('');
   wrap.innerHTML = html;
@@ -365,8 +367,7 @@ function renderFiltrosTabela(){
 // Define os GRUPOS de categoria — fundem categorias relacionadas
 // regex bate em UPPERCASE sem acentos (a normalização cuida)
 const GRUPOS_CATEGORIA = [
-  { id:'tenis',       label:'Tênis',      emoji:'👟', match:/TEN|CALCAD/ },
-  { id:'chinelos',    label:'Chinelos',   emoji:'🩴', match:/CHINEL|SAND/ },
+  { id:'calcados',    label:'Calçados',   emoji:'👟', match:/TEN|CALCAD|CHINEL|SAND/ },
   { id:'vestuario',   label:'Vestuário',  emoji:'👕', match:/VEST|CAMIS|SHORT|BERMUD|CAL[CÇ]A|REGATA|JAQUET|MOLET|MEIA/ },
   { id:'acessorios',  label:'Acessórios', emoji:'🛍️', match:/ACES|MOCHIL|BOLSA|BONE/ }
 ];
@@ -407,21 +408,33 @@ function renderFiltrosCategoria(){
     </button>`).join('');
 }
 
-// Filtro de categoria — independente do filtro de marca/tabela (acumula)
-function setCategoria(c){
-  // Toggle: clicar na mesma desativa
-  STATE.categoria = (STATE.categoria === c) ? '' : c;
-  document.querySelectorAll('[data-categoria]').forEach(b => {
-    b.classList.toggle('active', b.dataset.categoria === STATE.categoria);
-  });
+// ── 3 FILTROS INDEPENDENTES (acumulam entre si com AND) ───────────────────────
+
+// Filtro de MARCA (sempre 1 ativo: todos/ua/oly)
+function setMarca(m){
+  STATE.filtroMarca = m;
+  document.querySelectorAll('[data-marca]').forEach(b => b.classList.toggle('active', b.dataset.marca === m));
   applyFilters();
 }
 
-function setFilter(f){
-  STATE.filtro = f;
-  // Marca só os pills de marca/tabela como ativos (não mexe nos de categoria)
-  document.querySelectorAll('.filter-pill[data-filter]').forEach(b => b.classList.toggle('active', b.dataset.filter === f));
+// Filtro de TABELA especial (toggle — clicar 2x desativa)
+function setTabela(t){
+  STATE.filtroTabela = (STATE.filtroTabela === t) ? '' : t;
+  document.querySelectorAll('[data-tabela]').forEach(b => b.classList.toggle('active', b.dataset.tabela === STATE.filtroTabela));
   applyFilters();
+}
+
+// Filtro de CATEGORIA (toggle — clicar 2x desativa)
+function setCategoria(c){
+  STATE.filtroCategoria = (STATE.filtroCategoria === c) ? '' : c;
+  document.querySelectorAll('[data-categoria]').forEach(b => b.classList.toggle('active', b.dataset.categoria === STATE.filtroCategoria));
+  applyFilters();
+}
+
+// Wrapper de compatibilidade — caso algo ainda chame setFilter
+function setFilter(f){
+  if(f === 'todos' || f === 'ua' || f === 'oly') return setMarca(f);
+  return setTabela(f); // 'corre' ou 'tabela_XYZ'
 }
 
 function limparBusca(){
@@ -436,21 +449,32 @@ function applyFilters(){
   STATE.search = q;
   $('btnClearSearch').classList.toggle('hidden', !q);
 
-  STATE.filtrados = STATE.itens.filter(item => {
-    const f = STATE.filtro;
-    if(f === 'ua')    return isUA(item);
-    if(f === 'oly')   return item.marca === 'OLY' || (item.marca === '' && !isUA(item));
-    if(f === 'corre') return item.marca === 'CORRE';
-    if(f.startsWith('tabela_')) return (item.codigoTabela||'') === f.replace('tabela_','');
-    return true;
-  }).filter(item => {
-    // Filtro de categoria (acumula com marca/tabela) — usa o GRUPO, não o valor cru
-    if(!STATE.categoria) return true;
-    return grupoDeCategoria(item.categoria) === STATE.categoria;
-  }).filter(item => {
-    if(!q) return true;
-    return `${item.descricao} ${item.artigo} ${item.cor} ${item.linha} ${item.empresa} ${item.codigoTabela||''}`.toLowerCase().includes(q);
-  });
+  STATE.filtrados = STATE.itens
+    // 1) Filtro de MARCA
+    .filter(item => {
+      const m = STATE.filtroMarca;
+      if(m === 'ua')  return isUA(item);
+      if(m === 'oly') return item.marca === 'OLY' || (item.marca === '' && !isUA(item));
+      return true; // 'todos'
+    })
+    // 2) Filtro de TABELA (independente)
+    .filter(item => {
+      const t = STATE.filtroTabela;
+      if(!t) return true;
+      if(t === 'corre') return item.marca === 'CORRE';
+      if(t.startsWith('tabela_')) return (item.codigoTabela||'') === t.replace('tabela_','');
+      return true;
+    })
+    // 3) Filtro de CATEGORIA (independente — usa o GRUPO)
+    .filter(item => {
+      if(!STATE.filtroCategoria) return true;
+      return grupoDeCategoria(item.categoria) === STATE.filtroCategoria;
+    })
+    // 4) Busca livre
+    .filter(item => {
+      if(!q) return true;
+      return `${item.descricao} ${item.artigo} ${item.cor} ${item.linha} ${item.empresa} ${item.codigoTabela||''}`.toLowerCase().includes(q);
+    });
 
   $('countLabel').textContent = `${STATE.filtrados.length} produto${STATE.filtrados.length!==1?'s':''}`;
   renderCards();
