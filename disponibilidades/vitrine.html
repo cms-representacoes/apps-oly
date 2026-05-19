@@ -9,6 +9,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     :root{
       --bg:#f6f7fb; --card:#ffffff; --card2:#f1f5f9;
@@ -178,6 +179,175 @@
     /* Spinner */
     @keyframes spin{ to{ transform:rotate(360deg); } }
     .spin{ animation:spin 1s linear infinite; }
+    /* ═══ SACOLA / FAB ═══════════════════════════════════════════════════ */
+    .fab-cart{
+      position:fixed; bottom:24px; right:24px; z-index:50;
+      width:auto; height:54px; padding:0 22px; border-radius:999px;
+      background:var(--accent); color:#fff; border:none;
+      display:none; align-items:center; gap:10px;
+      font-weight:800; font-size:14px; cursor:pointer;
+      box-shadow:0 6px 24px rgba(0,0,0,.18);
+      transition:transform .15s, box-shadow .2s;
+    }
+    .fab-cart:hover{ transform:translateY(-2px); box-shadow:0 10px 30px rgba(0,0,0,.22); }
+    .fab-cart i{ font-size:18px; }
+    .fab-cart .badge{
+      background:#0f172a; color:#fff;
+      font-size:11px; font-weight:900;
+      padding:2px 8px; border-radius:999px;
+    }
+
+    /* Botão "+" no card */
+    .card-add-btn{
+      position:absolute; bottom:10px; right:10px; z-index:2;
+      width:32px; height:32px; border-radius:50%;
+      background:var(--accent); color:#fff; border:none;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.2);
+      transition:transform .15s;
+      font-size:16px; font-weight:900;
+    }
+    .card-add-btn:hover{ transform:scale(1.12); }
+    .card-add-btn.added{ background:#22c55e; }
+
+    /* Modal genérico */
+    .modal-bg{
+      position:fixed; inset:0; z-index:100;
+      background:rgba(15,23,42,.45);
+      display:flex; align-items:flex-end; justify-content:center;
+      backdrop-filter:blur(2px);
+    }
+    .modal-bg.hidden{ display:none; }
+    @media(min-width:640px){ .modal-bg{ align-items:center; } }
+    .modal-sheet{
+      background:#fff; border-radius:22px 22px 0 0;
+      width:100%; max-width:760px; max-height:90vh;
+      display:flex; flex-direction:column;
+      box-shadow:0 -8px 32px rgba(0,0,0,.18);
+      overflow:hidden;
+    }
+    @media(min-width:640px){ .modal-sheet{ border-radius:22px; max-height:88vh; } }
+    .modal-head{
+      flex:0 0 auto; padding:16px 20px;
+      border-bottom:1px solid var(--line);
+      display:flex; align-items:center; gap:12px;
+    }
+    .modal-head h2{ font-size:16px; font-weight:900; color:var(--text); margin:0; flex:1; }
+    .modal-head .btn-x{
+      background:none; border:none; color:var(--muted);
+      font-size:22px; cursor:pointer; padding:0 4px; line-height:1;
+    }
+    .modal-body{ flex:1; overflow-y:auto; padding:16px 20px; }
+    .modal-foot{
+      flex:0 0 auto; padding:14px 20px;
+      border-top:1px solid var(--line);
+      background:#f8fafc;
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    }
+    .modal-foot .info{ font-size:13px; color:var(--muted); flex:1; }
+    .modal-foot .info b{ color:var(--text); font-weight:900; }
+
+    /* Item da sacola */
+    .cart-item{
+      background:#fff; border:1px solid var(--line);
+      border-radius:12px; padding:12px; margin-bottom:10px;
+    }
+    .cart-item-head{
+      display:flex; align-items:center; gap:10px; margin-bottom:10px;
+    }
+    .cart-item-title{ font-size:13px; font-weight:900; color:var(--text); }
+    .cart-item-meta{ font-size:11px; color:var(--muted); margin-top:1px; }
+    .cart-item-total{
+      background:var(--accent-light); color:var(--text);
+      font-size:12px; font-weight:900;
+      padding:4px 10px; border-radius:999px;
+      min-width:32px; text-align:center;
+    }
+    .cart-btn-del{
+      background:#fee2e2; color:#dc2626; border:1px solid #fecaca;
+      width:26px; height:26px; border-radius:50%;
+      font-size:14px; font-weight:900; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .cart-grade-grid{
+      display:grid; grid-template-columns:repeat(auto-fill, minmax(78px, 1fr));
+      gap:6px; margin-bottom:10px;
+    }
+    .cart-grade-box{
+      border:1px solid var(--line); border-radius:8px;
+      padding:6px 4px; text-align:center; background:#f8fafc;
+      transition:border-color .2s, background .2s;
+    }
+    .cart-grade-box.pending{
+      border-color:#fbbf24; background:#fffbeb;
+    }
+    .cart-grade-tam{ font-size:12px; font-weight:900; color:var(--text); }
+    .cart-grade-disp{ font-size:10px; color:var(--muted); margin:2px 0 4px; }
+    .cart-grade-ctrl{
+      display:flex; align-items:center; justify-content:center; gap:2px;
+    }
+    .cart-grade-ctrl button{
+      width:22px; height:22px; border-radius:6px;
+      border:1px solid var(--line); background:#fff; color:var(--text);
+      cursor:pointer; font-weight:900; font-size:13px;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .cart-grade-ctrl button:disabled{ opacity:.3; cursor:not-allowed; }
+    .cart-grade-ctrl input{
+      width:36px; text-align:center; font-weight:900;
+      border:1px solid var(--line); border-radius:6px;
+      padding:2px 0; font-size:12px;
+      -moz-appearance:textfield;
+    }
+    .cart-grade-ctrl input::-webkit-outer-spin-button,
+    .cart-grade-ctrl input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+    .cart-item-fields{
+      display:grid; grid-template-columns:1fr 1fr; gap:8px;
+    }
+    .cart-item-fields label{
+      display:flex; flex-direction:column; gap:3px;
+      font-size:11px; font-weight:700; color:var(--muted);
+    }
+    .cart-item-fields label.invalid span{ color:#dc2626; }
+    .cart-item-fields input{
+      padding:7px 10px; border:1px solid var(--line); border-radius:8px;
+      font-size:13px; background:#fff;
+    }
+    .cart-item-fields label.invalid input{ border-color:#dc2626; }
+
+    /* Modal de export */
+    .export-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .export-grid .full{ grid-column:1 / -1; }
+    .export-grid label{
+      display:flex; flex-direction:column; gap:4px;
+      font-size:11px; font-weight:800; color:var(--muted);
+    }
+    .export-grid label.req::after{ content:' *'; color:#dc2626; }
+    .export-grid input, .export-grid select{
+      padding:9px 12px; border:1px solid var(--line); border-radius:8px;
+      font-size:13px; background:#fff;
+    }
+    .export-grid .invalid{ border-color:#dc2626!important; background:#fef2f2; }
+
+    /* Botões do footer */
+    .btn-primary{
+      background:var(--accent); color:#fff; border:none;
+      padding:10px 18px; border-radius:999px;
+      font-weight:800; font-size:13px; cursor:pointer;
+      display:inline-flex; align-items:center; gap:8px;
+    }
+    .btn-primary:hover{ opacity:.92; }
+    .btn-ghost{
+      background:#fff; color:var(--muted); border:1px solid var(--line);
+      padding:9px 16px; border-radius:999px;
+      font-weight:700; font-size:12px; cursor:pointer;
+    }
+    .btn-ghost:hover{ background:#f1f5f9; color:var(--text); }
+    .btn-danger-ghost{
+      background:#fff; color:#dc2626; border:1px solid #fecaca;
+      padding:9px 14px; border-radius:999px;
+      font-weight:700; font-size:12px; cursor:pointer;
+    }
   </style>
 </head>
 <body>
@@ -279,6 +449,82 @@
   Gerar PDF <span id="fabCount" class="bg-slate-900 text-[var(--accent)] text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
 </button>
 
+<!-- ── FAB Sacola ──────────────────────────────────────────────────────── -->
+<button id="cartFab" class="fab-cart" onclick="abrirSacola()" title="Abrir sacola">
+  <i class="fa-solid fa-bag-shopping"></i>
+  Sacola <span id="cartBadge" class="badge">0</span>
+</button>
+
+<!-- ── Modal Sacola ───────────────────────────────────────────────────── -->
+<div id="cartModal" class="modal-bg hidden" onclick="if(event.target===this)fecharSacola()">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <i class="fa-solid fa-bag-shopping" style="color:var(--accent);font-size:18px"></i>
+      <h2>Sacola — <span id="brandNameCart">—</span></h2>
+      <button class="btn-x" onclick="fecharSacola()">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="cartItems"></div>
+    </div>
+    <div class="modal-foot">
+      <div class="info">Total: <b><span id="cartResumoTotal">0</span></b> pares/unid.</div>
+      <button class="btn-danger-ghost" onclick="cartClearAll()">
+        <i class="fa-solid fa-trash"></i> Limpar
+      </button>
+      <button class="btn-primary" onclick="abrirExport()">
+        <i class="fa-solid fa-file-excel"></i> Exportar pedido
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Export XLSX ──────────────────────────────────────────────── -->
+<div id="exportModal" class="modal-bg hidden" onclick="if(event.target===this)fecharExport()">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <i class="fa-solid fa-file-excel" style="color:#16a34a;font-size:18px"></i>
+      <h2>Exportar pedido (.xlsx)</h2>
+      <button class="btn-x" onclick="fecharExport()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="export-grid">
+        <label class="req"><span>Comissionista</span>
+          <input id="oxCommission" type="text" placeholder="Código"></label>
+        <label class="req"><span>Código Cliente</span>
+          <input id="oxClientCode" type="text" placeholder="Código"></label>
+        <label class="req full"><span>Condição de Pagamento</span>
+          <select id="oxPayment"></select></label>
+        <label class="req"><span>Tabela de Preço</span>
+          <input id="oxPriceTable" type="text" placeholder="Ex: OL025"></label>
+        <label><span>Campanha</span>
+          <input id="oxCampaign" type="text" placeholder="Ex: E4550"></label>
+        <label><span>Forma de Embalar</span>
+          <select id="oxPacking"></select></label>
+        <label><span>Tipo de Entrega</span>
+          <select id="oxDeliveryType"></select></label>
+        <label><span>Data Firme</span>
+          <select id="oxDataFirme"></select></label>
+        <label><span>Pedido Mãe</span>
+          <select id="oxPedidoMae"></select></label>
+        <label><span>Aceita Antecipação</span>
+          <select id="oxAntecipacao"></select></label>
+        <label class="full"><span>Pedido do Cliente (geral — opcional)</span>
+          <input id="oxPedidoCliente" type="text" placeholder="Sobrescreve só se item não tiver"></label>
+      </div>
+      <div style="margin-top:14px;padding:10px 12px;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e">
+        <i class="fa-solid fa-circle-info"></i> A <b>Data Desejada</b> de cada item é preenchida dentro do card na sacola.
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="fecharExport()">Cancelar</button>
+      <div class="info"></div>
+      <button class="btn-primary" onclick="exportOrderXlsx()">
+        <i class="fa-solid fa-download"></i> Gerar arquivo
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
 const WORKER_URL  = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
 const IMG_BASE    = '../Catalogo/';
@@ -323,11 +569,73 @@ const STATE = {
   filtroCategoria: '',
   search:     '',
   selecionados: new Set(),
+  // Sacola: Map<key, item> onde key = artigo|cor
+  cart: new Map(),
   // Paginação
   pageSize:    24,
   rendered:    0,
   io:          null
 };
+
+// ── SACOLA / EXPORT XLSX ─────────────────────────────────────────────────────
+// Layout idêntico ao usado no sistema da fábrica (Olympikus)
+const ORDER_EXPORT_HEADERS = [
+  "Nº", "Comissionista", "Loja", "Cliente", "Pedido do Cliente", "Observação da NF", "Observação do Pedido",
+  "Tabela de Preço", "Prazo Médio", "Número de Parcelas", "Condição de Pagamento", "Campanha",
+  "Desconto Global", "Forma de Embalar", "Tipo de Entrega", "Data Firme", "Pedido Mãe", "Aceita Antecipação?",
+  "Data Desejada", "Data de Faturamento", "Data Início da Agenda", "Horário Início da Agenda",
+  "Horário Fim da Agenda", "Data da Liberação do Faturamento",
+  "Artigo", "Descrição", "Cor", "Quantidade de Caixas",
+  "28","29","30","31","32","33","34","35","36","37","38","39","40","41","42","43","44","45","46","47","48",
+  "33/34","35/36","37/38","39/40","41/42","43/44",
+  "PP","P","M","G","GG","U",
+  "33/38","39/44",
+  "Total"
+];
+
+const ORDER_EXPORT_COLS = [
+  {wch:8},{wch:15},{wch:10},{wch:12},{wch:15},{wch:16},{wch:18},{wch:12},{wch:10},{wch:12},{wch:16},{wch:12},{wch:12},{wch:12},{wch:13},{wch:10},{wch:11},{wch:15},{wch:13},{wch:15},{wch:15},{wch:12},{wch:12},{wch:18},{wch:14},{wch:30},{wch:12},{wch:12},
+  {wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},
+  {wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},
+  {wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},
+  {wch:8},{wch:8},{wch:8}
+];
+
+const ORDER_PAYMENT_OPTIONS = [
+  "28 DDL - 1 PARCELA",
+  "30 DDL - 1 PARCELA",
+  "30/60 DDL - 2 PARCELAS",
+  "30/60/90 DDL - 3 PARCELAS",
+  "60 DDL - 1 PARCELA",
+  "60/90/120 DDL - 3 PARCELAS",
+  "90 DDL - 1 PARCELA",
+  "120 DDL - 1 PARCELA"
+];
+
+const ORDER_PACKING_OPTIONS    = ["M: Musical", "A: Artigo/Cor", "T: Tamanho"];
+const ORDER_DELIVERY_OPTIONS   = ["1: Parcial", "2: Total Artigo", "3: Total Artigo/Cor", "4: Total Pedido"];
+const ORDER_YESNO_OPTIONS      = ["S: Sim", "N: Não"];
+
+// Defaults: OLY usa OL025; UA deixa em branco (cliente preenche).
+const ORDER_EXPORT_DEFAULTS = {
+  commission:   "",
+  clientCode:   "",
+  payment:      "",
+  priceTable:   MARCA_ATIVA === 'oly' ? "OL025" : "",
+  campaign:     "",
+  packing:      "M: Musical",
+  deliveryType: "3: Total Artigo/Cor",
+  dataFirme:    "S: Sim",
+  pedidoMae:    "N: Não",
+  antecipacao:  "N: Não",
+  dataDesejada: "",
+  pedidoCliente:""
+};
+
+// Chave do localStorage — separada por marca
+const CART_LS_KEY = `cart_v1_${MARCA_ATIVA}`;
+const CFG_LS_KEY  = `cfg_export_v1_${MARCA_ATIVA}`;
+
 
 function showToast(msg, type='info'){
   const t = document.createElement('div');
@@ -584,6 +892,9 @@ function buildCardHtml(item){
       <i class="fa-${isSel?'solid':'regular'} fa-heart"></i>
     </button>
     ${imgSrc ? `<button class="btn-zoom" onclick="abrirZoom('${safeHtml(imgSrc)}')" title="Zoom"><i class="fa-solid fa-magnifying-glass-plus"></i></button>` : ''}
+    <button class="card-add-btn${STATE.cart.has(cartKey(item))?' added':''}" onclick="event.stopPropagation();cartAdd('${safeHtml(item.artigo)}','${safeHtml(item.cor)}')" title="Adicionar à sacola">
+      <i class="fa-solid fa-${STATE.cart.has(cartKey(item))?'check':'plus'}"></i>
+    </button>
     <div class="card-img">
       ${imgSrc
         ? `<img src="${safeHtml(imgSrc)}" alt="${safeHtml(item.descricao)}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden')">`
@@ -1019,6 +1330,509 @@ async function gerarPDF(){
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ── SACOLA (CART) ──────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Identifica categoria especial (meias/acessórios/calçados)
+function isSockCategory(cat){ return /MEIA|MEIAS/i.test(String(cat||'')); }
+function isAccessoryCategory(cat){ return /ACES|MOCHIL|BOLSA|BONE/i.test(semAcento(String(cat||'')).toUpperCase()); }
+function isFootwearCategory(cat){ return /TEN|CALCAD|CHINEL|SAND/i.test(semAcento(String(cat||'')).toUpperCase()); }
+
+// Detecta coluna de meia (faixa) com base no nome/categoria
+function detectSockColumn(item){
+  const txt = (item.produto || item.descricao || '').toUpperCase();
+  if(/33\/38|33-38/.test(txt)) return '33/38';
+  if(/39\/44|39-44/.test(txt)) return '39/44';
+  // Default: tenta usar o primeiro tamanho da grade
+  if(item.grade){
+    const keys = Object.keys(item.grade);
+    if(keys.length === 1) return keys[0];
+  }
+  return null;
+}
+
+// Calcula o total da grade do pedido
+function getItemTotalQty(it){
+  if(!it.gradePedido) return 0;
+  return Object.values(it.gradePedido).reduce((s,v) => s + (Number(v)||0), 0);
+}
+
+// Calcula qtd de caixas (calçados em múltiplos de 6, demais = total)
+function calcQtdCaixas(it, total){
+  if(isFootwearCategory(it.categoria)) return Math.ceil(total / 6);
+  return total > 0 ? 1 : 0;
+}
+
+// Parse de condição de pagamento → prazo médio + número de parcelas
+function parsePaymentInfo(payment){
+  if(!payment) return { prazoMedio:'', parcelas:'' };
+  // Ex: "30/60/90 DDL - 3 PARCELAS"
+  const m = payment.match(/(\d+(?:\/\d+)*)\s*DDL\s*-\s*(\d+)\s*PARCEL/i);
+  if(!m) return { prazoMedio:'', parcelas:'' };
+  const dias = m[1].split('/').map(Number);
+  const media = Math.round(dias.reduce((a,b)=>a+b,0) / dias.length);
+  return { prazoMedio: media, parcelas: Number(m[2]) };
+}
+
+// Extrai 1ª palavra/letra ("S: Sim" → "S")
+function extractLeadingToken(str){
+  if(!str) return '';
+  const m = String(str).match(/^([^:\s]+)/);
+  return m ? m[1] : str;
+}
+function extractLeadingCode(str, len){
+  if(!str) return '';
+  const m = String(str).match(/^(\S+)/);
+  if(!m) return str;
+  return len ? m[1].slice(0, len) : m[1];
+}
+
+// Chave única do item no carrinho
+function cartKey(item){
+  return `${String(item.artigo||'').toUpperCase()}|${String(item.cor||'').toUpperCase()}`;
+}
+
+// Carrega sacola do localStorage
+function loadCartFromStorage(){
+  try{
+    const raw = localStorage.getItem(CART_LS_KEY);
+    if(!raw) return;
+    const arr = JSON.parse(raw);
+    if(Array.isArray(arr)){
+      for(const it of arr){
+        if(it && it.key) STATE.cart.set(it.key, it);
+      }
+    }
+  }catch(e){ console.warn('Falha carregar sacola:', e); }
+}
+
+// Persiste sacola no localStorage
+function saveCartToStorage(){
+  try{
+    const arr = [...STATE.cart.values()];
+    localStorage.setItem(CART_LS_KEY, JSON.stringify(arr));
+  }catch(e){ console.warn('Falha salvar sacola:', e); }
+}
+
+// Adiciona item à sacola (sem alterar grade ainda)
+function cartAdd(produtoArtigo, produtoCor){
+  // Acha o item original
+  const item = STATE.itens.find(i =>
+    String(i.artigo||'').toUpperCase() === produtoArtigo.toUpperCase() &&
+    String(i.cor||'').toUpperCase()    === produtoCor.toUpperCase()
+  );
+  if(!item){ showToast('Produto não encontrado','error'); return; }
+  const k = cartKey(item);
+  if(STATE.cart.has(k)){
+    showToast(`${item.descricao} já está na sacola`, 'info');
+    abrirSacola();
+    return;
+  }
+  // Cria entrada no carrinho com gradePedido vazia
+  STATE.cart.set(k, {
+    key:        k,
+    artigo:     item.artigo,
+    codigo:     item.artigo,           // alias usado no buildOrderExportRows
+    cor:        item.cor,
+    corCodigo:  item.cor,
+    descricao:  item.descricao,
+    produto:    item.descricao,        // alias
+    categoria:  item.categoria,
+    linha:      item.linha,
+    genero:     item.genero,
+    gradeDisp:  { ...(item.grade || {}) }, // disponibilidade copiada
+    gradePedido:{},                        // qtds pedidas
+    dataDesejada: '',
+    pedidoCliente: ''
+  });
+  saveCartToStorage();
+  atualizarFabContador();
+  showToast(`${item.descricao} adicionado`, 'success');
+}
+
+// Remove item da sacola
+function cartRemove(key){
+  STATE.cart.delete(key);
+  saveCartToStorage();
+  atualizarFabContador();
+  renderCartUI();
+}
+
+// Atualiza qtd de um tamanho no pedido. delta = +1 ou -1 (ou número)
+function cartUpdateQty(key, tam, delta){
+  const it = STATE.cart.get(key);
+  if(!it) return;
+  const atual = Number(it.gradePedido[tam] || 0);
+  const disp  = Number(it.gradeDisp[tam]   || 0);
+  let novo = atual + Number(delta);
+  if(novo < 0) novo = 0;
+  if(novo > disp) novo = disp; // limita ao disponível
+  if(novo === 0) delete it.gradePedido[tam];
+  else it.gradePedido[tam] = novo;
+  saveCartToStorage();
+  // Atualiza só a linha do produto (mais rápido que rerender geral)
+  renderCartItem(key);
+  atualizarFabResumo();
+}
+
+// Set absoluto (input direto)
+function cartSetQty(key, tam, val){
+  const it = STATE.cart.get(key);
+  if(!it) return;
+  const disp = Number(it.gradeDisp[tam] || 0);
+  let v = Number(val) || 0;
+  if(v < 0) v = 0;
+  if(v > disp) v = disp;
+  if(v === 0) delete it.gradePedido[tam];
+  else it.gradePedido[tam] = v;
+  saveCartToStorage();
+  renderCartItem(key);
+  atualizarFabResumo();
+}
+
+function cartSetField(key, field, val){
+  const it = STATE.cart.get(key);
+  if(!it) return;
+  it[field] = val;
+  saveCartToStorage();
+}
+
+function cartClearAll(){
+  if(!STATE.cart.size) return;
+  if(!confirm('Limpar toda a sacola?')) return;
+  STATE.cart.clear();
+  saveCartToStorage();
+  atualizarFabContador();
+  renderCartUI();
+}
+
+// ── FAB (botão flutuante) ───────────────────────────────────────────────────
+function atualizarFabContador(){
+  const n = STATE.cart.size;
+  const fab = $('cartFab');
+  const badge = $('cartBadge');
+  if(!fab || !badge) return;
+  if(n > 0){
+    fab.style.display = 'flex';
+    badge.textContent = n;
+  } else {
+    fab.style.display = 'none';
+  }
+}
+
+function atualizarFabResumo(){
+  // Atualiza o resumo de total dentro do modal se aberto
+  const el = $('cartResumoTotal');
+  if(!el) return;
+  let total = 0;
+  for(const it of STATE.cart.values()) total += getItemTotalQty(it);
+  el.textContent = total;
+}
+
+// ── RENDER DA SACOLA ────────────────────────────────────────────────────────
+function abrirSacola(){
+  if(STATE.cart.size === 0){
+    showToast('Sacola vazia', 'info');
+    return;
+  }
+  $('cartModal').classList.remove('hidden');
+  renderCartUI();
+}
+function fecharSacola(){ $('cartModal').classList.add('hidden'); }
+
+function renderCartUI(){
+  const wrap = $('cartItems');
+  if(!wrap) return;
+  if(STATE.cart.size === 0){
+    wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">Sacola vazia.</div>';
+    atualizarFabResumo();
+    return;
+  }
+  wrap.innerHTML = [...STATE.cart.values()].map(it => cartItemHtml(it)).join('');
+  atualizarFabResumo();
+}
+
+function renderCartItem(key){
+  const node = document.querySelector(`[data-cart-key="${CSS.escape(key)}"]`);
+  if(!node) return;
+  const it = STATE.cart.get(key);
+  if(!it){ node.remove(); return; }
+  node.outerHTML = cartItemHtml(it);
+}
+
+// HTML de 1 item na sacola
+function cartItemHtml(it){
+  // Linha das grades: tamanhos da disponibilidade
+  const tamanhos = Object.keys(it.gradeDisp).sort((a,b) => {
+    const aN = !isNaN(Number(a)), bN = !isNaN(Number(b));
+    if(aN && !bN) return 1;
+    if(!aN && bN) return -1;
+    if(aN && bN) return Number(a) - Number(b);
+    const ord = ['PP','P','M','G','GG','XG','XXG','U'];
+    const ia=ord.indexOf(a), ib=ord.indexOf(b);
+    if(ia!==-1 && ib!==-1) return ia-ib;
+    return a.localeCompare(b);
+  });
+
+  const gradesHtml = tamanhos.map(t => {
+    const disp = Number(it.gradeDisp[t] || 0);
+    const ped  = Number(it.gradePedido[t] || 0);
+    const restante = disp - ped;
+    const pendente = ped === 0;
+    return `
+      <div class="cart-grade-box ${pendente?'pending':''}">
+        <div class="cart-grade-tam">${safeHtml(t)}</div>
+        <div class="cart-grade-disp">${restante}/${disp}</div>
+        <div class="cart-grade-ctrl">
+          <button onclick="cartUpdateQty('${safeHtml(it.key)}','${safeHtml(t)}',-1)" ${ped===0?'disabled':''}>−</button>
+          <input type="number" value="${ped}" min="0" max="${disp}" onchange="cartSetQty('${safeHtml(it.key)}','${safeHtml(t)}',this.value)">
+          <button onclick="cartUpdateQty('${safeHtml(it.key)}','${safeHtml(t)}',1)" ${restante===0?'disabled':''}>+</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  const totalIt = getItemTotalQty(it);
+  const corDisplay = String(it.cor||'').replace(/_/g,'/');
+  const chavesPendentes = !it.dataDesejada;
+
+  return `
+    <div class="cart-item" data-cart-key="${safeHtml(it.key)}">
+      <div class="cart-item-head">
+        <div style="flex:1;min-width:0">
+          <div class="cart-item-title">${safeHtml(it.descricao)}</div>
+          <div class="cart-item-meta">${safeHtml(it.artigo)} · ${safeHtml(corDisplay)} · ${safeHtml(it.categoria||'')}</div>
+        </div>
+        <div class="cart-item-total">${totalIt}</div>
+        <button class="cart-btn-del" onclick="cartRemove('${safeHtml(it.key)}')" title="Remover">×</button>
+      </div>
+      <div class="cart-grade-grid">${gradesHtml}</div>
+      <div class="cart-item-fields">
+        <label class="${chavesPendentes?'invalid':''}">
+          <span>Data desejada *</span>
+          <input type="date" value="${safeHtml(it.dataDesejada)}" onchange="cartSetField('${safeHtml(it.key)}','dataDesejada',this.value)">
+        </label>
+        <label>
+          <span>Pedido do cliente</span>
+          <input type="text" value="${safeHtml(it.pedidoCliente)}" placeholder="opcional" onchange="cartSetField('${safeHtml(it.key)}','pedidoCliente',this.value)">
+        </label>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── EXPORT XLSX ─────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+
+function abrirExport(){
+  if(STATE.cart.size === 0){ showToast('Sacola vazia','info'); return; }
+  populateExportForm();
+  $('exportModal').classList.remove('hidden');
+}
+function fecharExport(){ $('exportModal').classList.add('hidden'); }
+
+// Carrega defaults + cfg salva (sem dados do cliente)
+function loadExportCfg(){
+  try{
+    const raw = localStorage.getItem(CFG_LS_KEY);
+    if(!raw) return { ...ORDER_EXPORT_DEFAULTS };
+    const parsed = JSON.parse(raw) || {};
+    // Limpa dados de cliente — sempre começa em branco
+    delete parsed.clientCode;
+    delete parsed.payment;
+    delete parsed.campaign;
+    delete parsed.pedidoCliente;
+    return { ...ORDER_EXPORT_DEFAULTS, ...parsed };
+  }catch(e){ return { ...ORDER_EXPORT_DEFAULTS }; }
+}
+function saveExportCfg(cfg){
+  try{ localStorage.setItem(CFG_LS_KEY, JSON.stringify(cfg||{})); }catch(e){}
+}
+
+function populateExportForm(){
+  const cfg = loadExportCfg();
+  $('oxCommission').value = cfg.commission || '';
+  $('oxClientCode').value = cfg.clientCode || '';
+
+  const paySel = $('oxPayment');
+  paySel.innerHTML = '<option value="">— Selecione —</option>' +
+    ORDER_PAYMENT_OPTIONS.map(v => `<option value="${safeHtml(v)}"${v===cfg.payment?' selected':''}>${safeHtml(v)}</option>`).join('');
+
+  $('oxPriceTable').value  = cfg.priceTable || '';
+  $('oxCampaign').value    = cfg.campaign || '';
+
+  const fillSel = (id, list, val) => {
+    $(id).innerHTML = list.map(v => `<option value="${safeHtml(v)}"${v===val?' selected':''}>${safeHtml(v)}</option>`).join('');
+  };
+  fillSel('oxPacking',      ORDER_PACKING_OPTIONS,  cfg.packing);
+  fillSel('oxDeliveryType', ORDER_DELIVERY_OPTIONS, cfg.deliveryType);
+  fillSel('oxDataFirme',    ORDER_YESNO_OPTIONS,    cfg.dataFirme);
+  fillSel('oxPedidoMae',    ORDER_YESNO_OPTIONS,    cfg.pedidoMae);
+  fillSel('oxAntecipacao',  ORDER_YESNO_OPTIONS,    cfg.antecipacao);
+
+  $('oxPedidoCliente').value = cfg.pedidoCliente || '';
+
+  // Limpa marcas de erro
+  ['oxCommission','oxClientCode','oxPayment','oxPriceTable'].forEach(id => $(id)?.classList.remove('invalid'));
+}
+
+function getExportFormData(){
+  return {
+    commission:   $('oxCommission').value || '',
+    clientCode:   $('oxClientCode').value || '',
+    payment:      $('oxPayment').value    || '',
+    priceTable:   $('oxPriceTable').value || '',
+    campaign:     $('oxCampaign').value   || '',
+    packing:      $('oxPacking').value    || '',
+    deliveryType: $('oxDeliveryType').value || '',
+    dataFirme:    $('oxDataFirme').value  || '',
+    pedidoMae:    $('oxPedidoMae').value  || '',
+    antecipacao:  $('oxAntecipacao').value|| '',
+    pedidoCliente:$('oxPedidoCliente').value || ''
+  };
+}
+
+function validateExportFields(){
+  const fields = [
+    { id:'oxCommission', label:'Comissionista' },
+    { id:'oxClientCode', label:'Código Cliente' },
+    { id:'oxPayment',    label:'Cond. Pagamento' },
+    { id:'oxPriceTable', label:'Tab. de Preço' }
+  ];
+  ['oxCommission','oxClientCode','oxPayment','oxPriceTable'].forEach(id => $(id)?.classList.remove('invalid'));
+  const missing = [];
+  let firstEl = null;
+  fields.forEach(f => {
+    const el = $(f.id);
+    if(!el) return;
+    if(!(el.value||'').trim()){
+      el.classList.add('invalid');
+      missing.push(f.label);
+      if(!firstEl) firstEl = el;
+    }
+  });
+  let semData = 0;
+  for(const it of STATE.cart.values()) if(!it.dataDesejada) semData++;
+  if(semData > 0) missing.push(`Data desejada em ${semData} item(ns)`);
+  return { missing, firstEl };
+}
+
+// Monta as linhas do XLSX no layout idêntico ao do projeto original
+function buildOrderExportRows(cfg){
+  const headers = ORDER_EXPORT_HEADERS.slice();
+  const idx = Object.fromEntries(headers.map((h,i)=>[h,i]));
+  const aoa = [headers];
+  const pay = parsePaymentInfo(cfg.payment);
+  const warnings = [];
+
+  for(const it of STATE.cart.values()){
+    const row = new Array(headers.length).fill('');
+    const totalQty = getItemTotalQty(it);
+    if(totalQty === 0) continue; // ignora itens sem nenhum tamanho marcado
+
+    const corPedido = String(it.corCodigo || it.cor || '').trim().replace(/_/g,'/');
+    const qtdCaixas = calcQtdCaixas(it, totalQty);
+
+    row[idx['Nº']] = 1;
+    row[idx['Comissionista']]       = cfg.commission;
+    row[idx['Cliente']]             = cfg.clientCode;
+    row[idx['Tabela de Preço']]     = cfg.priceTable;
+    row[idx['Prazo Médio']]         = pay.prazoMedio;
+    row[idx['Número de Parcelas']]  = pay.parcelas;
+    row[idx['Campanha']]            = cfg.campaign ? extractLeadingCode(cfg.campaign, 5) : '';
+    row[idx['Forma de Embalar']]    = extractLeadingToken(cfg.packing);
+    row[idx['Tipo de Entrega']]     = Number(extractLeadingToken(cfg.deliveryType)) || extractLeadingToken(cfg.deliveryType);
+    row[idx['Data Firme']]          = extractLeadingToken(cfg.dataFirme);
+    row[idx['Pedido Mãe']]          = extractLeadingToken(cfg.pedidoMae);
+    row[idx['Aceita Antecipação?']] = extractLeadingToken(cfg.antecipacao);
+
+    // Data desejada: YYYY-MM-DD → DD/MM/YYYY
+    if(it.dataDesejada){
+      const [dy, dm, dd] = it.dataDesejada.split('-');
+      const dataFmt = (dy&&dm&&dd) ? `${dd}/${dm}/${dy}` : it.dataDesejada;
+      row[idx['Data Desejada']]      = dataFmt;
+      row[idx['Data de Faturamento']]= dataFmt;
+    }
+
+    const pedidoEfetivo = (it.pedidoCliente||'').trim() || cfg.pedidoCliente || '';
+    if(pedidoEfetivo) row[idx['Pedido do Cliente']] = pedidoEfetivo;
+
+    row[idx['Artigo']]      = String(it.artigo||'').trim();
+    row[idx['Descrição']]   = String(it.descricao||'').trim();
+    row[idx['Cor']]         = corPedido;
+    row[idx['Quantidade de Caixas']] = qtdCaixas;
+
+    // Distribui tamanhos pelas colunas
+    if(isSockCategory(it.categoria)){
+      const sockCol = detectSockColumn(it);
+      if(sockCol && idx[sockCol] !== undefined) row[idx[sockCol]] = totalQty;
+      else warnings.push(`Meia sem faixa identificada: ${it.descricao||it.artigo}`);
+    } else if(isAccessoryCategory(it.categoria)){
+      row[idx['U']] = totalQty;
+    } else if(it.gradePedido && Object.keys(it.gradePedido).length){
+      for(const [tam, qty] of Object.entries(it.gradePedido)){
+        const header = String(tam||'').trim().toUpperCase();
+        if(idx[header] !== undefined) row[idx[header]] = Number(qty) || '';
+        else warnings.push(`Tamanho sem coluna: ${it.descricao||it.artigo} — ${tam}`);
+      }
+    }
+
+    row[idx['Total']] = totalQty;
+    aoa.push(row);
+
+    if(isFootwearCategory(it.categoria) && totalQty > 0 && totalQty % 6 !== 0){
+      warnings.push(`Calçado fora do múltiplo de 6: ${it.descricao||it.artigo} — total ${totalQty}`);
+    }
+  }
+  return { aoa, warnings };
+}
+
+function exportOrderXlsx(){
+  if(STATE.cart.size === 0){ showToast('Sacola vazia','info'); return; }
+  const { missing, firstEl } = validateExportFields();
+  if(missing.length){
+    const msg = missing.length === 1
+      ? `Preencha: ${missing[0]}`
+      : `Preencha ${missing.length} campos obrigatórios`;
+    showToast(msg, 'error');
+    if(firstEl){
+      firstEl.scrollIntoView({behavior:'smooth', block:'center'});
+      setTimeout(()=>firstEl.focus(), 280);
+    }
+    return;
+  }
+
+  const cfg = getExportFormData();
+  saveExportCfg(cfg);
+
+  const { aoa, warnings } = buildOrderExportRows(cfg);
+  if(aoa.length <= 1){
+    showToast('Nenhum item tem quantidade definida','error');
+    return;
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = ORDER_EXPORT_COLS;
+  ws['!autofilter'] = { ref: `A1:BG${aoa.length}` };
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Pedido');
+
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const stamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+  const fileName = `pedido_${MARCA_ATIVA}_${stamp}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+
+  fecharExport();
+  showToast(`Pedido exportado: ${fileName}`, 'success');
+
+  if(warnings.length){
+    console.warn('Avisos do pedido:', warnings);
+    showToast(`⚠️ ${warnings.length} aviso(s) — ver console`, 'info');
+  }
+}
+
 // ── INIT ─────────────────────────────────────────────────────────────────────
 // Aplica identidade visual da marca ativa (header + acentos)
 function aplicarIdentidadeMarca(){
@@ -1031,6 +1845,7 @@ function aplicarIdentidadeMarca(){
   if(logoBox) logoBox.style.background = info.bgMarca;
   // Nome da marca
   if($('brandName')) $('brandName').textContent = info.nome;
+  if($('brandNameCart')) $('brandNameCart').textContent = info.nome;
   // Cores de acento (sobrescreve as do :root em tempo de execução)
   document.documentElement.style.setProperty('--accent',       info.accent);
   document.documentElement.style.setProperty('--accent-light', info.accentLight);
@@ -1040,6 +1855,8 @@ function aplicarIdentidadeMarca(){
   document.title = `${info.nome} — Disponibilidades`;
 }
 aplicarIdentidadeMarca();
+loadCartFromStorage();
+atualizarFabContador();
 loadData();
 </script>
 </body>
