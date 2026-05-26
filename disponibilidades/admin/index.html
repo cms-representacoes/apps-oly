@@ -291,6 +291,12 @@
           style="border-color:var(--accent-dark);background:rgba(204,255,0,.1);color:var(--accent-dark)">
           <i class="fa-solid fa-upload text-xs"></i> Importar xlsx
         </button>
+        <!-- Tabela Especial -->
+        <button onclick="abrirTabelaEspecial()" data-tip="Importar tabela especial"
+          class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors"
+          style="border-color:#c084fc;background:rgba(192,132,252,.1);color:#7c3aed">
+          <i class="fa-solid fa-tags text-xs"></i> Tabela especial
+        </button>
         <!-- Tela cheia -->
         <button onclick="toggleFullscreen()" data-tip="Tela cheia"
           class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
@@ -630,6 +636,77 @@
   </div>
 </div>
 
+<!-- ── Modal Tabela Especial ──────────────────────────────────────────── -->
+<div id="modalTabelaEsp" class="hidden fixed inset-0 z-[150] bg-slate-950/45 p-4 flex items-start justify-center overflow-y-auto">
+  <div class="bg-white rounded-3xl w-full max-w-2xl my-8 shadow-2xl">
+    <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(192,132,252,.15)">
+        <i class="fa-solid fa-tags" style="color:#7c3aed"></i>
+      </div>
+      <div class="flex-1">
+        <div class="text-xs font-bold text-slate-400 uppercase tracking-wide">Configurações</div>
+        <div class="text-lg font-extrabold text-slate-800">Tabela Especial</div>
+      </div>
+      <button onclick="fecharTabelaEspecial()" class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 text-xl">×</button>
+    </div>
+
+    <div class="px-6 py-5">
+      <!-- Status atual -->
+      <div id="tabEspStatus" class="mb-4 rounded-xl px-4 py-3 text-sm" style="background:#f8fafc;border:1px solid #e2e8f0">
+        <i class="fa-solid fa-circle-notch fa-spin text-slate-400"></i>
+        <span class="text-slate-500">Verificando tabela salva...</span>
+      </div>
+
+      <p class="text-xs text-slate-500 mb-3 leading-relaxed">
+        Importe a planilha de produtos promocionais. Ela fica <b>salva</b> e, a cada importação de estoque,
+        o sistema marca automaticamente os produtos que pertencem a alguma campanha
+        (cruzamento por <b>Artigo + Cor</b>).
+      </p>
+
+      <!-- Upload -->
+      <div id="tabEspUpload" class="border-2 border-dashed border-slate-200 rounded-2xl p-7 text-center cursor-pointer hover:border-purple-300 hover:bg-purple-50 transition-colors" onclick="$('inputTabEsp').click()">
+        <i class="fa-solid fa-file-arrow-up text-slate-300 text-3xl mb-2 block"></i>
+        <div class="text-sm font-bold text-slate-600">Clique para selecionar a planilha</div>
+        <div class="text-xs text-slate-400 mt-1">TABELA_ESPECIAL (.xlsx, .xls)</div>
+        <input type="file" id="inputTabEsp" accept=".xlsx,.xls" class="hidden" onchange="processarTabelaEspXlsx(this.files[0])">
+      </div>
+
+      <!-- Preview -->
+      <div id="tabEspPreview" class="hidden mt-4">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-sm font-extrabold text-slate-700" id="tabEspPreviewTitle">—</div>
+          <button onclick="$('inputTabEsp').click()" class="text-xs font-bold hover:underline" style="color:#7c3aed">Trocar arquivo</button>
+        </div>
+        <div class="rounded-xl border border-slate-200 overflow-hidden">
+          <table class="w-full text-xs">
+            <thead class="bg-slate-50 text-slate-500">
+              <tr>
+                <th class="text-left px-3 py-2">Artigo</th>
+                <th class="text-left px-3 py-2">Cor</th>
+                <th class="text-left px-3 py-2">Campanha</th>
+                <th class="text-right px-3 py-2">Custo</th>
+                <th class="text-right px-3 py-2">MKP</th>
+              </tr>
+            </thead>
+            <tbody id="tabEspPreviewBody"></tbody>
+          </table>
+        </div>
+        <div id="tabEspPreviewMore" class="text-xs text-slate-400 mt-2 text-center"></div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50 rounded-b-3xl">
+      <div class="flex-1 text-xs text-slate-500" id="tabEspResumo"></div>
+      <button onclick="fecharTabelaEspecial()" class="focus-ring rounded-2xl px-4 py-2 text-sm font-bold text-slate-500 border border-slate-200 bg-white">Fechar</button>
+      <button id="btnSalvarTabEsp" onclick="salvarTabelaEspecial()" disabled
+        class="focus-ring rounded-2xl px-5 py-2 text-sm font-extrabold text-white flex items-center gap-2 disabled:opacity-40"
+        style="background:#7c3aed">
+        <i class="fa-solid fa-floppy-disk"></i> Salvar tabela
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
 // Dark mode imediato
 if(localStorage.getItem('disp_dark')==='1') document.documentElement.classList.add('dark');
@@ -676,6 +753,7 @@ const STATE = {
 let _jsonAtual = [];
 let _novos = [];
 let _conflitos = [];
+let _cruzadosTabEsp = 0;
 
 // ── AUTH ─────────────────────────────────────────────────────────────────────
 function doLogin(){
@@ -1560,6 +1638,142 @@ async function excluirItem(key){
 }
 
 // ── IMPORTAR ──────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// ── TABELA ESPECIAL ────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// Mapa { "ARTIGO|COR": {codigoTabela, custo, mkp} } — referência persistente.
+let _tabelaEspecial   = {};   // tabela carregada/salva
+let _tabEspPendente   = null; // resultado do parse aguardando "Salvar"
+
+// Normaliza cor igual ao rowToItem (CH/BLK → CH_BLK)
+function normalizarCor(c){
+  return String(c || '')
+    .trim().toUpperCase()
+    .replace(/[\/\-]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+// Chave de cruzamento Artigo + Cor
+function chaveTabela(artigo, cor){
+  return `${String(artigo||'').trim().toUpperCase()}|${normalizarCor(cor)}`;
+}
+
+async function abrirTabelaEspecial(){
+  $('modalTabelaEsp').classList.remove('hidden');
+  $('tabEspUpload').classList.remove('hidden');
+  $('tabEspPreview').classList.add('hidden');
+  $('tabEspResumo').textContent = '';
+  $('btnSalvarTabEsp').disabled = true;
+  _tabEspPendente = null;
+  // Carrega a tabela já salva (se houver)
+  try{
+    const res = await workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'getTabelaEspecial'}) });
+    _tabelaEspecial = res.ok ? (await res.json() || {}) : {};
+  }catch(e){ _tabelaEspecial = {}; }
+  const n = Object.keys(_tabelaEspecial).length;
+  const st = $('tabEspStatus');
+  if(n > 0){
+    const campanhas = [...new Set(Object.values(_tabelaEspecial).map(v=>v.codigoTabela).filter(Boolean))].sort();
+    st.innerHTML = `<i class="fa-solid fa-circle-check" style="color:#16a34a"></i> <span class="text-slate-600"><b>${n}</b> produto(s) na tabela salva — campanhas: <b>${campanhas.join(', ')||'—'}</b></span>`;
+  } else {
+    st.innerHTML = `<i class="fa-solid fa-circle-info" style="color:#f59e0b"></i> <span class="text-slate-600">Nenhuma tabela especial salva ainda.</span>`;
+  }
+}
+function fecharTabelaEspecial(){ $('modalTabelaEsp').classList.add('hidden'); }
+
+// Lê a planilha de tabela especial
+async function processarTabelaEspXlsx(file){
+  if(!file) return;
+  try{
+    const buf  = await file.arrayBuffer();
+    const wb   = XLSX.read(buf, { type:'array' });
+    const ws   = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval:null });
+
+    const mapa = {};
+    let ignoradas = 0;
+    for(const row of rows){
+      const artigo = String(row['ARTIGO'] || '').trim().toUpperCase();
+      const cor    = row['COR'];
+      const codTab = String(row['CODIGO TABELA'] || '').trim().toUpperCase();
+      if(!artigo || !codTab){ ignoradas++; continue; }
+      const k = chaveTabela(artigo, cor);
+      mapa[k] = {
+        codigoTabela: codTab,
+        custo:        Number(row['CUSTO'] || 0),
+        mkp:          String(row['MKP'] || '').trim()
+      };
+    }
+
+    _tabEspPendente = mapa;
+    const total = Object.keys(mapa).length;
+
+    // Preview
+    $('tabEspUpload').classList.add('hidden');
+    $('tabEspPreview').classList.remove('hidden');
+    $('tabEspPreviewTitle').textContent = `${file.name} — ${rows.length} linha(s)`;
+
+    const entries = Object.entries(mapa);
+    $('tabEspPreviewBody').innerHTML = entries.slice(0, 8).map(([k, v]) => {
+      const [art, cor] = k.split('|');
+      return `<tr class="border-t border-slate-100">
+        <td class="px-3 py-1.5 font-bold text-slate-700">${safeHtml(art)}</td>
+        <td class="px-3 py-1.5 text-slate-500">${safeHtml(cor)}</td>
+        <td class="px-3 py-1.5"><span class="rounded-full px-2 py-0.5 text-[10px] font-bold" style="background:rgba(192,132,252,.15);color:#7c3aed">${safeHtml(v.codigoTabela)}</span></td>
+        <td class="px-3 py-1.5 text-right text-slate-600">R$ ${(v.custo||0).toFixed(2)}</td>
+        <td class="px-3 py-1.5 text-right text-slate-600">${safeHtml(v.mkp||'—')}</td>
+      </tr>`;
+    }).join('');
+    $('tabEspPreviewMore').textContent = entries.length > 8 ? `+ ${entries.length - 8} produto(s)` : '';
+
+    $('tabEspResumo').innerHTML = `<b>${total}</b> produto(s) válido(s)` + (ignoradas ? ` · ${ignoradas} linha(s) ignorada(s)` : '');
+    $('btnSalvarTabEsp').disabled = total === 0;
+
+  }catch(e){
+    console.error(e);
+    showToast('Erro ao ler a planilha: ' + e.message, 'error');
+  }
+}
+
+// Salva a tabela especial no Worker
+async function salvarTabelaEspecial(){
+  if(!_tabEspPendente){ showToast('Nada para salvar','info'); return; }
+  const btn = $('btnSalvarTabEsp');
+  const prev = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Salvando...';
+  try{
+    const res = await workerFetch({
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'saveTabelaEspecial', data: _tabEspPendente })
+    });
+    if(!res.ok) throw new Error('Worker ' + res.status);
+    _tabelaEspecial = _tabEspPendente;
+    _tabEspPendente = null;
+    showToast(`Tabela especial salva — ${Object.keys(_tabelaEspecial).length} produto(s)`, 'success');
+    fecharTabelaEspecial();
+  }catch(e){
+    console.error(e);
+    showToast('Erro ao salvar: ' + e.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = prev;
+  }
+}
+
+// Aplica a tabela especial a um item (cruzamento). Retorna o item modificado.
+function aplicarTabelaEspecial(item){
+  if(!item || !item.artigo) return item;
+  const k = chaveTabela(item.artigo, item.cor);
+  const ref = _tabelaEspecial[k];
+  if(ref){
+    item.codigoTabela = ref.codigoTabela;
+    if(ref.custo) item.custo = ref.custo;
+    if(ref.mkp)   item.mkp   = ref.mkp;
+  }
+  // Regra 4: se NÃO está na tabela, mantém o que já tinha (não apaga).
+  return item;
+}
+
 function abrirImportar(){ $('modalImportar').classList.remove('hidden'); }
 function fecharImportar(){
   $('modalImportar').classList.add('hidden');
@@ -1620,6 +1834,12 @@ async function processarXlsx(file){
     _jsonAtual = res.ok ? await res.json() : [];
   }catch(e){ _jsonAtual = []; }
 
+  // Carrega a tabela especial salva (para cruzamento automático)
+  try{
+    const resTE = await workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'getTabelaEspecial'}) });
+    _tabelaEspecial = resTE.ok ? (await resTE.json() || {}) : {};
+  }catch(e){ _tabelaEspecial = {}; }
+
   const buf = await file.arrayBuffer();
   const wb  = XLSX.read(buf, { type:'array' });
   const ws  = wb.Sheets[wb.SheetNames[0]];
@@ -1632,10 +1852,16 @@ async function processarXlsx(file){
   }
 
   _novos=[]; _conflitos=[];
+  _cruzadosTabEsp = 0;
 
   for(const row of rows){
     const item = rowToItem(row);
     if(!item.artigo) continue;
+    // Cruzamento automático com a tabela especial (Artigo + Cor)
+    const antesCod = item.codigoTabela;
+    aplicarTabelaEspecial(item);
+    if(item.codigoTabela && item.codigoTabela !== antesCod) _cruzadosTabEsp++;
+
     const k = `${item.artigo}|${item.cor}`;
     if(chaveAtual.has(k)){
       _conflitos.push({ xlsx:item, atual:chaveAtual.get(k), incluir:false });
@@ -1652,6 +1878,23 @@ function renderPreview(nome, total){
   $('previewArea').classList.remove('hidden');
   $('previewTitle').textContent = `${nome} — ${total} linha(s) lida(s)`;
 
+  // Aviso de cruzamento com a tabela especial
+  let banner = $('tabEspBanner');
+  if(!banner){
+    banner = document.createElement('div');
+    banner.id = 'tabEspBanner';
+    const pv = $('previewArea');
+    pv.insertBefore(banner, pv.firstChild);
+  }
+  if(_cruzadosTabEsp > 0){
+    banner.className = 'mb-3 rounded-xl px-4 py-2.5 text-xs font-bold flex items-center gap-2';
+    banner.style = 'background:rgba(192,132,252,.12);color:#7c3aed;border:1px solid #e9d5ff';
+    banner.innerHTML = `<i class="fa-solid fa-tags"></i> ${_cruzadosTabEsp} produto(s) marcado(s) automaticamente pela Tabela Especial.`;
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+
   // Novos
   if(_novos.length){
     $('novosBlock').classList.remove('hidden');
@@ -1661,7 +1904,7 @@ function renderPreview(nome, total){
         <td class="px-3 py-2 font-bold">${safeHtml(r.artigo)}</td>
         <td class="px-3 py-2">${safeHtml(r.descricao)}</td>
         <td class="px-3 py-2 text-slate-500">${safeHtml(r.cor)}</td>
-        <td class="px-3 py-2 text-slate-500">${safeHtml(r.empresa)}</td>
+        <td class="px-3 py-2 text-slate-500">${safeHtml(r.empresa)}${r.codigoTabela?` <span class="rounded-full px-1.5 py-0.5 text-[9px] font-bold ml-1" style="background:rgba(192,132,252,.15);color:#7c3aed">${safeHtml(r.codigoTabela)}</span>`:''}</td>
         <td class="px-3 py-2 text-right font-bold">${Number(r.totalGeral).toLocaleString('pt-BR')}</td>
       </tr>`).join('');
   } else { $('novosBlock').classList.add('hidden'); }
