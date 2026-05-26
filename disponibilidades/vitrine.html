@@ -270,37 +270,56 @@
       display:flex; align-items:center; justify-content:center;
     }
     .cart-grade-grid{
-      display:grid; grid-template-columns:repeat(auto-fill, minmax(78px, 1fr));
-      gap:6px; margin-bottom:10px;
+      display:grid; grid-template-columns:repeat(auto-fill, minmax(92px, 1fr));
+      gap:8px; margin-bottom:8px;
     }
     .cart-grade-box{
-      border:1px solid var(--line); border-radius:8px;
-      padding:6px 4px; text-align:center; background:#f8fafc;
+      border:1px solid var(--line); border-radius:11px;
+      padding:8px 6px; text-align:center; background:#f8fafc;
       transition:border-color .2s, background .2s;
     }
     .cart-grade-box.pending{
       border-color:#fbbf24; background:#fffbeb;
     }
-    .cart-grade-tam{ font-size:12px; font-weight:900; color:var(--text); }
-    .cart-grade-disp{ font-size:10px; color:var(--muted); margin:2px 0 4px; }
+    .cart-grade-box.ok{
+      border-color:var(--accent); background:#fff;
+    }
+    .cart-grade-tam{ font-size:15px; font-weight:900; color:var(--text); }
+    .cart-grade-disp{ font-size:10px; color:var(--muted); margin:1px 0 7px; }
+    /* Stepper grande (tablet-friendly: 38px altura) */
     .cart-grade-ctrl{
-      display:flex; align-items:center; justify-content:center; gap:2px;
+      display:flex; align-items:stretch;
+      border:1px solid var(--line); border-radius:9px;
+      overflow:hidden; height:38px;
     }
+    .cart-grade-ctrl.ok{ border-color:var(--accent); }
     .cart-grade-ctrl button{
-      width:22px; height:22px; border-radius:6px;
-      border:1px solid var(--line); background:#fff; color:var(--text);
-      cursor:pointer; font-weight:900; font-size:13px;
+      width:38px; flex-shrink:0;
+      border:none; background:#fff; color:var(--text);
+      cursor:pointer; font-weight:900; font-size:20px; line-height:1;
       display:flex; align-items:center; justify-content:center;
+      -webkit-tap-highlight-color:transparent;
     }
-    .cart-grade-ctrl button:disabled{ opacity:.3; cursor:not-allowed; }
+    .cart-grade-ctrl button.minus{ border-right:1px solid var(--line); }
+    .cart-grade-ctrl button.plus{ border-left:1px solid var(--line); }
+    .cart-grade-ctrl button:disabled{
+      background:#f1f5f9; color:#cbd5e1; cursor:not-allowed;
+    }
     .cart-grade-ctrl input{
-      width:36px; text-align:center; font-weight:900;
-      border:1px solid var(--line); border-radius:6px;
-      padding:2px 0; font-size:12px;
+      flex:1; min-width:0; text-align:center; font-weight:900;
+      border:none; background:#fff; font-size:15px; color:var(--text);
       -moz-appearance:textfield;
     }
+    .cart-grade-ctrl input:focus{ outline:2px solid var(--accent-light); outline-offset:-2px; }
     .cart-grade-ctrl input::-webkit-outer-spin-button,
     .cart-grade-ctrl input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+    /* Botão limpar grade do produto */
+    .cart-clear-grade{
+      background:#fff; border:1px solid var(--line); color:var(--muted);
+      font-size:11px; font-weight:800; padding:7px 12px; border-radius:9px;
+      cursor:pointer; display:inline-flex; align-items:center; gap:5px;
+    }
+    .cart-clear-grade:hover{ background:#f1f5f9; color:var(--text); }
     .cart-item-fields{
       display:grid; grid-template-columns:1fr 1fr; gap:8px;
     }
@@ -348,6 +367,104 @@
       padding:9px 14px; border-radius:999px;
       font-weight:700; font-size:12px; cursor:pointer;
     }
+    /* ═══ FILTROS / DRAWER ═══════════════════════════════════════════════ */
+    .filtros-toggle{
+      display:inline-flex; align-items:center; gap:7px;
+      background:var(--card); border:1px solid var(--line);
+      border-radius:999px; padding:7px 15px;
+      font-size:12px; font-weight:700; color:var(--text);
+      cursor:pointer; transition:border-color .15s;
+    }
+    .filtros-toggle:hover{ border-color:#94a3b8; }
+    .filtros-badge{
+      background:var(--accent); color:#fff;
+      font-size:10px; font-weight:800;
+      padding:1px 7px; border-radius:999px;
+    }
+    /* Chips de filtro ativo */
+    .chip-ativo{
+      display:inline-flex; align-items:center; gap:5px;
+      background:#f1f5f9; border:1px solid var(--line);
+      border-radius:999px; padding:4px 10px;
+      font-size:11px; font-weight:700; color:#475569;
+    }
+    .chip-ativo button{
+      background:none; border:none; color:#94a3b8;
+      cursor:pointer; font-size:13px; line-height:1; padding:0;
+    }
+    .chip-ativo button:hover{ color:#dc2626; }
+    /* Pills de campanha */
+    .campanha-pill2{
+      border-radius:999px; padding:4px 13px;
+      font-size:11px; font-weight:800; cursor:pointer;
+      border:1px solid #d1d5db; background:#fff; color:#374151;
+      transition:all .12s;
+    }
+    .campanha-pill2:hover:not(.active){ border-color:#94a3b8; }
+    .campanha-pill2.active{
+      background:var(--accent); border-color:var(--accent); color:#fff;
+    }
+    /* Drawer */
+    .drawer-bg{
+      position:fixed; inset:0; z-index:90;
+      background:rgba(15,23,42,.45);
+      display:flex; justify-content:flex-start;
+    }
+    .drawer-bg.hidden{ display:none; }
+    .drawer-panel{
+      width:280px; max-width:85vw; height:100%;
+      background:#fff; display:flex; flex-direction:column;
+      box-shadow:4px 0 24px rgba(0,0,0,.15);
+      animation:drawerIn .22s ease-out;
+    }
+    @keyframes drawerIn{ from{ transform:translateX(-100%); } to{ transform:translateX(0); } }
+    .drawer-head{
+      flex:0 0 auto; display:flex; align-items:center; gap:10px;
+      padding:14px 16px; border-bottom:1px solid var(--line);
+    }
+    .drawer-x{
+      background:none; border:none; color:var(--muted);
+      font-size:22px; cursor:pointer; line-height:1;
+    }
+    .drawer-body{ flex:1; overflow-y:auto; padding:14px 16px; }
+    .drawer-section{ margin-bottom:18px; }
+    .drawer-section-title{
+      font-size:11px; font-weight:800; color:var(--muted);
+      text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;
+    }
+    .drawer-select{
+      width:100%; padding:9px 11px; border:1px solid var(--line);
+      border-radius:9px; font-size:13px; background:#fff; color:var(--text);
+    }
+    .drawer-opts{ display:flex; flex-direction:column; gap:6px; }
+    .drawer-opt{
+      display:flex; align-items:center; gap:9px;
+      font-size:13px; color:var(--text); cursor:pointer;
+    }
+    .drawer-opt input{ accent-color:var(--accent); width:16px; height:16px; }
+    .drawer-opt .cnt{ color:var(--muted); font-size:11px; }
+    .drawer-foot{
+      flex:0 0 auto; display:flex; gap:8px;
+      padding:12px 16px; border-top:1px solid var(--line); background:#f8fafc;
+    }
+    .drawer-btn-ghost{
+      flex:1; background:#fff; border:1px solid var(--line);
+      color:var(--muted); font-size:12px; font-weight:700;
+      padding:9px; border-radius:9px; cursor:pointer;
+    }
+    .drawer-btn-primary{
+      flex:1; background:var(--accent); border:none; color:#fff;
+      font-size:12px; font-weight:800; padding:9px; border-radius:9px; cursor:pointer;
+    }
+    /* Carregar mais */
+    .load-more-btn{
+      background:#fff; border:1px solid var(--accent); color:var(--accent-dark,#5f8c00);
+      font-size:13px; font-weight:800; padding:10px 28px;
+      border-radius:999px; cursor:pointer;
+      display:inline-flex; align-items:center; gap:8px;
+      transition:background .15s;
+    }
+    .load-more-btn:hover{ background:var(--accent-light); }
   </style>
 </head>
 <body>
@@ -366,7 +483,7 @@
 <header class="main-header px-4 py-3 sm:px-6">
   <div class="max-w-[1400px] mx-auto flex items-center justify-between gap-4 flex-wrap">
     <div class="flex items-center gap-3">
-      <a href="https://marcosrepcms-max.github.io/Catalogo-Olympikus/?abrir=marca&app=disponibilidades" style="color:var(--muted);display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;text-decoration:none" class="hover:text-slate-900" title="Voltar e trocar marca">
+      <a href="index.html" style="color:var(--muted);display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;text-decoration:none" class="hover:text-slate-900" title="Voltar e trocar marca">
         <i class="fa-solid fa-arrow-left text-xs"></i> Trocar marca
       </a>
       <div class="w-px h-5" style="background:var(--line)"></div>
@@ -402,22 +519,32 @@
 
 <main class="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
 
-  <!-- Filtros (sticky) -->
-  <div class="filters-bar flex flex-wrap items-center gap-2 mb-4">
-    <!-- Sem pills de marca: a marca já vem da URL -->
-    <!-- Filtros de tabela especial — só os que existem na marca atual -->
-    <div id="filtrosTabela" class="flex flex-wrap gap-2"></div>
-    <!-- Filtros de categoria -->
-    <div id="filtrosCategoria" class="flex flex-wrap gap-2"></div>
-    <div class="ml-auto flex items-center gap-2">
-      <!-- Selecionar todos -->
-      <div class="sel-bar" id="selBar">
-        <label class="flex items-center gap-2 cursor-pointer text-xs font-bold" style="color:var(--muted)">
-          <input type="checkbox" id="chkTodos" onchange="toggleSelecionarTodos(this.checked)" style="accent-color:var(--accent);width:15px;height:15px">
-          Selecionar todos
-        </label>
-        <span class="text-xs font-semibold" style="color:var(--accent)" id="selCount"></span>
+  <!-- Barra de filtros (sticky) -->
+  <div class="filters-bar flex flex-col gap-2 mb-4">
+    <!-- Linha 1: botão Filtros + chips ativos + contador -->
+    <div class="flex flex-wrap items-center gap-2">
+      <button id="btnFiltros" onclick="abrirDrawerFiltros()" class="filtros-toggle">
+        <i class="fa-solid fa-sliders"></i> Filtros
+        <span id="filtrosBadge" class="filtros-badge hidden">0</span>
+      </button>
+      <div id="chipsAtivos" class="flex flex-wrap gap-1.5"></div>
+      <div class="ml-auto flex items-center gap-3">
+        <div class="text-xs font-semibold" style="color:var(--muted)" id="countLabel">—</div>
+        <div class="sel-bar" id="selBar">
+          <label class="flex items-center gap-2 cursor-pointer text-xs font-bold" style="color:var(--muted)">
+            <input type="checkbox" id="chkTodos" onchange="toggleSelecionarTodos(this.checked)" style="accent-color:var(--accent);width:15px;height:15px">
+            Selecionar todos
+          </label>
+          <span class="text-xs font-semibold" style="color:var(--accent)" id="selCount"></span>
+        </div>
       </div>
+    </div>
+    <!-- Linha 2: campanhas (pills) — oculta se não houver -->
+    <div id="campanhasBar" class="hidden items-center gap-1.5 flex-wrap pt-2" style="border-top:1px dashed var(--line)">
+      <span class="text-[11px] font-extrabold uppercase tracking-wide" style="color:var(--muted)">
+        <i class="fa-solid fa-tag text-[10px]"></i> Campanhas
+      </span>
+      <div id="campanhasPills" class="flex flex-wrap gap-1.5"></div>
     </div>
   </div>
 
@@ -427,21 +554,71 @@
     <div class="mt-4 text-sm font-semibold" style="color:var(--muted)">Carregando disponibilidades...</div>
   </div>
 
-  <!-- Empty -->
-  <div id="emptyState" class="hidden text-center py-24">
+  <!-- Empty (estado vazio amigável) -->
+  <div id="emptyState" class="hidden text-center py-20">
     <i class="fa-solid fa-box-open text-4xl" style="color:var(--muted)"></i>
-    <div class="mt-4 text-sm font-semibold" style="color:var(--muted)">Nenhum produto encontrado.</div>
+    <div class="mt-4 text-sm font-bold" style="color:var(--text)" id="emptyTitle">Nenhum produto encontrado.</div>
+    <div class="mt-1 text-xs" style="color:var(--muted)" id="emptySub">Tente ajustar os filtros ou a busca.</div>
+    <button id="emptyClearBtn" onclick="limparTodosFiltros()" class="hidden mt-4 mx-auto px-4 py-2 rounded-full text-xs font-bold" style="background:var(--accent);color:#fff;border:none;cursor:pointer">
+      <i class="fa-solid fa-broom"></i> Limpar todos os filtros
+    </button>
   </div>
 
   <!-- Cards -->
   <div id="cardsWrap" class="cards-grid hidden"></div>
 
-  <!-- Indicador de progresso da listagem (Mostrando X de Y) -->
+  <!-- Botão Carregar mais -->
+  <div id="loadMoreWrap" class="hidden flex justify-center mt-6">
+    <button id="loadMoreBtn" onclick="carregarMais()" class="load-more-btn">
+      <i class="fa-solid fa-plus"></i> Carregar mais <span id="loadMoreRest"></span>
+    </button>
+  </div>
+
+  <!-- Indicador de progresso da listagem -->
   <div id="paginationStatus" class="pagination-status hidden" aria-live="polite">
     <span id="paginationStatusText"></span>
   </div>
 
 </main>
+
+<!-- ── Drawer de Filtros (esquerda) ────────────────────────────────────── -->
+<div id="drawerFiltrosBg" class="drawer-bg hidden" onclick="if(event.target===this)fecharDrawerFiltros()">
+  <aside class="drawer-panel">
+    <div class="drawer-head">
+      <i class="fa-solid fa-sliders" style="color:var(--accent)"></i>
+      <span class="flex-1 font-extrabold text-sm" style="color:var(--text)">Filtros</span>
+      <span id="drawerBadge" class="filtros-badge hidden">0</span>
+      <button onclick="fecharDrawerFiltros()" class="drawer-x">×</button>
+    </div>
+    <div class="drawer-body">
+      <!-- Ordenação -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">Ordenar por</div>
+        <select id="ordenacaoSelect" onchange="setOrdenacao(this.value)" class="drawer-select">
+          <option value="padrao">Padrão</option>
+          <option value="preco_asc">Menor preço</option>
+          <option value="preco_desc">Maior preço</option>
+          <option value="nome">Nome (A-Z)</option>
+          <option value="disp_desc">Maior disponibilidade</option>
+        </select>
+      </div>
+      <!-- Gênero -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">Gênero</div>
+        <div id="filtroGeneroBox" class="drawer-opts"></div>
+      </div>
+      <!-- Categoria -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">Categoria</div>
+        <div id="filtroCategoriaBox" class="drawer-opts"></div>
+      </div>
+    </div>
+    <div class="drawer-foot">
+      <button onclick="limparTodosFiltros()" class="drawer-btn-ghost">Limpar</button>
+      <button onclick="fecharDrawerFiltros()" class="drawer-btn-primary">Ver resultados</button>
+    </div>
+  </aside>
+</div>
 
 <!-- FAB PDF -->
 <button class="fab-pdf" id="fabPDF" onclick="gerarPDF()">
@@ -565,9 +742,11 @@ const $ = id => document.getElementById(id);
 const STATE = {
   itens:      [],
   filtrados:  [],
-  // Marca veio da URL — não tem mais pill de marca. Só tabela e categoria.
-  filtroTabela:    '',
-  filtroCategoria: '',
+  // Filtros: campanha (1, via pill), gênero (Set), categoria (Set)
+  filtroCampanha:  '',
+  filtroGenero:    new Set(),
+  filtroCategoria: new Set(),
+  ordenacao:       'padrao',
   search:     '',
   selecionados: new Set(),
   // Sacola: Map<key, item> onde key = artigo|cor
@@ -577,6 +756,9 @@ const STATE = {
   rendered:    0,
   io:          null
 };
+
+// Filtros persistem só na sessão (zera ao fechar o navegador)
+const FILTROS_SS_KEY = `filtros_v1_${MARCA_ATIVA}`;
 
 // ── SACOLA / EXPORT XLSX ─────────────────────────────────────────────────────
 // Layout idêntico ao usado no sistema da fábrica (Olympikus)
@@ -734,8 +916,10 @@ async function loadData(){
       // Filtra pela marca ativa (vem da URL) — produtos de outras marcas não entram
       .filter(i => String(i.marca||'').trim().toLowerCase() === MARCA_ATIVA)
       .map(i => ({ ...i, prevFat: fixEncoding(i.prevFat) }));
-    renderFiltrosTabela();
-    renderFiltrosCategoria();
+    carregarFiltros();      // restaura filtros da sessão
+    renderCampanhas();      // pills de campanha no topo
+    renderChipsAtivos();    // chips dos filtros ativos
+    atualizarBadgeFiltros();// badge no botão Filtros
     applyFilters();
     $('loadingState').classList.add('hidden');
   }catch(err){
@@ -747,112 +931,172 @@ async function loadData(){
 // ── FILTROS ───────────────────────────────────────────────────────────────────
 // As "pills de campanha" (tabela especial) só aparecem quando o usuário
 // já interagiu com uma CATEGORIA. Animação fade-in suave.
-function renderFiltrosTabela(){
-  const wrap = $('filtrosTabela');
-  if(!wrap) return;
-
-  // Estado inicial (nenhuma categoria ativa AINDA, e não há filtro de tabela)
-  // → pills ficam ocultas
-  if(!STATE.filtroCategoria && !STATE.filtroTabela && !wrap.dataset.acionado){
-    wrap.innerHTML = '';
-    wrap.classList.remove('campanhas-visiveis');
-    return;
-  }
-
-  // Marca como "já acionado" (usuário clicou em categoria pelo menos 1x)
-  wrap.dataset.acionado = '1';
-
-  // Pool de itens: filtra pela categoria ativa, ou usa tudo se sem categoria
-  let pool = STATE.itens;
-  if(STATE.filtroCategoria){
-    pool = STATE.itens.filter(i => grupoDeCategoria(i.categoria) === STATE.filtroCategoria);
-  }
-
-  const codigos = [...new Set(pool.map(i => i.codigoTabela).filter(Boolean))].sort();
-
-  if(!codigos.length){
-    // Nenhuma campanha disponível para esta categoria
-    wrap.innerHTML = '';
-    wrap.classList.remove('campanhas-visiveis');
-    return;
-  }
-
-  wrap.innerHTML = codigos.map(cod => {
-    const active = STATE.filtroTabela === `tabela_${cod}`;
-    return `<button class="filter-pill campanha-pill${active?' active':''}" data-tabela="tabela_${cod}" onclick="setTabela('tabela_${cod}')" style="border-color:#d1d5db;color:#374151">
-      <i class="fa-solid fa-tag" style="font-size:10px"></i> ${cod}
-    </button>`;
-  }).join('');
-  wrap.classList.add('campanhas-visiveis');
-}
-
 // Define os GRUPOS de categoria — fundem categorias relacionadas
-// regex bate em UPPERCASE sem acentos (a normalização cuida)
 const GRUPOS_CATEGORIA = [
   { id:'calcados',    label:'Calçados',   emoji:'👟', match:/TEN|CALCAD|CHINEL|SAND/ },
   { id:'vestuario',   label:'Vestuário',  emoji:'👕', match:/VEST|CAMIS|SHORT|BERMUD|CAL[CÇ]A|REGATA|JAQUET|MOLET|MEIA/ },
   { id:'acessorios',  label:'Acessórios', emoji:'🛍️', match:/ACES|MOCHIL|BOLSA|BONE/ }
 ];
 
-// Remove acentos para casar regex de forma robusta
 function semAcento(s){
   return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
-
-// Dado o valor cru de item.categoria, retorna o id do grupo (ou '' se não bater)
 function grupoDeCategoria(catRaw){
   const c = semAcento(String(catRaw||'').trim().toUpperCase());
   if(!c) return '';
   for(const g of GRUPOS_CATEGORIA){
     if(g.match.test(c)) return g.id;
   }
-  return ''; // sem grupo definido = não aparece nas pills
+  return '';
 }
 
-// Gera dinamicamente as pills de categoria (1 por grupo, só se houver itens)
-function renderFiltrosCategoria(){
-  const wrap = $('filtrosCategoria');
-  if(!wrap) return;
+// ── PERSISTÊNCIA DOS FILTROS (sessionStorage — zera ao fechar navegador) ──────
+function salvarFiltros(){
+  try{
+    sessionStorage.setItem(FILTROS_SS_KEY, JSON.stringify({
+      campanha:  STATE.filtroCampanha,
+      genero:    [...STATE.filtroGenero],
+      categoria: [...STATE.filtroCategoria],
+      ordenacao: STATE.ordenacao
+    }));
+  }catch(e){}
+}
+function carregarFiltros(){
+  try{
+    const raw = sessionStorage.getItem(FILTROS_SS_KEY);
+    if(!raw) return;
+    const f = JSON.parse(raw) || {};
+    STATE.filtroCampanha  = f.campanha || '';
+    STATE.filtroGenero    = new Set(Array.isArray(f.genero) ? f.genero : []);
+    STATE.filtroCategoria = new Set(Array.isArray(f.categoria) ? f.categoria : []);
+    STATE.ordenacao       = f.ordenacao || 'padrao';
+  }catch(e){}
+}
 
-  // Quais grupos têm pelo menos 1 produto?
-  const gruposPresentes = new Set();
-  for(const item of STATE.itens){
-    const gid = grupoDeCategoria(item.categoria);
-    if(gid) gruposPresentes.add(gid);
+// ── CAMPANHAS (pills no topo) ────────────────────────────────────────────────
+function renderCampanhas(){
+  const bar  = $('campanhasBar');
+  const wrap = $('campanhasPills');
+  if(!bar || !wrap) return;
+  const codigos = [...new Set(STATE.itens.map(i => i.codigoTabela).filter(Boolean))].sort();
+  if(!codigos.length){
+    bar.classList.add('hidden');
+    wrap.innerHTML = '';
+    return;
   }
-
-  const visiveis = GRUPOS_CATEGORIA.filter(g => gruposPresentes.has(g.id));
-  if(!visiveis.length){ wrap.innerHTML = ''; return; }
-
-  wrap.innerHTML = visiveis.map(g => `
-    <button class="filter-pill" data-categoria="${g.id}" onclick="setCategoria('${g.id}')" style="border-color:#fde68a;color:#92400e;background:#fef9c3">
-      <span style="font-size:13px;line-height:1">${g.emoji}</span> ${g.label}
-    </button>`).join('');
+  bar.classList.remove('hidden');
+  bar.classList.add('flex');
+  wrap.innerHTML = codigos.map(cod => {
+    const active = STATE.filtroCampanha === cod;
+    return `<button class="campanha-pill2${active?' active':''}" onclick="toggleCampanha('${safeHtml(cod)}')">${safeHtml(cod)}</button>`;
+  }).join('');
 }
-
-// ── 3 FILTROS INDEPENDENTES (acumulam entre si com AND) ───────────────────────
-
-// Filtro de MARCA (sempre 1 ativo: todos/ua/oly)
-// Filtro de TABELA especial (toggle — clicar 2x desativa)
-function setTabela(t){
-  STATE.filtroTabela = (STATE.filtroTabela === t) ? '' : t;
-  document.querySelectorAll('[data-tabela]').forEach(b => b.classList.toggle('active', b.dataset.tabela === STATE.filtroTabela));
+function toggleCampanha(cod){
+  STATE.filtroCampanha = (STATE.filtroCampanha === cod) ? '' : cod;
+  renderCampanhas();
+  salvarFiltros();
   applyFilters();
 }
 
-// Filtro de CATEGORIA (toggle — clicar 2x desativa)
-// Trocar/desativar categoria zera o filtro de campanha e re-renderiza as pills
-function setCategoria(c){
-  STATE.filtroCategoria = (STATE.filtroCategoria === c) ? '' : c;
-  STATE.filtroTabela = ''; // reseta campanha ativa
-  document.querySelectorAll('[data-categoria]').forEach(b => b.classList.toggle('active', b.dataset.categoria === STATE.filtroCategoria));
-  renderFiltrosTabela(); // recalcula pills (categoria atual ou todas)
+// ── DRAWER DE FILTROS ────────────────────────────────────────────────────────
+function abrirDrawerFiltros(){
+  renderDrawerOpcoes();
+  $('drawerFiltrosBg').classList.remove('hidden');
+}
+function fecharDrawerFiltros(){ $('drawerFiltrosBg').classList.add('hidden'); }
+
+// Monta as opções de Gênero e Categoria dentro do drawer (com contagem)
+function renderDrawerOpcoes(){
+  // Gênero — valores distintos dos produtos
+  const generos = {};
+  for(const it of STATE.itens){
+    const g = String(it.genero||'').trim().toUpperCase();
+    if(!g) continue;
+    generos[g] = (generos[g]||0) + 1;
+  }
+  const boxG = $('filtroGeneroBox');
+  const nomeBonito = s => s.charAt(0) + s.slice(1).toLowerCase();
+  const gKeys = Object.keys(generos).sort();
+  boxG.innerHTML = gKeys.length ? gKeys.map(g => `
+    <label class="drawer-opt">
+      <input type="checkbox" ${STATE.filtroGenero.has(g)?'checked':''} onchange="toggleGenero('${safeHtml(g)}',this.checked)">
+      ${safeHtml(nomeBonito(g))} <span class="cnt">(${generos[g]})</span>
+    </label>`).join('') : '<div class="text-xs" style="color:var(--muted)">Nenhum gênero.</div>';
+
+  // Categoria — pelos grupos presentes
+  const catCount = {};
+  for(const it of STATE.itens){
+    const gid = grupoDeCategoria(it.categoria);
+    if(gid) catCount[gid] = (catCount[gid]||0) + 1;
+  }
+  const boxC = $('filtroCategoriaBox');
+  const visiveis = GRUPOS_CATEGORIA.filter(g => catCount[g.id]);
+  boxC.innerHTML = visiveis.length ? visiveis.map(g => `
+    <label class="drawer-opt">
+      <input type="checkbox" ${STATE.filtroCategoria.has(g.id)?'checked':''} onchange="toggleCategoria('${g.id}',this.checked)">
+      <span style="font-size:13px;line-height:1">${g.emoji}</span> ${g.label} <span class="cnt">(${catCount[g.id]})</span>
+    </label>`).join('') : '<div class="text-xs" style="color:var(--muted)">Nenhuma categoria.</div>';
+
+  // Ordenação
+  $('ordenacaoSelect').value = STATE.ordenacao;
+  atualizarBadgeFiltros();
+}
+
+function toggleGenero(g, on){
+  if(on) STATE.filtroGenero.add(g); else STATE.filtroGenero.delete(g);
+  salvarFiltros(); applyFilters(); atualizarBadgeFiltros(); renderChipsAtivos();
+}
+function toggleCategoria(c, on){
+  if(on) STATE.filtroCategoria.add(c); else STATE.filtroCategoria.delete(c);
+  salvarFiltros(); applyFilters(); atualizarBadgeFiltros(); renderChipsAtivos();
+}
+function setOrdenacao(v){
+  STATE.ordenacao = v;
+  salvarFiltros(); applyFilters();
+}
+
+function limparTodosFiltros(){
+  STATE.filtroCampanha = '';
+  STATE.filtroGenero.clear();
+  STATE.filtroCategoria.clear();
+  STATE.ordenacao = 'padrao';
+  if($('searchInput')) $('searchInput').value = '';
+  STATE.search = '';
+  salvarFiltros();
+  renderCampanhas();
+  renderDrawerOpcoes();
+  renderChipsAtivos();
   applyFilters();
 }
 
-// Wrapper de compatibilidade — caso algo ainda chame setFilter
-function setFilter(f){
-  return setTabela(f); // 'tabela_XYZ'
+// Quantos filtros ativos (gênero + categoria; campanha tem pill própria)
+function contarFiltros(){
+  return STATE.filtroGenero.size + STATE.filtroCategoria.size;
+}
+function atualizarBadgeFiltros(){
+  const n = contarFiltros();
+  ['filtrosBadge','drawerBadge'].forEach(id => {
+    const el = $(id);
+    if(!el) return;
+    if(n > 0){ el.textContent = n; el.classList.remove('hidden'); }
+    else el.classList.add('hidden');
+  });
+}
+
+// Chips dos filtros ativos no topo
+function renderChipsAtivos(){
+  const wrap = $('chipsAtivos');
+  if(!wrap) return;
+  const chips = [];
+  const nomeBonito = s => s.charAt(0) + s.slice(1).toLowerCase();
+  for(const g of STATE.filtroGenero){
+    chips.push(`<span class="chip-ativo">${safeHtml(nomeBonito(g))} <button onclick="toggleGenero('${safeHtml(g)}',false)">×</button></span>`);
+  }
+  for(const c of STATE.filtroCategoria){
+    const grupo = GRUPOS_CATEGORIA.find(x => x.id === c);
+    chips.push(`<span class="chip-ativo">${grupo?grupo.label:c} <button onclick="toggleCategoria('${c}',false)">×</button></span>`);
+  }
+  wrap.innerHTML = chips.join('');
 }
 
 function limparBusca(){
@@ -865,30 +1109,45 @@ function limparBusca(){
 function applyFilters(){
   const q = ($('searchInput')?.value || '').toLowerCase().trim();
   STATE.search = q;
-  $('btnClearSearch').classList.toggle('hidden', !q);
+  if($('btnClearSearch')) $('btnClearSearch').classList.toggle('hidden', !q);
 
-  // Marca já foi filtrada no loadData — aqui só restam tabela, categoria e busca.
-  STATE.filtrados = STATE.itens
-    // 1) Filtro de TABELA especial
-    .filter(item => {
-      const t = STATE.filtroTabela;
-      if(!t) return true;
-      if(t.startsWith('tabela_')) return (item.codigoTabela||'') === t.replace('tabela_','');
-      return true;
-    })
-    // 2) Filtro de CATEGORIA (via grupo)
-    .filter(item => {
-      if(!STATE.filtroCategoria) return true;
-      return grupoDeCategoria(item.categoria) === STATE.filtroCategoria;
-    })
-    // 3) Busca livre
+  let lista = STATE.itens
+    // Campanha (pill única)
+    .filter(item => !STATE.filtroCampanha || (item.codigoTabela||'') === STATE.filtroCampanha)
+    // Gênero (multi — OR interno)
+    .filter(item => STATE.filtroGenero.size === 0 || STATE.filtroGenero.has(String(item.genero||'').trim().toUpperCase()))
+    // Categoria (multi — OR interno)
+    .filter(item => STATE.filtroCategoria.size === 0 || STATE.filtroCategoria.has(grupoDeCategoria(item.categoria)))
+    // Busca livre
     .filter(item => {
       if(!q) return true;
       return `${item.descricao} ${item.artigo} ${item.cor} ${item.linha} ${item.empresa} ${item.codigoTabela||''}`.toLowerCase().includes(q);
     });
 
-  $('countLabel').textContent = `${STATE.filtrados.length} produto${STATE.filtrados.length!==1?'s':''}`;
+  // Ordenação
+  lista = ordenarLista(lista, STATE.ordenacao);
+
+  STATE.filtrados = lista;
+  $('countLabel').textContent = `${lista.length} produto${lista.length!==1?'s':''}`;
   renderCards();
+}
+
+// Aplica a ordenação escolhida
+function ordenarLista(lista, modo){
+  const arr = lista.slice();
+  const totalDisp = it => {
+    if(it.totalGeral) return Number(it.totalGeral)||0;
+    if(it.grade) return Object.values(it.grade).reduce((s,v)=>s+(Number(v)||0),0);
+    return 0;
+  };
+  switch(modo){
+    case 'preco_asc':  arr.sort((a,b)=>(Number(a.pdv)||0)-(Number(b.pdv)||0)); break;
+    case 'preco_desc': arr.sort((a,b)=>(Number(b.pdv)||0)-(Number(a.pdv)||0)); break;
+    case 'nome':       arr.sort((a,b)=>String(a.descricao||'').localeCompare(String(b.descricao||''))); break;
+    case 'disp_desc':  arr.sort((a,b)=>totalDisp(b)-totalDisp(a)); break;
+    default: break; // padrão = ordem original
+  }
+  return arr;
 }
 
 // ── RENDER CARDS ──────────────────────────────────────────────────────────────
@@ -974,37 +1233,36 @@ function buildCardHtml(item){
   return card;
 }
 
-// Cria/posiciona a sentinela usada pelo IntersectionObserver
-function ensureScrollSentinel(wrap){
-  let sentinel = $('cardsSentinel');
-  if(!sentinel){
-    sentinel = document.createElement('div');
-    sentinel.id = 'cardsSentinel';
-    sentinel.style.cssText = 'grid-column:1/-1;height:1px;';
-  }
-  wrap.appendChild(sentinel); // sempre move pro final do wrap
-  return sentinel;
-}
-
-// Atualiza o indicador "Mostrando X de Y produtos"
+// Atualiza o indicador "Mostrando X de Y produtos" + botão Carregar mais
 function updatePaginationStatus(){
-  const el = $('paginationStatus');
+  const el  = $('paginationStatus');
   const txt = $('paginationStatusText');
+  const moreWrap = $('loadMoreWrap');
+  const moreRest = $('loadMoreRest');
   if(!el || !txt) return;
+
   const total = STATE.filtrados.length;
   const shown = STATE.rendered;
+
   if(total === 0){
     el.classList.add('hidden');
-    el.classList.remove('complete');
+    if(moreWrap) moreWrap.classList.add('hidden');
     return;
   }
   el.classList.remove('hidden');
+
   if(shown >= total){
     el.classList.add('complete');
     txt.innerHTML = `Todos os <span class="ps-bold">${total}</span> produto${total!==1?'s':''} carregado${total!==1?'s':''} ✓`;
+    if(moreWrap) moreWrap.classList.add('hidden');
   } else {
     el.classList.remove('complete');
-    txt.innerHTML = `Mostrando <span class="ps-bold">${shown}</span> de <span class="ps-bold">${total}</span> · role para ver mais`;
+    txt.innerHTML = `Mostrando <span class="ps-bold">${shown}</span> de <span class="ps-bold">${total}</span>`;
+    if(moreWrap){
+      moreWrap.classList.remove('hidden');
+      moreWrap.classList.add('flex');
+    }
+    if(moreRest) moreRest.textContent = `(${total - shown} restantes)`;
   }
 }
 
@@ -1020,30 +1278,38 @@ function renderNextBatch(){
   for(let i = start; i < end; i++){
     frag.appendChild(buildCardHtml(STATE.filtrados[i]));
   }
-  // Insere antes da sentinela pra ela continuar sendo o último filho
-  const sentinel = $('cardsSentinel');
-  if(sentinel) wrap.insertBefore(frag, sentinel);
-  else wrap.appendChild(frag);
+  wrap.appendChild(frag);
   STATE.rendered = end;
-
-  // Se não há mais itens, desconecta o observer
-  if(STATE.rendered >= STATE.filtrados.length && STATE.io){
-    STATE.io.disconnect();
-    STATE.io = null;
-    if(sentinel) sentinel.remove();
-  }
   updatePaginationStatus();
+}
+
+// Botão "Carregar mais"
+function carregarMais(){
+  renderNextBatch();
+  atualizarFAB();
+  sincronizarChkTodos();
 }
 
 function renderCards(){
   const wrap = $('cardsWrap');
   wrap.innerHTML = '';
   STATE.rendered = 0;
-  if(STATE.io){ STATE.io.disconnect(); STATE.io = null; }
 
   if(!STATE.filtrados.length){
     wrap.classList.add('hidden');
-    $('emptyState').classList.remove('hidden');
+    // Estado vazio amigável — distingue "sem filtro" de "filtro sem resultado"
+    const empty = $('emptyState');
+    empty.classList.remove('hidden');
+    const temFiltro = contarFiltros() > 0 || STATE.filtroCampanha || STATE.search;
+    if(temFiltro){
+      $('emptyTitle').textContent = 'Nenhum produto com esses filtros.';
+      $('emptySub').textContent   = 'Tente remover algum filtro ou ajustar a busca.';
+      $('emptyClearBtn').classList.remove('hidden');
+    } else {
+      $('emptyTitle').textContent = 'Nenhum produto disponível.';
+      $('emptySub').textContent   = 'Volte mais tarde para conferir novidades.';
+      $('emptyClearBtn').classList.add('hidden');
+    }
     updatePaginationStatus();
     return;
   }
@@ -1054,17 +1320,7 @@ function renderCards(){
   $('selBar').classList.toggle('visivel', STATE.itens.length > 0);
 
   // Primeiro lote
-  ensureScrollSentinel(wrap);
   renderNextBatch();
-
-  // Observer para lotes seguintes
-  if(STATE.rendered < STATE.filtrados.length){
-    const sentinel = $('cardsSentinel');
-    STATE.io = new IntersectionObserver((entries) => {
-      entries.forEach(e => { if(e.isIntersecting) renderNextBatch(); });
-    }, { rootMargin: '600px 0px' }); // dispara 600px antes de aparecer
-    if(sentinel) STATE.io.observe(sentinel);
-  }
 
   atualizarFAB();
   sincronizarChkTodos();
@@ -1553,11 +1809,22 @@ function cartSetField(key, field, val){
 
 function cartClearAll(){
   if(!STATE.cart.size) return;
-  if(!confirm('Limpar toda a sacola?')) return;
+  if(!confirm('Tem certeza que deseja limpar toda a sacola?\n\nTodos os produtos e quantidades serão removidos. Esta ação não pode ser desfeita.')) return;
   STATE.cart.clear();
   saveCartToStorage();
   atualizarFabContador();
   renderCartUI();
+  showToast('Sacola limpa', 'info');
+}
+
+// Zera só a grade de 1 produto (mantém o produto na sacola)
+function cartLimparGrade(key){
+  const it = STATE.cart.get(key);
+  if(!it) return;
+  it.gradePedido = {};
+  saveCartToStorage();
+  renderCartItem(key);
+  atualizarFabResumo();
 }
 
 // ── FAB (botão flutuante) ───────────────────────────────────────────────────
@@ -1634,13 +1901,13 @@ function cartItemHtml(it){
     const restante = disp - ped;
     const pendente = ped === 0;
     return `
-      <div class="cart-grade-box ${pendente?'pending':''}">
+      <div class="cart-grade-box ${pendente?'pending':'ok'}">
         <div class="cart-grade-tam">${safeHtml(t)}</div>
         <div class="cart-grade-disp">${restante}/${disp}</div>
-        <div class="cart-grade-ctrl">
-          <button onclick="cartUpdateQty('${safeHtml(it.key)}','${safeHtml(t)}',-1)" ${ped===0?'disabled':''}>−</button>
-          <input type="number" value="${ped}" min="0" max="${disp}" onchange="cartSetQty('${safeHtml(it.key)}','${safeHtml(t)}',this.value)">
-          <button onclick="cartUpdateQty('${safeHtml(it.key)}','${safeHtml(t)}',1)" ${restante===0?'disabled':''}>+</button>
+        <div class="cart-grade-ctrl ${pendente?'':'ok'}">
+          <button class="minus" onclick="cartUpdateQty('${safeHtml(it.key)}','${safeHtml(t)}',-1)" ${ped===0?'disabled':''}>−</button>
+          <input type="number" inputmode="numeric" value="${ped}" min="0" max="${disp}" onchange="cartSetQty('${safeHtml(it.key)}','${safeHtml(t)}',this.value)" onfocus="this.select()">
+          <button class="plus" onclick="cartUpdateQty('${safeHtml(it.key)}','${safeHtml(t)}',1)" ${restante===0?'disabled':''}>+</button>
         </div>
       </div>`;
   }).join('');
@@ -1660,6 +1927,11 @@ function cartItemHtml(it){
         <button class="cart-btn-del" onclick="cartRemove('${safeHtml(it.key)}')" title="Remover">×</button>
       </div>
       <div class="cart-grade-grid">${gradesHtml}</div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+        <button class="cart-clear-grade" onclick="cartLimparGrade('${safeHtml(it.key)}')">
+          <i class="fa-solid fa-eraser"></i> Limpar grade
+        </button>
+      </div>
       <div class="cart-item-fields">
         <label class="${chavesPendentes?'invalid':''}">
           <span>Data desejada *</span>
