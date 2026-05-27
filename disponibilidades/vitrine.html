@@ -389,7 +389,11 @@
     .cli-card-promo-vals b{ color:#7c2d12; }
     .cli-card-grade-label{
       font-size:7.5px; font-weight:800; color:var(--muted);
-      text-transform:uppercase; margin-top:6px;
+      text-transform:uppercase; margin-top:6px; letter-spacing:.4px;
+    }
+    .cli-card-grade-resumo{
+      font-size:11px; font-weight:800; color:var(--text); margin-top:2px;
+      line-height:1.3;
     }
     .cli-card-grade{
       display:flex; flex-wrap:wrap; gap:2px; margin-top:3px;
@@ -852,6 +856,114 @@
       cursor:pointer; transition:border-color .15s;
     }
     .filtros-toggle:hover{ border-color:#94a3b8; }
+    /* Estado "tem resposta nova" — pulsa colorido */
+    .filtros-toggle.has-novas{
+      background:#fef2f2; border:1.5px solid #dc2626; color:#dc2626;
+      animation:pulseMP 1.4s ease-in-out infinite;
+    }
+    .filtros-toggle.has-novas .filtros-badge{
+      background:#dc2626; color:#fff;
+    }
+    @keyframes pulseMP{
+      0%, 100%{ box-shadow:0 0 0 0 rgba(220,38,38,.35); }
+      50%     { box-shadow:0 0 0 6px rgba(220,38,38,0); }
+    }
+    /* Modal Meus Pedidos */
+    .mp-bg{
+      position:fixed; inset:0; z-index:120;
+      background:rgba(15,23,42,.45); backdrop-filter:blur(2px);
+      display:flex; align-items:flex-end; justify-content:center; padding:0;
+    }
+    .mp-bg.hidden{ display:none; }
+    @media(min-width:640px){
+      .mp-bg{ align-items:center; padding:20px; }
+    }
+    .mp-card{
+      background:#fff; border-radius:18px 18px 0 0;
+      width:100%; max-width:560px; max-height:92vh;
+      display:flex; flex-direction:column;
+      box-shadow:0 -10px 40px rgba(0,0,0,.2);
+      animation:mpIn .25s ease-out;
+      overflow:hidden;
+    }
+    @media(min-width:640px){ .mp-card{ border-radius:18px; max-height:88vh; } }
+    @keyframes mpIn{ from{ transform:translateY(40px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+    .mp-head{
+      flex:0 0 auto; padding:14px 18px;
+      display:flex; align-items:center; gap:10px;
+      border-bottom:1px solid var(--line);
+    }
+    .mp-head .ic{
+      width:36px; height:36px; border-radius:9px;
+      background:#f1f5f9; color:#0f172a;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .mp-head .ttl{ flex:1; }
+    .mp-head .ttl .l1{ font-size:15px; font-weight:900; color:var(--text); }
+    .mp-head .ttl .l2{ font-size:11px; color:var(--muted); margin-top:1px; }
+    .mp-head .x{
+      background:none; border:none; color:var(--muted);
+      font-size:22px; cursor:pointer; line-height:1;
+    }
+    .mp-body{ flex:1; overflow-y:auto; padding:14px 18px; }
+    .mp-body .empty{
+      text-align:center; padding:40px 16px; color:var(--muted); font-size:13px;
+    }
+    /* Seletor de vendedor */
+    .mp-seletor{
+      padding:18px 4px;
+    }
+    .mp-seletor h4{ font-size:14px; font-weight:900; color:var(--text); margin-bottom:6px; }
+    .mp-seletor p{ font-size:12px; color:var(--muted); margin-bottom:14px; }
+    .mp-seletor select{
+      width:100%; padding:11px 12px; border:1px solid var(--line);
+      border-radius:10px; font-size:13px; background:#fff; color:var(--text);
+      margin-bottom:12px;
+    }
+    .mp-seletor .btn{
+      width:100%; background:#0f172a; color:#fff; border:none;
+      border-radius:11px; padding:12px; font-size:13px; font-weight:800;
+      cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:7px;
+    }
+    .mp-seletor .btn:hover{ background:#1e293b; }
+    /* Card de pedido na lista */
+    .mp-item{
+      border:1px solid var(--line); border-radius:11px;
+      padding:11px 13px; margin-bottom:8px;
+      display:flex; align-items:center; gap:10px;
+      transition:border-color .15s;
+    }
+    .mp-item:hover{ border-color:#94a3b8; }
+    .mp-item.resp{ border-color:#bbf7d0; background:#f0fdf4; }
+    .mp-item.resp:hover{ border-color:#86efac; }
+    .mp-item.exp{ border-color:#fed7aa; background:#fff7ed; }
+    .mp-item-info{ flex:1; min-width:0; }
+    .mp-item-cli{ font-size:13px; font-weight:900; color:var(--text); }
+    .mp-item-meta{ font-size:10px; color:var(--muted); margin-top:2px; }
+    .mp-item-status{
+      font-size:10px; font-weight:800; margin-top:3px; display:inline-flex; align-items:center; gap:4px;
+    }
+    .mp-item.resp .mp-item-status{ color:#15803d; }
+    .mp-item.aguardando .mp-item-status{ color:#475569; }
+    .mp-item.exp .mp-item-status{ color:#c2410c; }
+    .mp-item-actions{ display:flex; flex-direction:column; gap:5px; flex-shrink:0; }
+    .mp-btn{
+      border:none; border-radius:8px; padding:7px 12px;
+      font-size:11px; font-weight:800; cursor:pointer;
+      display:inline-flex; align-items:center; gap:5px; justify-content:center;
+    }
+    .mp-btn.primary{ background:#0034d8; color:#fff; }
+    .mp-btn.primary:hover{ background:#002cb8; }
+    .mp-btn.reativar{ background:#fff; color:#c2410c; border:1px solid #fed7aa; }
+    .mp-btn.reativar:hover{ background:#fff7ed; }
+    .mp-btn.ghost{ background:#fff; color:var(--muted); border:1px solid var(--line); }
+    .mp-foot{
+      flex:0 0 auto; padding:10px 18px; border-top:1px solid var(--line);
+      display:flex; justify-content:space-between; align-items:center;
+      font-size:11px; color:var(--muted); background:#f8fafc;
+    }
+    .mp-foot a{ color:var(--accent); cursor:pointer; font-weight:700; }
+    .mp-foot a:hover{ text-decoration:underline; }
     .filtros-badge{
       background:var(--accent); color:#fff;
       font-size:10px; font-weight:800;
@@ -972,9 +1084,6 @@
           <div class="l2"><span id="cliQtdProdutos">0</span> produtos · <span id="cliMarcaNome">—</span></div>
         </div>
       </div>
-      <div class="ajuda">
-        <i class="fa-solid fa-circle-info"></i> Toque em <b>"Quero esse"</b> nos produtos do seu interesse
-      </div>
     </header>
     <div id="cliGrid" class="cli-grid"></div>
   </div>
@@ -1078,6 +1187,10 @@
       <button id="btnFiltros" onclick="abrirDrawerFiltros()" class="filtros-toggle">
         <i class="fa-solid fa-sliders"></i> Filtros
         <span id="filtrosBadge" class="filtros-badge hidden">0</span>
+      </button>
+      <button id="btnMeusPedidos" onclick="abrirMeusPedidos()" class="filtros-toggle meus-pedidos-btn">
+        <i class="fa-solid fa-clipboard-list"></i> Meus Pedidos
+        <span id="meusPedidosBadge" class="filtros-badge hidden">0</span>
       </button>
       <div id="chipsAtivos" class="flex flex-wrap gap-1.5"></div>
       <div class="ml-auto flex items-center gap-3">
@@ -1221,6 +1334,42 @@
       </button>
     </div>
     <div class="link-expira"><i class="fa-regular fa-clock"></i> Expira em 48 horas</div>
+  </div>
+</div>
+
+<!-- Modal: Meus Pedidos -->
+<div id="modalMeusPedidos" class="mp-bg hidden" onclick="if(event.target===this)fecharMeusPedidos()">
+  <div class="mp-card">
+    <div class="mp-head">
+      <div class="ic"><i class="fa-solid fa-clipboard-list"></i></div>
+      <div class="ttl">
+        <div class="l1">Meus Pedidos</div>
+        <div class="l2" id="mpSubtitulo">Links que você compartilhou com clientes</div>
+      </div>
+      <button class="x" onclick="fecharMeusPedidos()">×</button>
+    </div>
+    <div class="mp-body">
+      <!-- Tela 1: seletor de vendedor (1ª vez) -->
+      <div id="mpSeletorVendedor" class="mp-seletor hidden">
+        <h4>Quem é você?</h4>
+        <p>Selecione seu nome para ver os links que você gerou.</p>
+        <select id="mpVendedorSelect"></select>
+        <button class="btn" onclick="mpConfirmarVendedor()">
+          <i class="fa-solid fa-arrow-right"></i> Ver meus pedidos
+        </button>
+      </div>
+      <!-- Tela 2: lista de pedidos -->
+      <div id="mpLista" class="hidden"></div>
+      <!-- Loading -->
+      <div id="mpLoading" class="empty hidden">
+        <i class="fa-solid fa-circle-notch fa-spin text-2xl" style="color:var(--accent)"></i>
+        <div class="mt-3">Carregando...</div>
+      </div>
+    </div>
+    <div class="mp-foot">
+      <div><span id="mpVendedorAtual">—</span></div>
+      <a onclick="mpTrocarVendedor()">Trocar vendedor</a>
+    </div>
   </div>
 </div>
 
@@ -2156,6 +2305,311 @@ function abrirWhatsAppLink(){
   window.open(url, '_blank');
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ── MEUS PEDIDOS (vendedor — gerência dos links criados) ──────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+const MP_VEND_LS    = 'vitrine_mp_vendedor_v1';        // código do vendedor logado
+const MP_VISTOS_LS  = (v) => `vitrine_mp_vistos_${v}`; // códigos de links já vistos (pra pulsar)
+const MP_NOVAS = { count: 0 };                          // contagem atual
+
+function _mpVendedorAtual(){
+  return localStorage.getItem(MP_VEND_LS) || '';
+}
+
+function _mpVendedorNome(codigo){
+  const o = ORDER_COMMISSION_OPTIONS.find(c => c.codigo === codigo);
+  return o ? o.nome : codigo;
+}
+
+// Checagem em background: ao abrir a vitrine, vê se há respostas novas
+async function mpVerificarNovas(){
+  const v = _mpVendedorAtual();
+  if(!v) return; // ainda não escolheu vendedor
+  try{
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'getLinksVendedor', vendedor: v })
+    });
+    const json = await res.json();
+    if(!json.success || !Array.isArray(json.links)) return;
+    // Quais já foram vistos?
+    let vistos = [];
+    try{ vistos = JSON.parse(localStorage.getItem(MP_VISTOS_LS(v)) || '[]') || []; }catch(e){}
+    const setVistos = new Set(vistos);
+    // Novas = respondidas mas ainda não vistas
+    const novas = json.links.filter(l => l.status === 'respondido' && !setVistos.has(l.codigo));
+    MP_NOVAS.count = novas.length;
+    mpAtualizarBadgeBotao();
+  }catch(e){
+    // silencioso — não vamos quebrar a vitrine
+    console.warn('mpVerificarNovas', e);
+  }
+}
+
+// Atualiza o estado visual do botão "Meus Pedidos"
+function mpAtualizarBadgeBotao(){
+  const btn = $('btnMeusPedidos');
+  const badge = $('meusPedidosBadge');
+  if(!btn || !badge) return;
+  if(MP_NOVAS.count > 0){
+    btn.classList.add('has-novas');
+    badge.classList.remove('hidden');
+    badge.textContent = MP_NOVAS.count;
+  } else {
+    btn.classList.remove('has-novas');
+    badge.classList.add('hidden');
+  }
+}
+
+function abrirMeusPedidos(){
+  $('modalMeusPedidos').classList.remove('hidden');
+  const v = _mpVendedorAtual();
+  if(!v){
+    mpMostrarSeletor();
+  } else {
+    mpCarregarLista(v);
+  }
+}
+function fecharMeusPedidos(){ $('modalMeusPedidos').classList.add('hidden'); }
+
+function mpMostrarSeletor(){
+  $('mpSeletorVendedor').classList.remove('hidden');
+  $('mpLista').classList.add('hidden');
+  $('mpLoading').classList.add('hidden');
+  $('mpSubtitulo').textContent = 'Escolha seu nome para começar';
+  $('mpVendedorAtual').textContent = '';
+  const sel = $('mpVendedorSelect');
+  sel.innerHTML = '<option value="">— Selecione —</option>' +
+    ORDER_COMMISSION_OPTIONS.map(c =>
+      `<option value="${safeHtml(c.codigo)}">${safeHtml(c.codigo)} – ${safeHtml(c.nome)}</option>`
+    ).join('');
+}
+
+function mpConfirmarVendedor(){
+  const v = $('mpVendedorSelect').value;
+  if(!v){ showToast('Selecione um vendedor', 'info'); return; }
+  localStorage.setItem(MP_VEND_LS, v);
+  mpCarregarLista(v);
+}
+
+function mpTrocarVendedor(){
+  if(!confirm('Trocar de vendedor? Você precisará selecionar novamente.')) return;
+  localStorage.removeItem(MP_VEND_LS);
+  mpMostrarSeletor();
+}
+
+async function mpCarregarLista(vendedor){
+  $('mpSeletorVendedor').classList.add('hidden');
+  $('mpLista').classList.add('hidden');
+  $('mpLoading').classList.remove('hidden');
+  $('mpVendedorAtual').innerHTML = `<b>${safeHtml(_mpVendedorNome(vendedor))}</b> · cód. ${safeHtml(vendedor)}`;
+  $('mpSubtitulo').textContent = 'Links que você compartilhou com clientes';
+
+  try{
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'getLinksVendedor', vendedor })
+    });
+    const json = await res.json();
+    if(!json.success) throw new Error('falha');
+    const links = json.links || [];
+    mpRenderLista(links);
+    // Marca todos como "vistos" (zera o pulsar) — após abrir o modal
+    const codigos = links.map(l => l.codigo);
+    localStorage.setItem(MP_VISTOS_LS(vendedor), JSON.stringify(codigos));
+    MP_NOVAS.count = 0;
+    mpAtualizarBadgeBotao();
+  }catch(e){
+    console.error(e);
+    showToast('Erro ao carregar pedidos.', 'error');
+  }finally{
+    $('mpLoading').classList.add('hidden');
+    $('mpLista').classList.remove('hidden');
+  }
+}
+
+function mpRenderLista(links){
+  const wrap = $('mpLista');
+  if(!links.length){
+    wrap.innerHTML = '<div class="empty"><i class="fa-regular fa-folder-open text-2xl"></i><div class="mt-3">Nenhum link gerado ainda.</div></div>';
+    return;
+  }
+  // Ordena: respondidos primeiro, depois aguardando, depois expirados
+  const ordem = { 'respondido':0, 'aguardando':1, 'expirado':2 };
+  const itens = links.slice().sort((a,b) => {
+    const sa = a.expirado ? 'expirado' : a.status;
+    const sb = b.expirado ? 'expirado' : b.status;
+    return (ordem[sa]||9) - (ordem[sb]||9);
+  });
+
+  wrap.innerHTML = itens.map(l => mpItemHtml(l)).join('');
+}
+
+function mpItemHtml(l){
+  const expirou = l.expirado;
+  const respondido = l.status === 'respondido' && !expirou;
+  const cls = respondido ? 'resp' : (expirou ? 'exp' : 'aguardando');
+
+  // Texto de status
+  let statusHtml = '';
+  if(respondido){
+    statusHtml = `<i class="fa-solid fa-circle-check"></i> Respondido · ${l.qtdResposta || 0} item(ns)`;
+  } else if(expirou){
+    statusHtml = `<i class="fa-regular fa-clock"></i> Link expirado`;
+  } else {
+    // calcula tempo restante
+    const restMs = (l.expiraEm || 0) - Date.now();
+    const restH = Math.max(0, Math.floor(restMs/3600000));
+    statusHtml = `<i class="fa-regular fa-clock"></i> Aguardando · ${restH}h restantes`;
+  }
+
+  // Botões de ação
+  let actionsHtml = '';
+  if(respondido){
+    actionsHtml = `<button class="mp-btn primary" onclick="mpAbrirResposta('${safeHtml(l.codigo)}')">
+      <i class="fa-solid fa-arrow-right"></i> Abrir
+    </button>`;
+  } else if(expirou){
+    actionsHtml = `<button class="mp-btn reativar" onclick="mpReativar('${safeHtml(l.codigo)}',this)">
+      <i class="fa-solid fa-rotate"></i> +48h
+    </button>`;
+  } else {
+    actionsHtml = `<button class="mp-btn ghost" onclick="mpCopiarLink('${safeHtml(l.codigo)}')" title="Copiar link">
+      <i class="fa-solid fa-copy"></i>
+    </button>`;
+  }
+
+  // Marca + qtd produtos
+  const marcaIcone = (l.marca === 'oly') ? '🟦' : (l.marca === 'ua' ? '🟥' : '');
+  return `
+    <div class="mp-item ${cls}" data-codigo="${safeHtml(l.codigo)}">
+      <div class="mp-item-info">
+        <div class="mp-item-cli">${marcaIcone} ${safeHtml(l.cliente || '—')}</div>
+        <div class="mp-item-meta">cód. ${safeHtml(l.codigo)} · ${l.qtdProdutos} produto(s) · ${mpFormatarData(l.criadoEm)}</div>
+        <div class="mp-item-status">${statusHtml}</div>
+      </div>
+      <div class="mp-item-actions">${actionsHtml}</div>
+    </div>`;
+}
+
+function mpFormatarData(ms){
+  if(!ms) return '';
+  const d = new Date(Number(ms));
+  const pad = n => String(n).padStart(2,'0');
+  return `${pad(d.getDate())}/${pad(d.getMonth()+1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+async function mpCopiarLink(codigo){
+  const base = location.origin + location.pathname;
+  const url  = `${base}?link=${codigo}`;
+  try{
+    await navigator.clipboard.writeText(url);
+    showToast('Link copiado!', 'success');
+  }catch(e){
+    showToast('Não foi possível copiar.', 'error');
+  }
+}
+
+async function mpReativar(codigo, btn){
+  const prev = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+  try{
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'reativarLink', codigo })
+    });
+    const json = await res.json();
+    if(!json.success) throw new Error('falha');
+    showToast('Link reativado por +48h', 'success');
+    // recarrega a lista
+    mpCarregarLista(_mpVendedorAtual());
+  }catch(e){
+    console.error(e);
+    showToast('Erro ao reativar.', 'error');
+    btn.disabled = false;
+    btn.innerHTML = prev;
+  }
+}
+
+// Abrir resposta do cliente → joga na sacola → exporta XLSX
+async function mpAbrirResposta(codigo){
+  try{
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'getLinkCompleto', codigo })
+    });
+    const json = await res.json();
+    if(!json.success || !json.link) throw new Error('falha');
+    const link = json.link;
+    if(!link.resposta || !Array.isArray(link.resposta.itens) || !link.resposta.itens.length){
+      showToast('Este link ainda não tem resposta.', 'info');
+      return;
+    }
+    // Confirma com o vendedor
+    const cli = link.cliente || '(cliente)';
+    const qtd = link.resposta.itens.length;
+    if(!confirm(`Carregar a seleção de "${cli}" (${qtd} item(ns)) na sacola?\n\nA sacola atual da marca "${(link.marca||'').toUpperCase()}" será SUBSTITUÍDA.`)){
+      return;
+    }
+    mpCarregarRespostaNaSacola(link);
+  }catch(e){
+    console.error(e);
+    showToast('Erro ao carregar a resposta.', 'error');
+  }
+}
+
+function mpCarregarRespostaNaSacola(link){
+  const marca = link.marca || MARCA_ATIVA;
+  // Se a marca não bate, redireciona pra vitrine certa
+  if(marca !== MARCA_ATIVA){
+    if(!confirm(`Este pedido é da marca "${marca.toUpperCase()}". Trocar de marca agora?`)) return;
+    // Salva a resposta no localStorage da marca destino e redireciona
+    const tmpKey = `cart_v1_${marca}_load`;
+    sessionStorage.setItem(tmpKey, JSON.stringify({ cliente:link.cliente, itens:link.resposta.itens }));
+    // Redireciona pra vitrine da marca certa, com sinal pra carregar
+    location.href = `vitrine.html?marca=${marca}&loadResp=1`;
+    return;
+  }
+  // Mesma marca: substitui a sacola atual
+  STATE.cart.clear();
+  for(const it of link.resposta.itens){
+    // Mapeia pro formato esperado pela sacola
+    // Precisamos da disponibilidade do produto (da vitrine) — busca em STATE.itens
+    const prodVitrine = STATE.itens.find(i =>
+      String(i.artigo||'').toUpperCase() === String(it.artigo||'').toUpperCase() &&
+      String(i.cor||'').toUpperCase() === String(it.cor||'').toUpperCase()
+    );
+    const key = `${String(it.artigo||'').toUpperCase()}|${String(it.cor||'').toUpperCase()}`;
+    STATE.cart.set(key, {
+      key,
+      artigo:     it.artigo,
+      codigo:     it.artigo,
+      cor:        it.cor,
+      corCodigo:  it.cor,
+      descricao:  it.descricao,
+      produto:    it.descricao,
+      categoria:  it.categoria || (prodVitrine?.categoria || ''),
+      linha:      prodVitrine?.linha || '',
+      genero:     prodVitrine?.genero || '',
+      gradeDisp:  prodVitrine?.grade || {},
+      gradePedido: it.grade || {},
+      dataDesejada: '',
+      pedidoCliente: link.cliente || ''
+    });
+  }
+  saveCartToStorage();
+  atualizarFabContador();
+  fecharMeusPedidos();
+  abrirSacola();
+  showToast(`Sacola carregada com ${link.resposta.itens.length} item(ns) do cliente "${link.cliente}"`, 'success');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // ── ZOOM ──────────────────────────────────────────────────────────────────────
 function abrirZoom(src){
   $('zoomImg').src = src;
@@ -3204,7 +3658,7 @@ function cliCardHtml(p){
   const imgSrc = (p.artigo && corSafe) ? `${IMG_BASE}${p.artigo}_${corSafe}.jpg` : '';
   const corDisp = String(p.cor||'—').replace(/_/g,'/');
 
-  // Grade — mostra até 5 tamanhos
+  // Grade — detecta faixa/lista (não exibe quantidade, só "que tamanhos tem")
   const gradeEntries = Object.entries(p.grade || {})
     .filter(([,v]) => Number(v) > 0)
     .sort((a,b) => {
@@ -3212,12 +3666,7 @@ function cliCardHtml(p){
       if(an&&bn) return Number(a[0])-Number(b[0]);
       return String(a[0]).localeCompare(String(b[0]));
     });
-  const mostrar = gradeEntries.slice(0, 5);
-  const sobra = gradeEntries.length - mostrar.length;
-
-  const gradeHtml = mostrar.map(([t,q]) =>
-    `<span class="cel"><b>${safeHtml(t)}</b>·${q}</span>`
-  ).join('') + (sobra > 0 ? `<span class="mais">+${sobra}</span>` : '');
+  const gradeResumo = cliResumoFaixa(gradeEntries.map(e => e[0]));
 
   // Box promo (MKP + Custo) se for tabela
   const promoBox = promo && (p.mkp || p.custo) ? `
@@ -3247,7 +3696,7 @@ function cliCardHtml(p){
     <button class="cli-card-btn detalhar${qtdGrade>0?' preenchido':''}" onclick="cliAbrirGrade('${safeHtml(k)}')">
       ${qtdGrade>0
         ? `<i class="fa-solid fa-check"></i> ${qtdGrade} ${temTamanhos?'pares':'un.'}`
-        : `<i class="fa-solid fa-list-ol"></i> ${temTamanhos?'Detalhar grade':'Quantidade'}`}
+        : `<i class="fa-solid fa-list-ol"></i> ${temTamanhos?'Adicionar grade':'Quantidade'}`}
     </button>` : '';
 
   // Sempre tem botão de lupa quando NÃO selecionado.
@@ -3267,7 +3716,7 @@ function cliCardHtml(p){
       <div class="cli-card-meta">${safeHtml(p.artigo||'')} · ${safeHtml(corDisp)}</div>
       <div class="cli-card-price">R$ ${Number(p.pdv||0).toFixed(2).replace('.',',')}</div>
       ${promoBox}
-      ${gradeEntries.length ? `<div class="cli-card-grade-label">Grade</div><div class="cli-card-grade">${gradeHtml}</div>` : ''}
+      ${gradeEntries.length ? `<div class="cli-card-grade-label">Tamanhos</div><div class="cli-card-grade-resumo">${safeHtml(gradeResumo)}</div>` : ''}
       ${btn}
       ${btnDetalhar}
     </div>`;
@@ -3280,6 +3729,32 @@ function cliTemTamanhos(p){
   if(!keys.length) return false;
   if(keys.length === 1 && String(keys[0]).toUpperCase() === 'U') return false;
   return true;
+}
+
+// Resume a faixa de tamanhos exibida no card.
+//   ["U"]                  → "Em estoque"
+//   ["38"]                 → "38"
+//   ["38","39","40","41"]  → "38 ao 41"     (contínuo)
+//   ["38","39","41","42"]  → "38, 39, 41, 42"  (com lacuna)
+//   ["P","M","G"]          → "P, M, G"      (não-numérico → lista)
+function cliResumoFaixa(tams){
+  if(!tams || !tams.length) return '';
+  // Caso "U" único
+  if(tams.length === 1 && String(tams[0]).toUpperCase() === 'U') return 'Em estoque';
+  // Verifica se TODOS são numéricos
+  const nums = tams.map(t => Number(t));
+  const todosNum = nums.every(n => Number.isFinite(n));
+  if(todosNum && nums.length > 1){
+    const min = nums[0], max = nums[nums.length-1];
+    // Contínuo? max - min + 1 === length
+    if(max - min + 1 === nums.length){
+      return `${min} ao ${max}`;
+    }
+    // Com lacuna — lista simples
+    return nums.join(', ');
+  }
+  // Não-numéricos (P, M, G, faixas tipo "33/38") — lista simples
+  return tams.join(', ');
 }
 
 // Toggle "Quero esse" / "Remover"
@@ -3347,7 +3822,7 @@ function cliAbrirGrade(key){
   _cliGradeContexto = { key, produto: p, temTamanhos, gradeTmp };
 
   // Header
-  $('cliGradeTitulo').textContent = temTamanhos ? 'Detalhar grade' : 'Quantidade desejada';
+  $('cliGradeTitulo').textContent = temTamanhos ? 'Adicionar grade' : 'Quantidade desejada';
   $('cliGradeSubt').textContent   = `${p.descricao || ''} · ${String(p.cor||'').replace(/_/g,'/')}`;
   $('cliGradeUnit').textContent   = temTamanhos ? 'pares' : 'un.';
 
@@ -3544,7 +4019,24 @@ if(MODO_CLIENTE){
   aplicarIdentidadeMarca();
   loadCartFromStorage();
   atualizarFabContador();
-  loadData();
+  loadData().then(() => {
+    // Após carregar a vitrine, verifica se há resposta pendente para carregar
+    // (vinda de outra marca via redirecionamento)
+    if(_params.get('loadResp') === '1'){
+      const tmpKey = `cart_v1_${MARCA_ATIVA}_load`;
+      const raw = sessionStorage.getItem(tmpKey);
+      if(raw){
+        sessionStorage.removeItem(tmpKey);
+        try{
+          const obj = JSON.parse(raw);
+          const fake = { marca: MARCA_ATIVA, cliente: obj.cliente, resposta: { itens: obj.itens } };
+          mpCarregarRespostaNaSacola(fake);
+        }catch(e){}
+      }
+    }
+    // Verifica respostas novas no Meus Pedidos
+    mpVerificarNovas();
+  });
 }
 
 // Liga o botão OK do mini-modal de confirmação
