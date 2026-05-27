@@ -1482,187 +1482,251 @@ async function gerarPDF(){
 
   try{
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation:'landscape', unit:'pt', format:'a4', compress:true });
+    const doc = new jsPDF({ orientation:'portrait', unit:'pt', format:'a4', compress:true });
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
 
     const now = new Date();
     const pad = n => String(n).padStart(2,'0');
-    const dateStr = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const dateStr = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()}`;
 
-    const margin   = 28;
-    const contentW = pageW - margin*2;
-    const headerH  = 38;
-    const bodyY    = headerH + 10;
-    const bodyH    = pageH - bodyY - 10;
-    const cardH    = Math.floor((bodyH-8)/2);
-
-    // Cores — verde limão para disponibilidades
+    // Cor da marca ativa
+    const info = MARCA_INFO[MARCA_ATIVA] || {};
+    const hexToRgb = (h) => {
+      const m = String(h||'').replace('#','').match(/.{2}/g) || ['00','00','00'];
+      return m.map(x => parseInt(x,16));
+    };
     const C = {
-      green:  [125, 184, 0],
+      brand:  hexToRgb(info.bgMarca || '#0034d8'),   // azul OLY / vermelho UA
+      accent: hexToRgb(info.accent  || '#7db800'),   // verde OLY / vermelho UA
       text:   [15, 23, 42],
       muted:  [100, 116, 139],
       border: [226, 232, 240],
       bg:     [248, 250, 252],
       white:  [255, 255, 255],
+      faint:  [203, 213, 225]
     };
     const sc = (rgb, type='text') => {
-      if(type==='fill')      doc.setFillColor(...rgb);
-      else if(type==='draw') doc.setDrawColor(...rgb);
-      else                   doc.setTextColor(...rgb);
+      if(type==='fill')      doc.setFillColor(rgb[0],rgb[1],rgb[2]);
+      else if(type==='draw') doc.setDrawColor(rgb[0],rgb[1],rgb[2]);
+      else                   doc.setTextColor(rgb[0],rgb[1],rgb[2]);
     };
 
-    function drawHeader(){
-      sc(C.green,'fill');
+    const margin   = 32;
+    const contentW = pageW - margin*2;
+    const headerH  = 58;
+
+    // ── Cabeçalho ──────────────────────────────────────────────────────────
+    function drawHeader(pageNum){
+      sc(C.brand,'fill');
       doc.rect(0,0,pageW,headerH,'F');
-      doc.setFont('helvetica','bold'); doc.setFontSize(13);
+      // faixa de acento na base
+      sc(C.accent,'fill');
+      doc.rect(0,headerH,pageW,3,'F');
+      // caixinha do logo
+      doc.setFillColor(255,255,255);
+      doc.setGState(new doc.GState({opacity:0.15}));
+      doc.roundedRect(margin, 13, 32, 32, 7, 7, 'F');
+      doc.setGState(new doc.GState({opacity:1}));
+      doc.setDrawColor(255,255,255);
+      doc.setLineWidth(0.6);
+      doc.roundedRect(margin, 13, 32, 32, 7, 7, 'S');
       doc.setTextColor(255,255,255);
-      doc.text('Catálogo Olympikus — Disponibilidades', margin, 24);
-      doc.setFont('helvetica','normal'); doc.setFontSize(9);
-      doc.setTextColor(220,255,150);
-      doc.text(dateStr, pageW-margin, 24, {align:'right'});
+      doc.setFont('helvetica','bold'); doc.setFontSize(11);
+      doc.text('CMS', margin+16, 33, {align:'center'});
+      // textos
+      const tx = margin + 44;
+      doc.setTextColor(255,255,255);
+      doc.setFont('helvetica','bold'); doc.setFontSize(14);
+      doc.text('CMS Representações', tx, 27);
+      doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+      doc.setTextColor(210,220,250);
+      doc.text(`CATÁLOGO DE DISPONIBILIDADES · ${(info.nome||'').toUpperCase()}`, tx, 40);
+      // data à direita
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+      doc.setTextColor(210,220,250);
+      doc.text(dateStr, pageW-margin, 27, {align:'right'});
       sc(C.text);
     }
 
-    const imgAreaW  = 560;
-    const infoGap   = 14;
-    const infoAreaX = margin + imgAreaW + infoGap;
-    const infoAreaW = contentW - imgAreaW - infoGap;
+    // ── Rodapé ─────────────────────────────────────────────────────────────
+    function drawFooter(pageNum){
+      sc(C.border,'draw'); doc.setLineWidth(0.4);
+      doc.line(margin, pageH-28, pageW-margin, pageH-28);
+      sc(C.muted);
+      doc.setFont('helvetica','normal'); doc.setFontSize(7);
+      doc.text(`Catálogo de Disponibilidades · CMS Representações`, margin, pageH-16);
+      doc.text(`pág. ${pageNum}`, pageW-margin, pageH-16, {align:'right'});
+    }
+
+    // ── Layout do card ─────────────────────────────────────────────────────
+    const bodyTop  = headerH + 18;       // respiro abaixo do cabeçalho
+    const bodyBot  = pageH - 40;          // respiro acima do rodapé
+    const cardGap  = 12;                  // espaço entre cards
+    const PER_PAGE = 4;
+    const cardH    = (bodyBot - bodyTop - cardGap*(PER_PAGE-1)) / PER_PAGE;
+
+    const IMG_SZ   = 86;                  // imagem compacta
+    const PADX     = 14;                  // padding horizontal interno
+    const PADY     = 12;                  // padding vertical interno
 
     async function drawCard(item, cardY){
-      sc(C.border,'draw'); doc.setLineWidth(0.4);
-      sc(C.bg,'fill');
-      doc.roundedRect(margin, cardY, contentW, cardH, 6, 6, 'FD');
+      // moldura do card
+      sc(C.border,'draw'); doc.setLineWidth(0.5);
+      sc(C.white,'fill');
+      doc.roundedRect(margin, cardY, contentW, cardH, 7, 7, 'FD');
 
-      // Área da imagem
-      const ip=6, ibX=margin+ip, ibY=cardY+ip;
-      const ibW=imgAreaW-ip*2, ibH=cardH-ip*2;
-      sc(C.white,'fill'); sc(C.border,'draw');
-      doc.roundedRect(ibX,ibY,ibW,ibH,4,4,'FD');
-
+      // ── imagem ──
+      const imgX = margin + PADX;
+      const imgY = cardY + (cardH - IMG_SZ)/2;   // centraliza vertical
+      sc(C.bg,'fill'); sc(C.border,'draw');
+      doc.roundedRect(imgX, imgY, IMG_SZ, IMG_SZ, 5, 5, 'FD');
       const corSafePdf = String(item.cor || '').replace(/\//g, '_').toUpperCase();
       if(item.artigo && corSafePdf){
-        const rawData = await imageUrlToDataUrl(`${IMG_BASE}${item.artigo}_${corSafePdf}.jpg`);
-        const img = await loadImgForPdfCrop(rawData);
-        if(img?.dataUrl){
-          const targetH = ibH*0.85;
-          const scale   = targetH/img.h;
-          const drawW   = img.w*scale;
-          const drawH   = targetH;
-          const drawX   = ibX+(ibW-drawW)/2;
-          const drawY   = ibY+(ibH-drawH)/2;
-          doc.addImage(img.dataUrl,'PNG',drawX,drawY,drawW,drawH,undefined,'FAST');
+        try{
+          const rawData = await imageUrlToDataUrl(`${IMG_BASE}${item.artigo}_${corSafePdf}.jpg`);
+          const img = await loadImgForPdfCrop(rawData);
+          if(img?.dataUrl){
+            const pad2 = 4;
+            const box = IMG_SZ - pad2*2;
+            let w = box, h = box;
+            if(img.w && img.h){
+              const r = img.w/img.h;
+              if(r>1) h = box/r; else w = box*r;
+            }
+            doc.addImage(img.dataUrl,'PNG', imgX+pad2+(box-w)/2, imgY+pad2+(box-h)/2, w, h, undefined,'FAST');
+          } else {
+            sc(C.faint);
+            doc.setFont('helvetica','normal'); doc.setFontSize(7);
+            doc.text('sem imagem', imgX+IMG_SZ/2, imgY+IMG_SZ/2, {align:'center'});
+          }
+        }catch(e){
+          sc(C.faint);
+          doc.setFont('helvetica','normal'); doc.setFontSize(7);
+          doc.text('sem imagem', imgX+IMG_SZ/2, imgY+IMG_SZ/2, {align:'center'});
         }
       }
 
-      const tx = infoAreaX;
-      let ty = cardY + 18;
+      // ── área de texto ──
+      const tx = imgX + IMG_SZ + 16;          // início do texto, com respiro da imagem
+      const txW = margin + contentW - PADX - tx;
+      let ty = cardY + PADY + 4;
 
-      // Descrição
+      // Nome do produto
       sc(C.text);
-      doc.setFont('helvetica','bold'); doc.setFontSize(13);
-      const nameLines = doc.splitTextToSize(String(item.descricao||''), infoAreaW-4);
-      doc.text(nameLines.slice(0,2), tx, ty);
-      ty += nameLines.slice(0,2).length*15 + 6;
-
-      // Artigo
-      doc.setFont('helvetica','normal'); doc.setFontSize(9);
-      sc(C.muted); doc.text('Artigo:', tx, ty);
-      sc(C.text); doc.text(String(item.artigo||'—'), tx+38, ty);
-      ty += 13;
-
-      // Cor
-      sc(C.muted); doc.text('Cor:', tx, ty);
-      sc(C.text); doc.text(String(item.cor||'—'), tx+24, ty);
-      ty += 13;
-
-      // Empresa
-      sc(C.muted); doc.text('Empresa:', tx, ty);
-      sc(C.text); doc.text(String(item.empresa||'—'), tx+44, ty);
+      doc.setFont('helvetica','bold'); doc.setFontSize(12);
+      const nameLines = doc.splitTextToSize(String(item.descricao||'—'), txW);
+      doc.text(nameLines.slice(0,1), tx, ty);
       ty += 14;
 
-      // Divisor
-      sc(C.border,'draw'); doc.setLineWidth(0.4);
-      doc.line(tx, ty, tx+infoAreaW, ty);
-      ty += 10;
+      // Linha de atributos: Artigo · Cor · Empresa
+      doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      sc(C.muted);
+      const corDisp = String(item.cor||'—').replace(/_/g,'/');
+      const attrLine = `Artigo: ${item.artigo||'—'}  ·  Cor: ${corDisp}  ·  ${item.empresa||'—'}`;
+      doc.text(doc.splitTextToSize(attrLine, txW).slice(0,1), tx, ty);
+      ty += 14;
 
-      // Boxes: MKP | PDV | Custo
-      const boxGap=6, boxW=(infoAreaW-boxGap*2)/3, boxH=32;
+      // ── 3 boxes: MKP/PrevFat · PDV · Custo/T.Geral ──
+      const boxGap = 8;
+      const boxW   = (txW - boxGap*2) / 3;
+      const boxH   = 30;
+      const boxY   = ty;
+      const temTab = item.codigoTabela && (item.mkp || item.custo);
 
-      // MKP (ou Prev.Fat se não tiver tabela especial)
-      sc(C.white,'fill'); sc(C.border,'draw'); doc.setLineWidth(0.4);
-      doc.roundedRect(tx, ty, boxW, boxH, 4,4,'FD');
-      doc.setFont('helvetica','bold'); doc.setFontSize(6.5); sc(C.muted);
-      if(item.codigoTabela && item.mkp){
-        doc.text('MKP', tx+6, ty+8);
-        doc.setFont('helvetica','bold'); doc.setFontSize(11); sc(C.text);
-        doc.text(String(item.mkp), tx+6, ty+22);
+      // Box 1
+      sc(C.bg,'fill'); sc(C.border,'draw'); doc.setLineWidth(0.4);
+      doc.roundedRect(tx, boxY, boxW, boxH, 4,4,'FD');
+      sc(C.muted); doc.setFont('helvetica','bold'); doc.setFontSize(5.8);
+      if(temTab && item.mkp){
+        doc.text('MKP', tx+7, boxY+11);
+        sc(C.text); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+        doc.text(String(item.mkp), tx+7, boxY+24);
       } else {
-        doc.text('PREV. FATURAMENTO', tx+6, ty+8);
-        doc.setFont('helvetica','bold'); doc.setFontSize(9); sc(C.text);
-        doc.text(fixEncoding(item.prevFat||'—'), tx+6, ty+22);
+        doc.text('PREV. FATURAMENTO', tx+7, boxY+11);
+        sc(C.text); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+        doc.text(String(fixEncoding(item.prevFat||'—')), tx+7, boxY+24);
       }
 
-      // PDV
-      const bx2 = tx+boxW+boxGap;
-      sc(C.white,'fill'); sc(C.border,'draw');
-      doc.roundedRect(bx2, ty, boxW, boxH, 4,4,'FD');
-      doc.setFont('helvetica','bold'); doc.setFontSize(6.5); sc(C.muted);
-      doc.text('PDV', bx2+6, ty+8);
-      doc.setFont('helvetica','bold'); doc.setFontSize(14); sc(C.green);
-      doc.text(`R$ ${Number(item.pdv||0).toFixed(2)}`, bx2+6, ty+24);
+      // Box 2 — PDV
+      const b2 = tx + boxW + boxGap;
+      sc(C.bg,'fill'); sc(C.border,'draw');
+      doc.roundedRect(b2, boxY, boxW, boxH, 4,4,'FD');
+      sc(C.muted); doc.setFont('helvetica','bold'); doc.setFontSize(5.8);
+      doc.text('PDV', b2+7, boxY+11);
+      sc(C.accent); doc.setFont('helvetica','bold'); doc.setFontSize(12);
+      doc.text(`R$ ${Number(item.pdv||0).toFixed(2)}`, b2+7, boxY+24);
 
-      // Custo (ou T.Geral se não tiver tabela especial)
-      const bx3 = bx2+boxW+boxGap;
-      sc(C.white,'fill'); sc(C.border,'draw');
-      doc.roundedRect(bx3, ty, boxW, boxH, 4,4,'FD');
-      doc.setFont('helvetica','bold'); doc.setFontSize(6.5); sc(C.muted);
-      if(item.codigoTabela && item.custo){
-        doc.text('CUSTO', bx3+6, ty+8);
-        doc.setFont('helvetica','bold'); doc.setFontSize(11); sc(C.text);
-        doc.text(`R$ ${Number(item.custo).toFixed(2)}`, bx3+6, ty+22);
+      // Box 3
+      const b3 = b2 + boxW + boxGap;
+      sc(C.bg,'fill'); sc(C.border,'draw');
+      doc.roundedRect(b3, boxY, boxW, boxH, 4,4,'FD');
+      sc(C.muted); doc.setFont('helvetica','bold'); doc.setFontSize(5.8);
+      if(temTab && item.custo){
+        doc.text('CUSTO', b3+7, boxY+11);
+        sc(C.text); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+        doc.text(`R$ ${Number(item.custo).toFixed(2)}`, b3+7, boxY+24);
       } else {
-        doc.text('T. GERAL', bx3+6, ty+8);
-        doc.setFont('helvetica','bold'); doc.setFontSize(14); sc(C.text);
-        doc.text(Number(item.totalGeral||0).toLocaleString('pt-BR'), bx3+6, ty+24);
+        doc.text('T. GERAL', b3+7, boxY+11);
+        sc(C.text); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+        doc.text(Number(item.totalGeral||0).toLocaleString('pt-BR'), b3+7, boxY+24);
       }
 
-      ty += boxH+10;
+      ty = boxY + boxH + 13;   // respiro abaixo dos boxes
 
-      // Grade — células igual ao repasses
+      // ── Grade disponível (células) ──
       const grade = item.grade || {};
-      const gradeEntries = Object.entries(grade).filter(([,v])=>Number(v)>0);
+      const gradeEntries = Object.entries(grade)
+        .filter(([,v]) => Number(v) > 0)
+        .sort((a,b) => {
+          const an=!isNaN(Number(a[0])), bn=!isNaN(Number(b[0]));
+          if(an&&bn) return Number(a[0])-Number(b[0]);
+          return String(a[0]).localeCompare(String(b[0]));
+        });
+
       if(gradeEntries.length){
-        doc.setFont('helvetica','bold'); doc.setFontSize(7);
-        sc(C.muted); doc.text('GRADE DISPONÍVEL', tx, ty);
-        ty += 9;
-        const cellW=34, cellH=24, cellGap=4;
-        const perRow = Math.floor(infoAreaW/(cellW+cellGap));
-        let cx=tx, col=0;
-        for(const [size,qty] of gradeEntries){
-          if(col>=perRow){ col=0; cx=tx; ty+=cellH+cellGap; }
-          sc(C.border,'draw'); sc(C.white,'fill');
-          doc.roundedRect(cx, ty, cellW, cellH, 3,3,'FD');
-          doc.setFont('helvetica','bold'); doc.setFontSize(7); sc(C.muted);
-          const sStr=String(size);
-          doc.text(sStr, cx+(cellW-doc.getTextWidth(sStr))/2, ty+9);
-          doc.setFontSize(9.5); sc(C.green);
-          const qStr=String(qty);
-          doc.text(qStr, cx+(cellW-doc.getTextWidth(qStr))/2, ty+20);
-          cx+=cellW+cellGap; col++;
+        sc(C.muted); doc.setFont('helvetica','bold'); doc.setFontSize(6);
+        doc.text('GRADE DISPONÍVEL', tx, ty);
+        ty += 8;
+        const celW=30, celH=22, celGap=4;
+        const perRow = Math.max(1, Math.floor((txW+celGap)/(celW+celGap)));
+        let cx=tx, col=0, cy=ty;
+        // limita a 2 linhas pra não estourar o card
+        const maxCels = perRow*2;
+        const mostra = gradeEntries.slice(0, maxCels);
+        for(const [size,qty] of mostra){
+          if(col>=perRow){ col=0; cx=tx; cy+=celH+celGap; }
+          sc(C.white,'fill'); sc(C.border,'draw'); doc.setLineWidth(0.4);
+          doc.roundedRect(cx, cy, celW, celH, 3,3,'FD');
+          sc(C.muted); doc.setFont('helvetica','bold'); doc.setFontSize(6.5);
+          doc.text(String(size), cx+celW/2, cy+9, {align:'center'});
+          sc(C.accent); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+          doc.text(String(qty), cx+celW/2, cy+18, {align:'center'});
+          cx+=celW+celGap; col++;
+        }
+        if(gradeEntries.length > maxCels){
+          sc(C.muted); doc.setFont('helvetica','normal'); doc.setFontSize(6);
+          doc.text(`+${gradeEntries.length-maxCels} tam.`, cx+2, cy+14);
         }
       }
     }
 
-    for(let i=0; i<selecionados.length; i+=2){
-      if(i>0) doc.addPage();
-      drawHeader();
-      await drawCard(selecionados[i], bodyY);
-      if(selecionados[i+1]) await drawCard(selecionados[i+1], bodyY+cardH+8);
+    // ── Monta as páginas ───────────────────────────────────────────────────
+    let pageNum = 1;
+    for(let i=0; i<selecionados.length; i++){
+      const posNaPagina = i % PER_PAGE;
+      if(i>0 && posNaPagina===0){
+        drawFooter(pageNum);
+        doc.addPage();
+        pageNum++;
+      }
+      if(posNaPagina===0) drawHeader(pageNum);
+      const cardY = bodyTop + posNaPagina*(cardH+cardGap);
+      await drawCard(selecionados[i], cardY);
     }
+    drawFooter(pageNum);
 
-    const now2 = new Date();
-    const fname = `disponibilidades_${now2.getFullYear()}${pad(now2.getMonth()+1)}${pad(now2.getDate())}.pdf`;
+    const fname = `disponibilidades_${MARCA_ATIVA}_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}.pdf`;
     doc.save(fname);
     showToast(`PDF gerado com ${selecionados.length} produto(s)!`, 'success');
   }catch(err){
