@@ -159,6 +159,106 @@
     .fab-pdf.visivel{ transform:translateY(0); opacity:1; }
     .fab-pdf:hover{ background:#6aa100; }
 
+    /* Botão Gerar Link flutuante — fica acima do PDF */
+    .fab-link{
+      position:fixed; bottom:84px; right:24px; z-index:100;
+      background:#0f172a; color:#fff;
+      border:none; border-radius:999px; cursor:pointer;
+      padding:13px 22px; font-size:13px; font-weight:800;
+      display:flex; align-items:center; gap:8px;
+      box-shadow:0 8px 28px rgba(15,23,42,.32);
+      transition:all .15s; transform:translateY(80px); opacity:0;
+    }
+    .fab-link.visivel{ transform:translateY(0); opacity:1; }
+    .fab-link:hover{ background:#1e293b; }
+
+    /* Modais de link compartilhado */
+    .link-modal-bg{
+      position:fixed; inset:0; z-index:200;
+      background:rgba(15,23,42,.5); backdrop-filter:blur(2px);
+      display:flex; align-items:center; justify-content:center;
+      padding:16px;
+    }
+    .link-modal-bg.hidden{ display:none; }
+    .link-modal-card{
+      background:#fff; border-radius:18px; padding:22px;
+      width:100%; max-width:380px;
+      box-shadow:0 20px 60px rgba(0,0,0,.3);
+      animation:linkModalIn .2s ease-out;
+    }
+    @keyframes linkModalIn{
+      from{ transform:scale(.94); opacity:0; }
+      to{ transform:scale(1); opacity:1; }
+    }
+    .link-modal-head{
+      display:flex; align-items:center; gap:10px; margin-bottom:14px;
+    }
+    .link-modal-head .ico{
+      width:38px; height:38px; border-radius:9px;
+      background:var(--accent-light); color:var(--accent-dark,#5f8c00);
+      display:flex; align-items:center; justify-content:center; font-size:18px;
+    }
+    .link-modal-head h3{
+      font-size:15px; font-weight:900; color:var(--text); margin:0; flex:1;
+    }
+    .link-modal-head .x{
+      background:none; border:none; color:#94a3b8;
+      font-size:22px; cursor:pointer; line-height:1;
+    }
+    .link-modal-card label{
+      display:block; font-size:11px; font-weight:800; color:var(--muted);
+      text-transform:uppercase; letter-spacing:.3px; margin:14px 0 5px;
+    }
+    .link-modal-card input,
+    .link-modal-card select{
+      width:100%; padding:10px 12px; border:1px solid var(--line);
+      border-radius:9px; font-size:13px; background:#fff; color:var(--text);
+      font-family:inherit;
+    }
+    .link-modal-card input.invalid,
+    .link-modal-card select.invalid{
+      border-color:#dc2626; background:#fef2f2;
+    }
+    .link-modal-card .btn-primary{
+      width:100%; background:var(--accent); color:#fff; border:none;
+      border-radius:11px; padding:12px; font-size:13px; font-weight:800;
+      cursor:pointer; margin-top:18px;
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    }
+    .link-modal-card .btn-primary:disabled{ opacity:.6; cursor:not-allowed; }
+    .link-modal-card .btn-primary:hover:not(:disabled){ background:#6aa100; }
+    .link-modal-card .info-meta{
+      font-size:11px; color:var(--muted); margin-bottom:4px;
+    }
+    .link-modal-card .info-meta b{ color:var(--text); }
+    /* Tela de sucesso (link criado) */
+    .link-ok-icon{
+      width:54px; height:54px; border-radius:50%;
+      background:#dcfce7; color:#16a34a;
+      display:flex; align-items:center; justify-content:center;
+      font-size:24px; margin:0 auto 12px;
+    }
+    .link-display{
+      background:#f8fafc; border:1px solid var(--line); border-radius:9px;
+      padding:10px 12px; font-family:ui-monospace,monospace;
+      font-size:11px; color:#475569; word-break:break-all;
+      margin:12px 0;
+    }
+    .link-display b{ color:var(--text); }
+    .link-btns{ display:flex; gap:8px; }
+    .link-btn{
+      flex:1; border:none; border-radius:10px; padding:11px;
+      font-size:12px; font-weight:800; cursor:pointer;
+      display:inline-flex; align-items:center; justify-content:center; gap:6px;
+      transition:opacity .15s;
+    }
+    .link-btn:hover{ opacity:.9; }
+    .link-btn.copy{ background:#0f172a; color:#fff; }
+    .link-btn.whats{ background:#25d366; color:#fff; }
+    .link-expira{
+      text-align:center; font-size:10px; color:#94a3b8; margin-top:12px;
+    }
+
     /* Selecionar todos */
     .sel-bar{ display:none; align-items:center; gap:10px; padding:8px 0; }
     .sel-bar.visivel{ display:flex; }
@@ -644,6 +744,52 @@
   <i class="fa-solid fa-file-pdf"></i>
   Gerar PDF <span id="fabCount" class="bg-slate-900 text-[var(--accent)] text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
 </button>
+
+<!-- FAB Gerar Link (acima do PDF) -->
+<button class="fab-link" id="fabLink" onclick="abrirGerarLink()">
+  <i class="fa-solid fa-link"></i>
+  Gerar link <span id="fabLinkCount" class="bg-white text-slate-900 text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
+</button>
+
+<!-- Modal: Gerar Link (formulário) -->
+<div id="modalGerarLink" class="link-modal-bg hidden" onclick="if(event.target===this)fecharGerarLink()">
+  <div class="link-modal-card">
+    <div class="link-modal-head">
+      <div class="ico"><i class="fa-solid fa-link"></i></div>
+      <h3>Gerar link para cliente</h3>
+      <button class="x" onclick="fecharGerarLink()">×</button>
+    </div>
+    <div class="info-meta"><b id="gerarLinkQtd">0</b> produto(s) selecionado(s)</div>
+    <label>Vendedor</label>
+    <select id="linkVendedor"></select>
+    <label>Nome ou código do cliente</label>
+    <input id="linkCliente" type="text" placeholder="Ex: Loja Pé Quente" autocomplete="off">
+    <button class="btn-primary" id="btnConfirmarLink" onclick="criarLinkVitrine()">
+      <i class="fa-solid fa-link"></i> Gerar link
+    </button>
+  </div>
+</div>
+
+<!-- Modal: Link criado (sucesso) -->
+<div id="modalLinkOk" class="link-modal-bg hidden" onclick="if(event.target===this)fecharLinkOk()">
+  <div class="link-modal-card">
+    <div class="link-ok-icon"><i class="fa-solid fa-check"></i></div>
+    <div style="text-align:center; font-size:16px; font-weight:900; color:var(--text);">Link criado!</div>
+    <div style="text-align:center; font-size:12px; color:var(--muted); margin-top:4px;">
+      para <b id="linkOkCliente" style="color:var(--text)">—</b> · <b id="linkOkQtd">0</b> produtos
+    </div>
+    <div class="link-display" id="linkOkUrl">—</div>
+    <div class="link-btns">
+      <button class="link-btn copy" onclick="copiarLinkVitrine()">
+        <i class="fa-solid fa-copy"></i> Copiar
+      </button>
+      <button class="link-btn whats" onclick="abrirWhatsAppLink()">
+        <i class="fa-brands fa-whatsapp"></i> WhatsApp
+      </button>
+    </div>
+    <div class="link-expira"><i class="fa-regular fa-clock"></i> Expira em 48 horas</div>
+  </div>
+</div>
 
 <!-- ── FAB Sacola ──────────────────────────────────────────────────────── -->
 <button id="cartFab" class="fab-cart" onclick="abrirSacola()" title="Abrir sacola">
@@ -1406,7 +1552,167 @@ function atualizarFAB(){
   const n = STATE.selecionados.size;
   const fab = $('fabPDF');
   if(fab) fab.classList.toggle('visivel', n > 0);
-  if($('fabCount'))  $('fabCount').textContent  = n;
+  if($('fabCount')) $('fabCount').textContent = n;
+  // FAB Gerar Link aparece junto
+  const fabL = $('fabLink');
+  if(fabL) fabL.classList.toggle('visivel', n > 0);
+  if($('fabLinkCount')) $('fabLinkCount').textContent = n;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── GERAR LINK COMPARTILHADO (modo vendedor) ───────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+const LINK_VEND_LS = 'vitrine_link_vendedor_v1'; // último vendedor escolhido
+let _linkGerado = null; // { codigo, url, cliente, qtd }
+
+function abrirGerarLink(){
+  const n = STATE.selecionados.size;
+  if(!n){ showToast('Selecione ao menos um produto.','info'); return; }
+
+  // Popular select de vendedor
+  const sel = $('linkVendedor');
+  const ultimo = localStorage.getItem(LINK_VEND_LS) || '';
+  sel.innerHTML = '<option value="">— Selecione —</option>' +
+    ORDER_COMMISSION_OPTIONS.map(c => {
+      const sel = (c.codigo === ultimo) ? ' selected' : '';
+      return `<option value="${safeHtml(c.codigo)}" data-nome="${safeHtml(c.nome)}"${sel}>${safeHtml(c.codigo)} – ${safeHtml(c.nome)}</option>`;
+    }).join('');
+
+  $('linkCliente').value = '';
+  $('gerarLinkQtd').textContent = n;
+  ['linkVendedor','linkCliente'].forEach(id => $(id)?.classList.remove('invalid'));
+  $('modalGerarLink').classList.remove('hidden');
+  setTimeout(() => $('linkCliente').focus(), 100);
+}
+function fecharGerarLink(){ $('modalGerarLink').classList.add('hidden'); }
+
+async function criarLinkVitrine(){
+  const sel = $('linkVendedor');
+  const inp = $('linkCliente');
+  const vendedor = sel.value || '';
+  const cliente  = (inp.value || '').trim();
+
+  // Validação
+  ['linkVendedor','linkCliente'].forEach(id => $(id)?.classList.remove('invalid'));
+  let primeiroErro = null;
+  if(!vendedor){ sel.classList.add('invalid'); primeiroErro = sel; }
+  if(!cliente){  inp.classList.add('invalid'); if(!primeiroErro) primeiroErro = inp; }
+  if(primeiroErro){
+    showToast('Preencha vendedor e cliente.', 'error');
+    primeiroErro.focus();
+    return;
+  }
+
+  // Coleta produtos selecionados (do STATE.itens, não filtrados)
+  const produtos = STATE.itens
+    .filter(i => STATE.selecionados.has(prodKey(i)))
+    .map(i => ({
+      artigo:       i.artigo,
+      cor:          i.cor,
+      descricao:    i.descricao,
+      categoria:    i.categoria,
+      linha:        i.linha,
+      genero:       i.genero,
+      empresa:      i.empresa,
+      pdv:          i.pdv,
+      grade:        i.grade || {},
+      codigoTabela: i.codigoTabela || '',
+      mkp:          i.mkp || '',
+      custo:        i.custo || ''
+    }));
+
+  if(!produtos.length){
+    showToast('Nenhum produto selecionado.', 'error');
+    return;
+  }
+
+  // Pega o nome do vendedor
+  const opt = sel.options[sel.selectedIndex];
+  const vendedorNome = opt?.dataset?.nome || '';
+
+  // Estado de loading no botão
+  const btn = $('btnConfirmarLink');
+  const prev = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Gerando...';
+
+  try{
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        action: 'criarLink',
+        data: {
+          vendedor, vendedorNome, cliente,
+          marca: MARCA_ATIVA,
+          produtos
+        }
+      })
+    });
+    const json = await res.json();
+    if(!res.ok || !json.success || !json.codigo){
+      throw new Error(json.erro || ('Worker ' + res.status));
+    }
+
+    // Salva último vendedor pra próxima vez
+    localStorage.setItem(LINK_VEND_LS, vendedor);
+
+    // Monta URL pública
+    const base = location.origin + location.pathname;
+    const url  = `${base}?link=${json.codigo}`;
+    _linkGerado = { codigo: json.codigo, url, cliente, qtd: produtos.length };
+
+    // Fecha o modal de formulário, abre o de sucesso
+    fecharGerarLink();
+    mostrarLinkOk();
+  }catch(e){
+    console.error(e);
+    showToast('Erro ao gerar link: ' + (e.message || ''), 'error');
+  }finally{
+    btn.disabled = false;
+    btn.innerHTML = prev;
+  }
+}
+
+function mostrarLinkOk(){
+  if(!_linkGerado) return;
+  $('linkOkCliente').textContent = _linkGerado.cliente;
+  $('linkOkQtd').textContent     = _linkGerado.qtd;
+  // mostra a URL com o código destacado
+  const u = _linkGerado.url;
+  const codPart = `?link=${_linkGerado.codigo}`;
+  if(u.endsWith(codPart)){
+    const base = u.slice(0, u.length - codPart.length);
+    $('linkOkUrl').innerHTML = `${safeHtml(base)}?link=<b>${safeHtml(_linkGerado.codigo)}</b>`;
+  } else {
+    $('linkOkUrl').textContent = u;
+  }
+  $('modalLinkOk').classList.remove('hidden');
+}
+function fecharLinkOk(){ $('modalLinkOk').classList.add('hidden'); }
+
+async function copiarLinkVitrine(){
+  if(!_linkGerado) return;
+  try{
+    await navigator.clipboard.writeText(_linkGerado.url);
+    showToast('Link copiado!', 'success');
+  }catch(e){
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = _linkGerado.url;
+    document.body.appendChild(ta);
+    ta.select();
+    try{ document.execCommand('copy'); showToast('Link copiado!', 'success'); }
+    catch(_){ showToast('Não foi possível copiar.', 'error'); }
+    document.body.removeChild(ta);
+  }
+}
+
+function abrirWhatsAppLink(){
+  if(!_linkGerado) return;
+  const msg = `Olá! Separei alguns produtos pra você ver: ${_linkGerado.url}\n\n_Link válido por 48h._`;
+  const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
 }
 
 // ── ZOOM ──────────────────────────────────────────────────────────────────────
