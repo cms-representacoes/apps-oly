@@ -2348,7 +2348,7 @@ async function anlExecutarSalvar(comImg){
     for(const r of comImg){
       const it = r.item;
       const k = `${it.artigo}|${it.cor}`;
-      // Preserva imagem do banco se já existir
+      // Preserva imagem do banco/histórico/cache de verificação
       let imagem = it.imagem || '';
       if(!imagem){
         const noBanco = (_jsonAtual||[]).find(x =>
@@ -2357,6 +2357,10 @@ async function anlExecutarSalvar(comImg){
         );
         if(noBanco && noBanco.imagem) imagem = noBanco.imagem;
         else if(STATE.imgHist && STATE.imgHist[k]) imagem = STATE.imgHist[k];
+        // Caso a verificação ao GitHub confirmou que existe, usa o nome gerado
+        else if(STATE.imgChecks?.get(k) === 'has'){
+          imagem = getProductImageName(it);
+        }
       }
       novosMap.set(k, { ...it, imagem });
     }
@@ -2491,20 +2495,57 @@ function classificarPorFaltantes(faltantes, meio, tipo){
 }
 
 // Verifica se o produto tem imagem (modo rápido: olha o JSON atual)
+// Verifica se o produto tem imagem.
+// Ordem de checagem (sempre da mais rápida pra mais lenta):
+//   1. item.imagem já preenchido
+//   2. STATE.imgChecks (cache de verificações reais via HEAD)
+//   3. STATE.imgHist (histórico de uploads via admin)
+//   4. _jsonAtual (item no banco já tem imagem)
 function temImagemAtual(item){
   if(item.imagem) return true;
-  // Existe entrada no JSON com mesma chave e com imagem?
-  const k = `${item.artigo}|${item.cor}`;
+  const artigo = String(item.artigo||'').toUpperCase();
+  const cor    = String(item.cor||'').toUpperCase();
+  const k = `${artigo}|${cor}`;
+  // 2) cache de verificações reais
+  if(STATE.imgChecks){
+    const s = STATE.imgChecks.get(k);
+    if(s === 'has') return true;
+    if(s === 'miss') return false;
+  }
+  // 3) histórico
   if(STATE.imgHist && STATE.imgHist[k]) return true;
+  // 4) banco
   if(_jsonAtual && _jsonAtual.length){
     const existe = _jsonAtual.find(r =>
-      String(r.artigo||'').toUpperCase() === item.artigo &&
-      String(r.cor||'').toUpperCase() === item.cor &&
+      String(r.artigo||'').toUpperCase() === artigo &&
+      String(r.cor||'').toUpperCase()    === cor &&
       r.imagem
     );
     if(existe) return true;
   }
   return false;
+}
+
+// Verifica TODAS as imagens dos itens em paralelo (HEAD no GitHub Pages)
+// Atualiza STATE.imgChecks com 'has' ou 'miss' pra cada chave
+async function verificarImagensImport(itens, onProgress){
+  const BATCH = 12;
+  let done = 0;
+  for(let i = 0; i < itens.length; i += BATCH){
+    const slice = itens.slice(i, i + BATCH);
+    await Promise.all(slice.map(async (item) => {
+      const k = `${String(item.artigo||'').toUpperCase()}|${String(item.cor||'').toUpperCase()}`;
+      // Se já tem cache, pula
+      if(STATE.imgChecks?.get(k)) { done++; if(onProgress) onProgress(done, itens.length); return; }
+      const nome = getProductImageName(item);
+      if(!nome) { STATE.imgChecks?.set(k, 'miss'); done++; if(onProgress) onProgress(done, itens.length); return; }
+      const url = `${IMG_BASE}${nome}.jpg`;
+      const ok = await checkImageExists(url);
+      STATE.imgChecks?.set(k, ok ? 'has' : 'miss');
+      done++;
+      if(onProgress) onProgress(done, itens.length);
+    }));
+  }
 }
 
 // Nome amigável do tipo
@@ -2607,6 +2648,19 @@ async function processarXlsxMulti(fileList){
       console.error('Erro lendo', file.name, e);
     }
     arquivosInfo.push({ nome: file.name, qtd: qtdArquivo });
+  }
+
+  // ANTES de classificar, faz verificação REAL no GitHub Pages das imagens dos itens
+  // que ainda não têm certeza (sem item.imagem e sem cache 'has'/'miss')
+  const itensParaVerificar = todos.map(t => t.item).filter(it => {
+    if(it.imagem) return false;
+    const k = `${String(it.artigo||'').toUpperCase()}|${String(it.cor||'').toUpperCase()}`;
+    const s = STATE.imgChecks?.get(k);
+    return s !== 'has' && s !== 'miss';
+  });
+  if(itensParaVerificar.length){
+    showToast(`Verificando ${itensParaVerificar.length} imagem(ns)...`, 'info');
+    await verificarImagensImport(itensParaVerificar);
   }
 
   // Classifica cada produto
