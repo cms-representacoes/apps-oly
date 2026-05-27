@@ -773,24 +773,6 @@
       cursor:pointer; display:inline-flex; align-items:center; gap:5px;
     }
     .cart-clear-grade:hover{ background:#f1f5f9; color:var(--text); }
-    /* Atalho "aplicar data a todos" no topo da sacola */
-    .cart-data-todos{
-      display:flex; align-items:center; gap:8px;
-      background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px;
-      padding:9px 12px; margin-bottom:12px;
-      font-size:12px; color:#166534; font-weight:600;
-    }
-    .cart-data-todos.hidden{ display:none; }
-    .cart-data-todos i{ font-size:14px; color:#16a34a; }
-    .cart-data-todos input{
-      padding:6px 9px; border:1px solid #bbf7d0; border-radius:7px;
-      font-size:12px; background:#fff;
-    }
-    .cart-data-todos button{
-      background:#16a34a; color:#fff; border:none; border-radius:7px;
-      padding:7px 14px; font-size:11px; font-weight:800; cursor:pointer;
-    }
-    .cart-data-todos button:hover{ background:#15803d; }
     /* Mini-modal de confirmação */
     .confirm-card{
       background:#fff; border-radius:18px; padding:24px 22px;
@@ -1120,7 +1102,7 @@
       <div class="cli-header-top">
         <div class="logo-box" id="cliLogoBox">CMS</div>
         <div class="titulo">
-          <div class="l1"><span id="cliNomeCliente">—</span></div>
+          <div class="l1">Para <span id="cliNomeCliente">—</span></div>
           <div class="l2"><span id="cliQtdProdutos">0</span> produtos · <span id="cliMarcaNome">—</span></div>
         </div>
       </div>
@@ -1428,13 +1410,6 @@
       <button class="btn-x" onclick="fecharSacola()">×</button>
     </div>
     <div class="modal-body">
-      <!-- Atalho: aplicar mesma data a todos -->
-      <div id="cartDataTodos" class="cart-data-todos hidden">
-        <i class="fa-regular fa-calendar"></i>
-        <span>Aplicar a mesma data desejada a todos:</span>
-        <input type="date" id="cartDataTodosInput">
-        <button onclick="cartAplicarDataATodos()">Aplicar</button>
-      </div>
       <div id="cartItems"></div>
     </div>
     <div class="modal-foot">
@@ -2735,7 +2710,7 @@ function mpCarregarRespostaNaSacola(link){
       gradeDisp:  prodVitrine?.grade || {},
       gradePedido: it.grade || {},
       dataDesejada: '',
-      pedidoCliente: ''
+      pedidoCliente: link.cliente || ''
     });
   }
   saveCartToStorage();
@@ -3025,7 +3000,9 @@ async function gerarPDF(){
       const gradeEntries = Object.entries(grade)
         .filter(([,v]) => Number(v) > 0)
         .sort((a,b) => {
-          return tamSort(a[0], b[0]);
+          const an=!isNaN(Number(a[0])), bn=!isNaN(Number(b[0]));
+          if(an&&bn) return Number(a[0])-Number(b[0]);
+          return String(a[0]).localeCompare(String(b[0]));
         });
 
       if(gradeEntries.length){
@@ -3335,33 +3312,13 @@ function fecharSacola(){ $('cartModal').classList.add('hidden'); }
 function renderCartUI(){
   const wrap = $('cartItems');
   if(!wrap) return;
-  const dataTodos = $('cartDataTodos');
   if(STATE.cart.size === 0){
     wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">Sacola vazia.</div>';
-    if(dataTodos) dataTodos.classList.add('hidden');
     atualizarFabResumo();
     return;
   }
-  // Mostra atalho de "aplicar data a todos" só se há 2+ itens
-  if(dataTodos){
-    if(STATE.cart.size >= 2) dataTodos.classList.remove('hidden');
-    else dataTodos.classList.add('hidden');
-  }
   wrap.innerHTML = [...STATE.cart.values()].map(it => cartItemHtml(it)).join('');
   atualizarFabResumo();
-}
-
-// Aplica a mesma data desejada a todos os itens da sacola
-function cartAplicarDataATodos(){
-  const inp = $('cartDataTodosInput');
-  const data = inp?.value || '';
-  if(!data){ showToast('Escolha uma data primeiro', 'info'); return; }
-  for(const it of STATE.cart.values()){
-    it.dataDesejada = data;
-  }
-  saveCartToStorage();
-  renderCartUI();
-  showToast(`Data aplicada a ${STATE.cart.size} item(ns)`, 'success');
 }
 
 function renderCartItem(key){
@@ -3375,7 +3332,16 @@ function renderCartItem(key){
 // HTML de 1 item na sacola
 function cartItemHtml(it){
   // Linha das grades: tamanhos da disponibilidade
-  const tamanhos = Object.keys(it.gradeDisp).sort(tamSort);
+  const tamanhos = Object.keys(it.gradeDisp).sort((a,b) => {
+    const aN = !isNaN(Number(a)), bN = !isNaN(Number(b));
+    if(aN && !bN) return 1;
+    if(!aN && bN) return -1;
+    if(aN && bN) return Number(a) - Number(b);
+    const ord = ['PP','P','M','G','GG','XG','XXG','U'];
+    const ia=ord.indexOf(a), ib=ord.indexOf(b);
+    if(ia!==-1 && ib!==-1) return ia-ib;
+    return a.localeCompare(b);
+  });
 
   const gradesHtml = tamanhos.map(t => {
     const disp = Number(it.gradeDisp[t] || 0);
@@ -3758,7 +3724,7 @@ async function iniciarModoCliente(){
   cliRestaurarSelecao();
 
   // Renderiza
-  $('cliNomeCliente').textContent = (CLI.link.cliente || '—').toUpperCase();
+  $('cliNomeCliente').textContent = CLI.link.cliente || '—';
   $('cliQtdProdutos').textContent = CLI.produtos.length;
   $('cliMarcaNome').textContent   = (MARCA_INFO[CLI.marca]?.nome || '').toUpperCase();
   $('cliConteudo').classList.remove('hidden');
@@ -3828,7 +3794,9 @@ function cliCardHtml(p){
   const gradeEntries = Object.entries(p.grade || {})
     .filter(([,v]) => Number(v) > 0)
     .sort((a,b) => {
-      return tamSort(a[0], b[0]);
+      const an=!isNaN(Number(a[0])), bn=!isNaN(Number(b[0]));
+      if(an&&bn) return Number(a[0])-Number(b[0]);
+      return String(a[0]).localeCompare(String(b[0]));
     });
   const gradeResumo = cliResumoFaixa(gradeEntries.map(e => e[0]));
 
@@ -3895,61 +3863,30 @@ function cliTemTamanhos(p){
   return true;
 }
 
-// Ordem oficial de vestuário (PP é menor que GG, etc)
-const ORDEM_VESTUARIO = ['XPP','PP','P','M','G','GG','XG','XGG','XGGG','EG','EGG'];
-
-// Devolve uma chave numérica pra ordenar tamanhos.
-//   "38"  → 38            (numérico — peso 1000+)
-//   "M"   → 1002          (vestuário — peso 1000-1099)
-//   "PP"  → 1001
-//   "GG"  → 1004
-//   "U"   → 9000          (acessórios — empurra pro fim)
-//   outros → 99999
-function tamSortKey(t){
-  if(t === null || t === undefined) return 99999;
-  const s = String(t).trim().toUpperCase();
-  if(!s) return 99999;
-  if(s === 'U') return 9000;
-  // Numérico (38, 39 ou "33/38")
-  const num = Number(s);
-  if(Number.isFinite(num)) return num;
-  // Vestuário
-  const idx = ORDEM_VESTUARIO.indexOf(s);
-  if(idx >= 0) return 1001 + idx;
-  // Faixas "33/38" → ordena pelo primeiro número
-  const m = s.match(/^(\d+)\s*\/\s*\d+$/);
-  if(m) return Number(m[1]);
-  return 99999;
-}
-
-// Compara dois tamanhos pra Array.sort()
-function tamSort(a, b){
-  return tamSortKey(a) - tamSortKey(b);
-}
-
 // Resume a faixa de tamanhos exibida no card.
 //   ["U"]                  → "Em estoque"
 //   ["38"]                 → "38"
 //   ["38","39","40","41"]  → "38 ao 41"     (contínuo)
 //   ["38","39","41","42"]  → "38, 39, 41, 42"  (com lacuna)
-//   ["P","M","G"]          → "P, M, G"      (vestuário ordenado)
+//   ["P","M","G"]          → "P, M, G"      (não-numérico → lista)
 function cliResumoFaixa(tams){
   if(!tams || !tams.length) return '';
   // Caso "U" único
   if(tams.length === 1 && String(tams[0]).toUpperCase() === 'U') return 'Em estoque';
-  // Verifica se TODOS são numéricos puros (não inclui "33/38")
-  const todosNum = tams.every(t => Number.isFinite(Number(t)) && !String(t).includes('/'));
-  if(todosNum && tams.length > 1){
-    const nums = tams.map(t => Number(t)).sort((a,b) => a - b);
+  // Verifica se TODOS são numéricos
+  const nums = tams.map(t => Number(t));
+  const todosNum = nums.every(n => Number.isFinite(n));
+  if(todosNum && nums.length > 1){
     const min = nums[0], max = nums[nums.length-1];
     // Contínuo? max - min + 1 === length
     if(max - min + 1 === nums.length){
       return `${min} ao ${max}`;
     }
+    // Com lacuna — lista simples
     return nums.join(', ');
   }
-  // Vestuário ou misturado — ordena por tamSort
-  return tams.slice().sort(tamSort).join(', ');
+  // Não-numéricos (P, M, G, faixas tipo "33/38") — lista simples
+  return tams.join(', ');
 }
 
 // Toggle "Quero esse" / "Remover"
@@ -4037,7 +3974,9 @@ function cliRenderGradeBody(){
     const tamanhos = Object.entries(p.grade || {})
       .filter(([,v]) => Number(v) > 0)
       .sort((a,b) => {
-        return tamSort(a[0], b[0]);
+        const an=!isNaN(Number(a[0])), bn=!isNaN(Number(b[0]));
+        if(an&&bn) return Number(a[0])-Number(b[0]);
+        return String(a[0]).localeCompare(String(b[0]));
       });
 
     const cards = tamanhos.map(([t, disp]) => {
