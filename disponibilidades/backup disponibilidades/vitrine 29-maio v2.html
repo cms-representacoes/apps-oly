@@ -1,18 +1,6 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-<script>
-  // Redireciona para a vitrine-cliente (página leve e mobile-first)
-  // se a URL contiver ?link=XXX (cliente acessou)
-  (function(){
-    var p = new URLSearchParams(location.search);
-    var c = p.get('link');
-    if(c && c.length >= 4){
-      var base = location.href.replace(/\/[^\/]*$/, '/');
-      location.replace(base + 'vitrine-cliente.html?link=' + encodeURIComponent(c));
-    }
-  })();
-</script>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <title>Disponibilidades · Olympikus</title>
@@ -2340,9 +2328,9 @@ async function criarLinkVitrine(){
     // Salva último vendedor pra próxima vez
     localStorage.setItem(LINK_VEND_LS, vendedor);
 
-    // Monta URL pública — aponta para vitrine-cliente.html
-    const base = location.origin + location.pathname.replace(/\/[^\/]*$/, '/');
-    const url  = `${base}vitrine-cliente.html?link=${json.codigo}`;
+    // Monta URL pública
+    const base = location.origin + location.pathname;
+    const url  = `${base}?link=${json.codigo}`;
     _linkGerado = { codigo: json.codigo, url, cliente, qtd: produtos.length };
 
     // Fecha o modal de formulário, abre o de sucesso
@@ -2678,8 +2666,8 @@ function mpFormatarData(ms){
 }
 
 async function mpCopiarLink(codigo){
-  const base = location.origin + location.pathname.replace(/\/[^\/]*$/, '/');
-  const url  = `${base}vitrine-cliente.html?link=${codigo}`;
+  const base = location.origin + location.pathname;
+  const url  = `${base}?link=${codigo}`;
   try{
     await navigator.clipboard.writeText(url);
     showToast('Link copiado!', 'success');
@@ -3156,10 +3144,16 @@ function getItemTotalQty(it){
   return Object.values(it.gradePedido).reduce((s,v) => s + (Number(v)||0), 0);
 }
 
-// Calcula qtd de caixas (calçados em múltiplos de 6, demais = total)
+// Calcula qtd de caixas (calçados/chinelos: caixas de 6 OU 12 pares)
+// Acessórios e demais: sem caixa (retorna vazio).
 function calcQtdCaixas(it, total){
-  if(isFootwearCategory(it.categoria)) return Math.ceil(total / 6);
-  return total > 0 ? 1 : 0;
+  if(!isFootwearCategory(it.categoria)) return '';  // vestuário/acessório: sem caixa
+  if(!total || total <= 0) return 0;
+  // Algoritmo: prefere caixas de 12; o que sobrar arredonda pra caixas de 6
+  const c12 = Math.floor(total / 12);
+  const resto = total - (c12 * 12);
+  const c6 = resto > 0 ? Math.ceil(resto / 6) : 0;
+  return c12 + c6;
 }
 
 // Parse de condição de pagamento → prazo médio + número de parcelas

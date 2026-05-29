@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0034d8">
+<title>Catálogo · CMS Representações</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  *,*::before,*::after{ box-sizing:border-box; }
+  html, body{
+    margin:0; padding:0;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:#f6f7fb;
+    color:#0f172a;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: contain;
+  }
+  :root{
+    --brand:#0034d8;   /* OLY default */
+    --accent:#7db800;
+    --accent-dark:#5f8c00;
+    --pulse:rgba(125,184,0,.45);
+    --line:#e2e8f0;
+    --muted:#64748b;
+    --text:#0f172a;
+  }
+  body[data-marca="ua"]{
+    --brand:#e52125;
+    --accent:#dc2626;
+    --accent-dark:#b91c1c;
+    --pulse:rgba(220,38,38,.45);
+  }
+
+  /* ── HEADER ── */
+  .cli-header{
+    position:sticky; top:0; z-index:30;
+    background:var(--brand); color:#fff;
+    padding:10px 14px;
+    padding-top: calc(10px + env(safe-area-inset-top,0px));
+    display:flex; align-items:center; gap:11px;
+  }
+  .cli-logo{
+    width:36px; height:36px; border-radius:8px;
+    background:rgba(255,255,255,.2);
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:900;
+  }
+  .cli-titulo .l1{ font-size:14px; font-weight:900; line-height:1.1; }
+  .cli-titulo .l2{ font-size:10.5px; opacity:.85; line-height:1.2; margin-top:1px; }
+
+  /* ── LOADING / ERROS ── */
+  .cli-loading, .cli-erro, .cli-sucesso{
+    min-height:75vh; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; padding:30px; text-align:center;
+  }
+  .cli-erro .ic, .cli-sucesso .ic{
+    width:72px; height:72px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:32px; margin-bottom:14px;
+  }
+  .cli-erro .ic{ background:#fef3c7; color:#d97706; }
+  .cli-sucesso .ic{ background:#dcfce7; color:#16a34a; }
+  .cli-erro h2, .cli-sucesso h2{
+    font-size:19px; font-weight:900; color:var(--text); margin:0 0 8px;
+  }
+  .cli-erro p, .cli-sucesso p{
+    font-size:13px; color:var(--muted); max-width:320px; line-height:1.5; margin:0;
+  }
+  .cli-sucesso button{
+    margin-top:20px; background:var(--accent); color:#fff; border:none;
+    border-radius:11px; padding:11px 24px; font-size:13px; font-weight:800;
+    cursor:pointer;
+  }
+
+  /* ── GRID ── */
+  .cli-grid{
+    display:grid; grid-template-columns:1fr 1fr;
+    gap:7px; padding:8px 7px 100px;
+    width:100%;
+  }
+
+  /* ── CARD ── */
+  .card{
+    background:#fff; border:1px solid var(--line); border-radius:11px;
+    padding:8px; display:flex; flex-direction:column;
+    min-height:280px;
+    position:relative;
+    transition:border-color .15s;
+  }
+  .card.sel{
+    border:1.5px solid var(--accent);
+    padding:7.5px;
+  }
+  .card-img{
+    position:relative; background:#f3f4f6; aspect-ratio:1;
+    border-radius:7px; overflow:hidden;
+    margin-bottom:7px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .card-img img{ width:100%; height:100%; object-fit:contain; }
+  .card-img .ph{ font-size:34px; color:#cbd5e1; }
+  .card .promo{
+    position:absolute; top:4px; left:4px;
+    background:var(--accent); color:#fff;
+    font-size:8.5px; font-weight:900;
+    padding:2px 6px; border-radius:4px;
+    letter-spacing:.3px;
+  }
+  .card .sel-tag{
+    position:absolute; top:4px; left:4px;
+    background:var(--accent); color:#fff;
+    font-size:8.5px; font-weight:900;
+    padding:2px 6px; border-radius:4px;
+    letter-spacing:.3px;
+  }
+  .card .lupa{
+    position:absolute; bottom:5px; right:5px;
+    background:rgba(15,23,42,.5); color:#fff;
+    width:26px; height:26px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; cursor:pointer; border:none;
+  }
+  .card-nome{
+    font-size:11.5px; font-weight:900; color:var(--text);
+    line-height:1.2; min-height:28px;
+    overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  }
+  .card-preco{
+    font-size:14px; font-weight:900; color:var(--accent);
+    margin-top:4px; min-height:18px;
+  }
+  .card-preco.promo-row{
+    display:flex; flex-direction:column; gap:1px;
+  }
+  .card-preco .mkp{
+    font-size:9px; color:var(--muted); font-weight:700;
+    text-decoration:none;
+  }
+  .card-tam-label{
+    font-size:7.5px; font-weight:800; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.4px;
+    margin-top:5px;
+  }
+  .card-tam{
+    font-size:11px; font-weight:800; color:var(--text);
+    margin-top:1px; min-height:14px;
+    line-height:1.25;
+  }
+  .card-btn-area{
+    margin-top:auto; padding-top:6px;
+  }
+  .btn-quero, .btn-remover, .btn-grade{
+    width:100%; border-radius:7px;
+    font-size:11px; font-weight:800; cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center; gap:5px;
+    padding:7px;
+  }
+  .btn-quero{
+    background:var(--accent); color:#fff; border:none;
+  }
+  .btn-remover{
+    background:var(--accent); color:#fff; border:none;
+  }
+  .btn-grade{
+    background:#fff; color:var(--accent-dark); border:1.5px solid var(--accent);
+    margin-top:4px; padding:6px;
+    animation:btnPulse 1.4s ease-in-out infinite;
+  }
+  .btn-grade.preenchido{
+    background:#fafff5;
+    animation:none;
+  }
+  @keyframes btnPulse{
+    0%, 100%{ box-shadow:0 0 0 0 var(--pulse); transform:scale(1); }
+    50%     { box-shadow:0 0 0 7px transparent; transform:scale(1.03); }
+  }
+
+  /* ── FAB enviar ── */
+  .fab{
+    position:fixed; bottom:14px; left:14px; right:14px;
+    bottom: calc(14px + env(safe-area-inset-bottom,0px));
+    background:var(--accent); color:#fff; border:none;
+    border-radius:14px; padding:14px;
+    font-size:14px; font-weight:900;
+    box-shadow:0 6px 16px rgba(0,0,0,.18);
+    display:none; align-items:center; justify-content:center; gap:7px;
+    z-index:25; cursor:pointer;
+  }
+  .fab.visivel{ display:flex; }
+  .fab .badge{
+    background:rgba(255,255,255,.25); color:#fff;
+    border-radius:999px; padding:2px 8px;
+    font-size:11px; font-weight:900;
+  }
+
+  /* ── LUPA TELA CHEIA ── */
+  .zoom-bg{
+    position:fixed; inset:0; z-index:200;
+    background:rgba(0,0,0,.92);
+    display:none; flex-direction:column;
+  }
+  .zoom-bg.visivel{ display:flex; }
+  .zoom-close{
+    position:absolute; top:calc(14px + env(safe-area-inset-top,0px)); right:14px;
+    background:rgba(255,255,255,.18); border:none; color:#fff;
+    width:40px; height:40px; border-radius:50%; cursor:pointer;
+    font-size:20px; z-index:5;
+  }
+  .zoom-img{ flex:1; display:flex; align-items:center; justify-content:center; padding:60px 20px 80px; }
+  .zoom-img img{ max-width:100%; max-height:100%; object-fit:contain; }
+  .zoom-info{
+    position:absolute; bottom:calc(14px + env(safe-area-inset-bottom,0px)); left:14px; right:14px;
+    text-align:center; color:#fff;
+  }
+  .zoom-info .n{ font-size:14px; font-weight:900; }
+  .zoom-info .m{ font-size:11px; opacity:.7; margin-top:3px; }
+
+  /* ── MODAL GRADE ── */
+  .grade-bg{
+    position:fixed; inset:0; z-index:210;
+    background:rgba(15,23,42,.55);
+    display:none; align-items:flex-end; justify-content:center;
+  }
+  .grade-bg.visivel{ display:flex; }
+  @media(min-width:640px){ .grade-bg.visivel{ align-items:center; padding:20px; } }
+  .grade-card{
+    background:#fff; border-radius:18px 18px 0 0;
+    width:100%; max-width:440px; max-height:90vh;
+    display:flex; flex-direction:column;
+    animation:slideUp .25s ease-out;
+  }
+  @media(min-width:640px){ .grade-card{ border-radius:18px; } }
+  @keyframes slideUp{ from{transform:translateY(40px); opacity:0} to{transform:translateY(0); opacity:1} }
+  .grade-head{
+    padding:14px 16px; background:var(--brand); color:#fff;
+    display:flex; align-items:center; gap:10px;
+    border-radius:18px 18px 0 0;
+  }
+  @media(min-width:640px){ .grade-head{ border-radius:18px 18px 0 0; } }
+  .grade-head .ttl{ flex:1; }
+  .grade-head .ttl .l1{ font-size:13px; font-weight:900; }
+  .grade-head .ttl .l2{ font-size:10px; opacity:.85; margin-top:2px; }
+  .grade-head .x{
+    background:rgba(255,255,255,.2); border:none; color:#fff;
+    width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:18px;
+  }
+  .grade-body{ flex:1; overflow-y:auto; padding:14px; }
+  .grade-aviso{
+    background:#f0fdf4; border:1px solid #bbf7d0; color:#15803d;
+    font-size:11px; font-weight:700; padding:8px 11px; border-radius:8px;
+    text-align:center; margin-bottom:14px;
+  }
+  .tam-grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:8px;
+  }
+  .tam-box{
+    border:1px solid var(--line); border-radius:11px; padding:10px;
+  }
+  .tam-box.preench{
+    border:2px solid var(--accent); background:#fafff5; padding:9px;
+  }
+  .tam-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:7px;
+  }
+  .tam-num{ font-size:17px; font-weight:900; color:var(--text); }
+  .tam-disp{ font-size:9.5px; color:var(--muted); }
+  .tam-ctrl{ display:flex; gap:6px; }
+  .tam-ctrl button, .tam-ctrl .qty{
+    flex:1; height:36px; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; font-weight:900;
+  }
+  .tam-ctrl button{
+    border:1px solid var(--line); background:#fff; color:var(--text); cursor:pointer;
+  }
+  .tam-ctrl button.plus{ border-color:var(--accent); color:var(--accent); }
+  .tam-ctrl button:disabled{ background:#f8fafc; color:#cbd5e1; cursor:not-allowed; border-color:var(--line); }
+  .tam-ctrl .qty{ color:var(--text); }
+  .tam-box:not(.preench) .tam-ctrl .qty{ color:#cbd5e1; }
+  .qty-only{
+    display:flex; flex-direction:column; align-items:center;
+    padding:8px 0 10px;
+  }
+  .qty-only .label{
+    font-size:11px; font-weight:800; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px;
+  }
+  .qty-stepper{ display:flex; align-items:center; gap:16px; }
+  .qty-stepper button{
+    width:54px; height:54px; border-radius:14px;
+    border:2px solid var(--line); background:#fff;
+    font-size:24px; font-weight:900; cursor:pointer; color:var(--text);
+  }
+  .qty-stepper button.plus{ border-color:var(--accent); color:var(--accent); }
+  .qty-stepper button:disabled{ opacity:.4; cursor:not-allowed; }
+  .qty-num{
+    font-size:42px; font-weight:900; color:var(--text);
+    min-width:90px; text-align:center; line-height:1;
+  }
+  .qty-hint{ font-size:10.5px; color:var(--muted); margin-top:9px; }
+  .grade-foot{
+    padding:12px 14px; background:#0f172a;
+    display:flex; align-items:center; gap:12px;
+  }
+  .grade-foot .tot{ flex:1; color:#fff; }
+  .grade-foot .tot .l{
+    font-size:10px; color:#94a3b8; font-weight:700;
+    text-transform:uppercase; letter-spacing:.4px;
+  }
+  .grade-foot .tot .v{ font-size:18px; font-weight:900; }
+  .grade-foot .tot .v small{ font-size:11px; opacity:.7; font-weight:700; }
+  .grade-foot .ok{
+    background:var(--accent); color:#fff; border:none;
+    border-radius:9px; padding:11px 18px;
+    font-size:13px; font-weight:800; cursor:pointer;
+    display:inline-flex; align-items:center; gap:7px;
+  }
+
+  /* ── TOAST ── */
+  .toast-wrap{
+    position:fixed; top:calc(70px + env(safe-area-inset-top,0px)); left:0; right:0;
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    z-index:300; pointer-events:none;
+  }
+  .toast{
+    background:#0f172a; color:#fff; padding:9px 14px;
+    border-radius:9px; font-size:12px; font-weight:700;
+    box-shadow:0 4px 12px rgba(0,0,0,.18);
+    animation:toastIn .25s ease-out;
+  }
+  .toast.success{ background:#16a34a; }
+  .toast.error{ background:#dc2626; }
+  .toast.info{ background:#0f172a; }
+  @keyframes toastIn{ from{transform:translateY(-10px); opacity:0} to{transform:translateY(0); opacity:1} }
+</style>
+</head>
+<body>
+
+<div id="toastWrap" class="toast-wrap"></div>
+
+<!-- Loading -->
+<div id="loading" class="cli-loading">
+  <i class="fa-solid fa-circle-notch fa-spin" style="font-size:32px;color:var(--accent)"></i>
+  <div style="margin-top:14px; font-size:13px; font-weight:700; color:var(--muted)">Carregando seleção...</div>
+</div>
+
+<!-- Erro: link não encontrado -->
+<div id="erroNotFound" class="cli-erro" style="display:none">
+  <div class="ic"><i class="fa-solid fa-link-slash"></i></div>
+  <h2>Link não encontrado</h2>
+  <p>Este link pode ter sido removido. Solicite um novo ao seu vendedor.</p>
+</div>
+
+<!-- Erro: expirado -->
+<div id="erroExpirado" class="cli-erro" style="display:none">
+  <div class="ic"><i class="fa-regular fa-clock"></i></div>
+  <h2>Link expirado</h2>
+  <p>Este link tinha validade de 48 horas. Peça ao seu vendedor para reativá-lo.</p>
+</div>
+
+<!-- Conteúdo principal -->
+<div id="conteudo" style="display:none">
+  <header class="cli-header">
+    <div class="cli-logo" id="logoBox">CMS</div>
+    <div class="cli-titulo">
+      <div class="l1">CMS REPRESENTAÇÕES</div>
+      <div class="l2"><span id="qtdProdutos">0</span> produtos · <span id="marcaNome">—</span></div>
+    </div>
+  </header>
+  <div id="grid" class="cli-grid"></div>
+  <button id="fab" class="fab" onclick="enviar()">
+    <i class="fa-solid fa-paper-plane"></i> Enviar seleção
+    <span class="badge" id="fabBadge">0</span>
+  </button>
+</div>
+
+<!-- Tela de sucesso -->
+<div id="sucesso" class="cli-sucesso" style="display:none">
+  <div class="ic"><i class="fa-solid fa-check"></i></div>
+  <h2>Seleção enviada!</h2>
+  <p>Seu vendedor já recebeu sua escolha. Em breve ele entrará em contato.</p>
+  <p style="margin-top:10px">Você pode <b>revisar e reenviar</b> a qualquer momento (válido por 48h).</p>
+  <button onclick="reverSelecao()"><i class="fa-solid fa-rotate-left"></i> Revisar seleção</button>
+</div>
+
+<!-- Lupa -->
+<div id="zoomBg" class="zoom-bg" onclick="if(event.target===this)fecharZoom()">
+  <button class="zoom-close" onclick="fecharZoom()">×</button>
+  <div class="zoom-img"><img id="zoomImg" src="" alt=""></div>
+  <div class="zoom-info">
+    <div class="n" id="zoomNome">—</div>
+  </div>
+</div>
+
+<!-- Modal grade/qtd -->
+<div id="gradeBg" class="grade-bg" onclick="if(event.target===this)fecharGrade(false)">
+  <div class="grade-card">
+    <div class="grade-head">
+      <div class="ttl">
+        <div class="l1" id="gradeTitulo">Adicionar grade</div>
+        <div class="l2" id="gradeSubt">—</div>
+      </div>
+      <button class="x" onclick="fecharGrade(false)">×</button>
+    </div>
+    <div class="grade-body" id="gradeBody"></div>
+    <div class="grade-foot">
+      <div class="tot">
+        <div class="l">TOTAL ESCOLHIDO</div>
+        <div class="v"><span id="gradeTot">0</span> <small id="gradeUnit">pares</small></div>
+      </div>
+      <button class="ok" onclick="fecharGrade(true)">
+        <i class="fa-solid fa-check"></i> Confirmar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════
+const WORKER_URL = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
+const IMG_BASE   = 'https://marcosrepcms-max.github.io/Catalogo-Olympikus/Catalogo/';
+
+const params = new URLSearchParams(location.search);
+const CODIGO = params.get('link') || '';
+
+const STATE = {
+  link: null,
+  produtos: [],
+  marca: 'oly',
+  selecao: new Map()   // key → { grade:{tam:qtd} }
+};
+
+const $ = id => document.getElementById(id);
+
+// ═══════════════════════════════════════════════════════════════
+// UTIL
+// ═══════════════════════════════════════════════════════════════
+function safeHtml(v){ return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function key(p){ return `${String(p.artigo||'').toUpperCase()}|${String(p.cor||'').toUpperCase()}`; }
+
+function showToast(msg, type='info'){
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  $('toastWrap').appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition='opacity .2s'; }, 2800);
+  setTimeout(() => t.remove(), 3100);
+}
+
+const ORDEM_VEST = ['XPP','PP','P','M','G','GG','XG','XGG','XGGG','EG','EGG'];
+function tamSortKey(t){
+  const s = String(t||'').trim().toUpperCase();
+  if(!s) return 99999;
+  if(s === 'U' || s === 'UN' || s === 'UNICO') return 9000;
+  const num = Number(s);
+  if(Number.isFinite(num)) return num;
+  const i = ORDEM_VEST.indexOf(s);
+  if(i >= 0) return 1001 + i;
+  const m = s.match(/^(\d+)\s*\/\s*\d+$/);
+  if(m) return Number(m[1]);
+  return 99999;
+}
+function tamSort(a,b){ return tamSortKey(a) - tamSortKey(b); }
+
+function tamanhosArr(p){
+  return Object.entries(p.grade || {})
+    .filter(([,v]) => Number(v) > 0)
+    .sort((a,b) => tamSort(a[0], b[0]));
+}
+
+function temTamanhos(p){
+  const k = tamanhosArr(p).map(e => e[0]);
+  if(!k.length) return false;
+  if(k.length === 1 && /^U(N|NICO)?$/i.test(k[0])) return false;
+  return true;
+}
+
+function resumoFaixa(tams){
+  if(!tams || !tams.length) return '';
+  if(tams.length === 1 && /^U(N|NICO)?$/i.test(String(tams[0]))) return 'Em estoque';
+  const todosNum = tams.every(t => Number.isFinite(Number(t)) && !String(t).includes('/'));
+  if(todosNum && tams.length > 1){
+    const nums = tams.map(Number).sort((a,b) => a-b);
+    const min = nums[0], max = nums[nums.length-1];
+    if(max - min + 1 === nums.length) return `${min} ao ${max}`;
+    return nums.join(', ');
+  }
+  return tams.slice().sort(tamSort).join(', ');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+async function init(){
+  if(!CODIGO || CODIGO.length < 4){
+    $('loading').style.display = 'none';
+    $('erroNotFound').style.display = 'flex';
+    return;
+  }
+  try{
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'getLink', codigo: CODIGO })
+    });
+    const json = await res.json();
+    $('loading').style.display = 'none';
+    if(!json.success){
+      $('erroNotFound').style.display = 'flex';
+      return;
+    }
+    if(json.expirado){
+      $('erroExpirado').style.display = 'flex';
+      return;
+    }
+    STATE.link = json.link;
+    STATE.produtos = Array.isArray(json.link.produtos) ? json.link.produtos : [];
+    STATE.marca = String(json.link.marca || 'oly').toLowerCase();
+    document.body.setAttribute('data-marca', STATE.marca);
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', STATE.marca === 'ua' ? '#e52125' : '#0034d8');
+
+    // Logo
+    $('logoBox').textContent = 'CMS';
+    $('qtdProdutos').textContent = STATE.produtos.length;
+    $('marcaNome').textContent = STATE.marca === 'ua' ? 'UNDER ARMOUR' : 'OLYMPIKUS';
+
+    // Restaura rascunho local OU resposta enviada
+    restaurarSelecao();
+
+    $('conteudo').style.display = 'block';
+    renderGrid();
+    atualizarFab();
+  }catch(e){
+    console.error(e);
+    $('loading').style.display = 'none';
+    $('erroNotFound').style.display = 'flex';
+  }
+}
+
+function restaurarSelecao(){
+  // 1. rascunho local
+  try{
+    const raw = localStorage.getItem(`cli_rascunho_${CODIGO}`);
+    if(raw){
+      const obj = JSON.parse(raw);
+      STATE.selecao = new Map(obj);
+    }
+  }catch(e){}
+  // 2. resposta já enviada (se houver, sobrepõe)
+  if(STATE.link.resposta && Array.isArray(STATE.link.resposta.itens)){
+    STATE.selecao = new Map();
+    for(const it of STATE.link.resposta.itens){
+      const k = `${String(it.artigo||'').toUpperCase()}|${String(it.cor||'').toUpperCase()}`;
+      STATE.selecao.set(k, { grade: it.grade || {} });
+    }
+  }
+}
+
+function salvarRascunho(){
+  try{
+    localStorage.setItem(`cli_rascunho_${CODIGO}`, JSON.stringify([...STATE.selecao]));
+  }catch(e){}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════
+function renderGrid(){
+  const wrap = $('grid');
+  wrap.innerHTML = STATE.produtos.map(p => cardHtml(p)).join('');
+}
+
+function cardHtml(p){
+  const k = key(p);
+  const sel = STATE.selecao.has(k);
+  const promo = !!p.tabelaEsp;
+
+  const imgSrc = p.imagem ? `${IMG_BASE}${p.imagem}.jpg` : '';
+  const imgTag = imgSrc
+    ? `<img src="${safeHtml(imgSrc)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='inline'">`
+    : '';
+
+  const tams = tamanhosArr(p);
+  const faixa = resumoFaixa(tams.map(e => e[0]));
+  const isTam = temTamanhos(p);
+
+  const selData = STATE.selecao.get(k);
+  const qtdGrade = selData ? Object.values(selData.grade||{}).reduce((s,v) => s+(Number(v)||0), 0) : 0;
+
+  const precoHtml = promo
+    ? `<div class="card-preco promo-row">
+         <span>R$ ${Number(p.pdv||0).toFixed(2).replace('.',',')}</span>
+         <span class="mkp">MKP R$ ${Number(p.mkp||0).toFixed(2).replace('.',',')}</span>
+       </div>`
+    : `<div class="card-preco">R$ ${Number(p.pdv||0).toFixed(2).replace('.',',')}</div>`;
+
+  const btnPrincipal = sel
+    ? `<button class="btn-remover" onclick="toggle('${safeHtml(k)}')"><i class="fa-solid fa-xmark"></i> Remover</button>`
+    : `<button class="btn-quero"   onclick="toggle('${safeHtml(k)}')"><i class="fa-solid fa-check"></i> Quero esse</button>`;
+  const btnGrade = sel
+    ? `<button class="btn-grade ${qtdGrade>0?'preenchido':''}" onclick="abrirGrade('${safeHtml(k)}')">
+         ${qtdGrade > 0
+           ? `<i class="fa-solid fa-check"></i> ${qtdGrade} ${isTam?'pares':'un.'}`
+           : `<i class="fa-solid fa-list-ol"></i> ${isTam?'Adicionar grade':'Quantidade'}`}
+       </button>`
+    : '';
+
+  const tagSel = sel ? `<span class="sel-tag">SELECIONADO</span>` : (promo ? `<span class="promo">★ PROMO</span>` : '');
+
+  return `
+    <div class="card${sel?' sel':''}" data-key="${safeHtml(k)}">
+      <div class="card-img">
+        ${tagSel}
+        ${imgTag}
+        <i class="fa-solid fa-image ph" style="${imgSrc?'display:none':''}"></i>
+        <button class="lupa" onclick="abrirZoom('${safeHtml(k)}')"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+      </div>
+      <div class="card-nome">${safeHtml(p.descricao||'—')}</div>
+      ${precoHtml}
+      <div class="card-tam-label">TAMANHOS</div>
+      <div class="card-tam">${safeHtml(faixa || '—')}</div>
+      <div class="card-btn-area">
+        ${btnPrincipal}
+        ${btnGrade}
+      </div>
+    </div>`;
+}
+
+function reRenderCard(k){
+  const node = document.querySelector(`.card[data-key="${CSS.escape(k)}"]`);
+  if(!node) return;
+  const p = STATE.produtos.find(pr => key(pr) === k);
+  if(p) node.outerHTML = cardHtml(p);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TOGGLE / FAB
+// ═══════════════════════════════════════════════════════════════
+function toggle(k){
+  if(STATE.selecao.has(k)) STATE.selecao.delete(k);
+  else STATE.selecao.set(k, { grade: {} });
+  salvarRascunho();
+  reRenderCard(k);
+  atualizarFab();
+}
+
+function atualizarFab(){
+  const n = STATE.selecao.size;
+  const fab = $('fab');
+  if(n === 0){ fab.classList.remove('visivel'); return; }
+  fab.classList.add('visivel');
+  $('fabBadge').textContent = n;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LUPA
+// ═══════════════════════════════════════════════════════════════
+function abrirZoom(k){
+  const p = STATE.produtos.find(pr => key(pr) === k);
+  if(!p) return;
+  $('zoomImg').src = p.imagem ? `${IMG_BASE}${p.imagem}.jpg` : '';
+  $('zoomNome').textContent = p.descricao || '';
+  $('zoomBg').classList.add('visivel');
+}
+function fecharZoom(){ $('zoomBg').classList.remove('visivel'); }
+
+// ═══════════════════════════════════════════════════════════════
+// MODAL GRADE
+// ═══════════════════════════════════════════════════════════════
+let _gradeCtx = null;
+function abrirGrade(k){
+  const p = STATE.produtos.find(pr => key(pr) === k);
+  if(!p) return;
+  const sel = STATE.selecao.get(k);
+  if(!sel) return;
+  const isTam = temTamanhos(p);
+  _gradeCtx = { k, produto:p, isTam, gradeTmp: { ...(sel.grade||{}) } };
+
+  $('gradeTitulo').textContent = isTam ? 'Adicionar grade' : 'Quantidade desejada';
+  $('gradeSubt').textContent   = p.descricao || '';
+  $('gradeUnit').textContent   = isTam ? 'pares' : 'un.';
+
+  renderGradeBody();
+  $('gradeBg').classList.add('visivel');
+}
+
+function renderGradeBody(){
+  const ctx = _gradeCtx;
+  if(!ctx) return;
+  const body = $('gradeBody');
+  const p = ctx.produto;
+
+  if(ctx.isTam){
+    const tams = tamanhosArr(p);
+    const cards = tams.map(([t, disp]) => {
+      const ped = Number(ctx.gradeTmp[t] || 0);
+      const rest = disp - ped;
+      const ok = ped > 0;
+      return `
+        <div class="tam-box${ok?' preench':''}">
+          <div class="tam-head">
+            <span class="tam-num">${safeHtml(t)}</span>
+            <span class="tam-disp">${disp} disp.</span>
+          </div>
+          <div class="tam-ctrl">
+            <button class="minus" onclick="qtdMudar('${safeHtml(t)}',-1)" ${ped===0?'disabled':''}>−</button>
+            <div class="qty">${ped}</div>
+            <button class="plus" onclick="qtdMudar('${safeHtml(t)}',1)" ${rest===0?'disabled':''}>+</button>
+          </div>
+        </div>`;
+    }).join('');
+    body.innerHTML = `
+      <div class="grade-aviso">
+        <i class="fa-solid fa-circle-info"></i> Toque no <b>+</b> para escolher quantos pares de cada tamanho
+      </div>
+      <div class="tam-grid">${cards}</div>
+    `;
+  } else {
+    // Acessório
+    const keys = Object.keys(p.grade || {}).filter(k => Number(p.grade[k]) > 0);
+    const tk = keys[0] || 'U';
+    const dispTotal = Number(p.grade?.[tk] || 0);
+    const atual = Number(ctx.gradeTmp[tk] || 0);
+    body.innerHTML = `
+      <div class="grade-aviso">
+        <i class="fa-solid fa-circle-info"></i> Disponível: <b>${dispTotal} unidades</b>
+      </div>
+      <div class="qty-only">
+        <div class="label">QUANTIDADE DESEJADA</div>
+        <div class="qty-stepper">
+          <button class="minus" onclick="qtdMudar('${safeHtml(tk)}',-1)" ${atual===0?'disabled':''}>−</button>
+          <div class="qty-num">${atual}</div>
+          <button class="plus" onclick="qtdMudar('${safeHtml(tk)}',1)" ${atual>=dispTotal?'disabled':''}>+</button>
+        </div>
+        <div class="qty-hint">de ${dispTotal} disponíveis</div>
+      </div>
+    `;
+  }
+  atualizarTotal();
+}
+
+function qtdMudar(tam, delta){
+  const ctx = _gradeCtx;
+  if(!ctx) return;
+  const disp = Number(ctx.produto.grade?.[tam] || 0);
+  const atual = Number(ctx.gradeTmp[tam] || 0);
+  let novo = atual + Number(delta);
+  if(novo < 0) novo = 0;
+  if(novo > disp) novo = disp;
+  if(novo === 0) delete ctx.gradeTmp[tam];
+  else ctx.gradeTmp[tam] = novo;
+  renderGradeBody();
+}
+
+function atualizarTotal(){
+  const ctx = _gradeCtx;
+  if(!ctx) return;
+  const t = Object.values(ctx.gradeTmp).reduce((s,v) => s+(Number(v)||0), 0);
+  $('gradeTot').textContent = t;
+}
+
+function fecharGrade(confirmar){
+  const ctx = _gradeCtx;
+  $('gradeBg').classList.remove('visivel');
+  if(confirmar && ctx){
+    const sel = STATE.selecao.get(ctx.k);
+    if(sel){
+      sel.grade = { ...ctx.gradeTmp };
+      salvarRascunho();
+      reRenderCard(ctx.k);
+    }
+  }
+  _gradeCtx = null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ENVIAR
+// ═══════════════════════════════════════════════════════════════
+async function enviar(){
+  if(STATE.selecao.size === 0){
+    showToast('Selecione ao menos um produto', 'info');
+    return;
+  }
+  const fab = $('fab');
+  const prev = fab.innerHTML;
+  fab.disabled = true;
+  fab.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Enviando...';
+
+  // Monta itens
+  const itens = [];
+  for(const [k, dados] of STATE.selecao){
+    const p = STATE.produtos.find(pr => key(pr) === k);
+    if(!p) continue;
+    itens.push({
+      artigo: p.artigo,
+      cor: p.cor,
+      descricao: p.descricao,
+      pdv: p.pdv,
+      mkp: p.mkp,
+      custo: p.custo,
+      categoria: p.categoria,
+      tabelaEsp: !!p.tabelaEsp,
+      grade: dados.grade || {}
+    });
+  }
+
+  try{
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        action:'salvarResposta',
+        codigo: CODIGO,
+        itens
+      })
+    });
+    const json = await res.json();
+    if(!json.success){
+      if(json.erro === 'expirado'){
+        $('conteudo').style.display = 'none';
+        $('erroExpirado').style.display = 'flex';
+        return;
+      }
+      throw new Error(json.erro || 'falha');
+    }
+    // Limpa rascunho — passa a vir da resposta
+    localStorage.removeItem(`cli_rascunho_${CODIGO}`);
+    $('conteudo').style.display = 'none';
+    $('sucesso').style.display = 'flex';
+  }catch(e){
+    console.error(e);
+    showToast('Erro ao enviar. Tente novamente.', 'error');
+    fab.disabled = false;
+    fab.innerHTML = prev;
+  }
+}
+
+function reverSelecao(){
+  $('sucesso').style.display = 'none';
+  // Recarrega resposta do worker
+  location.reload();
+}
+
+// GO
+init();
+</script>
+</body>
+</html>
