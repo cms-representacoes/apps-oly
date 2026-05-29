@@ -2,14 +2,29 @@
 <html lang="pt-BR">
 <head>
 <script>
-  // Redireciona para a vitrine-cliente (página leve e mobile-first)
-  // se a URL contiver ?link=XXX (cliente acessou)
+  // Redireciona para a vitrine-cliente da marca certa (com OG tags do WhatsApp)
+  // se a URL contiver ?link=XXX (cliente acessou link antigo sem marca na URL)
   (function(){
     var p = new URLSearchParams(location.search);
     var c = p.get('link');
     if(c && c.length >= 4){
       var base = location.href.replace(/\/[^\/]*$/, '/');
-      location.replace(base + 'vitrine-cliente.html?link=' + encodeURIComponent(c));
+      // Consulta marca no Worker; se falhar, default oly
+      fetch('https://repasse-worker-cms.marcosrep-cms.workers.dev', {
+        method:'PATCH',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ action:'getLink', codigo: c })
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        var marca = (j && j.link && j.link.marca) || 'oly';
+        var arq = marca === 'ua' ? 'vitrine-cliente-ua.html' : 'vitrine-cliente-oly.html';
+        location.replace(base + arq + '?link=' + encodeURIComponent(c));
+      })
+      .catch(function(){
+        // fallback: assume OLY
+        location.replace(base + 'vitrine-cliente-oly.html?link=' + encodeURIComponent(c));
+      });
     }
   })();
 </script>
@@ -2340,9 +2355,10 @@ async function criarLinkVitrine(){
     // Salva último vendedor pra próxima vez
     localStorage.setItem(LINK_VEND_LS, vendedor);
 
-    // Monta URL pública — aponta para vitrine-cliente.html
+    // Monta URL pública — aponta para vitrine-cliente da marca certa (com OG tags)
     const base = location.origin + location.pathname.replace(/\/[^\/]*$/, '/');
-    const url  = `${base}vitrine-cliente.html?link=${json.codigo}`;
+    const arquivoCli = MARCA_ATIVA === 'ua' ? 'vitrine-cliente-ua.html' : 'vitrine-cliente-oly.html';
+    const url  = `${base}${arquivoCli}?link=${json.codigo}`;
     _linkGerado = { codigo: json.codigo, url, cliente, qtd: produtos.length };
 
     // Fecha o modal de formulário, abre o de sucesso
@@ -2679,7 +2695,11 @@ function mpFormatarData(ms){
 
 async function mpCopiarLink(codigo){
   const base = location.origin + location.pathname.replace(/\/[^\/]*$/, '/');
-  const url  = `${base}vitrine-cliente.html?link=${codigo}`;
+  // Detecta marca do link na lista atual
+  const link = (_mpLinksAtuais || []).find(l => l.codigo === codigo);
+  const marca = (link && link.marca) || MARCA_ATIVA || 'oly';
+  const arq = marca === 'ua' ? 'vitrine-cliente-ua.html' : 'vitrine-cliente-oly.html';
+  const url = `${base}${arq}?link=${codigo}`;
   try{
     await navigator.clipboard.writeText(url);
     showToast('Link copiado!', 'success');

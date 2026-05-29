@@ -1,6 +1,18 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
+<script>
+  // Redireciona para a vitrine-cliente (página leve e mobile-first)
+  // se a URL contiver ?link=XXX (cliente acessou)
+  (function(){
+    var p = new URLSearchParams(location.search);
+    var c = p.get('link');
+    if(c && c.length >= 4){
+      var base = location.href.replace(/\/[^\/]*$/, '/');
+      location.replace(base + 'vitrine-cliente.html?link=' + encodeURIComponent(c));
+    }
+  })();
+</script>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <title>Disponibilidades · Olympikus</title>
@@ -159,12 +171,505 @@
     .fab-pdf.visivel{ transform:translateY(0); opacity:1; }
     .fab-pdf:hover{ background:#6aa100; }
 
+    /* Botão Gerar Link flutuante — fica acima do PDF */
+    .fab-link{
+      position:fixed; bottom:84px; right:24px; z-index:100;
+      background:#0f172a; color:#fff;
+      border:none; border-radius:999px; cursor:pointer;
+      padding:13px 22px; font-size:13px; font-weight:800;
+      display:flex; align-items:center; gap:8px;
+      box-shadow:0 8px 28px rgba(15,23,42,.32);
+      transition:all .15s; transform:translateY(80px); opacity:0;
+    }
+    .fab-link.visivel{ transform:translateY(0); opacity:1; }
+    .fab-link:hover{ background:#1e293b; }
+
+    /* Modais de link compartilhado */
+    .link-modal-bg{
+      position:fixed; inset:0; z-index:200;
+      background:rgba(15,23,42,.5); backdrop-filter:blur(2px);
+      display:flex; align-items:center; justify-content:center;
+      padding:16px;
+    }
+    .link-modal-bg.hidden{ display:none; }
+    .link-modal-card{
+      background:#fff; border-radius:18px; padding:22px;
+      width:100%; max-width:380px;
+      box-shadow:0 20px 60px rgba(0,0,0,.3);
+      animation:linkModalIn .2s ease-out;
+    }
+    @keyframes linkModalIn{
+      from{ transform:scale(.94); opacity:0; }
+      to{ transform:scale(1); opacity:1; }
+    }
+    .link-modal-head{
+      display:flex; align-items:center; gap:10px; margin-bottom:14px;
+    }
+    .link-modal-head .ico{
+      width:38px; height:38px; border-radius:9px;
+      background:var(--accent-light); color:var(--accent-dark,#5f8c00);
+      display:flex; align-items:center; justify-content:center; font-size:18px;
+    }
+    .link-modal-head h3{
+      font-size:15px; font-weight:900; color:var(--text); margin:0; flex:1;
+    }
+    .link-modal-head .x{
+      background:none; border:none; color:#94a3b8;
+      font-size:22px; cursor:pointer; line-height:1;
+    }
+    .link-modal-card label{
+      display:block; font-size:11px; font-weight:800; color:var(--muted);
+      text-transform:uppercase; letter-spacing:.3px; margin:14px 0 5px;
+    }
+    .link-modal-card input,
+    .link-modal-card select{
+      width:100%; padding:10px 12px; border:1px solid var(--line);
+      border-radius:9px; font-size:13px; background:#fff; color:var(--text);
+      font-family:inherit;
+    }
+    .link-modal-card input.invalid,
+    .link-modal-card select.invalid{
+      border-color:#dc2626; background:#fef2f2;
+    }
+    .link-modal-card .btn-primary{
+      width:100%; background:var(--accent); color:#fff; border:none;
+      border-radius:11px; padding:12px; font-size:13px; font-weight:800;
+      cursor:pointer; margin-top:18px;
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    }
+    .link-modal-card .btn-primary:disabled{ opacity:.6; cursor:not-allowed; }
+    .link-modal-card .btn-primary:hover:not(:disabled){ background:#6aa100; }
+    .link-modal-card .info-meta{
+      font-size:11px; color:var(--muted); margin-bottom:4px;
+    }
+    .link-modal-card .info-meta b{ color:var(--text); }
+    /* Tela de sucesso (link criado) */
+    .link-ok-icon{
+      width:54px; height:54px; border-radius:50%;
+      background:#dcfce7; color:#16a34a;
+      display:flex; align-items:center; justify-content:center;
+      font-size:24px; margin:0 auto 12px;
+    }
+    .link-display{
+      background:#f8fafc; border:1px solid var(--line); border-radius:9px;
+      padding:10px 12px; font-family:ui-monospace,monospace;
+      font-size:11px; color:#475569; word-break:break-all;
+      margin:12px 0;
+    }
+    .link-display b{ color:var(--text); }
+    .link-btns{ display:flex; gap:8px; }
+    .link-btn{
+      flex:1; border:none; border-radius:10px; padding:11px;
+      font-size:12px; font-weight:800; cursor:pointer;
+      display:inline-flex; align-items:center; justify-content:center; gap:6px;
+      transition:opacity .15s;
+    }
+    .link-btn:hover{ opacity:.9; }
+    .link-btn.copy{ background:#0f172a; color:#fff; }
+    .link-btn.whats{ background:#25d366; color:#fff; }
+    .link-expira{
+      text-align:center; font-size:10px; color:#94a3b8; margin-top:12px;
+    }
+
     /* Selecionar todos */
     .sel-bar{ display:none; align-items:center; gap:10px; padding:8px 0; }
     .sel-bar.visivel{ display:flex; }
 
     /* Toast */
     .toast-wrap{ position:fixed; top:18px; right:18px; display:flex; flex-direction:column; gap:10px; z-index:9999; pointer-events:none; }
+    .toast{ pointer-events:auto; min-width:220px; border-radius:14px; padding:10px 16px; font-size:13px; font-weight:700; box-shadow:0 8px 24px rgba(0,0,0,.15); animation:toastIn .2s ease-out; }
+    .toast.info{    background:#fff; color:var(--text); border:1px solid var(--line); }
+    .toast.success{ background:#dcfce7; color:#166534; border:1px solid #bbf7d0; }
+    .toast.error{   background:#fee2e2; color:#991b1b; border:1px solid #fecaca; }
+    @keyframes toastIn{ from{ transform:translateX(40px); opacity:0; } to{ transform:translateX(0); opacity:1; } }
+
+    /* ═══ MODO CLIENTE (mobile) ═══════════════════════════════════════════ */
+    body.modo-cliente{ background:#f6f7fb; margin:0; padding:0; }
+    html.modo-cliente, html:has(body.modo-cliente){ background:var(--brand-bg, #0034d8); }
+    body.modo-cliente #modoClienteWrap{
+      max-width:none !important; width:100%; padding:0; margin:0;
+    }
+    /* Container principal que pode estar limitando */
+    body.modo-cliente main,
+    body.modo-cliente .container,
+    body.modo-cliente .max-w-7xl,
+    body.modo-cliente .max-w-6xl,
+    body.modo-cliente .max-w-5xl,
+    body.modo-cliente .mx-auto{
+      max-width:none !important; width:100% !important; padding:0 !important; margin:0 !important;
+    }
+    /* Esconde tudo do modo vendedor */
+    body.modo-cliente .filters-bar,
+    body.modo-cliente #headerVendedor,
+    body.modo-cliente .fab-pdf,
+    body.modo-cliente .fab-link,
+    body.modo-cliente .fab-cart,
+    body.modo-cliente #loadMoreWrap,
+    body.modo-cliente #paginationStatus,
+    body.modo-cliente #drawerFiltrosBg,
+    body.modo-cliente .sel-bar,
+    body.modo-cliente .campanha-bar,
+    body.modo-cliente #pdfReadyToast{ display:none !important; }
+
+    /* Header do cliente */
+    .cli-header{
+      position:sticky; top:0; z-index:30;
+      background:var(--brand-bg, #0034d8); color:#fff;
+      padding:11px 14px;
+      padding-top: calc(11px + env(safe-area-inset-top, 0px));
+    }
+    .cli-header-top{
+      display:flex; align-items:center; gap:10px;
+    }
+    .cli-header .logo-box{
+      width:34px; height:34px; border-radius:8px;
+      background:rgba(255,255,255,.18);
+      display:flex; align-items:center; justify-content:center;
+      font-weight:900; font-size:11px;
+    }
+    .cli-header .titulo{
+      flex:1; min-width:0;
+    }
+    .cli-header .titulo .l1{ font-size:13px; font-weight:900; line-height:1.2; }
+    .cli-header .titulo .l2{ font-size:10px; opacity:.8; line-height:1.2; margin-top:1px; }
+    .cli-header .ajuda{
+      margin-top:8px; padding:7px 11px; border-radius:7px;
+      background:rgba(255,255,255,.15); font-size:10.5px; font-weight:700;
+      text-align:center;
+    }
+    /* Tela de loading do cliente */
+    .cli-loading, .cli-erro{
+      min-height:60vh; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; padding:24px; text-align:center;
+    }
+    .cli-erro .ic{
+      width:64px; height:64px; border-radius:50%;
+      background:#fef3c7; color:#d97706;
+      display:flex; align-items:center; justify-content:center;
+      font-size:30px; margin-bottom:14px;
+    }
+    .cli-erro h2{ font-size:18px; font-weight:900; color:var(--text); margin-bottom:6px; }
+    .cli-erro p{ font-size:13px; color:var(--muted); max-width:300px; line-height:1.4; }
+
+    /* Grid 2 colunas */
+    .cli-grid{
+      display:grid; grid-template-columns:1fr 1fr; gap:7px;
+      padding:8px 7px 120px;
+      width:100%; box-sizing:border-box;
+    }
+    /* Card de produto */
+    .cli-card{
+      background:#fff; border:1px solid var(--line); border-radius:11px;
+      padding:8px; transition:border-color .15s, transform .1s;
+      position:relative;
+    }
+    .cli-card.selecionado{
+      border:2px solid var(--accent); padding:7px;
+    }
+    .cli-card-img{
+      position:relative; background:#f3f4f6; aspect-ratio:1;
+      border-radius:7px; overflow:hidden;
+      display:flex; align-items:center; justify-content:center;
+      margin-bottom:7px;
+    }
+    .cli-card-img img{ width:100%; height:100%; object-fit:contain; }
+    .cli-card-img .ph{ font-size:38px; color:#cbd5e1; }
+    .cli-card .promo{
+      position:absolute; top:5px; left:5px; z-index:2;
+      background:#f59e0b; color:#fff;
+      font-size:7.5px; font-weight:900;
+      padding:2.5px 7px; border-radius:999px;
+    }
+    .cli-card .zoom-btn{
+      position:absolute; top:5px; right:5px; z-index:2;
+      background:rgba(15,23,42,.65); color:#fff; border:none;
+      width:26px; height:26px; border-radius:50%; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      font-size:12px;
+    }
+    .cli-card .check{
+      position:absolute; top:5px; right:5px; z-index:2;
+      background:var(--accent); color:#fff;
+      width:22px; height:22px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-weight:900; font-size:12px;
+    }
+    .cli-card-name{
+      font-size:11px; font-weight:900; color:var(--text); line-height:1.2;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    }
+    .cli-card-meta{
+      font-size:9px; color:var(--muted); margin-top:1px;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    }
+    .cli-card-price{
+      font-size:13px; font-weight:900; color:var(--accent); margin-top:4px;
+    }
+    .cli-card-promo-vals{
+      display:flex; gap:3px; margin-top:4px; flex-wrap:wrap;
+    }
+    .cli-card-promo-vals span{
+      background:#fff7ed; border:1px solid #fed7aa;
+      padding:1.5px 5px; border-radius:4px;
+      font-size:8px; color:#9a3412; font-weight:700;
+    }
+    .cli-card-promo-vals b{ color:#7c2d12; }
+    .cli-card-grade-label{
+      font-size:7.5px; font-weight:800; color:var(--muted);
+      text-transform:uppercase; margin-top:6px; letter-spacing:.4px;
+    }
+    .cli-card-grade-resumo{
+      font-size:11px; font-weight:800; color:var(--text); margin-top:2px;
+      line-height:1.3;
+    }
+    .cli-card-grade{
+      display:flex; flex-wrap:wrap; gap:2px; margin-top:3px;
+    }
+    .cli-card-grade .cel{
+      background:#f8fafc; border:1px solid var(--line); border-radius:3px;
+      padding:1.5px 5px; font-size:8px; color:#3f3f46;
+    }
+    .cli-card-grade .cel b{ color:var(--text); }
+    .cli-card-grade .mais{
+      background:transparent; border:0; color:var(--muted);
+      padding:1.5px 4px; font-size:8px;
+    }
+    .cli-card-btn{
+      width:100%; margin-top:7px; padding:8px;
+      border-radius:7px; border:none; cursor:pointer;
+      font-size:10px; font-weight:800;
+      display:inline-flex; align-items:center; justify-content:center; gap:5px;
+    }
+    .cli-card-btn.quero{ background:var(--accent); color:#fff; }
+    .cli-card-btn.quero:hover{ background:#6aa100; }
+    .cli-card-btn.remove{
+      background:#fff; color:var(--accent); border:2px solid var(--accent);
+      padding:6px;
+    }
+
+    /* FAB cliente */
+    .cli-fab{
+      position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+      z-index:80;
+      background:var(--brand-bg, #0034d8); color:#fff;
+      border:none; border-radius:999px; cursor:pointer;
+      padding:13px 24px; font-size:13px; font-weight:800;
+      box-shadow:0 8px 28px rgba(0,52,216,.4);
+      display:inline-flex; align-items:center; gap:8px;
+      transition:transform .2s, opacity .2s;
+    }
+    .cli-fab.hidden{ display:none; }
+    .cli-fab .badge{
+      background:#fff; color:#0f172a;
+      padding:1px 8px; border-radius:999px; font-size:11px; font-weight:900;
+    }
+    .cli-fab.respondido{
+      background:#16a34a; box-shadow:0 8px 28px rgba(22,163,74,.4);
+    }
+    /* Modal de lupa do cliente */
+    .cli-zoom-bg{
+      position:fixed; inset:0; z-index:200;
+      background:rgba(15,23,42,.92);
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center; padding:20px;
+    }
+    .cli-zoom-bg.hidden{ display:none; }
+    .cli-zoom-close{
+      position:absolute; top:14px; right:14px;
+      background:rgba(255,255,255,.15); color:#fff; border:none;
+      width:38px; height:38px; border-radius:50%; cursor:pointer;
+      font-size:20px; line-height:1;
+    }
+    .cli-zoom-img{
+      max-width:90vw; max-height:70vh;
+      background:#fff; border-radius:14px; padding:16px;
+      box-shadow:0 20px 60px rgba(0,0,0,.4);
+    }
+    .cli-zoom-img img{ max-width:100%; max-height:60vh; object-fit:contain; }
+    .cli-zoom-info{
+      color:#fff; text-align:center; margin-top:16px;
+    }
+    .cli-zoom-info .n{ font-size:15px; font-weight:900; }
+    .cli-zoom-info .m{ font-size:12px; opacity:.7; margin-top:3px; }
+
+    /* Tela de sucesso (cliente enviou) */
+    .cli-sucesso{
+      min-height:80vh; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; padding:30px; text-align:center;
+    }
+    .cli-sucesso .ic{
+      width:76px; height:76px; border-radius:50%;
+      background:#dcfce7; color:#16a34a;
+      display:flex; align-items:center; justify-content:center;
+      font-size:36px; margin-bottom:18px;
+    }
+    .cli-sucesso h2{ font-size:20px; font-weight:900; color:var(--text); margin-bottom:8px; }
+    .cli-sucesso p{ font-size:13px; color:var(--muted); max-width:300px; line-height:1.5; }
+    .cli-sucesso .btn{
+      margin-top:22px; background:var(--accent); color:#fff; border:none;
+      border-radius:11px; padding:11px 22px; font-size:13px; font-weight:800;
+      cursor:pointer;
+    }
+
+    /* Botão "Detalhar grade" abaixo do card selecionado */
+    .cli-card-btn.detalhar{
+      background:#fff; color:var(--accent-dark, #5f8c00); border:1.5px solid var(--accent);
+      margin-top:5px; padding:6px;
+      font-weight:800;
+      animation: cliBtnPulse 1.4s ease-in-out infinite;
+    }
+    .cli-card-btn.detalhar:hover{ background:#fafff5; color:var(--text); }
+    .cli-card-btn.detalhar.preenchido{
+      color:var(--accent); border-color:var(--accent); background:#fafff5;
+      animation:none;  /* para de pulsar quando já preencheu */
+    }
+    @keyframes cliBtnPulse{
+      0%, 100%{ box-shadow:0 0 0 0 rgba(125,184,0,.45); transform:scale(1); }
+      50%     { box-shadow:0 0 0 8px rgba(125,184,0,0);  transform:scale(1.02); }
+    }
+    /* Para UA (vermelho) — pulsa em vermelho */
+    body[data-marca="ua"] .cli-card-btn.detalhar{
+      color:#dc2626; border-color:#dc2626;
+      animation-name: cliBtnPulseUA;
+    }
+    body[data-marca="ua"] .cli-card-btn.detalhar.preenchido{
+      animation:none;
+    }
+    @keyframes cliBtnPulseUA{
+      0%, 100%{ box-shadow:0 0 0 0 rgba(220,38,38,.45); transform:scale(1); }
+      50%     { box-shadow:0 0 0 8px rgba(220,38,38,0);  transform:scale(1.02); }
+    }
+
+    /* Modal de grade/quantidade do cliente */
+    .cli-grade-bg{
+      position:fixed; inset:0; z-index:210;
+      background:rgba(15,23,42,.5);
+      display:flex; align-items:flex-end; justify-content:center;
+    }
+    .cli-grade-bg.hidden{ display:none; }
+    @media(min-width:640px){
+      .cli-grade-bg{ align-items:center; padding:20px; }
+    }
+    .cli-grade-card{
+      background:#fff; border-radius:18px 18px 0 0;
+      width:100%; max-width:420px; max-height:90vh;
+      display:flex; flex-direction:column;
+      animation:cliGradeIn .25s ease-out;
+      overflow:hidden;
+    }
+    @media(min-width:640px){ .cli-grade-card{ border-radius:18px; max-height:88vh; } }
+    @keyframes cliGradeIn{ from{ transform:translateY(40px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+    .cli-grade-head{
+      flex:0 0 auto; padding:14px 16px;
+      background:var(--brand-bg, #0034d8); color:#fff;
+      display:flex; align-items:center; gap:10px;
+    }
+    .cli-grade-head .ttl{ flex:1; }
+    .cli-grade-head .ttl .l1{ font-size:13px; font-weight:900; line-height:1.2; }
+    .cli-grade-head .ttl .l2{ font-size:10px; opacity:.85; line-height:1.2; margin-top:2px; }
+    .cli-grade-head .x{
+      background:rgba(255,255,255,.2); border:none; color:#fff;
+      width:32px; height:32px; border-radius:50%; cursor:pointer;
+      font-size:18px; line-height:1;
+    }
+    .cli-grade-body{ flex:1; overflow-y:auto; padding:14px 14px 4px; }
+    .cli-grade-ajuda{
+      background:#f0fdf4; border:1px solid #bbf7d0; color:#15803d;
+      font-size:11px; font-weight:700; padding:8px 11px; border-radius:8px;
+      text-align:center; margin-bottom:14px;
+    }
+    /* Grid de tamanhos (calçados/vestuário) */
+    .cli-grade-grid{
+      display:grid; grid-template-columns:1fr 1fr; gap:8px;
+      margin-bottom:8px;
+    }
+    .cli-tam-box{
+      border:1px solid var(--line); border-radius:11px;
+      padding:10px;
+    }
+    .cli-tam-box.preenchido{
+      border:2px solid var(--accent); background:#fafff5; padding:9px;
+    }
+    .cli-tam-head{
+      display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:7px;
+    }
+    .cli-tam-num{ font-size:17px; font-weight:900; color:var(--text); }
+    .cli-tam-disp{ font-size:9.5px; color:var(--muted); }
+    .cli-tam-ctrl{ display:flex; gap:6px; }
+    .cli-tam-ctrl button,
+    .cli-tam-ctrl .qty{
+      flex:1; height:36px; border-radius:8px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:18px; font-weight:900;
+    }
+    .cli-tam-ctrl button{
+      border:1px solid var(--line); background:#fff; color:var(--text);
+      cursor:pointer;
+    }
+    .cli-tam-ctrl button.plus{
+      border-color:var(--accent); color:var(--accent);
+    }
+    .cli-tam-ctrl button:disabled{
+      background:#f8fafc; color:#cbd5e1; cursor:not-allowed;
+      border-color:var(--line);
+    }
+    .cli-tam-ctrl .qty{
+      color:var(--text); font-size:18px;
+    }
+    .cli-tam-box:not(.preenchido) .cli-tam-ctrl .qty{ color:#cbd5e1; }
+    /* Modal de quantidade única (acessórios) */
+    .cli-qty-only{
+      display:flex; flex-direction:column; align-items:center;
+      padding:8px 0 10px;
+    }
+    .cli-qty-only-label{
+      font-size:11px; font-weight:800; color:var(--muted);
+      text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px;
+    }
+    .cli-qty-stepper{
+      display:flex; align-items:center; gap:16px;
+    }
+    .cli-qty-stepper button{
+      width:54px; height:54px; border-radius:14px;
+      border:2px solid var(--line); background:#fff;
+      font-size:24px; font-weight:900; cursor:pointer;
+      color:var(--text);
+    }
+    .cli-qty-stepper button.plus{
+      border-color:var(--accent); color:var(--accent);
+    }
+    .cli-qty-stepper button:disabled{
+      opacity:.4; cursor:not-allowed;
+    }
+    .cli-qty-num{
+      font-size:42px; font-weight:900; color:var(--text);
+      min-width:90px; text-align:center; line-height:1;
+    }
+    .cli-qty-hint{
+      font-size:10.5px; color:var(--muted); margin-top:9px;
+    }
+    /* Footer do modal de grade */
+    .cli-grade-foot{
+      flex:0 0 auto; padding:12px 14px;
+      background:#0f172a;
+      display:flex; align-items:center; gap:12px;
+    }
+    .cli-grade-foot .tot{ flex:1; color:#fff; }
+    .cli-grade-foot .tot .l{
+      font-size:10px; color:#94a3b8; font-weight:700;
+      text-transform:uppercase; letter-spacing:.4px;
+    }
+    .cli-grade-foot .tot .v{ font-size:18px; font-weight:900; }
+    .cli-grade-foot .tot .v small{ font-size:11px; opacity:.7; font-weight:700; }
+    .cli-grade-foot .btn-ok{
+      background:var(--accent); color:#fff; border:none;
+      border-radius:9px; padding:11px 18px;
+      font-size:13px; font-weight:800; cursor:pointer;
+      display:inline-flex; align-items:center; gap:7px;
+    }
+    .cli-grade-foot .btn-ok:hover{ background:#6aa100; }
+
     .toast{ pointer-events:auto; min-width:220px; border-radius:14px; padding:10px 16px; font-size:13px; font-weight:700; }
     .toast-success{ background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
     .toast-error{ background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; }
@@ -313,6 +818,24 @@
       cursor:pointer; display:inline-flex; align-items:center; gap:5px;
     }
     .cart-clear-grade:hover{ background:#f1f5f9; color:var(--text); }
+    /* Atalho "aplicar data a todos" no topo da sacola */
+    .cart-data-todos{
+      display:flex; align-items:center; gap:8px;
+      background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px;
+      padding:9px 12px; margin-bottom:12px;
+      font-size:12px; color:#166534; font-weight:600;
+    }
+    .cart-data-todos.hidden{ display:none; }
+    .cart-data-todos i{ font-size:14px; color:#16a34a; }
+    .cart-data-todos input{
+      padding:6px 9px; border:1px solid #bbf7d0; border-radius:7px;
+      font-size:12px; background:#fff;
+    }
+    .cart-data-todos button{
+      background:#16a34a; color:#fff; border:none; border-radius:7px;
+      padding:7px 14px; font-size:11px; font-weight:800; cursor:pointer;
+    }
+    .cart-data-todos button:hover{ background:#15803d; }
     /* Mini-modal de confirmação */
     .confirm-card{
       background:#fff; border-radius:18px; padding:24px 22px;
@@ -396,6 +919,136 @@
       cursor:pointer; transition:border-color .15s;
     }
     .filtros-toggle:hover{ border-color:#94a3b8; }
+    /* Estado "tem resposta nova" — pulsa colorido */
+    .filtros-toggle.has-novas{
+      background:#fef2f2; border:1.5px solid #dc2626; color:#dc2626;
+      animation:pulseMP 1.4s ease-in-out infinite;
+    }
+    .filtros-toggle.has-novas .filtros-badge{
+      background:#dc2626; color:#fff;
+    }
+    @keyframes pulseMP{
+      0%, 100%{ box-shadow:0 0 0 0 rgba(220,38,38,.35); }
+      50%     { box-shadow:0 0 0 6px rgba(220,38,38,0); }
+    }
+    /* Modal Meus Pedidos */
+    .mp-bg{
+      position:fixed; inset:0; z-index:120;
+      background:rgba(15,23,42,.45); backdrop-filter:blur(2px);
+      display:flex; align-items:flex-end; justify-content:center; padding:0;
+    }
+    .mp-bg.hidden{ display:none; }
+    @media(min-width:640px){
+      .mp-bg{ align-items:center; padding:20px; }
+    }
+    .mp-card{
+      background:#fff; border-radius:18px 18px 0 0;
+      width:100%; max-width:560px; max-height:92vh;
+      display:flex; flex-direction:column;
+      box-shadow:0 -10px 40px rgba(0,0,0,.2);
+      animation:mpIn .25s ease-out;
+      overflow:hidden;
+    }
+    @media(min-width:640px){ .mp-card{ border-radius:18px; max-height:88vh; } }
+    @keyframes mpIn{ from{ transform:translateY(40px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+    .mp-head{
+      flex:0 0 auto; padding:14px 18px;
+      display:flex; align-items:center; gap:10px;
+      border-bottom:1px solid var(--line);
+    }
+    .mp-head .ic{
+      width:36px; height:36px; border-radius:9px;
+      background:#f1f5f9; color:#0f172a;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .mp-head .ttl{ flex:1; }
+    .mp-head .ttl .l1{ font-size:15px; font-weight:900; color:var(--text); }
+    .mp-head .ttl .l2{ font-size:11px; color:var(--muted); margin-top:1px; }
+    .mp-head .x{
+      background:none; border:none; color:var(--muted);
+      font-size:22px; cursor:pointer; line-height:1;
+    }
+    .mp-body{ flex:1; overflow-y:auto; padding:14px 18px; }
+    .mp-body .empty{
+      text-align:center; padding:40px 16px; color:var(--muted); font-size:13px;
+    }
+    /* Seletor de vendedor */
+    .mp-seletor{
+      padding:18px 4px;
+    }
+    .mp-seletor h4{ font-size:14px; font-weight:900; color:var(--text); margin-bottom:6px; }
+    .mp-seletor p{ font-size:12px; color:var(--muted); margin-bottom:14px; }
+    .mp-seletor select{
+      width:100%; padding:11px 12px; border:1px solid var(--line);
+      border-radius:10px; font-size:13px; background:#fff; color:var(--text);
+      margin-bottom:12px;
+    }
+    .mp-seletor .btn{
+      width:100%; background:#0f172a; color:#fff; border:none;
+      border-radius:11px; padding:12px; font-size:13px; font-weight:800;
+      cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:7px;
+    }
+    .mp-seletor .btn:hover{ background:#1e293b; }
+    /* Card de pedido na lista */
+    .mp-item{
+      border:1px solid var(--line); border-radius:11px;
+      padding:11px 13px; margin-bottom:8px;
+      display:flex; align-items:center; gap:10px;
+      transition:border-color .15s;
+    }
+    .mp-item:hover{ border-color:#94a3b8; }
+    .mp-item.resp{ border-color:#bbf7d0; background:#f0fdf4; }
+    .mp-item.resp:hover{ border-color:#86efac; }
+    .mp-item.exp{ border-color:#fed7aa; background:#fff7ed; }
+    .mp-item.conc{ border-color:#a78bfa; background:#f5f3ff; }
+    .mp-item.conc:hover{ border-color:#8b5cf6; }
+    .mp-chk{
+      width:18px; height:18px; flex-shrink:0;
+      accent-color:var(--accent); cursor:pointer;
+    }
+    .mp-item-info{ flex:1; min-width:0; }
+    .mp-item-cli{ font-size:13px; font-weight:900; color:var(--text); }
+    .mp-item-meta{ font-size:10px; color:var(--muted); margin-top:2px; }
+    .mp-item-status{
+      font-size:10px; font-weight:800; margin-top:3px; display:inline-flex; align-items:center; gap:4px;
+    }
+    .mp-item.resp .mp-item-status{ color:#15803d; }
+    .mp-item.aguardando .mp-item-status{ color:#475569; }
+    .mp-item.exp .mp-item-status{ color:#c2410c; }
+    .mp-item.conc .mp-item-status{ color:#6d28d9; }
+    .mp-item-actions{ display:flex; flex-direction:column; gap:5px; flex-shrink:0; }
+    .mp-btn{
+      border:none; border-radius:8px; padding:7px 12px;
+      font-size:11px; font-weight:800; cursor:pointer;
+      display:inline-flex; align-items:center; gap:5px; justify-content:center;
+    }
+    .mp-btn.primary{ background:#0034d8; color:#fff; }
+    .mp-btn.primary:hover{ background:#002cb8; }
+    .mp-btn.reativar{ background:#fff; color:#c2410c; border:1px solid #fed7aa; }
+    .mp-btn.reativar:hover{ background:#fff7ed; }
+    .mp-btn.ghost{ background:#fff; color:var(--muted); border:1px solid var(--line); }
+    .mp-btn.perigo{ background:#dc2626; color:#fff; }
+    .mp-btn.perigo:hover{ background:#b91c1c; }
+    /* Barra de seleção em lote */
+    .mp-barra-sel{
+      display:flex; align-items:center; gap:9px; padding:10px 12px;
+      background:#0f172a; color:#fff;
+      border-radius:11px; margin-bottom:10px;
+      animation:mpBarraIn .2s ease-out;
+    }
+    .mp-barra-sel.hidden{ display:none; }
+    .mp-barra-sel .mp-sel-info{
+      flex:1; font-size:12px; font-weight:700;
+    }
+    .mp-barra-sel .mp-sel-info b{ font-weight:900; }
+    @keyframes mpBarraIn{ from{ opacity:0; transform:translateY(-6px); } to{ opacity:1; transform:translateY(0); } }
+    .mp-foot{
+      flex:0 0 auto; padding:10px 18px; border-top:1px solid var(--line);
+      display:flex; justify-content:space-between; align-items:center;
+      font-size:11px; color:var(--muted); background:#f8fafc;
+    }
+    .mp-foot a{ color:var(--accent); cursor:pointer; font-weight:700; }
+    .mp-foot a:hover{ text-decoration:underline; }
     .filtros-badge{
       background:var(--accent); color:#fff;
       font-size:10px; font-weight:800;
@@ -491,6 +1144,80 @@
 
 <div id="toastWrap" class="toast-wrap"></div>
 
+<!-- ═══ MODO CLIENTE (oculto por padrão; aparece quando body.modo-cliente) ═══ -->
+<div id="modoClienteWrap" style="display:none">
+  <div id="cliLoading" class="cli-loading">
+    <i class="fa-solid fa-circle-notch fa-spin text-3xl" style="color:var(--accent)"></i>
+    <div class="mt-4 text-sm font-semibold" style="color:var(--muted)">Carregando seleção...</div>
+  </div>
+  <div id="cliErroNotFound" class="cli-erro hidden">
+    <div class="ic"><i class="fa-solid fa-link-slash"></i></div>
+    <h2>Link não encontrado</h2>
+    <p>Este link pode ter sido removido. Solicite um novo ao seu vendedor.</p>
+  </div>
+  <div id="cliErroExpirado" class="cli-erro hidden">
+    <div class="ic"><i class="fa-regular fa-clock"></i></div>
+    <h2>Link expirado</h2>
+    <p>Este link tinha validade de 48 horas. Peça ao seu vendedor para reativá-lo.</p>
+  </div>
+  <div id="cliConteudo" class="hidden">
+    <header class="cli-header" id="cliHeader">
+      <div class="cli-header-top">
+        <div class="logo-box" id="cliLogoBox">CMS</div>
+        <div class="titulo">
+          <div class="l1"><span id="cliNomeCliente">—</span></div>
+          <div class="l2"><span id="cliQtdProdutos">0</span> produtos · <span id="cliMarcaNome">—</span></div>
+        </div>
+      </div>
+    </header>
+    <div id="cliGrid" class="cli-grid"></div>
+  </div>
+  <div id="cliSucesso" class="cli-sucesso hidden">
+    <div class="ic"><i class="fa-solid fa-check"></i></div>
+    <h2>Seleção enviada!</h2>
+    <p>Seu vendedor já recebeu sua escolha. Em breve ele entrará em contato.</p>
+    <p style="margin-top:8px;font-size:12px">Você pode <b>revisar e reenviar</b> a qualquer momento (válido por 48h).</p>
+    <button class="btn" onclick="cliVoltarVitrine()">Revisar seleção</button>
+  </div>
+</div>
+<button id="cliFab" class="cli-fab hidden" onclick="cliEnviar()">
+  <i class="fa-solid fa-paper-plane"></i>
+  Enviar seleção <span class="badge" id="cliFabBadge">0</span>
+</button>
+<div id="cliZoomBg" class="cli-zoom-bg hidden" onclick="if(event.target===this)cliFecharZoom()">
+  <button class="cli-zoom-close" onclick="cliFecharZoom()">×</button>
+  <div class="cli-zoom-img"><img id="cliZoomImg" src="" alt=""></div>
+  <div class="cli-zoom-info">
+    <div class="n" id="cliZoomNome">—</div>
+    <div class="m" id="cliZoomMeta">—</div>
+  </div>
+</div>
+
+<!-- Modal de grade / quantidade do cliente -->
+<div id="cliGradeBg" class="cli-grade-bg hidden" onclick="if(event.target===this)cliFecharGrade(false)">
+  <div class="cli-grade-card">
+    <div class="cli-grade-head">
+      <div class="ttl">
+        <div class="l1" id="cliGradeTitulo">Detalhar grade</div>
+        <div class="l2" id="cliGradeSubt">—</div>
+      </div>
+      <button class="x" onclick="cliFecharGrade(false)">×</button>
+    </div>
+    <div class="cli-grade-body" id="cliGradeBody">
+      <!-- preenchido dinamicamente -->
+    </div>
+    <div class="cli-grade-foot">
+      <div class="tot">
+        <div class="l">TOTAL ESCOLHIDO</div>
+        <div class="v"><span id="cliGradeTot">0</span> <small id="cliGradeUnit">pares</small></div>
+      </div>
+      <button class="btn-ok" onclick="cliFecharGrade(true)">
+        <i class="fa-solid fa-check"></i> Confirmar
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Zoom -->
 <div id="modalZoom" class="modal-zoom hidden" onclick="fecharZoom()">
   <div class="modal-zoom-inner" onclick="event.stopPropagation()">
@@ -500,7 +1227,7 @@
 </div>
 
 <!-- Header -->
-<header class="main-header px-4 py-3 sm:px-6">
+<header id="headerVendedor" class="main-header px-4 py-3 sm:px-6">
   <div class="max-w-[1400px] mx-auto flex items-center justify-between gap-4 flex-wrap">
     <div class="flex items-center gap-3">
       <a href="index.html" style="color:var(--muted);display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;text-decoration:none" class="hover:text-slate-900" title="Voltar e trocar marca">
@@ -545,6 +1272,10 @@
       <button id="btnFiltros" onclick="abrirDrawerFiltros()" class="filtros-toggle">
         <i class="fa-solid fa-sliders"></i> Filtros
         <span id="filtrosBadge" class="filtros-badge hidden">0</span>
+      </button>
+      <button id="btnMeusPedidos" onclick="abrirMeusPedidos()" class="filtros-toggle meus-pedidos-btn">
+        <i class="fa-solid fa-clipboard-list"></i> Meus Pedidos
+        <span id="meusPedidosBadge" class="filtros-badge hidden">0</span>
       </button>
       <div id="chipsAtivos" class="flex flex-wrap gap-1.5"></div>
       <div class="ml-auto flex items-center gap-3">
@@ -645,6 +1376,88 @@
   Gerar PDF <span id="fabCount" class="bg-slate-900 text-[var(--accent)] text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
 </button>
 
+<!-- FAB Gerar Link (acima do PDF) -->
+<button class="fab-link" id="fabLink" onclick="abrirGerarLink()">
+  <i class="fa-solid fa-link"></i>
+  Gerar link <span id="fabLinkCount" class="bg-white text-slate-900 text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
+</button>
+
+<!-- Modal: Gerar Link (formulário) -->
+<div id="modalGerarLink" class="link-modal-bg hidden" onclick="if(event.target===this)fecharGerarLink()">
+  <div class="link-modal-card">
+    <div class="link-modal-head">
+      <div class="ico"><i class="fa-solid fa-link"></i></div>
+      <h3>Gerar link para cliente</h3>
+      <button class="x" onclick="fecharGerarLink()">×</button>
+    </div>
+    <div class="info-meta"><b id="gerarLinkQtd">0</b> produto(s) selecionado(s)</div>
+    <label>Vendedor</label>
+    <select id="linkVendedor"></select>
+    <label>Nome ou código do cliente</label>
+    <input id="linkCliente" type="text" placeholder="Ex: Loja Pé Quente" autocomplete="off">
+    <button class="btn-primary" id="btnConfirmarLink" onclick="criarLinkVitrine()">
+      <i class="fa-solid fa-link"></i> Gerar link
+    </button>
+  </div>
+</div>
+
+<!-- Modal: Link criado (sucesso) -->
+<div id="modalLinkOk" class="link-modal-bg hidden" onclick="if(event.target===this)fecharLinkOk()">
+  <div class="link-modal-card">
+    <div class="link-ok-icon"><i class="fa-solid fa-check"></i></div>
+    <div style="text-align:center; font-size:16px; font-weight:900; color:var(--text);">Link criado!</div>
+    <div style="text-align:center; font-size:12px; color:var(--muted); margin-top:4px;">
+      para <b id="linkOkCliente" style="color:var(--text)">—</b> · <b id="linkOkQtd">0</b> produtos
+    </div>
+    <div class="link-display" id="linkOkUrl">—</div>
+    <div class="link-btns">
+      <button class="link-btn copy" onclick="copiarLinkVitrine()">
+        <i class="fa-solid fa-copy"></i> Copiar
+      </button>
+      <button class="link-btn whats" onclick="abrirWhatsAppLink()">
+        <i class="fa-brands fa-whatsapp"></i> WhatsApp
+      </button>
+    </div>
+    <div class="link-expira"><i class="fa-regular fa-clock"></i> Expira em 48 horas</div>
+  </div>
+</div>
+
+<!-- Modal: Meus Pedidos -->
+<div id="modalMeusPedidos" class="mp-bg hidden" onclick="if(event.target===this)fecharMeusPedidos()">
+  <div class="mp-card">
+    <div class="mp-head">
+      <div class="ic"><i class="fa-solid fa-clipboard-list"></i></div>
+      <div class="ttl">
+        <div class="l1">Meus Pedidos</div>
+        <div class="l2" id="mpSubtitulo">Links que você compartilhou com clientes</div>
+      </div>
+      <button class="x" onclick="fecharMeusPedidos()">×</button>
+    </div>
+    <div class="mp-body">
+      <!-- Tela 1: seletor de vendedor (1ª vez) -->
+      <div id="mpSeletorVendedor" class="mp-seletor hidden">
+        <h4>Quem é você?</h4>
+        <p>Selecione seu nome para ver os links que você gerou.</p>
+        <select id="mpVendedorSelect"></select>
+        <button class="btn" onclick="mpConfirmarVendedor()">
+          <i class="fa-solid fa-arrow-right"></i> Ver meus pedidos
+        </button>
+      </div>
+      <!-- Tela 2: lista de pedidos -->
+      <div id="mpLista" class="hidden"></div>
+      <!-- Loading -->
+      <div id="mpLoading" class="empty hidden">
+        <i class="fa-solid fa-circle-notch fa-spin text-2xl" style="color:var(--accent)"></i>
+        <div class="mt-3">Carregando...</div>
+      </div>
+    </div>
+    <div class="mp-foot">
+      <div><span id="mpVendedorAtual">—</span></div>
+      <a onclick="mpTrocarVendedor()">Trocar vendedor</a>
+    </div>
+  </div>
+</div>
+
 <!-- ── FAB Sacola ──────────────────────────────────────────────────────── -->
 <button id="cartFab" class="fab-cart" onclick="abrirSacola()" title="Abrir sacola">
   <i class="fa-solid fa-bag-shopping"></i>
@@ -660,6 +1473,13 @@
       <button class="btn-x" onclick="fecharSacola()">×</button>
     </div>
     <div class="modal-body">
+      <!-- Atalho: aplicar mesma data a todos -->
+      <div id="cartDataTodos" class="cart-data-todos hidden">
+        <i class="fa-regular fa-calendar"></i>
+        <span>Aplicar a mesma data desejada a todos:</span>
+        <input type="date" id="cartDataTodosInput">
+        <button onclick="cartAplicarDataATodos()">Aplicar</button>
+      </div>
       <div id="cartItems"></div>
     </div>
     <div class="modal-foot">
@@ -739,13 +1559,21 @@
 const WORKER_URL  = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
 const IMG_BASE    = '../Catalogo/';
 
-// ── MARCA ATIVA (vem da URL ?marca=oly|ua) ───────────────────────────────────
-// Sem o parâmetro, redireciona para o splash de seleção.
+// ── DETECÇÃO DE MODO ─────────────────────────────────────────────────────────
+// Se houver ?link=XXX → modo CLIENTE (vê seleção que o vendedor mandou)
+// Se houver ?marca=oly|ua → modo VENDEDOR (vitrine normal)
 const _params = new URLSearchParams(location.search);
-const MARCA_ATIVA = String(_params.get('marca') || '').toLowerCase();
-if(MARCA_ATIVA !== 'oly' && MARCA_ATIVA !== 'ua'){
+const LINK_CODIGO = String(_params.get('link') || '').toUpperCase().trim();
+const MODO_CLIENTE = LINK_CODIGO.length >= 4;
+
+// Marca ATIVA — no modo vendedor vem da URL; no modo cliente vem do link salvo.
+let MARCA_ATIVA = String(_params.get('marca') || '').toLowerCase();
+if(!MODO_CLIENTE && MARCA_ATIVA !== 'oly' && MARCA_ATIVA !== 'ua'){
   location.replace('index.html');
 }
+// No modo cliente, MARCA_ATIVA será setada quando o link carregar.
+// Provisório pra não quebrar referências que usam essa const antes do load:
+if(MODO_CLIENTE && !MARCA_ATIVA) MARCA_ATIVA = 'oly';
 
 // Identidade visual oficial de cada marca + logo embutido
 const MARCA_INFO = {
@@ -944,6 +1772,7 @@ async function loadData(){
 
     STATE.itens = itens
       .filter(i => !i._oculto)
+      .filter(i => !i._aguardandoImagem)  // produtos aguardando imagem não aparecem
       .filter(i => !ocultosSet.has(ocultarKey(i)))
       // Filtra pela marca ativa (vem da URL) — produtos de outras marcas não entram
       .filter(i => String(i.marca||'').trim().toLowerCase() === MARCA_ATIVA)
@@ -1406,9 +2235,563 @@ function atualizarFAB(){
   const n = STATE.selecionados.size;
   const fab = $('fabPDF');
   if(fab) fab.classList.toggle('visivel', n > 0);
-  if($('fabCount'))  $('fabCount').textContent  = n;
+  if($('fabCount')) $('fabCount').textContent = n;
+  // FAB Gerar Link aparece junto
+  const fabL = $('fabLink');
+  if(fabL) fabL.classList.toggle('visivel', n > 0);
+  if($('fabLinkCount')) $('fabLinkCount').textContent = n;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ── GERAR LINK COMPARTILHADO (modo vendedor) ───────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+const LINK_VEND_LS = 'vitrine_link_vendedor_v1'; // último vendedor escolhido
+let _linkGerado = null; // { codigo, url, cliente, qtd }
+
+function abrirGerarLink(){
+  const n = STATE.selecionados.size;
+  if(!n){ showToast('Selecione ao menos um produto.','info'); return; }
+
+  // Popular select de vendedor
+  const sel = $('linkVendedor');
+  const ultimo = localStorage.getItem(LINK_VEND_LS) || '';
+  sel.innerHTML = '<option value="">— Selecione —</option>' +
+    ORDER_COMMISSION_OPTIONS.map(c => {
+      const sel = (c.codigo === ultimo) ? ' selected' : '';
+      return `<option value="${safeHtml(c.codigo)}" data-nome="${safeHtml(c.nome)}"${sel}>${safeHtml(c.codigo)} – ${safeHtml(c.nome)}</option>`;
+    }).join('');
+
+  $('linkCliente').value = '';
+  $('gerarLinkQtd').textContent = n;
+  ['linkVendedor','linkCliente'].forEach(id => $(id)?.classList.remove('invalid'));
+  $('modalGerarLink').classList.remove('hidden');
+  setTimeout(() => $('linkCliente').focus(), 100);
+}
+function fecharGerarLink(){ $('modalGerarLink').classList.add('hidden'); }
+
+async function criarLinkVitrine(){
+  const sel = $('linkVendedor');
+  const inp = $('linkCliente');
+  const vendedor = sel.value || '';
+  const cliente  = (inp.value || '').trim();
+
+  // Validação
+  ['linkVendedor','linkCliente'].forEach(id => $(id)?.classList.remove('invalid'));
+  let primeiroErro = null;
+  if(!vendedor){ sel.classList.add('invalid'); primeiroErro = sel; }
+  if(!cliente){  inp.classList.add('invalid'); if(!primeiroErro) primeiroErro = inp; }
+  if(primeiroErro){
+    showToast('Preencha vendedor e cliente.', 'error');
+    primeiroErro.focus();
+    return;
+  }
+
+  // Coleta produtos selecionados (do STATE.itens, não filtrados)
+  const produtos = STATE.itens
+    .filter(i => STATE.selecionados.has(prodKey(i)))
+    .map(i => ({
+      artigo:       i.artigo,
+      cor:          i.cor,
+      descricao:    i.descricao,
+      categoria:    i.categoria,
+      linha:        i.linha,
+      genero:       i.genero,
+      empresa:      i.empresa,
+      pdv:          i.pdv,
+      grade:        i.grade || {},
+      codigoTabela: i.codigoTabela || '',
+      mkp:          i.mkp || '',
+      custo:        i.custo || ''
+    }));
+
+  if(!produtos.length){
+    showToast('Nenhum produto selecionado.', 'error');
+    return;
+  }
+
+  // Pega o nome do vendedor
+  const opt = sel.options[sel.selectedIndex];
+  const vendedorNome = opt?.dataset?.nome || '';
+
+  // Estado de loading no botão
+  const btn = $('btnConfirmarLink');
+  const prev = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Gerando...';
+
+  try{
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        action: 'criarLink',
+        data: {
+          vendedor, vendedorNome, cliente,
+          marca: MARCA_ATIVA,
+          produtos
+        }
+      })
+    });
+    const json = await res.json();
+    if(!res.ok || !json.success || !json.codigo){
+      throw new Error(json.erro || ('Worker ' + res.status));
+    }
+
+    // Salva último vendedor pra próxima vez
+    localStorage.setItem(LINK_VEND_LS, vendedor);
+
+    // Monta URL pública — aponta para vitrine-cliente.html
+    const base = location.origin + location.pathname.replace(/\/[^\/]*$/, '/');
+    const url  = `${base}vitrine-cliente.html?link=${json.codigo}`;
+    _linkGerado = { codigo: json.codigo, url, cliente, qtd: produtos.length };
+
+    // Fecha o modal de formulário, abre o de sucesso
+    fecharGerarLink();
+    mostrarLinkOk();
+  }catch(e){
+    console.error(e);
+    showToast('Erro ao gerar link: ' + (e.message || ''), 'error');
+  }finally{
+    btn.disabled = false;
+    btn.innerHTML = prev;
+  }
+}
+
+function mostrarLinkOk(){
+  if(!_linkGerado) return;
+  $('linkOkCliente').textContent = _linkGerado.cliente;
+  $('linkOkQtd').textContent     = _linkGerado.qtd;
+  // mostra a URL com o código destacado
+  const u = _linkGerado.url;
+  const codPart = `?link=${_linkGerado.codigo}`;
+  if(u.endsWith(codPart)){
+    const base = u.slice(0, u.length - codPart.length);
+    $('linkOkUrl').innerHTML = `${safeHtml(base)}?link=<b>${safeHtml(_linkGerado.codigo)}</b>`;
+  } else {
+    $('linkOkUrl').textContent = u;
+  }
+  $('modalLinkOk').classList.remove('hidden');
+}
+function fecharLinkOk(){ $('modalLinkOk').classList.add('hidden'); }
+
+async function copiarLinkVitrine(){
+  if(!_linkGerado) return;
+  try{
+    await navigator.clipboard.writeText(_linkGerado.url);
+    showToast('Link copiado!', 'success');
+  }catch(e){
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = _linkGerado.url;
+    document.body.appendChild(ta);
+    ta.select();
+    try{ document.execCommand('copy'); showToast('Link copiado!', 'success'); }
+    catch(_){ showToast('Não foi possível copiar.', 'error'); }
+    document.body.removeChild(ta);
+  }
+}
+
+function abrirWhatsAppLink(){
+  if(!_linkGerado) return;
+  const msg = `Olá! Separei alguns produtos pra você ver: ${_linkGerado.url}\n\n_Link válido por 48h._`;
+  const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── MEUS PEDIDOS (vendedor — gerência dos links criados) ──────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+const MP_VEND_LS    = 'vitrine_mp_vendedor_v1';        // código do vendedor logado
+const MP_VISTOS_LS  = (v) => `vitrine_mp_vistos_${v}`; // códigos de links já vistos (pra pulsar)
+const MP_NOVAS = { count: 0 };                          // contagem atual
+let   _mpSelecionados = new Set();                      // códigos marcados pelos checkboxes
+let   _mpLinksAtuais = [];                              // últimos links carregados (pra apagar/etc)
+
+// Toggle de checkbox
+function mpToggleSel(codigo, checado){
+  if(checado) _mpSelecionados.add(codigo);
+  else _mpSelecionados.delete(codigo);
+  mpAtualizarBarraSel();
+}
+
+// Renderiza a barra de ações em lote
+function mpAtualizarBarraSel(){
+  const bar = $('mpBarraSel');
+  if(!bar) return;
+  const n = _mpSelecionados.size;
+  if(n === 0){ bar.classList.add('hidden'); bar.innerHTML = ''; return; }
+  bar.classList.remove('hidden');
+  bar.innerHTML = `
+    <div class="mp-sel-info"><b>${n}</b> selecionado${n>1?'s':''}</div>
+    <button class="mp-btn ghost" onclick="mpDesselecionarTudo()">
+      Cancelar
+    </button>
+    <button class="mp-btn perigo" onclick="mpApagarSelecionados()">
+      <i class="fa-solid fa-trash"></i> Apagar
+    </button>
+  `;
+}
+
+function mpDesselecionarTudo(){
+  _mpSelecionados.clear();
+  document.querySelectorAll('.mp-chk').forEach(c => c.checked = false);
+  mpAtualizarBarraSel();
+}
+
+function mpApagarSelecionados(){
+  const cods = [..._mpSelecionados];
+  if(!cods.length) return;
+  abrirConfirm(
+    `Apagar ${cods.length} link${cods.length>1?'s':''}?`,
+    `Os links e suas respostas serão removidos permanentemente. Esta ação não pode ser desfeita.`,
+    async () => {
+      try{
+        const res = await fetch(WORKER_URL, {
+          method:'PATCH',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ action:'apagarLinks', codigos: cods })
+        });
+        const json = await res.json();
+        if(!json.success) throw new Error('falha');
+        showToast(`${json.apagados || cods.length} link(s) apagado(s)`, 'success');
+        _mpSelecionados.clear();
+        mpCarregarLista(_mpVendedorAtual());
+      }catch(e){
+        console.error(e);
+        showToast('Erro ao apagar.', 'error');
+      }
+    }
+  );
+}
+
+function _mpVendedorAtual(){
+  return localStorage.getItem(MP_VEND_LS) || '';
+}
+
+function _mpVendedorNome(codigo){
+  const o = ORDER_COMMISSION_OPTIONS.find(c => c.codigo === codigo);
+  return o ? o.nome : codigo;
+}
+
+// Checagem em background: ao abrir a vitrine, vê se há respostas novas
+async function mpVerificarNovas(){
+  const v = _mpVendedorAtual();
+  if(!v) return; // ainda não escolheu vendedor
+  try{
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'getLinksVendedor', vendedor: v })
+    });
+    const json = await res.json();
+    if(!json.success || !Array.isArray(json.links)) return;
+    // Quais já foram vistos?
+    let vistos = [];
+    try{ vistos = JSON.parse(localStorage.getItem(MP_VISTOS_LS(v)) || '[]') || []; }catch(e){}
+    const setVistos = new Set(vistos);
+    // Novas = respondidas mas ainda não vistas
+    const novas = json.links.filter(l => l.status === 'respondido' && !setVistos.has(l.codigo));
+    MP_NOVAS.count = novas.length;
+    mpAtualizarBadgeBotao();
+  }catch(e){
+    // silencioso — não vamos quebrar a vitrine
+    console.warn('mpVerificarNovas', e);
+  }
+}
+
+// Atualiza o estado visual do botão "Meus Pedidos"
+function mpAtualizarBadgeBotao(){
+  const btn = $('btnMeusPedidos');
+  const badge = $('meusPedidosBadge');
+  if(!btn || !badge) return;
+  if(MP_NOVAS.count > 0){
+    btn.classList.add('has-novas');
+    badge.classList.remove('hidden');
+    badge.textContent = MP_NOVAS.count;
+  } else {
+    btn.classList.remove('has-novas');
+    badge.classList.add('hidden');
+  }
+}
+
+function abrirMeusPedidos(){
+  $('modalMeusPedidos').classList.remove('hidden');
+  const v = _mpVendedorAtual();
+  if(!v){
+    mpMostrarSeletor();
+  } else {
+    mpCarregarLista(v);
+  }
+}
+function fecharMeusPedidos(){ $('modalMeusPedidos').classList.add('hidden'); }
+
+function mpMostrarSeletor(){
+  $('mpSeletorVendedor').classList.remove('hidden');
+  $('mpLista').classList.add('hidden');
+  $('mpLoading').classList.add('hidden');
+  $('mpSubtitulo').textContent = 'Escolha seu nome para começar';
+  $('mpVendedorAtual').textContent = '';
+  const sel = $('mpVendedorSelect');
+  sel.innerHTML = '<option value="">— Selecione —</option>' +
+    ORDER_COMMISSION_OPTIONS.map(c =>
+      `<option value="${safeHtml(c.codigo)}">${safeHtml(c.codigo)} – ${safeHtml(c.nome)}</option>`
+    ).join('');
+}
+
+function mpConfirmarVendedor(){
+  const v = $('mpVendedorSelect').value;
+  if(!v){ showToast('Selecione um vendedor', 'info'); return; }
+  localStorage.setItem(MP_VEND_LS, v);
+  mpCarregarLista(v);
+}
+
+function mpTrocarVendedor(){
+  abrirConfirm(
+    'Trocar de vendedor?',
+    'Você precisará selecionar seu nome novamente para ver os pedidos.',
+    () => {
+      localStorage.removeItem(MP_VEND_LS);
+      mpMostrarSeletor();
+    }
+  );
+}
+
+async function mpCarregarLista(vendedor){
+  $('mpSeletorVendedor').classList.add('hidden');
+  $('mpLista').classList.add('hidden');
+  $('mpLoading').classList.remove('hidden');
+  $('mpVendedorAtual').innerHTML = `<b>${safeHtml(_mpVendedorNome(vendedor))}</b> · cód. ${safeHtml(vendedor)}`;
+  $('mpSubtitulo').textContent = 'Links que você compartilhou com clientes';
+
+  try{
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'getLinksVendedor', vendedor })
+    });
+    const json = await res.json();
+    if(!json.success) throw new Error('falha');
+    const links = json.links || [];
+    mpRenderLista(links);
+    // Marca todos como "vistos" (zera o pulsar) — após abrir o modal
+    const codigos = links.map(l => l.codigo);
+    localStorage.setItem(MP_VISTOS_LS(vendedor), JSON.stringify(codigos));
+    MP_NOVAS.count = 0;
+    mpAtualizarBadgeBotao();
+  }catch(e){
+    console.error(e);
+    showToast('Erro ao carregar pedidos.', 'error');
+  }finally{
+    $('mpLoading').classList.add('hidden');
+    $('mpLista').classList.remove('hidden');
+  }
+}
+
+function mpRenderLista(links){
+  const wrap = $('mpLista');
+  if(!links.length){
+    wrap.innerHTML = '<div class="empty"><i class="fa-regular fa-folder-open text-2xl"></i><div class="mt-3">Nenhum link gerado ainda.</div></div>';
+    _mpSelecionados.clear();
+    mpAtualizarBarraSel();
+    return;
+  }
+  // Ordena: respondidos primeiro, depois aguardando, depois concluídos, depois expirados
+  const ordem = { 'respondido':0, 'aguardando':1, 'concluido':2, 'expirado':3 };
+  const itens = links.slice().sort((a,b) => {
+    const sa = a.expirado ? 'expirado' : a.status;
+    const sb = b.expirado ? 'expirado' : b.status;
+    return (ordem[sa]||9) - (ordem[sb]||9);
+  });
+
+  _mpLinksAtuais = itens;
+  // Tira dos selecionados os que não existem mais
+  const setCods = new Set(itens.map(l => l.codigo));
+  for(const c of [..._mpSelecionados]) if(!setCods.has(c)) _mpSelecionados.delete(c);
+
+  wrap.innerHTML = `
+    <div id="mpBarraSel" class="mp-barra-sel hidden"></div>
+    ${itens.map(l => mpItemHtml(l)).join('')}
+  `;
+  mpAtualizarBarraSel();
+}
+
+function mpItemHtml(l){
+  const expirou = l.expirado && l.status !== 'concluido';
+  const respondido = l.status === 'respondido' && !expirou;
+  const concluido  = l.status === 'concluido';
+  const aguardando = !respondido && !concluido && !expirou;
+  const cls = concluido ? 'conc' : (respondido ? 'resp' : (expirou ? 'exp' : 'aguardando'));
+  const checado = _mpSelecionados.has(l.codigo);
+
+  // Texto de status
+  let statusHtml = '';
+  if(concluido){
+    statusHtml = `<i class="fa-solid fa-circle-check"></i> Pedido gerado · ${l.qtdResposta || 0} item(ns)`;
+  } else if(respondido){
+    statusHtml = `<i class="fa-solid fa-circle-check"></i> Respondido · ${l.qtdResposta || 0} item(ns)`;
+  } else if(expirou){
+    statusHtml = `<i class="fa-regular fa-clock"></i> Link expirado`;
+  } else {
+    const restMs = (l.expiraEm || 0) - Date.now();
+    const restH = Math.max(0, Math.floor(restMs/3600000));
+    statusHtml = `<i class="fa-regular fa-clock"></i> Aguardando · ${restH}h restantes`;
+  }
+
+  // Botões de ação
+  let actionsHtml = '';
+  if(concluido){
+    actionsHtml = `<button class="mp-btn ghost" onclick="mpAbrirResposta('${safeHtml(l.codigo)}')">
+      <i class="fa-solid fa-eye"></i> Ver
+    </button>`;
+  } else if(respondido){
+    actionsHtml = `<button class="mp-btn primary" onclick="mpAbrirResposta('${safeHtml(l.codigo)}')">
+      <i class="fa-solid fa-arrow-right"></i> Abrir
+    </button>`;
+  } else if(expirou){
+    actionsHtml = `<button class="mp-btn reativar" onclick="mpReativar('${safeHtml(l.codigo)}',this)">
+      <i class="fa-solid fa-rotate"></i> +48h
+    </button>`;
+  } else {
+    actionsHtml = `<button class="mp-btn ghost" onclick="mpCopiarLink('${safeHtml(l.codigo)}')" title="Copiar link">
+      <i class="fa-solid fa-copy"></i>
+    </button>`;
+  }
+
+  const marcaIcone = (l.marca === 'oly') ? '🟦' : (l.marca === 'ua' ? '🟥' : '');
+  return `
+    <div class="mp-item ${cls}" data-codigo="${safeHtml(l.codigo)}">
+      <input type="checkbox" class="mp-chk" ${checado?'checked':''} onchange="mpToggleSel('${safeHtml(l.codigo)}',this.checked)">
+      <div class="mp-item-info">
+        <div class="mp-item-cli">${marcaIcone} ${safeHtml(l.cliente || '—')}</div>
+        <div class="mp-item-meta">cód. ${safeHtml(l.codigo)} · ${l.qtdProdutos} produto(s) · ${mpFormatarData(l.criadoEm)}</div>
+        <div class="mp-item-status">${statusHtml}</div>
+      </div>
+      <div class="mp-item-actions">${actionsHtml}</div>
+    </div>`;
+}
+
+function mpFormatarData(ms){
+  if(!ms) return '';
+  const d = new Date(Number(ms));
+  const pad = n => String(n).padStart(2,'0');
+  return `${pad(d.getDate())}/${pad(d.getMonth()+1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+async function mpCopiarLink(codigo){
+  const base = location.origin + location.pathname.replace(/\/[^\/]*$/, '/');
+  const url  = `${base}vitrine-cliente.html?link=${codigo}`;
+  try{
+    await navigator.clipboard.writeText(url);
+    showToast('Link copiado!', 'success');
+  }catch(e){
+    showToast('Não foi possível copiar.', 'error');
+  }
+}
+
+async function mpReativar(codigo, btn){
+  const prev = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+  try{
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'reativarLink', codigo })
+    });
+    const json = await res.json();
+    if(!json.success) throw new Error('falha');
+    showToast('Link reativado por +48h', 'success');
+    // recarrega a lista
+    mpCarregarLista(_mpVendedorAtual());
+  }catch(e){
+    console.error(e);
+    showToast('Erro ao reativar.', 'error');
+    btn.disabled = false;
+    btn.innerHTML = prev;
+  }
+}
+
+// Abrir resposta do cliente → joga na sacola → exporta XLSX
+async function mpAbrirResposta(codigo){
+  try{
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'getLinkCompleto', codigo })
+    });
+    const json = await res.json();
+    if(!json.success || !json.link) throw new Error('falha');
+    const link = json.link;
+    if(!link.resposta || !Array.isArray(link.resposta.itens) || !link.resposta.itens.length){
+      showToast('Este link ainda não tem resposta.', 'info');
+      return;
+    }
+    // Confirma com o vendedor
+    const cli = link.cliente || '(cliente)';
+    const qtd = link.resposta.itens.length;
+    abrirConfirm(
+      `Carregar pedido de ${cli}?`,
+      `${qtd} item(ns) serão carregados na sacola. A sacola atual da marca ${(link.marca||'').toUpperCase()} será substituída.`,
+      () => mpCarregarRespostaNaSacola(link)
+    );
+  }catch(e){
+    console.error(e);
+    showToast('Erro ao carregar a resposta.', 'error');
+  }
+}
+
+function mpCarregarRespostaNaSacola(link){
+  const marca = link.marca || MARCA_ATIVA;
+  // Se a marca não bate, redireciona pra vitrine certa
+  if(marca !== MARCA_ATIVA){
+    abrirConfirm(
+      `Pedido de marca diferente`,
+      `Este pedido é da marca ${marca.toUpperCase()}. Deseja trocar de marca agora?`,
+      () => {
+        const tmpKey = `cart_v1_${marca}_load`;
+        sessionStorage.setItem(tmpKey, JSON.stringify({ cliente:link.cliente, itens:link.resposta.itens, codigo:link.codigo || '' }));
+        location.href = `vitrine.html?marca=${marca}&loadResp=1`;
+      }
+    );
+    return;
+  }
+  // Mesma marca: substitui a sacola atual
+  STATE.cart.clear();
+  // Guarda o código do link carregado — assim que exportar XLSX, marca como concluído
+  STATE.linkOrigem = link.codigo || null;
+  for(const it of link.resposta.itens){
+    // Mapeia pro formato esperado pela sacola
+    // Precisamos da disponibilidade do produto (da vitrine) — busca em STATE.itens
+    const prodVitrine = STATE.itens.find(i =>
+      String(i.artigo||'').toUpperCase() === String(it.artigo||'').toUpperCase() &&
+      String(i.cor||'').toUpperCase() === String(it.cor||'').toUpperCase()
+    );
+    const key = `${String(it.artigo||'').toUpperCase()}|${String(it.cor||'').toUpperCase()}`;
+    STATE.cart.set(key, {
+      key,
+      artigo:     it.artigo,
+      codigo:     it.artigo,
+      cor:        it.cor,
+      corCodigo:  it.cor,
+      descricao:  it.descricao,
+      produto:    it.descricao,
+      categoria:  it.categoria || (prodVitrine?.categoria || ''),
+      linha:      prodVitrine?.linha || '',
+      genero:     prodVitrine?.genero || '',
+      gradeDisp:  prodVitrine?.grade || {},
+      gradePedido: it.grade || {},
+      dataDesejada: '',
+      pedidoCliente: ''
+    });
+  }
+  saveCartToStorage();
+  atualizarFabContador();
+  fecharMeusPedidos();
+  abrirSacola();
+  showToast(`Sacola carregada com ${link.resposta.itens.length} item(ns) do cliente "${link.cliente}"`, 'success');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // ── ZOOM ──────────────────────────────────────────────────────────────────────
 function abrirZoom(src){
   $('zoomImg').src = src;
@@ -1472,7 +2855,16 @@ async function loadImgForPdfCrop(dataUrl){
 
 // ── GERAR PDF ─────────────────────────────────────────────────────────────────
 async function gerarPDF(){
-  const selecionados = STATE.filtrados.filter(i => STATE.selecionados.has(prodKey(i)));
+  // Lê de STATE.itens (todos) — seleções valem em qualquer filtro,
+  // não só no que está ativo na tela.
+  const selecionados = STATE.itens
+    .filter(i => STATE.selecionados.has(prodKey(i)))
+    .sort((a,b) => {
+      // agrupa por categoria, depois por nome
+      const ca = categoriaKey(a.categoria), cb = categoriaKey(b.categoria);
+      if(ca !== cb) return ca.localeCompare(cb);
+      return String(a.descricao||'').localeCompare(String(b.descricao||''));
+    });
   if(!selecionados.length){ showToast('Selecione ao menos um produto.','info'); return; }
 
   const fab = $('fabPDF');
@@ -1482,187 +2874,249 @@ async function gerarPDF(){
 
   try{
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation:'landscape', unit:'pt', format:'a4', compress:true });
+    const doc = new jsPDF({ orientation:'portrait', unit:'pt', format:'a4', compress:true });
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
 
     const now = new Date();
     const pad = n => String(n).padStart(2,'0');
-    const dateStr = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const dateStr = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()}`;
 
-    const margin   = 28;
-    const contentW = pageW - margin*2;
-    const headerH  = 38;
-    const bodyY    = headerH + 10;
-    const bodyH    = pageH - bodyY - 10;
-    const cardH    = Math.floor((bodyH-8)/2);
-
-    // Cores — verde limão para disponibilidades
+    // Cor da marca ativa
+    const info = MARCA_INFO[MARCA_ATIVA] || {};
+    const hexToRgb = (h) => {
+      const m = String(h||'').replace('#','').match(/.{2}/g) || ['00','00','00'];
+      return m.map(x => parseInt(x,16));
+    };
     const C = {
-      green:  [125, 184, 0],
+      brand:  hexToRgb(info.bgMarca || '#0034d8'),   // azul OLY / vermelho UA
+      accent: hexToRgb(info.accent  || '#7db800'),   // verde OLY / vermelho UA
       text:   [15, 23, 42],
       muted:  [100, 116, 139],
       border: [226, 232, 240],
       bg:     [248, 250, 252],
       white:  [255, 255, 255],
+      faint:  [203, 213, 225]
     };
     const sc = (rgb, type='text') => {
-      if(type==='fill')      doc.setFillColor(...rgb);
-      else if(type==='draw') doc.setDrawColor(...rgb);
-      else                   doc.setTextColor(...rgb);
+      if(type==='fill')      doc.setFillColor(rgb[0],rgb[1],rgb[2]);
+      else if(type==='draw') doc.setDrawColor(rgb[0],rgb[1],rgb[2]);
+      else                   doc.setTextColor(rgb[0],rgb[1],rgb[2]);
     };
 
-    function drawHeader(){
-      sc(C.green,'fill');
+    const margin   = 32;
+    const contentW = pageW - margin*2;
+    const headerH  = 58;
+
+    // ── Cabeçalho ──────────────────────────────────────────────────────────
+    function drawHeader(pageNum){
+      sc(C.brand,'fill');
       doc.rect(0,0,pageW,headerH,'F');
-      doc.setFont('helvetica','bold'); doc.setFontSize(13);
+      // faixa de acento na base
+      sc(C.accent,'fill');
+      doc.rect(0,headerH,pageW,3,'F');
+      // caixinha do logo
+      doc.setFillColor(255,255,255);
+      doc.setGState(new doc.GState({opacity:0.15}));
+      doc.roundedRect(margin, 13, 32, 32, 7, 7, 'F');
+      doc.setGState(new doc.GState({opacity:1}));
+      doc.setDrawColor(255,255,255);
+      doc.setLineWidth(0.6);
+      doc.roundedRect(margin, 13, 32, 32, 7, 7, 'S');
       doc.setTextColor(255,255,255);
-      doc.text('Catálogo Olympikus — Disponibilidades', margin, 24);
-      doc.setFont('helvetica','normal'); doc.setFontSize(9);
-      doc.setTextColor(220,255,150);
-      doc.text(dateStr, pageW-margin, 24, {align:'right'});
+      doc.setFont('helvetica','bold'); doc.setFontSize(11);
+      doc.text('CMS', margin+16, 33, {align:'center'});
+      // textos
+      const tx = margin + 44;
+      doc.setTextColor(255,255,255);
+      doc.setFont('helvetica','bold'); doc.setFontSize(14);
+      doc.text('CMS Representações', tx, 27);
+      doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+      doc.setTextColor(210,220,250);
+      doc.text(`CATÁLOGO DE DISPONIBILIDADES · ${(info.nome||'').toUpperCase()}`, tx, 40);
+      // data à direita
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+      doc.setTextColor(210,220,250);
+      doc.text(dateStr, pageW-margin, 27, {align:'right'});
       sc(C.text);
     }
 
-    const imgAreaW  = 560;
-    const infoGap   = 14;
-    const infoAreaX = margin + imgAreaW + infoGap;
-    const infoAreaW = contentW - imgAreaW - infoGap;
+    // ── Rodapé ─────────────────────────────────────────────────────────────
+    function drawFooter(pageNum){
+      sc(C.border,'draw'); doc.setLineWidth(0.4);
+      doc.line(margin, pageH-28, pageW-margin, pageH-28);
+      sc(C.muted);
+      doc.setFont('helvetica','normal'); doc.setFontSize(7);
+      doc.text(`Catálogo de Disponibilidades · CMS Representações`, margin, pageH-16);
+      doc.text(`pág. ${pageNum}`, pageW-margin, pageH-16, {align:'right'});
+    }
+
+    // ── Layout do card ─────────────────────────────────────────────────────
+    const bodyTop  = headerH + 18;       // respiro abaixo do cabeçalho
+    const bodyBot  = pageH - 40;          // respiro acima do rodapé
+    const cardGap  = 12;                  // espaço entre cards
+    const PER_PAGE = 4;
+    const cardH    = (bodyBot - bodyTop - cardGap*(PER_PAGE-1)) / PER_PAGE;
+
+    const IMG_SZ   = 86;                  // imagem compacta
+    const PADX     = 14;                  // padding horizontal interno
+    const PADY     = 12;                  // padding vertical interno
 
     async function drawCard(item, cardY){
-      sc(C.border,'draw'); doc.setLineWidth(0.4);
-      sc(C.bg,'fill');
-      doc.roundedRect(margin, cardY, contentW, cardH, 6, 6, 'FD');
+      // moldura do card
+      sc(C.border,'draw'); doc.setLineWidth(0.5);
+      sc(C.white,'fill');
+      doc.roundedRect(margin, cardY, contentW, cardH, 7, 7, 'FD');
 
-      // Área da imagem
-      const ip=6, ibX=margin+ip, ibY=cardY+ip;
-      const ibW=imgAreaW-ip*2, ibH=cardH-ip*2;
-      sc(C.white,'fill'); sc(C.border,'draw');
-      doc.roundedRect(ibX,ibY,ibW,ibH,4,4,'FD');
-
+      // ── imagem ──
+      const imgX = margin + PADX;
+      const imgY = cardY + (cardH - IMG_SZ)/2;   // centraliza vertical
+      sc(C.bg,'fill'); sc(C.border,'draw');
+      doc.roundedRect(imgX, imgY, IMG_SZ, IMG_SZ, 5, 5, 'FD');
       const corSafePdf = String(item.cor || '').replace(/\//g, '_').toUpperCase();
       if(item.artigo && corSafePdf){
-        const rawData = await imageUrlToDataUrl(`${IMG_BASE}${item.artigo}_${corSafePdf}.jpg`);
-        const img = await loadImgForPdfCrop(rawData);
-        if(img?.dataUrl){
-          const targetH = ibH*0.85;
-          const scale   = targetH/img.h;
-          const drawW   = img.w*scale;
-          const drawH   = targetH;
-          const drawX   = ibX+(ibW-drawW)/2;
-          const drawY   = ibY+(ibH-drawH)/2;
-          doc.addImage(img.dataUrl,'PNG',drawX,drawY,drawW,drawH,undefined,'FAST');
+        try{
+          const rawData = await imageUrlToDataUrl(`${IMG_BASE}${item.artigo}_${corSafePdf}.jpg`);
+          const img = await loadImgForPdfCrop(rawData);
+          if(img?.dataUrl){
+            const pad2 = 4;
+            const box = IMG_SZ - pad2*2;
+            let w = box, h = box;
+            if(img.w && img.h){
+              const r = img.w/img.h;
+              if(r>1) h = box/r; else w = box*r;
+            }
+            doc.addImage(img.dataUrl,'PNG', imgX+pad2+(box-w)/2, imgY+pad2+(box-h)/2, w, h, undefined,'FAST');
+          } else {
+            sc(C.faint);
+            doc.setFont('helvetica','normal'); doc.setFontSize(7);
+            doc.text('sem imagem', imgX+IMG_SZ/2, imgY+IMG_SZ/2, {align:'center'});
+          }
+        }catch(e){
+          sc(C.faint);
+          doc.setFont('helvetica','normal'); doc.setFontSize(7);
+          doc.text('sem imagem', imgX+IMG_SZ/2, imgY+IMG_SZ/2, {align:'center'});
         }
       }
 
-      const tx = infoAreaX;
-      let ty = cardY + 18;
+      // ── área de texto ──
+      const tx = imgX + IMG_SZ + 16;          // início do texto, com respiro da imagem
+      const txW = margin + contentW - PADX - tx;
+      let ty = cardY + PADY + 4;
 
-      // Descrição
+      // Nome do produto
       sc(C.text);
-      doc.setFont('helvetica','bold'); doc.setFontSize(13);
-      const nameLines = doc.splitTextToSize(String(item.descricao||''), infoAreaW-4);
-      doc.text(nameLines.slice(0,2), tx, ty);
-      ty += nameLines.slice(0,2).length*15 + 6;
-
-      // Artigo
-      doc.setFont('helvetica','normal'); doc.setFontSize(9);
-      sc(C.muted); doc.text('Artigo:', tx, ty);
-      sc(C.text); doc.text(String(item.artigo||'—'), tx+38, ty);
-      ty += 13;
-
-      // Cor
-      sc(C.muted); doc.text('Cor:', tx, ty);
-      sc(C.text); doc.text(String(item.cor||'—'), tx+24, ty);
-      ty += 13;
-
-      // Empresa
-      sc(C.muted); doc.text('Empresa:', tx, ty);
-      sc(C.text); doc.text(String(item.empresa||'—'), tx+44, ty);
+      doc.setFont('helvetica','bold'); doc.setFontSize(12);
+      const nameLines = doc.splitTextToSize(String(item.descricao||'—'), txW);
+      doc.text(nameLines.slice(0,1), tx, ty);
       ty += 14;
 
-      // Divisor
-      sc(C.border,'draw'); doc.setLineWidth(0.4);
-      doc.line(tx, ty, tx+infoAreaW, ty);
-      ty += 10;
+      // Linha de atributos: Artigo · Cor · Empresa
+      doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      sc(C.muted);
+      const corDisp = String(item.cor||'—').replace(/_/g,'/');
+      const attrLine = `Artigo: ${item.artigo||'—'}  ·  Cor: ${corDisp}  ·  ${item.empresa||'—'}`;
+      doc.text(doc.splitTextToSize(attrLine, txW).slice(0,1), tx, ty);
+      ty += 14;
 
-      // Boxes: MKP | PDV | Custo
-      const boxGap=6, boxW=(infoAreaW-boxGap*2)/3, boxH=32;
+      // ── 3 boxes: MKP/PrevFat · PDV · Custo/T.Geral ──
+      const boxGap = 8;
+      const boxW   = (txW - boxGap*2) / 3;
+      const boxH   = 30;
+      const boxY   = ty;
+      const temTab = item.codigoTabela && (item.mkp || item.custo);
 
-      // MKP (ou Prev.Fat se não tiver tabela especial)
-      sc(C.white,'fill'); sc(C.border,'draw'); doc.setLineWidth(0.4);
-      doc.roundedRect(tx, ty, boxW, boxH, 4,4,'FD');
-      doc.setFont('helvetica','bold'); doc.setFontSize(6.5); sc(C.muted);
-      if(item.codigoTabela && item.mkp){
-        doc.text('MKP', tx+6, ty+8);
-        doc.setFont('helvetica','bold'); doc.setFontSize(11); sc(C.text);
-        doc.text(String(item.mkp), tx+6, ty+22);
+      // Box 1
+      sc(C.bg,'fill'); sc(C.border,'draw'); doc.setLineWidth(0.4);
+      doc.roundedRect(tx, boxY, boxW, boxH, 4,4,'FD');
+      sc(C.muted); doc.setFont('helvetica','bold'); doc.setFontSize(5.8);
+      if(temTab && item.mkp){
+        doc.text('MKP', tx+7, boxY+11);
+        sc(C.text); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+        doc.text(String(item.mkp), tx+7, boxY+24);
       } else {
-        doc.text('PREV. FATURAMENTO', tx+6, ty+8);
-        doc.setFont('helvetica','bold'); doc.setFontSize(9); sc(C.text);
-        doc.text(fixEncoding(item.prevFat||'—'), tx+6, ty+22);
+        doc.text('PREV. FATURAMENTO', tx+7, boxY+11);
+        sc(C.text); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+        doc.text(String(fixEncoding(item.prevFat||'—')), tx+7, boxY+24);
       }
 
-      // PDV
-      const bx2 = tx+boxW+boxGap;
-      sc(C.white,'fill'); sc(C.border,'draw');
-      doc.roundedRect(bx2, ty, boxW, boxH, 4,4,'FD');
-      doc.setFont('helvetica','bold'); doc.setFontSize(6.5); sc(C.muted);
-      doc.text('PDV', bx2+6, ty+8);
-      doc.setFont('helvetica','bold'); doc.setFontSize(14); sc(C.green);
-      doc.text(`R$ ${Number(item.pdv||0).toFixed(2)}`, bx2+6, ty+24);
+      // Box 2 — PDV
+      const b2 = tx + boxW + boxGap;
+      sc(C.bg,'fill'); sc(C.border,'draw');
+      doc.roundedRect(b2, boxY, boxW, boxH, 4,4,'FD');
+      sc(C.muted); doc.setFont('helvetica','bold'); doc.setFontSize(5.8);
+      doc.text('PDV', b2+7, boxY+11);
+      sc(C.accent); doc.setFont('helvetica','bold'); doc.setFontSize(12);
+      doc.text(`R$ ${Number(item.pdv||0).toFixed(2)}`, b2+7, boxY+24);
 
-      // Custo (ou T.Geral se não tiver tabela especial)
-      const bx3 = bx2+boxW+boxGap;
-      sc(C.white,'fill'); sc(C.border,'draw');
-      doc.roundedRect(bx3, ty, boxW, boxH, 4,4,'FD');
-      doc.setFont('helvetica','bold'); doc.setFontSize(6.5); sc(C.muted);
-      if(item.codigoTabela && item.custo){
-        doc.text('CUSTO', bx3+6, ty+8);
-        doc.setFont('helvetica','bold'); doc.setFontSize(11); sc(C.text);
-        doc.text(`R$ ${Number(item.custo).toFixed(2)}`, bx3+6, ty+22);
+      // Box 3
+      const b3 = b2 + boxW + boxGap;
+      sc(C.bg,'fill'); sc(C.border,'draw');
+      doc.roundedRect(b3, boxY, boxW, boxH, 4,4,'FD');
+      sc(C.muted); doc.setFont('helvetica','bold'); doc.setFontSize(5.8);
+      if(temTab && item.custo){
+        doc.text('CUSTO', b3+7, boxY+11);
+        sc(C.text); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+        doc.text(`R$ ${Number(item.custo).toFixed(2)}`, b3+7, boxY+24);
       } else {
-        doc.text('T. GERAL', bx3+6, ty+8);
-        doc.setFont('helvetica','bold'); doc.setFontSize(14); sc(C.text);
-        doc.text(Number(item.totalGeral||0).toLocaleString('pt-BR'), bx3+6, ty+24);
+        doc.text('T. GERAL', b3+7, boxY+11);
+        sc(C.text); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+        doc.text(Number(item.totalGeral||0).toLocaleString('pt-BR'), b3+7, boxY+24);
       }
 
-      ty += boxH+10;
+      ty = boxY + boxH + 13;   // respiro abaixo dos boxes
 
-      // Grade — células igual ao repasses
+      // ── Grade disponível (células) ──
       const grade = item.grade || {};
-      const gradeEntries = Object.entries(grade).filter(([,v])=>Number(v)>0);
+      const gradeEntries = Object.entries(grade)
+        .filter(([,v]) => Number(v) > 0)
+        .sort((a,b) => {
+          return tamSort(a[0], b[0]);
+        });
+
       if(gradeEntries.length){
-        doc.setFont('helvetica','bold'); doc.setFontSize(7);
-        sc(C.muted); doc.text('GRADE DISPONÍVEL', tx, ty);
-        ty += 9;
-        const cellW=34, cellH=24, cellGap=4;
-        const perRow = Math.floor(infoAreaW/(cellW+cellGap));
-        let cx=tx, col=0;
-        for(const [size,qty] of gradeEntries){
-          if(col>=perRow){ col=0; cx=tx; ty+=cellH+cellGap; }
-          sc(C.border,'draw'); sc(C.white,'fill');
-          doc.roundedRect(cx, ty, cellW, cellH, 3,3,'FD');
-          doc.setFont('helvetica','bold'); doc.setFontSize(7); sc(C.muted);
-          const sStr=String(size);
-          doc.text(sStr, cx+(cellW-doc.getTextWidth(sStr))/2, ty+9);
-          doc.setFontSize(9.5); sc(C.green);
-          const qStr=String(qty);
-          doc.text(qStr, cx+(cellW-doc.getTextWidth(qStr))/2, ty+20);
-          cx+=cellW+cellGap; col++;
+        sc(C.muted); doc.setFont('helvetica','bold'); doc.setFontSize(6);
+        doc.text('GRADE DISPONÍVEL', tx, ty);
+        ty += 8;
+        const celW=30, celH=22, celGap=4;
+        const perRow = Math.max(1, Math.floor((txW+celGap)/(celW+celGap)));
+        let cx=tx, col=0, cy=ty;
+        // limita a 2 linhas pra não estourar o card
+        const maxCels = perRow*2;
+        const mostra = gradeEntries.slice(0, maxCels);
+        for(const [size,qty] of mostra){
+          if(col>=perRow){ col=0; cx=tx; cy+=celH+celGap; }
+          sc(C.white,'fill'); sc(C.border,'draw'); doc.setLineWidth(0.4);
+          doc.roundedRect(cx, cy, celW, celH, 3,3,'FD');
+          sc(C.muted); doc.setFont('helvetica','bold'); doc.setFontSize(6.5);
+          doc.text(String(size), cx+celW/2, cy+9, {align:'center'});
+          sc(C.accent); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+          doc.text(String(qty), cx+celW/2, cy+18, {align:'center'});
+          cx+=celW+celGap; col++;
+        }
+        if(gradeEntries.length > maxCels){
+          sc(C.muted); doc.setFont('helvetica','normal'); doc.setFontSize(6);
+          doc.text(`+${gradeEntries.length-maxCels} tam.`, cx+2, cy+14);
         }
       }
     }
 
-    for(let i=0; i<selecionados.length; i+=2){
-      if(i>0) doc.addPage();
-      drawHeader();
-      await drawCard(selecionados[i], bodyY);
-      if(selecionados[i+1]) await drawCard(selecionados[i+1], bodyY+cardH+8);
+    // ── Monta as páginas ───────────────────────────────────────────────────
+    let pageNum = 1;
+    for(let i=0; i<selecionados.length; i++){
+      const posNaPagina = i % PER_PAGE;
+      if(i>0 && posNaPagina===0){
+        drawFooter(pageNum);
+        doc.addPage();
+        pageNum++;
+      }
+      if(posNaPagina===0) drawHeader(pageNum);
+      const cardY = bodyTop + posNaPagina*(cardH+cardGap);
+      await drawCard(selecionados[i], cardY);
     }
+    drawFooter(pageNum);
 
-    const now2 = new Date();
-    const fname = `disponibilidades_${now2.getFullYear()}${pad(now2.getMonth()+1)}${pad(now2.getDate())}.pdf`;
+    const fname = `disponibilidades_${MARCA_ATIVA}_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}.pdf`;
     doc.save(fname);
     showToast(`PDF gerado com ${selecionados.length} produto(s)!`, 'success');
   }catch(err){
@@ -1702,10 +3156,18 @@ function getItemTotalQty(it){
   return Object.values(it.gradePedido).reduce((s,v) => s + (Number(v)||0), 0);
 }
 
-// Calcula qtd de caixas (calçados em múltiplos de 6, demais = total)
+// Calcula qtd de caixas:
+//   Calçados/chinelos vêm em múltiplos de 6.
+//   Caixa GRANDE = 12 pares. Caixa pequena = 6 pares.
+//   Algoritmo: prioriza caixas de 12, o resto vai em caixas de 6.
+//   Vestuário/acessórios: célula vazia (sem caixa).
 function calcQtdCaixas(it, total){
-  if(isFootwearCategory(it.categoria)) return Math.ceil(total / 6);
-  return total > 0 ? 1 : 0;
+  if(!isFootwearCategory(it.categoria)) return '';  // vestuário/acessório: sem caixa
+  if(!total || total <= 0) return 0;
+  const c12 = Math.floor(total / 12);
+  const resto = total - (c12 * 12);
+  const c6 = resto > 0 ? Math.ceil(resto / 6) : 0;
+  return c12 + c6;
 }
 
 // Parse de condição de pagamento → prazo médio + número de parcelas
@@ -1745,11 +3207,15 @@ function loadCartFromStorage(){
   try{
     const raw = localStorage.getItem(CART_LS_KEY);
     if(!raw) return;
-    const arr = JSON.parse(raw);
-    if(Array.isArray(arr)){
-      for(const it of arr){
-        if(it && it.key) STATE.cart.set(it.key, it);
-      }
+    const obj = JSON.parse(raw);
+    // Compat: aceita formato antigo (array) e novo (objeto com itens + linkOrigem)
+    if(Array.isArray(obj)){
+      for(const it of obj){ if(it && it.key) STATE.cart.set(it.key, it); }
+      STATE.linkOrigem = null;
+    } else if(obj && typeof obj === 'object'){
+      const arr = Array.isArray(obj.itens) ? obj.itens : [];
+      for(const it of arr){ if(it && it.key) STATE.cart.set(it.key, it); }
+      STATE.linkOrigem = obj.linkOrigem || null;
     }
   }catch(e){ console.warn('Falha carregar sacola:', e); }
 }
@@ -1758,7 +3224,10 @@ function loadCartFromStorage(){
 function saveCartToStorage(){
   try{
     const arr = [...STATE.cart.values()];
-    localStorage.setItem(CART_LS_KEY, JSON.stringify(arr));
+    localStorage.setItem(CART_LS_KEY, JSON.stringify({
+      itens: arr,
+      linkOrigem: STATE.linkOrigem || null
+    }));
   }catch(e){ console.warn('Falha salvar sacola:', e); }
 }
 
@@ -1920,13 +3389,33 @@ function fecharSacola(){ $('cartModal').classList.add('hidden'); }
 function renderCartUI(){
   const wrap = $('cartItems');
   if(!wrap) return;
+  const dataTodos = $('cartDataTodos');
   if(STATE.cart.size === 0){
     wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">Sacola vazia.</div>';
+    if(dataTodos) dataTodos.classList.add('hidden');
     atualizarFabResumo();
     return;
   }
+  // Mostra atalho de "aplicar data a todos" só se há 2+ itens
+  if(dataTodos){
+    if(STATE.cart.size >= 2) dataTodos.classList.remove('hidden');
+    else dataTodos.classList.add('hidden');
+  }
   wrap.innerHTML = [...STATE.cart.values()].map(it => cartItemHtml(it)).join('');
   atualizarFabResumo();
+}
+
+// Aplica a mesma data desejada a todos os itens da sacola
+function cartAplicarDataATodos(){
+  const inp = $('cartDataTodosInput');
+  const data = inp?.value || '';
+  if(!data){ showToast('Escolha uma data primeiro', 'info'); return; }
+  for(const it of STATE.cart.values()){
+    it.dataDesejada = data;
+  }
+  saveCartToStorage();
+  renderCartUI();
+  showToast(`Data aplicada a ${STATE.cart.size} item(ns)`, 'success');
 }
 
 function renderCartItem(key){
@@ -1940,16 +3429,7 @@ function renderCartItem(key){
 // HTML de 1 item na sacola
 function cartItemHtml(it){
   // Linha das grades: tamanhos da disponibilidade
-  const tamanhos = Object.keys(it.gradeDisp).sort((a,b) => {
-    const aN = !isNaN(Number(a)), bN = !isNaN(Number(b));
-    if(aN && !bN) return 1;
-    if(!aN && bN) return -1;
-    if(aN && bN) return Number(a) - Number(b);
-    const ord = ['PP','P','M','G','GG','XG','XXG','U'];
-    const ia=ord.indexOf(a), ib=ord.indexOf(b);
-    if(ia!==-1 && ib!==-1) return ia-ib;
-    return a.localeCompare(b);
-  });
+  const tamanhos = Object.keys(it.gradeDisp).sort(tamSort);
 
   const gradesHtml = tamanhos.map(t => {
     const disp = Number(it.gradeDisp[t] || 0);
@@ -2230,6 +3710,20 @@ function exportOrderXlsx(){
     console.warn('Avisos do pedido:', warnings);
     showToast(`⚠️ ${warnings.length} aviso(s) — ver console`, 'info');
   }
+
+  // Se a sacola veio de um link de cliente, marca o link como CONCLUÍDO
+  if(STATE.linkOrigem){
+    const codigo = STATE.linkOrigem;
+    fetch(WORKER_URL, {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'marcarLinkConcluido', codigo })
+    }).then(r => r.json()).then(j => {
+      if(j && j.success) console.log('Link', codigo, 'marcado como concluído.');
+    }).catch(e => console.warn('Falha ao marcar concluído:', e));
+    STATE.linkOrigem = null;
+    saveCartToStorage();
+  }
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
@@ -2253,10 +3747,545 @@ function aplicarIdentidadeMarca(){
   // Título da aba
   document.title = `${info.nome} — Disponibilidades`;
 }
-aplicarIdentidadeMarca();
-loadCartFromStorage();
-atualizarFabContador();
-loadData();
+// ═══════════════════════════════════════════════════════════════════════════
+// ── MODO CLIENTE — vitrine compartilhada (mobile) ──────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// Estado isolado do modo vendedor pra não conflitar
+const CLI = {
+  link: null,         // dados do link (do Worker)
+  expirado: false,
+  produtos: [],       // lista vinda do link
+  selecao: new Map(), // key (artigo|cor) → { quero:true, grade:{tam:qtd} } (futuramente grade)
+  marca: 'oly'        // setado a partir do link
+};
+
+// Chave do localStorage pra rascunho do cliente (por código de link)
+const CLI_LS_KEY = `cli_rascunho_${LINK_CODIGO}`;
+
+// Atalho de chave
+function cliKey(item){
+  return `${String(item.artigo||'').toUpperCase()}|${String(item.cor||'').toUpperCase()}`;
+}
+
+async function iniciarModoCliente(){
+  document.body.classList.add('modo-cliente');
+  document.getElementById('modoClienteWrap').style.display = 'block';
+  document.title = 'Catálogo · CMS Representações';
+
+  // Busca o link no Worker
+  let json;
+  try{
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'getLink', codigo: LINK_CODIGO })
+    });
+    json = await res.json();
+  }catch(e){
+    console.error(e);
+    $('cliLoading').classList.add('hidden');
+    $('cliErroNotFound').classList.remove('hidden');
+    return;
+  }
+
+  $('cliLoading').classList.add('hidden');
+
+  if(!json.success){
+    $('cliErroNotFound').classList.remove('hidden');
+    return;
+  }
+  CLI.link = json.link;
+  CLI.expirado = !!json.expirado;
+  CLI.produtos = Array.isArray(json.link.produtos) ? json.link.produtos : [];
+  CLI.marca = String(json.link.marca || 'oly').toLowerCase();
+  MARCA_ATIVA = CLI.marca; // sincroniza pra aplicar identidade
+  document.body.setAttribute('data-marca', CLI.marca);
+
+  if(CLI.expirado){
+    $('cliErroExpirado').classList.remove('hidden');
+    return;
+  }
+
+  // Aplica cores e logo da marca
+  aplicarIdentidadeMarcaCliente();
+
+  // Restaura rascunho local (se houver) OU resposta já enviada
+  cliRestaurarSelecao();
+
+  // Renderiza
+  $('cliNomeCliente').textContent = (CLI.link.cliente || '—').toUpperCase();
+  $('cliQtdProdutos').textContent = CLI.produtos.length;
+  $('cliMarcaNome').textContent   = (MARCA_INFO[CLI.marca]?.nome || '').toUpperCase();
+  $('cliConteudo').classList.remove('hidden');
+  cliRenderGrid();
+  cliAtualizarFAB();
+}
+
+function aplicarIdentidadeMarcaCliente(){
+  const info = MARCA_INFO[CLI.marca] || MARCA_INFO.oly;
+  // Cores
+  document.documentElement.style.setProperty('--accent',       info.accent);
+  document.documentElement.style.setProperty('--accent-light', info.accentLight);
+  document.documentElement.style.setProperty('--brand',        info.brand);
+  document.documentElement.style.setProperty('--brand-bg',     info.bgMarca);
+  // Header do cliente
+  const h = $('cliHeader');
+  if(h) h.style.background = info.bgMarca;
+}
+
+// Salva rascunho local
+function cliSalvarRascunho(){
+  try{
+    const obj = {};
+    for(const [k,v] of CLI.selecao.entries()) obj[k] = v;
+    localStorage.setItem(CLI_LS_KEY, JSON.stringify(obj));
+  }catch(e){}
+}
+
+// Restaura — prioridade: resposta já enviada > rascunho local
+function cliRestaurarSelecao(){
+  CLI.selecao.clear();
+  // Resposta já enviada pelo cliente (se houver)
+  if(CLI.link.resposta && Array.isArray(CLI.link.resposta.itens)){
+    for(const it of CLI.link.resposta.itens){
+      const k = cliKey(it);
+      CLI.selecao.set(k, { quero: true, grade: it.grade || {} });
+    }
+    return;
+  }
+  // Rascunho local
+  try{
+    const raw = localStorage.getItem(CLI_LS_KEY);
+    if(!raw) return;
+    const obj = JSON.parse(raw) || {};
+    for(const [k, v] of Object.entries(obj)){
+      if(v && v.quero) CLI.selecao.set(k, { quero: true, grade: v.grade || {} });
+    }
+  }catch(e){}
+}
+
+// Renderiza a grid de cards do cliente
+function cliRenderGrid(){
+  const wrap = $('cliGrid');
+  if(!wrap) return;
+  wrap.innerHTML = CLI.produtos.map(p => cliCardHtml(p)).join('');
+}
+
+function cliCardHtml(p){
+  const k = cliKey(p);
+  const sel = CLI.selecao.has(k);
+  const promo = !!p.codigoTabela;
+  const corSafe = String(p.cor||'').replace(/\//g,'_').toUpperCase();
+  const imgSrc = (p.artigo && corSafe) ? `${IMG_BASE}${p.artigo}_${corSafe}.jpg` : '';
+  const corDisp = String(p.cor||'—').replace(/_/g,'/');
+
+  // Grade — detecta faixa/lista (não exibe quantidade, só "que tamanhos tem")
+  const gradeEntries = Object.entries(p.grade || {})
+    .filter(([,v]) => Number(v) > 0)
+    .sort((a,b) => {
+      return tamSort(a[0], b[0]);
+    });
+  const gradeResumo = cliResumoFaixa(gradeEntries.map(e => e[0]));
+
+  // Box promo (MKP + Custo) se for tabela
+  const promoBox = promo && (p.mkp || p.custo) ? `
+    <div class="cli-card-promo-vals">
+      ${p.mkp   ? `<span><b>MKP</b> ${safeHtml(p.mkp)}</span>` : ''}
+      ${p.custo ? `<span>R$ ${Number(p.custo).toFixed(2).replace('.',',')}</span>` : ''}
+    </div>` : '';
+
+  const imgTag = imgSrc
+    ? `<img src="${imgSrc}" alt="${safeHtml(p.descricao||'')}" onerror="this.style.display='none';this.parentElement.querySelector('.ph').style.display='flex'">`
+    : '';
+
+  // Botão e check
+  const checkOrZoom = sel
+    ? `<span class="check"><i class="fa-solid fa-check"></i></span>`
+    : `<button class="zoom-btn" onclick="event.stopPropagation();cliAbrirZoom('${safeHtml(k)}')"><i class="fa-solid fa-magnifying-glass-plus"></i></button>`;
+
+  const btn = sel
+    ? `<button class="cli-card-btn remove" onclick="cliToggle('${safeHtml(k)}')"><i class="fa-solid fa-xmark"></i> Remover</button>`
+    : `<button class="cli-card-btn quero" onclick="cliToggle('${safeHtml(k)}')"><i class="fa-solid fa-check"></i> Quero esse</button>`;
+
+  // Detecta se tem grade ou só quantidade
+  const temTamanhos = cliTemTamanhos(p);
+  const selData = CLI.selecao.get(k);
+  const qtdGrade = selData ? Object.values(selData.grade||{}).reduce((s,v)=>s+(Number(v)||0),0) : 0;
+  const btnDetalhar = sel ? `
+    <button class="cli-card-btn detalhar${qtdGrade>0?' preenchido':''}" onclick="cliAbrirGrade('${safeHtml(k)}')">
+      ${qtdGrade>0
+        ? `<i class="fa-solid fa-check"></i> ${qtdGrade} ${temTamanhos?'pares':'un.'}`
+        : `<i class="fa-solid fa-list-ol"></i> ${temTamanhos?'Adicionar grade':'Quantidade'}`}
+    </button>` : '';
+
+  // Sempre tem botão de lupa quando NÃO selecionado.
+  // Quando selecionado, lupa fica no canto da imagem inferior (manter clicável)
+  const lupaSel = sel ? `<button class="zoom-btn" style="top:auto;bottom:5px;right:5px" onclick="event.stopPropagation();cliAbrirZoom('${safeHtml(k)}')"><i class="fa-solid fa-magnifying-glass-plus"></i></button>` : '';
+
+  return `
+    <div class="cli-card${sel?' selecionado':''}" data-key="${safeHtml(k)}">
+      <div class="cli-card-img">
+        ${promo ? `<span class="promo">★ PROMO</span>` : ''}
+        ${imgTag}
+        <i class="fa-solid fa-image ph" style="${imgSrc?'display:none':''}"></i>
+        ${checkOrZoom}
+        ${lupaSel}
+      </div>
+      <div class="cli-card-name">${safeHtml(p.descricao||'—')}</div>
+      <div class="cli-card-meta">${safeHtml(p.artigo||'')} · ${safeHtml(corDisp)}</div>
+      <div class="cli-card-price">R$ ${Number(p.pdv||0).toFixed(2).replace('.',',')}</div>
+      ${promoBox}
+      ${gradeEntries.length ? `<div class="cli-card-grade-label">Tamanhos</div><div class="cli-card-grade-resumo">${safeHtml(gradeResumo)}</div>` : ''}
+      ${btn}
+      ${btnDetalhar}
+    </div>`;
+}
+
+// Decide se o produto tem TAMANHOS (calçado/vestuário) ou só QUANTIDADE (acessório)
+// Critério: se a única chave da grade é "U" (ou vazio), é só quantidade.
+function cliTemTamanhos(p){
+  const keys = Object.keys(p.grade || {}).filter(k => Number(p.grade[k]) > 0);
+  if(!keys.length) return false;
+  if(keys.length === 1 && String(keys[0]).toUpperCase() === 'U') return false;
+  return true;
+}
+
+// Ordem oficial de vestuário (PP é menor que GG, etc)
+const ORDEM_VESTUARIO = ['XPP','PP','P','M','G','GG','XG','XGG','XGGG','EG','EGG'];
+
+// Devolve uma chave numérica pra ordenar tamanhos.
+//   "38"  → 38            (numérico — peso 1000+)
+//   "M"   → 1002          (vestuário — peso 1000-1099)
+//   "PP"  → 1001
+//   "GG"  → 1004
+//   "U"   → 9000          (acessórios — empurra pro fim)
+//   outros → 99999
+function tamSortKey(t){
+  if(t === null || t === undefined) return 99999;
+  const s = String(t).trim().toUpperCase();
+  if(!s) return 99999;
+  if(s === 'U') return 9000;
+  // Numérico (38, 39 ou "33/38")
+  const num = Number(s);
+  if(Number.isFinite(num)) return num;
+  // Vestuário
+  const idx = ORDEM_VESTUARIO.indexOf(s);
+  if(idx >= 0) return 1001 + idx;
+  // Faixas "33/38" → ordena pelo primeiro número
+  const m = s.match(/^(\d+)\s*\/\s*\d+$/);
+  if(m) return Number(m[1]);
+  return 99999;
+}
+
+// Compara dois tamanhos pra Array.sort()
+function tamSort(a, b){
+  return tamSortKey(a) - tamSortKey(b);
+}
+
+// Resume a faixa de tamanhos exibida no card.
+//   ["U"]                  → "Em estoque"
+//   ["38"]                 → "38"
+//   ["38","39","40","41"]  → "38 ao 41"     (contínuo)
+//   ["38","39","41","42"]  → "38, 39, 41, 42"  (com lacuna)
+//   ["P","M","G"]          → "P, M, G"      (vestuário ordenado)
+function cliResumoFaixa(tams){
+  if(!tams || !tams.length) return '';
+  // Caso "U" único
+  if(tams.length === 1 && String(tams[0]).toUpperCase() === 'U') return 'Em estoque';
+  // Verifica se TODOS são numéricos puros (não inclui "33/38")
+  const todosNum = tams.every(t => Number.isFinite(Number(t)) && !String(t).includes('/'));
+  if(todosNum && tams.length > 1){
+    const nums = tams.map(t => Number(t)).sort((a,b) => a - b);
+    const min = nums[0], max = nums[nums.length-1];
+    // Contínuo? max - min + 1 === length
+    if(max - min + 1 === nums.length){
+      return `${min} ao ${max}`;
+    }
+    return nums.join(', ');
+  }
+  // Vestuário ou misturado — ordena por tamSort
+  return tams.slice().sort(tamSort).join(', ');
+}
+
+// Toggle "Quero esse" / "Remover"
+function cliToggle(key){
+  if(CLI.selecao.has(key)){
+    CLI.selecao.delete(key);
+  } else {
+    CLI.selecao.set(key, { quero: true, grade: {} });
+  }
+  cliSalvarRascunho();
+  // Re-renderiza só o card mudado
+  const card = document.querySelector(`.cli-card[data-key="${CSS.escape(key)}"]`);
+  if(card){
+    const prod = CLI.produtos.find(p => cliKey(p) === key);
+    if(prod){
+      card.outerHTML = cliCardHtml(prod);
+    }
+  }
+  cliAtualizarFAB();
+}
+
+// Atualiza FAB "Enviar seleção"
+function cliAtualizarFAB(){
+  const fab = $('cliFab');
+  if(!fab) return;
+  const n = CLI.selecao.size;
+  if(n === 0){
+    fab.classList.add('hidden');
+    return;
+  }
+  fab.classList.remove('hidden');
+  $('cliFabBadge').textContent = n;
+  // Se já tem resposta enviada antes, muda tom (verde)
+  fab.classList.toggle('respondido', !!CLI.link?.resposta);
+}
+
+// Modal lupa
+function cliAbrirZoom(key){
+  const p = CLI.produtos.find(it => cliKey(it) === key);
+  if(!p){ return; }
+  const corSafe = String(p.cor||'').replace(/\//g,'_').toUpperCase();
+  const imgSrc = (p.artigo && corSafe) ? `${IMG_BASE}${p.artigo}_${corSafe}.jpg` : '';
+  $('cliZoomImg').src = imgSrc;
+  $('cliZoomNome').textContent = p.descricao || '—';
+  $('cliZoomMeta').textContent = `${p.artigo||''} · ${String(p.cor||'').replace(/_/g,'/')}`;
+  $('cliZoomBg').classList.remove('hidden');
+}
+function cliFecharZoom(){ $('cliZoomBg').classList.add('hidden'); }
+
+// ── MODAL DE GRADE / QUANTIDADE DO CLIENTE ──────────────────────────────────
+// Variável temporária — guarda as alterações ANTES do "Confirmar".
+// Se o cliente clicar em X, descartamos (volta ao estado original).
+let _cliGradeContexto = null; // { key, produto, temTamanhos, gradeTmp:{tam:qtd} }
+
+function cliAbrirGrade(key){
+  const p = CLI.produtos.find(it => cliKey(it) === key);
+  if(!p) return;
+  const selData = CLI.selecao.get(key);
+  if(!selData) return; // só abre se já está selecionado
+
+  const temTamanhos = cliTemTamanhos(p);
+  // Cópia da grade atual (pra restaurar se cancelar)
+  const gradeTmp = { ...(selData.grade || {}) };
+
+  _cliGradeContexto = { key, produto: p, temTamanhos, gradeTmp };
+
+  // Header
+  $('cliGradeTitulo').textContent = temTamanhos ? 'Adicionar grade' : 'Quantidade desejada';
+  $('cliGradeSubt').textContent   = `${p.descricao || ''} · ${String(p.cor||'').replace(/_/g,'/')}`;
+  $('cliGradeUnit').textContent   = temTamanhos ? 'pares' : 'un.';
+
+  // Renderiza o corpo
+  cliRenderGradeBody();
+  $('cliGradeBg').classList.remove('hidden');
+}
+
+function cliRenderGradeBody(){
+  const ctx = _cliGradeContexto;
+  if(!ctx) return;
+  const body = $('cliGradeBody');
+  const p = ctx.produto;
+
+  if(ctx.temTamanhos){
+    // Grade — calçado/vestuário
+    const tamanhos = Object.entries(p.grade || {})
+      .filter(([,v]) => Number(v) > 0)
+      .sort((a,b) => {
+        return tamSort(a[0], b[0]);
+      });
+
+    const cards = tamanhos.map(([t, disp]) => {
+      const ped = Number(ctx.gradeTmp[t] || 0);
+      const restante = disp - ped;
+      const preenchido = ped > 0;
+      return `
+        <div class="cli-tam-box${preenchido?' preenchido':''}" data-tam="${safeHtml(t)}">
+          <div class="cli-tam-head">
+            <span class="cli-tam-num">${safeHtml(t)}</span>
+            <span class="cli-tam-disp">${disp} disp.</span>
+          </div>
+          <div class="cli-tam-ctrl">
+            <button class="minus" onclick="cliGradeQty('${safeHtml(t)}',-1)" ${ped===0?'disabled':''}>−</button>
+            <div class="qty">${ped}</div>
+            <button class="plus" onclick="cliGradeQty('${safeHtml(t)}',1)" ${restante===0?'disabled':''}>+</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    body.innerHTML = `
+      <div class="cli-grade-ajuda">
+        <i class="fa-solid fa-circle-info"></i> Toque no <b>+</b> para escolher quantos pares de cada tamanho
+      </div>
+      <div class="cli-grade-grid">${cards}</div>
+    `;
+  } else {
+    // Acessório / quantidade única — pega a única chave da grade (geralmente "U")
+    const keys = Object.keys(p.grade || {}).filter(k => Number(p.grade[k]) > 0);
+    const tamKey = keys[0] || 'U';
+    const dispTotal = Number(p.grade?.[tamKey] || 0);
+    const atual = Number(ctx.gradeTmp[tamKey] || 0);
+
+    body.innerHTML = `
+      <div class="cli-grade-ajuda">
+        <i class="fa-solid fa-circle-info"></i> Disponível: <b>${dispTotal} unidades</b>
+      </div>
+      <div class="cli-qty-only">
+        <div class="cli-qty-only-label">QUANTIDADE DESEJADA</div>
+        <div class="cli-qty-stepper">
+          <button class="minus" onclick="cliGradeQty('${safeHtml(tamKey)}',-1)" ${atual===0?'disabled':''}>−</button>
+          <div class="cli-qty-num">${atual}</div>
+          <button class="plus" onclick="cliGradeQty('${safeHtml(tamKey)}',1)" ${atual>=dispTotal?'disabled':''}>+</button>
+        </div>
+        <div class="cli-qty-hint">de ${dispTotal} disponíveis</div>
+      </div>
+    `;
+  }
+
+  cliAtualizarTotalModal();
+}
+
+// +1/-1 numa key da grade
+function cliGradeQty(tam, delta){
+  const ctx = _cliGradeContexto;
+  if(!ctx) return;
+  const disp = Number(ctx.produto.grade?.[tam] || 0);
+  const atual = Number(ctx.gradeTmp[tam] || 0);
+  let novo = atual + Number(delta);
+  if(novo < 0) novo = 0;
+  if(novo > disp) novo = disp;
+  if(novo === 0) delete ctx.gradeTmp[tam];
+  else ctx.gradeTmp[tam] = novo;
+  // Re-renderiza pra atualizar borda/botões disabled
+  cliRenderGradeBody();
+}
+
+function cliAtualizarTotalModal(){
+  const ctx = _cliGradeContexto;
+  if(!ctx) return;
+  const tot = Object.values(ctx.gradeTmp).reduce((s,v) => s + (Number(v)||0), 0);
+  $('cliGradeTot').textContent = tot;
+}
+
+// confirmar = true → salva e atualiza card
+// confirmar = false → descarta (X / fora do modal)
+function cliFecharGrade(confirmar){
+  const ctx = _cliGradeContexto;
+  $('cliGradeBg').classList.add('hidden');
+  if(confirmar && ctx){
+    const sel = CLI.selecao.get(ctx.key);
+    if(sel){
+      sel.grade = { ...ctx.gradeTmp };
+      cliSalvarRascunho();
+      // Re-renderiza o card pra atualizar o botão "Detalhar grade"
+      const card = document.querySelector(`.cli-card[data-key="${CSS.escape(ctx.key)}"]`);
+      if(card){
+        const prod = CLI.produtos.find(p => cliKey(p) === ctx.key);
+        if(prod) card.outerHTML = cliCardHtml(prod);
+      }
+    }
+  }
+  _cliGradeContexto = null;
+}
+
+// Enviar seleção para o Worker
+async function cliEnviar(){
+  if(CLI.selecao.size === 0){
+    showToast('Selecione ao menos um produto', 'info');
+    return;
+  }
+  const fab = $('cliFab');
+  const prev = fab.innerHTML;
+  fab.disabled = true;
+  fab.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Enviando...';
+
+  const itens = [];
+  for(const [k, v] of CLI.selecao.entries()){
+    const p = CLI.produtos.find(it => cliKey(it) === k);
+    if(!p) continue;
+    itens.push({
+      artigo:    p.artigo,
+      cor:       p.cor,
+      descricao: p.descricao,
+      pdv:       p.pdv,
+      categoria: p.categoria,
+      grade:     v.grade || {}
+    });
+  }
+
+  try{
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        action:'salvarResposta',
+        codigo: LINK_CODIGO,
+        data: { resposta: { itens } }
+      })
+    });
+    const json = await res.json();
+    if(!res.ok || !json.success){
+      if(json.erro === 'expirado'){
+        showToast('Este link expirou.', 'error');
+        $('cliConteudo').classList.add('hidden');
+        $('cliErroExpirado').classList.remove('hidden');
+        return;
+      }
+      throw new Error(json.erro || 'falha');
+    }
+    // Mostra a tela de sucesso
+    $('cliConteudo').classList.add('hidden');
+    fab.classList.add('hidden');
+    $('cliSucesso').classList.remove('hidden');
+    // Marca o link local como respondido pra próxima entrada
+    if(CLI.link){
+      CLI.link.resposta = { itens };
+      CLI.link.respondidoEm = Date.now();
+      CLI.link.status = 'respondido';
+    }
+  }catch(e){
+    console.error(e);
+    showToast('Erro ao enviar. Tente novamente.', 'error');
+  }finally{
+    fab.disabled = false;
+    fab.innerHTML = prev;
+  }
+}
+
+function cliVoltarVitrine(){
+  $('cliSucesso').classList.add('hidden');
+  $('cliConteudo').classList.remove('hidden');
+  cliAtualizarFAB();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Decide o init de acordo com o modo
+if(MODO_CLIENTE){
+  iniciarModoCliente();
+} else {
+  aplicarIdentidadeMarca();
+  loadCartFromStorage();
+  atualizarFabContador();
+  // Verifica respostas novas SEM esperar loadData (rápido na primeira abertura)
+  mpVerificarNovas();
+  loadData().then(() => {
+    // Após carregar a vitrine, verifica se há resposta pendente para carregar
+    // (vinda de outra marca via redirecionamento)
+    if(_params.get('loadResp') === '1'){
+      const tmpKey = `cart_v1_${MARCA_ATIVA}_load`;
+      const raw = sessionStorage.getItem(tmpKey);
+      if(raw){
+        sessionStorage.removeItem(tmpKey);
+        try{
+          const obj = JSON.parse(raw);
+          const fake = { marca: MARCA_ATIVA, cliente: obj.cliente, codigo: obj.codigo || '', resposta: { itens: obj.itens } };
+          mpCarregarRespostaNaSacola(fake);
+        }catch(e){}
+      }
+    }
+  });
+}
 
 // Liga o botão OK do mini-modal de confirmação
 $('confirmOkBtn').addEventListener('click', () => {
