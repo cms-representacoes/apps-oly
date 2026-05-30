@@ -168,18 +168,7 @@
   .btn-primary:hover{ background:var(--brand-dark); }
   .btn-primary:disabled{ opacity:.5; cursor:not-allowed; }
 
-  .token-box{
-    background:#fef3c7; border:1px solid var(--warn-text);
-    border-radius:9px; padding:10px 13px;
-    margin-bottom:14px;
-  }
-  .token-box label{ color:var(--warn-text); margin-bottom:5px; }
-  .token-box input{
-    width:100%; padding:9px 11px;
-    border:1px solid #d97706; border-radius:7px;
-    font-size:13px; font-family:monospace;
-    background:#fff; color:var(--text); outline:none;
-  }
+  .token-box{ display:none; }
 
   .toast-wrap{
     position:fixed; top:20px; left:0; right:0;
@@ -426,11 +415,9 @@ async function salvar(){
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...';
 
   try{
-    const headers = {'Content-Type':'application/json'};
-    if(token) headers['x-admin-token'] = token;
     const res = await fetch(WORKER_URL, {
       method:'PATCH',
-      headers,
+      headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ action:'saveClientes', vendedor, data: _clientes })
     });
     const json = await res.json();
