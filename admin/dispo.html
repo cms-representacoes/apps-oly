@@ -815,6 +815,8 @@ function getItemUnits(item){
 }
 
 function buildImpactMap(){
+  // Chave de impacto = Nº da linha DISPO (identidade única).
+  // Pedidos antigos sem Nº não reservam saldo — reemitir após limpeza da base.
   const pendMap = new Map();
   const aprovMap = new Map();
 
@@ -824,15 +826,13 @@ function buildImpactMap(){
     if(status === 'Cancelado') continue;
 
     for(const item of (order.items || [])){
-      const gci = sanitizeDisplayText(String(item.gci || item.ebm || ''));
-      const codigo = sanitizeDisplayText(item.codigo);
-      const key = gci || codigo;
-      if(!key) continue;
+      const num = sanitizeDisplayText(String(item.num || ''));
+      if(!num) continue;
       const units = getItemUnits(item);
       if(status === 'Pendente'){
-        pendMap.set(key, (pendMap.get(key) || 0) + units);
+        pendMap.set(num, (pendMap.get(num) || 0) + units);
       } else if(status === 'Aprovado'){
-        aprovMap.set(key, (aprovMap.get(key) || 0) + units);
+        aprovMap.set(num, (aprovMap.get(num) || 0) + units);
       }
     }
   }
@@ -1083,7 +1083,7 @@ function renderKpis(rows){
 function computeAllRows(){
   const { pendMap, aprovMap } = buildImpactMap();
   const allRows = STATE.dispoRows.map(row => {
-    const mapKey = sanitizeDisplayText(String(row.gci||'')) || sanitizeDisplayText(row.codigo||'');
+    const mapKey = sanitizeDisplayText(String(row.num||''));
     const pendente = pendMap.get(mapKey) || 0;
     const aprovado = aprovMap.get(mapKey) || 0;
     const saldoReal = Number(row.saldo || 0) - pendente - aprovado;

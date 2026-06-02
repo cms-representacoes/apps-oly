@@ -500,6 +500,12 @@
               <i class="fa-solid fa-gear text-xs"></i>
             </button>
 
+            <button id="btnManutencao" onclick="toggleManutencao()" title="Pausar app (manutenção)"
+              class="focus-ring rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-700 flex items-center gap-2 hover:bg-amber-100 transition-colors">
+              <i id="iconManutencao" class="fa-solid fa-screwdriver-wrench"></i>
+              <span id="lblManutencao" class="hidden sm:inline">Pausar app</span>
+            </button>
+
             <button id="btnLogout" title="Sair"
               class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
               <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
@@ -788,6 +794,11 @@
               class="hidden focus-ring ml-auto rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 flex items-center gap-1.5 hover:bg-emerald-100 transition-colors">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
               Exportar selecionados <span id="badgeSelecionados" class="bg-emerald-600 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
+            </button>
+            <button id="btnExcluirSelecionados" onclick="excluirSelecionados()"
+              class="hidden focus-ring rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 flex items-center gap-1.5 hover:bg-rose-100 transition-colors">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+              Excluir selecionados <span id="badgeExcluir" class="bg-rose-600 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
             </button>
           </div>
 
@@ -2104,8 +2115,8 @@ async function toggleArchive(id){
   }
 }
 
-function openDeleteModal(id){
-  STATE._pendingDeleteId = id;
+function openDeleteModal(ids){
+  STATE._pendingDeleteIds = Array.isArray(ids) ? ids.slice() : [ids];
   $('deletePasswordInput').value = '';
   $('deletePasswordError').classList.add('hidden');
   $('deleteStep1').classList.remove('hidden');
@@ -2115,7 +2126,7 @@ function openDeleteModal(id){
 
 function closeDeleteModal(){
   $('deleteOrderModal').classList.add('hidden');
-  STATE._pendingDeleteId = null;
+  STATE._pendingDeleteIds = null;
 }
 
 function confirmDeletePassword(){
@@ -2132,7 +2143,13 @@ function confirmDeletePassword(){
 async function deleteOrder(id){
   const target = STATE.orders.find(o => o.id === id);
   if(!target) return;
-  openDeleteModal(id);
+  openDeleteModal([id]);
+}
+
+function excluirSelecionados(){
+  const ids = [..._pedidosSelecionados];
+  if(!ids.length){ showToast('Selecione ao menos um pedido.', 'error'); return; }
+  openDeleteModal(ids);
 }
 
 $('deleteOrderModal').addEventListener('click', e => {
@@ -2140,24 +2157,75 @@ $('deleteOrderModal').addEventListener('click', e => {
 });
 
 $('btnConfirmDelete').addEventListener('click', async () => {
-  const id = STATE._pendingDeleteId;
-  if(!id) return;
+  const ids = STATE._pendingDeleteIds || [];
+  if(!ids.length) return;
   const btn = $('btnConfirmDelete');
   btn.disabled = true;
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Excluindo...';
   try{
-    await workerDeleteOrder(id);
+    for(const id of ids){ await workerDeleteOrder(id); }
     closeDeleteModal();
     STATE.selectedId = null;
-    showToast('Pedido excluído com sucesso.', 'success');
+    _pedidosSelecionados.clear();
+    atualizarSelecaoUI();
+    showToast(ids.length > 1 ? `${ids.length} pedidos excluídos.` : 'Pedido excluído com sucesso.', 'success');
     await loadAdmin();
   }catch(err){
     console.error(err);
-    showToast('Não foi possível excluir o pedido.', 'error');
+    showToast('Não foi possível excluir.', 'error');
+  }finally{
     btn.disabled = false;
     btn.innerHTML = 'Sim, excluir';
   }
 });
+
+// ── MANUTENÇÃO (pausar app para vendedores) ──────────────────────────────────
+let _appPausado = false;
+async function loadManutencaoStatus(){
+  try{
+    const res = await fetch(WORKER_URL, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'getStatus' }) });
+    if(!res.ok) return;
+    const st = await res.json();
+    _appPausado = !!(st && st.paused);
+    refreshManutencaoUI();
+  }catch(_){}
+}
+function refreshManutencaoUI(){
+  const btn = $('btnManutencao'); const lbl = $('lblManutencao');
+  if(!btn) return;
+  if(_appPausado){
+    btn.className = 'focus-ring rounded-full border border-rose-300 bg-rose-100 px-4 py-2 text-sm font-bold text-rose-700 flex items-center gap-2 hover:bg-rose-200 transition-colors';
+    if(lbl) lbl.textContent = 'Pausado — retomar';
+  } else {
+    btn.className = 'focus-ring rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-700 flex items-center gap-2 hover:bg-amber-100 transition-colors';
+    if(lbl) lbl.textContent = 'Pausar app';
+  }
+}
+async function toggleManutencao(){
+  const novoPausado = !_appPausado;
+  let message = '';
+  if(novoPausado){
+    if(!confirm('Pausar o app? Os vendedores verão a tela de manutenção e não conseguirão acessar o catálogo.')) return;
+    message = prompt('Mensagem que os vendedores verão:', 'Estamos em manutenção. Voltamos em breve!') || 'Estamos em manutenção. Voltamos em breve!';
+  } else {
+    if(!confirm('Retomar o app? Os vendedores voltarão a ter acesso normal.')) return;
+  }
+  try{
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'saveStatus', data:{ paused:novoPausado, message } })
+    });
+    const out = await res.json().catch(()=>({}));
+    if(!res.ok || !out.success) throw new Error(out.error || res.status);
+    _appPausado = novoPausado;
+    refreshManutencaoUI();
+    showToast(novoPausado ? 'App pausado para manutenção.' : 'App retomado.', 'success');
+  }catch(err){
+    console.error(err);
+    showToast('Não foi possível alterar o status do app.', 'error');
+  }
+}
+loadManutencaoStatus();
 
 // ── BLOCO 2: RESUMO OPERACIONAL ──────────────────────────────────────────────
 
@@ -3853,6 +3921,10 @@ function atualizarSelecaoUI(){
   if(contEl) contEl.textContent = n > 0 ? `${n} selecionado${n>1?'s':''}` : '';
   if(badge)  badge.textContent = n;
   if(btnExp) btnExp.classList.toggle('hidden', n === 0);
+  const btnDel = $('btnExcluirSelecionados');
+  const badgeDel = $('badgeExcluir');
+  if(badgeDel) badgeDel.textContent = n;
+  if(btnDel) btnDel.classList.toggle('hidden', n === 0);
   if(chkAll){ chkAll.checked=total>0&&n===total; chkAll.indeterminate=n>0&&n<total; }
 }
 

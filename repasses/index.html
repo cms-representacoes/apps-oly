@@ -1136,26 +1136,22 @@ function getItemUnits(item){
     : amount;
 }
 function getDispoImpactMap(){
+  // Chave = Nº da linha DISPO (identidade única). Pedidos sem Nº não reservam saldo.
   const impactMap = new Map();
   for(const order of STATE.orders){
     if(!shouldReserveDispo(order)) continue;
     for(const item of (order.items || [])){
-      // Usa GCI como chave — único por linha DISPO, abatimento exato por disponibilidade
-      const gci = sanitizeDisplayText(item?.gci || item?.ebm || '');
-      const codigo = sanitizeDisplayText(item?.codigo || '');
-      const key = gci || codigo; // fallback para código se GCI não existir
-      if(!key) continue;
-      impactMap.set(key, (impactMap.get(key) || 0) + getItemUnits(item));
+      const num = sanitizeDisplayText(String(item?.num || ''));
+      if(!num) continue;
+      impactMap.set(num, (impactMap.get(num) || 0) + getItemUnits(item));
     }
   }
   return impactMap;
 }
 function getReservedUnitsFromOrders(item){
   const impactMap = getDispoImpactMap();
-  const gci = sanitizeDisplayText(item?.gci || item?.ebm || '');
-  const codigo = sanitizeDisplayText(item?.codigo || '');
-  const key = gci || codigo;
-  return impactMap.get(key) || 0;
+  const num = sanitizeDisplayText(String(item?.num || ''));
+  return impactMap.get(num) || 0;
 }
 function getBaseAvailableUnits(item){
   return Math.max(0, Number(item?.availableUnits || 0) - getReservedUnitsFromOrders(item));
@@ -2235,6 +2231,7 @@ async function submitOrder(options = {}){
       codigo: item.codigo,
       produto: item.produto,
       cor: item.cor,
+      num: item.num || '',
       gci: item.gci || '',
       ebm: item.ebm || '',
       amount: item.amount,
@@ -3036,17 +3033,41 @@ setInterval(async ()=>{
   await refreshStockFromSource({ silent:true, reason:'poll' });
   notifVendPoll();
 }, 30000);
-loadCatalog().then(async ()=>{
-  applyVendedorSession();
-  await refreshStockFromSource({ silent:true, reason:'load', force:true });
-  // Só após catálogo carregado, sincroniza pedidos e re-aplica filtros
+async function checkAppStatus(){
   try{
-    await refreshOrdersFromRemote();
-    renderOrders();
-    renderCart();
-    applyFilters();
-  }catch(_){}
-}).catch(()=>{});
+    const res = await fetch(WORKER_URL, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'getStatus' }) });
+    if(!res.ok) return false;
+    const st = await res.json();
+    if(st && st.paused){
+      const ov = document.getElementById('maintenanceOverlay');
+      const msg = document.getElementById('maintenanceMsg');
+      if(msg && st.message) msg.textContent = st.message;
+      if(ov) ov.style.display = 'flex';
+      return true;
+    }
+  }catch(_){ /* falha ao checar status não bloqueia o app */ }
+  return false;
+}
+
+checkAppStatus().then(paused => {
+  if(paused) return; // app pausado — não carrega o catálogo
+  loadCatalog().then(async ()=>{
+    applyVendedorSession();
+    await refreshStockFromSource({ silent:true, reason:'load', force:true });
+    // Só após catálogo carregado, sincroniza pedidos e re-aplica filtros
+    try{
+      await refreshOrdersFromRemote();
+      renderOrders();
+      renderCart();
+      applyFilters();
+    }catch(_){}
+  }).catch(()=>{});
+});
 </script>
+<div id="maintenanceOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#0f172a;color:#fff;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;font-family:system-ui,-apple-system,sans-serif">
+  <div style="font-size:54px;margin-bottom:18px">&#128295;</div>
+  <div style="font-size:24px;font-weight:800;margin-bottom:10px">App em manutenção</div>
+  <div id="maintenanceMsg" style="font-size:15px;opacity:.85;max-width:420px;line-height:1.5">Voltamos em breve.</div>
+</div>
 </body>
 </html>
