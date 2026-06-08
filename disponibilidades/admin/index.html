@@ -2060,6 +2060,42 @@ async function excluirItem(key){
 let _tabelaEspecial   = {};   // tabela carregada/salva
 let _tabEspPendente   = null; // resultado do parse aguardando "Salvar"
 
+// ═══════════════════════════════════════════════════════════════════════════
+// DADOS_PRODUTOS — JSON com PDV de referência por (artigo|cor)
+// Usado pra resgatar PDV de produtos 2S26 que vêm sem preço definido
+// ═══════════════════════════════════════════════════════════════════════════
+let _dadosProdutos = null;  // { "ARTIGO|COR": preço }
+
+async function carregarDadosProdutos(){
+  if(_dadosProdutos !== null) return _dadosProdutos;
+  try{
+    // Carrega direto do GitHub Pages (mais rápido que via Worker)
+    const url = `${location.origin}${location.pathname.replace(/disponibilidades\/admin\/?.*$/, '')}data/dados_produtos.json?v=${Date.now()}`;
+    const res = await fetch(url, { cache:'no-store' });
+    if(!res.ok) throw new Error('not found');
+    _dadosProdutos = await res.json();
+    console.log(`[dados_produtos] ${Object.keys(_dadosProdutos).length} entradas carregadas`);
+  }catch(e){
+    console.warn('[dados_produtos] não encontrado:', e.message);
+    _dadosProdutos = {};
+  }
+  return _dadosProdutos;
+}
+
+// Resgata PDV de 1 item se estiver com PDV=0
+// Retorna true se resgatou, false caso contrário
+function resgatarPdv(item){
+  if(!_dadosProdutos || Number(item.pdv) > 0) return false;
+  const k = `${String(item.artigo||'').toUpperCase()}|${String(item.cor||'').toUpperCase()}`;
+  const preco = _dadosProdutos[k];
+  if(preco && preco > 0){
+    item.pdv = Number(preco);
+    item._pdvResgatado = true;
+    return true;
+  }
+  return false;
+}
+
 // Normaliza cor igual ao rowToItem (CH/BLK → CH_BLK)
 function normalizarCor(c){
   return String(c || '')
@@ -2397,6 +2433,11 @@ function abrirAnalise(){
   // Subtitulo
   const a = _analise;
   $('anlSubtitle').textContent = `${a.arquivos.length} arquivo(s) · ${a.total} produto(s) analisado(s)`;
+
+  // Toast informando PDVs resgatados do cadastro
+  if(a.pdvsResgatados > 0){
+    showToast(`💡 ${a.pdvsResgatados} PDV(s) resgatado(s) do cadastro`, 'info');
+  }
 
   // Aviso de duplicados
   const dup = _analise.duplicadosXlsx || [];
@@ -3047,6 +3088,10 @@ async function processarXlsxMulti(fileList){
     _tabelaEspecial = resTE.ok ? (await resTE.json() || {}) : {};
   }catch(e){ _tabelaEspecial = {}; }
 
+  // Carrega dados_produtos.json (referência de PDV) — 1x
+  await carregarDadosProdutos();
+  let _pdvsResgatados = 0;
+
   // Mapa do banco pra detectar conflitos
   const chaveAtual = new Map();
   for(const r of _jsonAtual){
@@ -3075,6 +3120,9 @@ async function processarXlsxMulti(fileList){
         const antesCod = item.codigoTabela;
         aplicarTabelaEspecial(item);
         if(item.codigoTabela && item.codigoTabela !== antesCod) _cruzadosTabEsp++;
+
+        // Resgata PDV do dados_produtos.json (especialmente útil pra 2S26 sem preço)
+        if(resgatarPdv(item)) _pdvsResgatados++;
 
         const k = `${item.artigo}|${item.cor}`;
         // Duplicado ENTRE arquivos?
@@ -3178,7 +3226,8 @@ async function processarXlsxMulti(fileList){
     duplicadosXlsx,
     duplicadosBanco,
     arquivos: arquivosInfo,
-    total: todos.length
+    total: todos.length,
+    pdvsResgatados: _pdvsResgatados
   };
 
   // Abre o modal de análise
