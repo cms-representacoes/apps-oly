@@ -2209,14 +2209,15 @@ async function loadData(){
       // Filtra pela marca ativa (vem da URL) — produtos de outras marcas não entram
       .filter(i => String(i.marca||'').trim().toLowerCase() === MARCA_ATIVA)
       .map(i => ({ ...i, prevFat: fixEncoding(i.prevFat) }));
-    // STATE.itensTodos: inclui produtos sem estoque (usado na busca de Desejados)
+    // STATE.itensTodos: inclui TODOS os produtos da marca (usado na busca de Desejados)
     STATE.itensTodos = itens
       .filter(i => !i._oculto)
       .filter(i => !ocultosSet.has(ocultarKey(i)))
       .filter(i => String(i.marca||'').trim().toLowerCase() === MARCA_ATIVA)
       .map(i => ({ ...i, prevFat: fixEncoding(i.prevFat) }));
-    // STATE.itens (vitrine principal): só com estoque
-    STATE.itens = STATE.itens.filter(i => !i._semEstoque);
+    // (a flag _semEstoque era usada em uma versão antiga; agora a vitrine
+    // exibe todos os produtos do banco normalmente. Quem está sem estoque
+    // simplesmente tem grade vazia / totalGeral=0 e será visto pela qtde.)
     carregarFiltros();      // restaura filtros da sessão
     renderVisaoBar();       // toggle Disponíveis x 2S26
     renderCampanhas();      // pills de campanha no topo
