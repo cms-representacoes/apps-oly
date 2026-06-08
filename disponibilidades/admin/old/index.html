@@ -2060,6 +2060,42 @@ async function excluirItem(key){
 let _tabelaEspecial   = {};   // tabela carregada/salva
 let _tabEspPendente   = null; // resultado do parse aguardando "Salvar"
 
+// ═══════════════════════════════════════════════════════════════════════════
+// DADOS_PRODUTOS — JSON com PDV de referência por (artigo|cor)
+// Usado pra resgatar PDV de produtos 2S26 que vêm sem preço definido
+// ═══════════════════════════════════════════════════════════════════════════
+let _dadosProdutos = null;  // { "ARTIGO|COR": preço }
+
+async function carregarDadosProdutos(){
+  if(_dadosProdutos !== null) return _dadosProdutos;
+  try{
+    // Carrega direto do GitHub Pages (mais rápido que via Worker)
+    const url = `${location.origin}${location.pathname.replace(/disponibilidades\/admin\/?.*$/, '')}data/dados_produtos.json?v=${Date.now()}`;
+    const res = await fetch(url, { cache:'no-store' });
+    if(!res.ok) throw new Error('not found');
+    _dadosProdutos = await res.json();
+    console.log(`[dados_produtos] ${Object.keys(_dadosProdutos).length} entradas carregadas`);
+  }catch(e){
+    console.warn('[dados_produtos] não encontrado:', e.message);
+    _dadosProdutos = {};
+  }
+  return _dadosProdutos;
+}
+
+// Resgata PDV de 1 item se estiver com PDV=0
+// Retorna true se resgatou, false caso contrário
+function resgatarPdv(item){
+  if(!_dadosProdutos || Number(item.pdv) > 0) return false;
+  const k = `${String(item.artigo||'').toUpperCase()}|${String(item.cor||'').toUpperCase()}`;
+  const preco = _dadosProdutos[k];
+  if(preco && preco > 0){
+    item.pdv = Number(preco);
+    item._pdvResgatado = true;
+    return true;
+  }
+  return false;
+}
+
 // Normaliza cor igual ao rowToItem (CH/BLK → CH_BLK)
 function normalizarCor(c){
   return String(c || '')
@@ -2283,17 +2319,66 @@ function fecharImportar(){
   _imagensOrfas = [];
 }
 
-const COLS_FIXAS = new Set(['MARCA','PREV. FAT','EMPRESA','ARTIGO','DESCRIÇÃO','COR','LINHA','GÉNERO','CATEGORIA','PDV','T. GER','T. GRD','T. COR','CODIGO TABELA','TABELA ESPECIAL?','MKP','CUSTO']);
+const COLS_FIXAS = new Set(['MARCA','PREV. FAT','OLY','EMPRESA','ARTIGO','DESCRIÇÃO','COR','LINHA','GÉNERO','CATEGORIA','PDV','T. GER','T. ART','T. GRD','T. COR','CODIGO TABELA','TABELA ESPECIAL?','MKP','CUSTO']);
+
+// Para coleções (categoria 2S26, 1S27, etc): extrai a quinzena do texto
+// Aceita: "PREV. FAT" ou (fallback) qualquer coluna que contenha texto tipo "QUINZ"
+// Ex: "2 QUINZ AGO" → "2Q_AGO" · "2 QUINZ SETEMBRO" → "2Q_SET" · "2. QUINZ NOVEMBRO" → "2Q_NOV"
+function parseQuinzena(texto){
+  const s = String(texto||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  // Quinzena (1ª ou 2ª)
+  let q = '';
+  if(/\b1[ª\.\s]*\s*QUINZ/.test(s))      q = '1Q';
+  else if(/\b2[ª\.\s]*\s*QUINZ/.test(s)) q = '2Q';
+  if(!q) return '';
+  // Mês (case insensitive — pega 3 primeiras letras)
+  const meses = {
+    JAN:'JAN', FEV:'FEV', MAR:'MAR', ABR:'ABR', MAI:'MAI', JUN:'JUN',
+    JUL:'JUL', AGO:'AGO', SET:'SET', OUT:'OUT', NOV:'NOV', DEZ:'DEZ',
+    JANEIRO:'JAN', FEVEREIRO:'FEV', MARCO:'MAR', ABRIL:'ABR', MAIO:'MAI', JUNHO:'JUN',
+    JULHO:'JUL', AGOSTO:'AGO', SETEMBRO:'SET', OUTUBRO:'OUT', NOVEMBRO:'NOV', DEZEMBRO:'DEZ'
+  };
+  for(const [nome, abbr] of Object.entries(meses)){
+    if(s.includes(nome)) return `${q}_${abbr}`;
+  }
+  return '';
+}
+
+// Detecta se categoria é uma COLEÇÃO (meta produtiva, não estoque)
+// Ex: "2S26", "1S27", "2S27"...
+function ehColecaoMeta(categoria){
+  return /^\d+S\d+$/.test(String(categoria||'').trim().toUpperCase());
+}
 
 function rowToItem(row){
+  const categoria = String(row['CATEGORIA']  || '').trim().toUpperCase();
+  const ehMeta = ehColecaoMeta(categoria);
+
   const grade = {};
+  let prevFatRaw = String(row['PREV. FAT'] || '').trim();
+
   for(const [col, val] of Object.entries(row)){
     if(COLS_FIXAS.has(col)) continue;
     const n = Number(val);
     if(!isNaN(n) && n > 0) grade[col] = n;
   }
+
+  // Se for COLEÇÃO META: ignora grade (vai pelo T.GER) e detecta a quinzena
+  let _meta = false;
+  let quinzenaKey = '';
+  if(ehMeta){
+    _meta = true;
+    quinzenaKey = parseQuinzena(prevFatRaw);
+    // FALLBACK: se PREV. FAT estiver vazio/inválido, procura em outras colunas
+    if(!quinzenaKey){
+      for(const [col, val] of Object.entries(row)){
+        const q = parseQuinzena(val);
+        if(q){ quinzenaKey = q; if(!prevFatRaw) prevFatRaw = String(val||'').trim(); break; }
+      }
+    }
+  }
+
   // Normaliza cor: / e - viram _ (alinha com nome dos arquivos de imagem)
-  // Ex: "CH/BLK" → "CH_BLK"  |  "BLK-WHT" → "BLK_WHT"
   const corNormalizada = String(row['COR'] || '')
     .trim()
     .toUpperCase()
@@ -2301,24 +2386,36 @@ function rowToItem(row){
     .replace(/_+/g, '_')
     .replace(/^_+|_+$/g, '');
 
-  return {
+  const totalGeral = Number(row['T. GER'] || 0);
+
+  const item = {
     marca:        String(row['MARCA']      || '').trim().toUpperCase(),
-    prevFat:      String(row['PREV. FAT']  || '').trim(),
+    prevFat:      prevFatRaw,
     empresa:      String(row['EMPRESA']    || '').trim(),
     artigo:       String(row['ARTIGO']     || '').trim().toUpperCase(),
     descricao:    String(row['DESCRIÇÃO']  || '').trim().toUpperCase(),
     cor:          corNormalizada,
     linha:        String(row['LINHA']      || '').trim().toUpperCase(),
     genero:       String(row['GÉNERO']     || row['GENERO'] || '').trim().toUpperCase(),
-    categoria:    String(row['CATEGORIA']  || '').trim().toUpperCase(),
+    categoria:    categoria,
     pdv:          Number(row['PDV']        || 0),
-    totalGeral:   Number(row['T. GER']     || 0),
+    totalGeral:   totalGeral,
     codigoTabela: String(row['CODIGO TABELA'] || '').trim().toUpperCase(),
     mkp:          String(row['MKP']        || '').trim(),
     custo:        Number(row['CUSTO']      || 0),
     imagem:       '',
     grade
   };
+
+  if(_meta){
+    item._meta = true;
+    // Quinzena atual = { '2Q_AGO': 1394 } só essa do arquivo. Será mesclada depois.
+    item.quinzenas = quinzenaKey ? { [quinzenaKey]: totalGeral } : {};
+    // Limpa grade — meta produtiva não usa tamanhos
+    item.grade = {};
+  }
+
+  return item;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2336,6 +2433,11 @@ function abrirAnalise(){
   // Subtitulo
   const a = _analise;
   $('anlSubtitle').textContent = `${a.arquivos.length} arquivo(s) · ${a.total} produto(s) analisado(s)`;
+
+  // Toast informando PDVs resgatados do cadastro
+  if(a.pdvsResgatados > 0){
+    showToast(`💡 ${a.pdvsResgatados} PDV(s) resgatado(s) do cadastro`, 'info');
+  }
 
   // Aviso de duplicados
   const dup = _analise.duplicadosXlsx || [];
@@ -2416,7 +2518,7 @@ function anlRenderLista(){
   }
 
   // Ordem dos grupos
-  const ordemGrupos = ['calcado_masc','calcado_fem','chinelo','confeccao','acessorio','outro'];
+  const ordemGrupos = ['meta','calcado_masc','calcado_fem','chinelo','confeccao','acessorio','outro'];
   const tiposExistentes = ordemGrupos.filter(t => grupos[t]);
 
   let html = '';
@@ -2685,8 +2787,23 @@ async function anlExecutarSalvar(itens){
       // Flag de aguardando imagem (vitrine NÃO mostra)
       const aguardandoImg = !imagem;
       if(aguardandoImg) aguardando++; else prontos++;
+
+      // META PRODUTIVA: se já existe no banco com _meta, MESCLA quinzenas
+      let quinzenasFinal = it.quinzenas || undefined;
+      if(it._meta){
+        const noBanco = (_jsonAtual||[]).find(x =>
+          String(x.artigo||'').toUpperCase() === it.artigo &&
+          String(x.cor||'').toUpperCase() === it.cor &&
+          x._meta
+        );
+        if(noBanco && noBanco.quinzenas){
+          quinzenasFinal = { ...noBanco.quinzenas, ...(it.quinzenas||{}) };
+        }
+      }
+
       novosMap.set(k, {
         ...it,
+        ...(it._meta ? { quinzenas: quinzenasFinal || {} } : {}),
         imagem,
         _aguardandoImagem: aguardandoImg ? true : undefined  // só inclui se true
       });
@@ -2741,6 +2858,9 @@ const SALDO_MIN = 5;
 // Detecta o "tipo" de produto pelo padrão da grade
 // Retorna: 'calcado_masc' | 'calcado_fem' | 'chinelo' | 'confeccao' | 'acessorio' | 'outro'
 function detectarTipoProduto(item){
+  // 0) META PRODUTIVA (coleção 2S26, 1S27...) — antes de tudo
+  if(item._meta || ehColecaoMeta(item.categoria)) return 'meta';
+
   // 1) Detecta primeiro por CATEGORIA do XLSX (mais confiável que grade)
   //    Remove acentos pra pegar "ACESSORIOS" e "ACESSÓRIOS" igualmente.
   const cat = String(item.categoria || '')
@@ -2791,6 +2911,17 @@ function classificarGrade(item){
 
   const tipo = detectarTipoProduto(item);
   const grade = item.grade || {};
+
+  // 0) META PRODUTIVA — não tem grade, classifica pelo T.GER
+  if(tipo === 'meta'){
+    const qs = item.quinzenas || {};
+    const totalQuinz = Object.values(qs).reduce((s,v) => s + (Number(v)||0), 0);
+    const cont = Object.keys(qs).length;
+    if(totalQuinz > 0){
+      return { bucket:'completo', motivo:`${cont} quinzena(s) · ${totalQuinz.toLocaleString('pt-BR')} pares`, tipo };
+    }
+    return { bucket:'critico', motivo:'Sem meta produtiva informada', tipo };
+  }
 
   // Lista os tamanhos COM SALDO (≥ SALDO_MIN)
   const comSaldo = new Set();
@@ -2907,6 +3038,7 @@ async function verificarImagensImport(itens, onProgress){
 // Nome amigável do tipo
 function nomeTipo(tipo){
   switch(tipo){
+    case 'meta':         return 'Meta Produtiva (2S26)';
     case 'calcado_masc': return 'Calçado Masculino';
     case 'calcado_fem':  return 'Calçado Feminino';
     case 'chinelo':      return 'Chinelo';
@@ -2919,6 +3051,7 @@ function nomeTipo(tipo){
 // Ícone do tipo
 function iconeTipo(tipo){
   switch(tipo){
+    case 'meta':         return 'fa-industry';
     case 'calcado_masc': return 'fa-shoe-prints';
     case 'calcado_fem':  return 'fa-shoe-prints';
     case 'chinelo':      return 'fa-shoe-prints';
@@ -2955,6 +3088,10 @@ async function processarXlsxMulti(fileList){
     _tabelaEspecial = resTE.ok ? (await resTE.json() || {}) : {};
   }catch(e){ _tabelaEspecial = {}; }
 
+  // Carrega dados_produtos.json (referência de PDV) — 1x
+  await carregarDadosProdutos();
+  let _pdvsResgatados = 0;
+
   // Mapa do banco pra detectar conflitos
   const chaveAtual = new Map();
   for(const r of _jsonAtual){
@@ -2984,18 +3121,30 @@ async function processarXlsxMulti(fileList){
         aplicarTabelaEspecial(item);
         if(item.codigoTabela && item.codigoTabela !== antesCod) _cruzadosTabEsp++;
 
+        // Resgata PDV do dados_produtos.json (especialmente útil pra 2S26 sem preço)
+        if(resgatarPdv(item)) _pdvsResgatados++;
+
         const k = `${item.artigo}|${item.cor}`;
         // Duplicado ENTRE arquivos?
         if(mapaXlsx.has(k)){
-          duplicadosXlsx.push({
-            chave: k,
-            artigo: item.artigo, cor: item.cor, descricao: item.descricao,
-            origens: [mapaXlsx.get(k), file.name]
-          });
-          // estratégia: "última vence" — mas vamos AVISAR
-          // sobrescreve a entrada anterior
+          // META PRODUTIVA: duplicado é NORMAL (mesma referência, quinzena diferente)
+          // → MESCLA quinzenas em vez de avisar
           const idx = todos.findIndex(x => `${x.item.artigo}|${x.item.cor}` === k);
-          if(idx >= 0) todos[idx] = { item, origem: file.name };
+          const ant = idx >= 0 ? todos[idx].item : null;
+          if(item._meta && ant && ant._meta){
+            // Acumula quinzenas no anterior
+            ant.quinzenas = { ...(ant.quinzenas||{}), ...(item.quinzenas||{}) };
+            // Mantém o totalGeral mais alto (pra exibição rápida do "principal")
+            if(item.totalGeral > ant.totalGeral) ant.totalGeral = item.totalGeral;
+          } else {
+            // Comportamento normal: duplicado real (avisa, sobrescreve)
+            duplicadosXlsx.push({
+              chave: k,
+              artigo: item.artigo, cor: item.cor, descricao: item.descricao,
+              origens: [mapaXlsx.get(k), file.name]
+            });
+            if(idx >= 0) todos[idx] = { item, origem: file.name };
+          }
         } else {
           mapaXlsx.set(k, file.name);
           todos.push({ item, origem: file.name });
@@ -3077,7 +3226,8 @@ async function processarXlsxMulti(fileList){
     duplicadosXlsx,
     duplicadosBanco,
     arquivos: arquivosInfo,
-    total: todos.length
+    total: todos.length,
+    pdvsResgatados: _pdvsResgatados
   };
 
   // Abre o modal de análise
