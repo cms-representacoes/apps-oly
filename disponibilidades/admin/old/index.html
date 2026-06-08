@@ -1269,6 +1269,28 @@ async function loadData(){
     STATE.ocultos = new Set(Array.isArray(oc) ? oc : []);
     STATE.imgHist = histRes.ok ? await histRes.json() : {};
     STATE.lastSync = Date.now();
+
+    // ── LIMPEZA AUTOMÁTICA: remove flag _semEstoque de produtos antigos ─────
+    // (flag herdada de uma versão antiga que zerava produtos não reimportados,
+    //  causando sumiço de produtos da vitrine — agora removemos automaticamente)
+    let limpadosSemEstoque = 0;
+    for(const item of STATE.itens){
+      if(item._semEstoque){
+        delete item._semEstoque;
+        limpadosSemEstoque++;
+      }
+    }
+    if(limpadosSemEstoque > 0){
+      // Persiste a limpeza no GitHub em background
+      workerFetch({
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ action:'saveDisponibilidades', data: STATE.itens })
+      }).then(() => {
+        console.log(`[limpeza] ${limpadosSemEstoque} produto(s) tiveram a flag _semEstoque removida`);
+        showToast(`✨ ${limpadosSemEstoque} produto(s) recuperado(s) automaticamente`, 'success');
+      }).catch(e => console.warn('[limpeza] falhou ao salvar:', e));
+    }
+
     popularFiltrosSec();
     applyFilters();
     updateLastSyncLabel();
@@ -2855,7 +2877,8 @@ async function anlExecutarSalvar(itens){
         ...it,
         ...(it._meta ? { quinzenas: quinzenasFinal || {} } : {}),
         imagem,
-        _aguardandoImagem: aguardandoImg ? true : undefined  // só inclui se true
+        _aguardandoImagem: aguardandoImg ? true : undefined,  // só inclui se true
+        _semEstoque: undefined  // limpa flag antiga (caso o produto já tivesse a flag)
       });
     }
 
