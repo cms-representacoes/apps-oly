@@ -2422,7 +2422,7 @@ function ehColecaoMeta(categoria){
   return /^\d+S\d+$/.test(String(categoria||'').trim().toUpperCase());
 }
 
-function rowToItem(row, quinzenaHint){
+function rowToItem(row){
   const categoria = String(row['CATEGORIA']  || '').trim().toUpperCase();
   const ehMeta = ehColecaoMeta(categoria);
 
@@ -2440,10 +2440,8 @@ function rowToItem(row, quinzenaHint){
   let quinzenaKey = '';
   if(ehMeta){
     _meta = true;
-    // Prioridade: quinzena detectada pelo NOME do arquivo (hint).
-    // Fallback: PREV. FAT da linha, depois varredura das demais colunas.
-    quinzenaKey = quinzenaHint || parseQuinzena(prevFatRaw);
-    // FALLBACK: se ainda vazio, procura em outras colunas
+    quinzenaKey = parseQuinzena(prevFatRaw);
+    // FALLBACK: se PREV. FAT estiver vazio/inválido, procura em outras colunas
     if(!quinzenaKey){
       for(const [col, val] of Object.entries(row)){
         const q = parseQuinzena(val);
@@ -3206,11 +3204,7 @@ function detectarDoNome(fileName){
     categoria = 'VESTUARIO';
   }
 
-  // Detecta QUINZENA pelo nome (só faz sentido em coleção meta)
-  // Ex: "1 QUINZ DEZEMBRO" → "1Q_DEZ" · "2 QUINZ AGOSTO" → "2Q_AGO"
-  const quinzena = ehMeta ? parseQuinzena(nome) : '';
-
-  return { marca, categoria, ehMeta, quinzena };
+  return { marca, categoria, ehMeta };
 }
 
 // Detecta se a primeira linha do XLSX é título mesclado e pula
@@ -3280,19 +3274,12 @@ function pedirConfigImportacao(arquivos){
           <option value="VESTUARIO">VESTUARIO</option>
           <option value="2S26">2S26 (meta produtiva)</option>
         </select>`;
-      // Quinzena detectada (só para coleção meta)
-      const quinzCell = a.detec.ehMeta
-        ? (a.detec.quinzena
-            ? `<span style="font-weight:700; color:#5b21b6">${safeHtml(a.detec.quinzena)}</span>`
-            : `<span style="font-weight:700; color:#b91c1c">⚠️ não lida</span>`)
-        : `<span style="color:#94a3b8">—</span>`;
       return `
         <tr style="background:${corLinha}">
           <td style="padding:6px 8px; font-size:11px; color:${corTexto}">${iconeCheck}</td>
           <td style="padding:6px 8px; font-size:11px;">${safeHtml(a.nome)}</td>
           <td style="padding:6px 8px; font-size:11px; font-weight:700">${safeHtml(a.detec.marca)}</td>
           <td style="padding:6px 8px; font-size:11px; font-weight:700">${ok ? safeHtml(a.detec.categoria) : selCat}</td>
-          <td style="padding:6px 8px; font-size:11px;">${quinzCell}</td>
         </tr>`;
     }).join('');
 
@@ -3315,7 +3302,6 @@ function pedirConfigImportacao(arquivos){
                   <th style="padding:8px; text-align:left; font-size:10px; color:#475569; text-transform:uppercase;">Arquivo</th>
                   <th style="padding:8px; text-align:left; font-size:10px; color:#475569; text-transform:uppercase;">Marca</th>
                   <th style="padding:8px; text-align:left; font-size:10px; color:#475569; text-transform:uppercase;">Categoria</th>
-                  <th style="padding:8px; text-align:left; font-size:10px; color:#475569; text-transform:uppercase;">Quinzena</th>
                 </tr>
               </thead>
               <tbody>${linhasTabela}</tbody>
@@ -3369,8 +3355,7 @@ function pedirConfigImportacao(arquivos){
           arquivo: a.nome,
           marca:   a.detec.marca,
           categoria,
-          ehMeta,
-          quinzena: a.detec.quinzena || ''
+          ehMeta
         };
       });
 
@@ -3439,7 +3424,7 @@ async function processarXlsxMulti(fileList){
   for(const file of arquivos){
     let qtdArquivo = 0;
     // Pega a config detectada deste arquivo
-    const cfgArq = cfgPorNome.get(file.name) || { marca:'OLY', categoria:'', ehMeta:false, quinzena:'' };
+    const cfgArq = cfgPorNome.get(file.name) || { marca:'OLY', categoria:'', ehMeta:false };
     try{
       const buf = await file.arrayBuffer();
       const wb  = XLSX.read(buf, { type:'array' });
@@ -3458,7 +3443,7 @@ async function processarXlsxMulti(fileList){
         if(prevFat && !String(row['PREV. FAT']||'').trim()){
           row['PREV. FAT'] = prevFat;
         }
-        const item = rowToItem(row, cfgArq.quinzena);
+        const item = rowToItem(row);
         if(!item.artigo) continue;
         // Cruzamento automático com a tabela especial
         const antesCod = item.codigoTabela;
