@@ -113,6 +113,14 @@
     .btn-fav.ativo{ border-color:#fca5a5; background:#fff1f2; }
     .prod-card.selecionado{ border-color:var(--accent); box-shadow:0 0 0 2px rgba(125,184,0,.2); }
 
+    /* Desejado — sobe pro topo e pulsa com borda laranja */
+    .prod-card.desejado{ border-color:#fb923c; animation:pulseDesejo 1.4s ease-in-out infinite; }
+    .prod-card.desejado:hover{ border-color:#ea580c; }
+    @keyframes pulseDesejo{
+      0%,100%{ box-shadow:0 0 0 0 rgba(249,115,22,.55), 0 6px 18px rgba(249,115,22,.18); border-color:#fb923c; }
+      50%    { box-shadow:0 0 0 7px rgba(249,115,22,0), 0 10px 24px rgba(249,115,22,.32); border-color:#ea580c; }
+    }
+
     /* Lupa */
     .btn-zoom{
       position:absolute; top:10px; right:10px; z-index:10;
@@ -2051,6 +2059,7 @@ function toggleDesejo(artigo, cor){
   }
   salvarDesejos();          // background, sem await
   renderModalDesejados();   // re-renderiza modal aberto
+  if(typeof applyFilters === 'function') applyFilters();  // re-ordena vitrine (desejo sobe pro topo)
   atualizarBadgePedidos();
 }
 
@@ -2528,11 +2537,21 @@ function ordenarLista(lista, modo){
     case 'disp_desc':  arr.sort((a,b)=>totalDisp(b)-totalDisp(a)); break;
     default: break; // padrão = ordem original
   }
-  return arr;
+  // Desejados sempre no topo (estável dentro de cada grupo)
+  const desej = [], resto = [];
+  for(const it of arr){ (ehDesejo(it) ? desej : resto).push(it); }
+  return [...desej, ...resto];
 }
 
 // ── RENDER CARDS ──────────────────────────────────────────────────────────────
 function prodKey(item){ return `${item.artigo}|${item.cor}`; }
+
+// Item está nos Desejados do vendedor? (robusto a maiúsc/minúsc)
+function ehDesejo(item){
+  if(!STATE.desejos || !STATE.desejos.size) return false;
+  const a = String(item.artigo||''), c = String(item.cor||'');
+  return STATE.desejos.has(`${a}|${c}`) || STATE.desejos.has(`${a.toUpperCase()}|${c.toUpperCase()}`);
+}
 
 // Cria o HTML de UM card (extraído pra reuso entre lotes)
 function buildCardHtml(item){
@@ -2604,7 +2623,7 @@ function buildCardHtml(item){
     : Number(item.totalGeral||0);
 
   const card = document.createElement('article');
-  card.className = `prod-card${isSel?' selecionado':''}${ehMeta?' meta':''}`;
+  card.className = `prod-card${isSel?' selecionado':''}${ehMeta?' meta':''}${ehDesejo(item)?' desejado':''}`;
   card.dataset.key = key;
   card.innerHTML = `
     <button class="btn-fav${isSel?' ativo':''}" onclick="toggleFav('${safeHtml(key)}',this)" title="${isSel?'Remover do PDF':'Adicionar ao PDF'}">
@@ -2661,6 +2680,16 @@ function labelQuinzena(key){
   const pref = q === '1Q' ? '1ª Quinz' : '2ª Quinz';
   const mes = String(m||'').charAt(0).toUpperCase() + String(m||'').slice(1).toLowerCase();
   return `${pref} ${mes}`;
+}
+
+// Mês mais próximo (cronológico) que tem meta produtiva — ex.: "AGOSTO 2026"
+function mesMaisProximoMeta(item){
+  const ents = ordenarQuinzenas(Object.entries(item.quinzenas||{}));
+  if(!ents.length) return '—';
+  const ab = String(ents[0][0].split('_')[1]||'');
+  const MESES = {JAN:'JANEIRO',FEV:'FEVEREIRO',MAR:'MARÇO',ABR:'ABRIL',MAI:'MAIO',JUN:'JUNHO',JUL:'JULHO',AGO:'AGOSTO',SET:'SETEMBRO',OUT:'OUTUBRO',NOV:'NOVEMBRO',DEZ:'DEZEMBRO'};
+  const ano = (String(item.prevFat||'').match(/\d{4}/)||[])[0] || String(new Date().getFullYear());
+  return `${MESES[ab]||ab} ${ano}`;
 }
 
 // Atualiza o indicador "Mostrando X de Y produtos" + botão Carregar mais
@@ -3638,6 +3667,9 @@ async function gerarPDF(){
     });
   if(!selecionados.length){ showToast('Selecione ao menos um produto.','info'); return; }
 
+  // Vendedor nunca mistura pronta entrega com 2S26 → título/arquivo dinâmicos
+  const todosMeta = selecionados.every(i => !!i._meta);
+
   const fab = $('fabPDF');
   const prev = fab.innerHTML;
   fab.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Gerando...';
@@ -3704,7 +3736,7 @@ async function gerarPDF(){
       doc.text('CMS Representações', tx, 27);
       doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
       doc.setTextColor(210,220,250);
-      doc.text(`CATÁLOGO DE DISPONIBILIDADES · ${(info.nome||'').toUpperCase()}`, tx, 40);
+      doc.text(`${todosMeta?'CATÁLOGO COLEÇÃO 2S26':'CATÁLOGO DE DISPONIBILIDADES'} · ${(info.nome||'').toUpperCase()}`, tx, 40);
       // data à direita
       doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
       doc.setTextColor(210,220,250);
@@ -3718,7 +3750,7 @@ async function gerarPDF(){
       doc.line(margin, pageH-28, pageW-margin, pageH-28);
       sc(C.muted);
       doc.setFont('helvetica','normal'); doc.setFontSize(7);
-      doc.text(`Catálogo de Disponibilidades · CMS Representações`, margin, pageH-16);
+      doc.text(`${todosMeta?'Catálogo Coleção 2S26':'Catálogo de Disponibilidades'} · CMS Representações`, margin, pageH-16);
       doc.text(`pág. ${pageNum}`, pageW-margin, pageH-16, {align:'right'});
     }
 
@@ -3790,49 +3822,39 @@ async function gerarPDF(){
       doc.text(doc.splitTextToSize(attrLine, txW).slice(0,1), tx, ty);
       ty += 14;
 
-      // ── 3 boxes: MKP/PrevFat · PDV · Custo/T.Geral ──
+      // ── Boxes de dados ──
       const boxGap = 8;
-      const boxW   = (txW - boxGap*2) / 3;
       const boxH   = 30;
       const boxY   = ty;
-      const temTab = item.codigoTabela && (item.mkp || item.custo);
+      const ehMetaPdf = !!item._meta;
 
-      // Box 1
-      sc(C.bg,'fill'); sc(C.border,'draw'); doc.setLineWidth(0.4);
-      doc.roundedRect(tx, boxY, boxW, boxH, 4,4,'FD');
-      sc(C.muted); doc.setFont('helvetica','bold'); doc.setFontSize(5.8);
-      if(temTab && item.mkp){
-        doc.text('MKP', tx+7, boxY+11);
-        sc(C.text); doc.setFont('helvetica','bold'); doc.setFontSize(11);
-        doc.text(String(item.mkp), tx+7, boxY+24);
+      const drawBox = (bx, bw, label, value, valColor, valSize) => {
+        sc(C.bg,'fill'); sc(C.border,'draw'); doc.setLineWidth(0.4);
+        doc.roundedRect(bx, boxY, bw, boxH, 4,4,'FD');
+        sc(C.muted); doc.setFont('helvetica','bold'); doc.setFontSize(5.8);
+        doc.text(label, bx+7, boxY+11);
+        sc(valColor||C.text); doc.setFont('helvetica','bold'); doc.setFontSize(valSize||11);
+        doc.text(value, bx+7, boxY+24);
+      };
+
+      if(ehMetaPdf){
+        // 2S26: PREV. FATURAMENTO (mês mais próximo c/ meta) + PDV · sem T. GERAL e sem grade
+        const boxW2 = (txW - boxGap) / 2;
+        drawBox(tx, boxW2, 'PREV. FATURAMENTO', mesMaisProximoMeta(item), C.text, 9);
+        drawBox(tx + boxW2 + boxGap, boxW2, 'PDV', `R$ ${Number(item.pdv||0).toFixed(2)}`, C.accent, 12);
       } else {
-        doc.text('PREV. FATURAMENTO', tx+7, boxY+11);
-        sc(C.text); doc.setFont('helvetica','bold'); doc.setFontSize(9);
-        doc.text(String(fixEncoding(item.prevFat||'—')), tx+7, boxY+24);
-      }
-
-      // Box 2 — PDV
-      const b2 = tx + boxW + boxGap;
-      sc(C.bg,'fill'); sc(C.border,'draw');
-      doc.roundedRect(b2, boxY, boxW, boxH, 4,4,'FD');
-      sc(C.muted); doc.setFont('helvetica','bold'); doc.setFontSize(5.8);
-      doc.text('PDV', b2+7, boxY+11);
-      sc(C.accent); doc.setFont('helvetica','bold'); doc.setFontSize(12);
-      doc.text(`R$ ${Number(item.pdv||0).toFixed(2)}`, b2+7, boxY+24);
-
-      // Box 3
-      const b3 = b2 + boxW + boxGap;
-      sc(C.bg,'fill'); sc(C.border,'draw');
-      doc.roundedRect(b3, boxY, boxW, boxH, 4,4,'FD');
-      sc(C.muted); doc.setFont('helvetica','bold'); doc.setFontSize(5.8);
-      if(temTab && item.custo){
-        doc.text('CUSTO', b3+7, boxY+11);
-        sc(C.text); doc.setFont('helvetica','bold'); doc.setFontSize(11);
-        doc.text(`R$ ${Number(item.custo).toFixed(2)}`, b3+7, boxY+24);
-      } else {
-        doc.text('T. GERAL', b3+7, boxY+11);
-        sc(C.text); doc.setFont('helvetica','bold'); doc.setFontSize(11);
-        doc.text(Number(item.totalGeral||0).toLocaleString('pt-BR'), b3+7, boxY+24);
+        const boxW   = (txW - boxGap*2) / 3;
+        const temTab = item.codigoTabela && (item.mkp || item.custo);
+        // Box 1 — MKP ou PREV. FATURAMENTO
+        if(temTab && item.mkp) drawBox(tx, boxW, 'MKP', String(item.mkp), C.text, 11);
+        else                   drawBox(tx, boxW, 'PREV. FATURAMENTO', String(fixEncoding(item.prevFat||'—')), C.text, 9);
+        // Box 2 — PDV
+        const b2 = tx + boxW + boxGap;
+        drawBox(b2, boxW, 'PDV', `R$ ${Number(item.pdv||0).toFixed(2)}`, C.accent, 12);
+        // Box 3 — CUSTO ou T. GERAL
+        const b3 = b2 + boxW + boxGap;
+        if(temTab && item.custo) drawBox(b3, boxW, 'CUSTO', `R$ ${Number(item.custo).toFixed(2)}`, C.text, 11);
+        else                     drawBox(b3, boxW, 'T. GERAL', Number(item.totalGeral||0).toLocaleString('pt-BR'), C.text, 11);
       }
 
       ty = boxY + boxH + 13;   // respiro abaixo dos boxes
@@ -3887,7 +3909,7 @@ async function gerarPDF(){
     }
     drawFooter(pageNum);
 
-    const fname = `disponibilidades_${MARCA_ATIVA}_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}.pdf`;
+    const fname = `${todosMeta?'colecao_2s26':'disponibilidades'}_${MARCA_ATIVA}_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}.pdf`;
     doc.save(fname);
     showToast(`PDF gerado com ${selecionados.length} produto(s)!`, 'success');
   }catch(err){
