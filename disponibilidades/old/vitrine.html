@@ -2211,10 +2211,17 @@ async function loadData(){
     const ocultosSet = new Set(Array.isArray(ocultosArr) ? ocultosArr : []);
     const ocultarKey = (i) => `${String(i.artigo||'').toUpperCase()}|${String(i.cor||'').toUpperCase()}`;
 
+    const META_MIN_PARES = 24;  // mínimo de pares p/ um 2S26 aparecer na vitrine
     STATE.itens = itens
       .filter(i => !i._oculto)
       .filter(i => !i._aguardandoImagem)  // produtos aguardando imagem não aparecem
       .filter(i => !ocultosSet.has(ocultarKey(i)))
+      // 2S26: só aparece com meta produtiva total >= mínimo (estoque passa direto)
+      .filter(i => {
+        if(!i._meta) return true;
+        const tot = Object.values(i.quinzenas||{}).reduce((s,v) => s + (Number(v)||0), 0);
+        return tot >= META_MIN_PARES;
+      })
       // Filtra pela marca ativa (vem da URL) — produtos de outras marcas não entram
       .filter(i => String(i.marca||'').trim().toLowerCase() === MARCA_ATIVA)
       .map(i => ({ ...i, prevFat: fixEncoding(i.prevFat) }));
@@ -3655,10 +3662,13 @@ async function loadImgForPdfCrop(dataUrl){
 
 // ── GERAR PDF ─────────────────────────────────────────────────────────────────
 async function gerarPDF(){
-  // Lê de STATE.itens (todos) — seleções valem em qualquer filtro,
-  // não só no que está ativo na tela.
+  // Gera só do tipo da VISÃO ATIVA (Disponíveis x 2S26). Como a mesma
+  // referência ARTIGO|COR pode existir como estoque (E) e meta (M), filtrar
+  // só por prodKey traria as duas — então casamos com STATE.filtroVisao.
+  const querMeta = STATE.filtroVisao === 'meta';
   const selecionados = STATE.itens
     .filter(i => STATE.selecionados.has(prodKey(i)))
+    .filter(i => !!i._meta === querMeta)
     .sort((a,b) => {
       // agrupa por categoria, depois por nome
       const ca = categoriaKey(a.categoria), cb = categoriaKey(b.categoria);
@@ -3668,7 +3678,7 @@ async function gerarPDF(){
   if(!selecionados.length){ showToast('Selecione ao menos um produto.','info'); return; }
 
   // Vendedor nunca mistura pronta entrega com 2S26 → título/arquivo dinâmicos
-  const todosMeta = selecionados.every(i => !!i._meta);
+  const todosMeta = querMeta;
 
   const fab = $('fabPDF');
   const prev = fab.innerHTML;

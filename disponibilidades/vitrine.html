@@ -2211,17 +2211,12 @@ async function loadData(){
     const ocultosSet = new Set(Array.isArray(ocultosArr) ? ocultosArr : []);
     const ocultarKey = (i) => `${String(i.artigo||'').toUpperCase()}|${String(i.cor||'').toUpperCase()}`;
 
-    const META_MIN_PARES = 24;  // mínimo de pares p/ um 2S26 aparecer na vitrine
     STATE.itens = itens
       .filter(i => !i._oculto)
       .filter(i => !i._aguardandoImagem)  // produtos aguardando imagem não aparecem
       .filter(i => !ocultosSet.has(ocultarKey(i)))
-      // 2S26: só aparece com meta produtiva total >= mínimo (estoque passa direto)
-      .filter(i => {
-        if(!i._meta) return true;
-        const tot = Object.values(i.quinzenas||{}).reduce((s,v) => s + (Number(v)||0), 0);
-        return tot >= META_MIN_PARES;
-      })
+      // 2S26: só aparece se tiver meta produtiva válida (quinzenas >= mínimo de pares)
+      .filter(i => !i._meta || metaTotalValido(i) >= META_MIN_PARES)
       // Filtra pela marca ativa (vem da URL) — produtos de outras marcas não entram
       .filter(i => String(i.marca||'').trim().toLowerCase() === MARCA_ATIVA)
       .map(i => ({ ...i, prevFat: fixEncoding(i.prevFat) }));
@@ -2573,8 +2568,8 @@ function buildCardHtml(item){
   let gradeHtml = '';
   if(ehMeta){
     const quinzenas = item.quinzenas || {};
-    const linhas = ordenarQuinzenas(Object.entries(quinzenas));
-    const totalMeta = linhas.reduce((s, [,v]) => s + (Number(v)||0), 0);
+    const linhas = metaQuinzValidas(item);
+    const totalMeta = metaTotalValido(item);
     gradeHtml = linhas.length
       ? `<div class="meta-bloco">
            <div class="meta-titulo"><i class="fa-solid fa-industry"></i> Meta produtiva</div>
@@ -2626,7 +2621,7 @@ function buildCardHtml(item){
 
   // Total: pra meta, soma quinzenas; pra estoque, totalGeral
   const totalExibir = ehMeta
-    ? Object.values(item.quinzenas||{}).reduce((s,v) => s + (Number(v)||0), 0)
+    ? metaTotalValido(item)
     : Number(item.totalGeral||0);
 
   const card = document.createElement('article');
@@ -2689,9 +2684,22 @@ function labelQuinzena(key){
   return `${pref} ${mes}`;
 }
 
+// ── Mínimo de pares POR QUINZENA p/ a meta produtiva contar ───────────────────
+const META_MIN_PARES = 24;
+
+// Quinzenas que contam (>= mínimo), já ordenadas cronologicamente
+function metaQuinzValidas(item){
+  return ordenarQuinzenas(
+    Object.entries(item.quinzenas||{}).filter(([,v]) => (Number(v)||0) >= META_MIN_PARES)
+  );
+}
+function metaTotalValido(item){
+  return metaQuinzValidas(item).reduce((s, [,v]) => s + (Number(v)||0), 0);
+}
+
 // Mês mais próximo (cronológico) que tem meta produtiva — ex.: "AGOSTO 2026"
 function mesMaisProximoMeta(item){
-  const ents = ordenarQuinzenas(Object.entries(item.quinzenas||{}));
+  const ents = metaQuinzValidas(item);
   if(!ents.length) return '—';
   const ab = String(ents[0][0].split('_')[1]||'');
   const MESES = {JAN:'JANEIRO',FEV:'FEVEREIRO',MAR:'MARÇO',ABR:'ABRIL',MAI:'MAIO',JUN:'JUNHO',JUL:'JULHO',AGO:'AGOSTO',SET:'SETEMBRO',OUT:'OUTUBRO',NOV:'NOVEMBRO',DEZ:'DEZEMBRO'};
