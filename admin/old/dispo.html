@@ -460,8 +460,6 @@
     .dark .filter-pill{ background:rgba(255,255,255,.04) !important; border-color:rgba(255,255,255,.10) !important; color:#a9b8d6 !important; }
     .dark .filter-pill:hover{ border-color:rgba(255,255,255,.18) !important; color:#eef3fc !important; background:rgba(255,255,255,.06) !important; }
     .dark .filter-pill.active{ background:linear-gradient(135deg,#5b8cff,#4f7bff) !important; border-color:transparent !important; color:#fff !important; box-shadow:0 8px 18px -10px rgba(91,140,255,.8) !important; }
-    .dispo-chk, .dispo-chk-all{ width:15px; height:15px; cursor:pointer; accent-color:var(--brand,#4f46e5); }
-    .th-chk, .td-chk{ text-align:center; }
 </style>
 </head>
 <body>
@@ -642,19 +640,11 @@
           <p>Clique em <strong>Atualizar DISPO</strong> para carregar os dados de estoque.</p>
         </div>
 
-        <!-- BARRA DE SELEÇÃO (excluir em lote) -->
-        <div id="dispoBulkBar" style="display:none;align-items:center;gap:12px;margin-bottom:10px;padding:10px 14px;border-radius:14px;background:var(--brand-soft,#eef0fe);border:1px solid var(--line,#c7cdfb)">
-          <span id="dispoBulkCount" style="font-weight:800;color:var(--brand,#3730a3);font-size:13px"></span>
-          <button onclick="excluirSelecionadosDispo()" style="margin-left:auto;display:flex;align-items:center;gap:7px;background:#dc2626;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-trash-can" style="font-size:12px"></i> Excluir selecionados</button>
-          <button onclick="limparSelecaoDispo()" style="background:transparent;border:1px solid var(--line,#c7cdfb);color:var(--brand,#3730a3);border-radius:999px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer">Limpar</button>
-        </div>
-
         <!-- TABLE -->
         <div id="tableWrap" class="table-wrap hidden">
           <table>
             <thead>
               <tr>
-                <th class="th-chk" style="width:36px;text-align:center"><input type="checkbox" id="dispoCheckAll" class="dispo-chk-all" title="Selecionar todos"></th>
                 <th class="sortable" data-col="num">Nº<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th class="sortable" data-col="gci">GCI<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th class="sortable" data-col="produto">Produto<i class="fa-solid fa-sort sort-icon"></i></th>
@@ -832,19 +822,7 @@ function sanitizeDisplayText(value){
 
 function parseDate(value){
   if(!value) return null;
-  if(value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
-  const s = String(value).trim();
-  // Formato brasileiro salvo no import: DD/MM/YYYY (ou DD/MM/YY)
-  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
-  if(m){
-    let dd = +m[1], mm = +m[2], yy = +m[3];
-    if(yy < 100) yy += 2000;
-    if(mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31){
-      const d = new Date(Date.UTC(yy, mm - 1, dd));
-      return Number.isNaN(d.getTime()) ? null : d;
-    }
-  }
-  const d = new Date(s);
+  const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
@@ -1105,73 +1083,6 @@ async function excluirDaDispoJson(row){
   }
 }
 
-// ===== Seleção em lote da DISPO =====
-const _dispoSelecionados = new Set();
-function atualizarBulkBarDispo(){
-  const n = _dispoSelecionados.size;
-  const bar = document.getElementById('dispoBulkBar');
-  const cnt = document.getElementById('dispoBulkCount');
-  if(cnt) cnt.textContent = `${n} selecionado${n!==1?'s':''}`;
-  if(bar) bar.style.display = n > 0 ? 'flex' : 'none';
-  const all = document.getElementById('dispoCheckAll');
-  if(all){
-    const vis = Array.from(document.querySelectorAll('.dispo-chk'));
-    const marc = vis.filter(c=>c.checked).length;
-    all.checked = vis.length>0 && marc===vis.length;
-    all.indeterminate = marc>0 && marc<vis.length;
-  }
-}
-function limparSelecaoDispo(){
-  _dispoSelecionados.clear();
-  document.querySelectorAll('.dispo-chk').forEach(c=>c.checked=false);
-  atualizarBulkBarDispo();
-}
-async function excluirSelecionadosDispo(){
-  const nums = [..._dispoSelecionados];
-  if(!nums.length) return;
-  if(!confirm(`Excluir ${nums.length} ite${nums.length>1?'ns':'m'} da DISPO?\n\nEssa ação não pode ser desfeita.`)) return;
-  try{
-    const sel = new Set(nums.map(String));
-    const novaLista = STATE.dispoRows.filter(r => !sel.has(String(r.num||'')));
-    const res = await workerFetch({
-      method:'PATCH', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'saveDispo', data: novaLista.map(r => ({
-        num:r.num, ebm:r.ebm, gci:r.gci, filial:r.filial,
-        codigo:r.codigo, produto:r.produto, cor:r.cor,
-        dataEntrega:r.dataEntrega, pedidoMae:r.pedidoMae,
-        saldo:r.saldo, grade:r.grade || {}
-      }))})
-    });
-    if(!res.ok) throw new Error('Falha ao salvar');
-    const result = await res.json();
-    if(!result.success) throw new Error(result.error);
-    STATE.dispoRows = novaLista;
-    _dispoSelecionados.clear();
-    renderDispo();
-    showToast(`${nums.length} ite${nums.length>1?'ns':'m'} removido${nums.length>1?'s':''} da DISPO.`, 'success');
-  }catch(err){
-    console.error(err);
-    showToast('Erro ao excluir. Tente novamente.', 'error');
-  }
-}
-document.addEventListener('change', (e)=>{
-  const t = e.target;
-  if(!t) return;
-  if(t.classList && t.classList.contains('dispo-chk')){
-    const num = String(t.dataset.num||'');
-    if(t.checked) _dispoSelecionados.add(num); else _dispoSelecionados.delete(num);
-    atualizarBulkBarDispo();
-  } else if(t.id === 'dispoCheckAll'){
-    const check = t.checked;
-    document.querySelectorAll('.dispo-chk').forEach(c=>{
-      c.checked = check;
-      const num = String(c.dataset.num||'');
-      if(check) _dispoSelecionados.add(num); else _dispoSelecionados.delete(num);
-    });
-    atualizarBulkBarDispo();
-  }
-});
-
 function setKpiFilter(filter){
   STATE.activeFilter = filter;
   // Sincroniza pills visuais
@@ -1262,7 +1173,7 @@ function computeAllRows(){
   allRows.forEach(row => {
     row._antecipavel = null;
     if(!row.dataEntrega) return;
-    const rowTime = parseDate(row.dataEntrega)?.getTime();
+    const rowTime = new Date(row.dataEntrega).getTime();
     if(isNaN(rowTime)) return;
     const siblings = allRows.filter(r => {
       if(r === row) return false;
@@ -1270,7 +1181,7 @@ function computeAllRows(){
       if(sanitizeDisplayText(r.cor).toUpperCase() !== sanitizeDisplayText(row.cor).toUpperCase()) return false;
       if(r.gci === row.gci) return false;
       if(!r.dataEntrega) return false;
-      const rTime = parseDate(r.dataEntrega)?.getTime();
+      const rTime = new Date(r.dataEntrega).getTime();
       return !isNaN(rTime) && rTime < rowTime;
     });
     if(!siblings.length) return;
@@ -1346,7 +1257,6 @@ function renderDispo(){
 
     return `
       <tr class="${rowClass}">
-        <td class="td-chk" style="text-align:center"><input type="checkbox" class="dispo-chk" data-num="${safeHtml(String(row.num||''))}" ${_dispoSelecionados.has(String(row.num||'')) ? 'checked' : ''}></td>
         <td class="tabular-nums font-semibold text-slate-400 text-[11px]">${safeHtml(row.num||'—')}</td>
         <td class="font-extrabold tabular-nums text-[var(--brand)] text-xs">${safeHtml(row.gci||row.codigo||'—')}</td>
         <td>
@@ -1386,8 +1296,6 @@ function renderDispo(){
       </tr>
     `;
   }).join('');
-
-  atualizarBulkBarDispo();
 }
 
 // ── DESMEMBRAMENTO ────────────────────────────────────────────────────────────

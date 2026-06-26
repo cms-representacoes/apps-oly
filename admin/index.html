@@ -924,7 +924,16 @@
           <div class="flex items-center gap-2 mb-2">
             <span class="text-xs font-bold text-slate-700">Conflitos detectados</span>
             <span id="dispoConflitosCount" class="text-[11px] font-bold bg-amber-100 text-amber-700 rounded-full px-2 py-0.5">0</span>
-            <span class="text-[11px] text-slate-400">— mesmo Código + Produto + COR já existe</span>
+            <span class="text-[11px] text-slate-400">— mesmo Nº já existe</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 mb-2 text-[11px]">
+            <label class="flex items-center gap-1.5 font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="dispoConfCheckAll"> Selecionar todos</label>
+            <span id="dispoConfSelCount" class="text-slate-400 font-semibold"></span>
+            <div class="ml-auto flex gap-1.5">
+              <button type="button" onclick="aplicarAcaoConflitosSelecionados('ignorar')" class="rounded-full px-2.5 py-1 font-bold border border-red-300 bg-red-50 text-red-600">Ignorar sel.</button>
+              <button type="button" onclick="aplicarAcaoConflitosSelecionados('incluir')" class="rounded-full px-2.5 py-1 font-bold border border-blue-300 bg-blue-50 text-blue-600">Incluir sel.</button>
+              <button type="button" onclick="aplicarAcaoConflitosSelecionados('substituir')" class="rounded-full px-2.5 py-1 font-bold border border-emerald-300 bg-emerald-50 text-emerald-600">Substituir sel.</button>
+            </div>
           </div>
           <div id="dispoConflitosBody" class="flex flex-col gap-3"></div>
         </div>
@@ -2471,10 +2480,10 @@ async function processarDispoXlsx(file){
   if(_hdrIdx < 0) _hdrIdx = 0;
   const rows = XLSX.utils.sheet_to_json(ws, { range:_hdrIdx, defval:null, raw:false });
 
-  const chaveAtual = new Map();
+  const chaveAtual = new Map(); // por Nº (identidade única)
   for(const r of _dispoJsonAtual){
-    const k = `${(r.codigo||'').toUpperCase()}|${(r.produto||'').toUpperCase()}|${(r.cor||'').toUpperCase()}`;
-    chaveAtual.set(k, r);
+    const k = String(r.num||'').trim();
+    if(k) chaveAtual.set(k, r);
   }
 
   // Mapeamento por NOME com apelidos — aceita BASE_APP e Repasses_Atual
@@ -2541,9 +2550,9 @@ async function processarDispoXlsx(file){
   for(const row of rows){
     const item = rowToJson(row);
     if(!item.codigo && !item.produto) continue;
-    const k = `${item.codigo.toUpperCase()}|${item.produto.toUpperCase()}|${item.cor.toUpperCase()}`;
-    if(chaveAtual.has(k)){
-      _dispoConflitos.push({ xlsx: item, atual: chaveAtual.get(k), incluir: false });
+    const k = String(item.num||'').trim();
+    if(k && chaveAtual.has(k)){
+      _dispoConflitos.push({ xlsx: item, atual: chaveAtual.get(k), acao: 'ignorar', _sel: false });
     } else {
       _dispoNovos.push(item);
     }
@@ -2582,11 +2591,15 @@ function renderPreviewDispo(fileName, totalLinhas){
     $('dispoConflitosCount').textContent = _dispoConflitos.length;
     $('dispoConflitosBody').innerHTML = _dispoConflitos.map((c,i) => `
       <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-        <div class="flex items-center justify-between mb-3">
-          <div class="font-bold text-sm">${safeHtml(c.xlsx.produto)} — ${safeHtml(c.xlsx.cor)} <span class="text-slate-400 font-normal text-xs">${safeHtml(c.xlsx.codigo)}</span></div>
-          <div class="flex gap-2">
-            <button onclick="toggleConflitoDispo(${i}, false)" class="conflito-btn-ignorar-${i} focus-ring rounded-full px-3 py-1 text-xs font-bold border ${c.incluir?'border-slate-200 bg-white text-slate-500':'border-red-300 bg-red-50 text-red-600'}">Ignorar</button>
-            <button onclick="toggleConflitoDispo(${i}, true)" class="conflito-btn-incluir-${i} focus-ring rounded-full px-3 py-1 text-xs font-bold border ${c.incluir?'border-blue-300 bg-blue-50 text-blue-600':'border-slate-200 bg-white text-slate-500'}">Incluir mesmo assim</button>
+        <div class="flex items-center justify-between mb-3 gap-3">
+          <label class="flex items-center gap-2 font-bold text-sm cursor-pointer">
+            <input type="checkbox" class="dispo-conf-chk" data-i="${i}" ${c._sel?'checked':''}>
+            <span>Nº ${safeHtml(c.xlsx.num||'—')} · ${safeHtml(c.xlsx.produto)} — ${safeHtml(c.xlsx.cor)} <span class="text-slate-400 font-normal text-xs">${safeHtml(c.xlsx.codigo)}</span></span>
+          </label>
+          <div class="flex gap-2 flex-shrink-0">
+            <button type="button" onclick="setAcaoConflito(${i},'ignorar')" class="conf-btn-ignorar-${i} focus-ring rounded-full px-3 py-1 text-xs font-bold border ${(c.acao||'ignorar')==='ignorar'?'border-red-300 bg-red-50 text-red-600':'border-slate-200 bg-white text-slate-500'}">Ignorar</button>
+            <button type="button" onclick="setAcaoConflito(${i},'incluir')" class="conf-btn-incluir-${i} focus-ring rounded-full px-3 py-1 text-xs font-bold border ${c.acao==='incluir'?'border-blue-300 bg-blue-50 text-blue-600':'border-slate-200 bg-white text-slate-500'}">Incluir</button>
+            <button type="button" onclick="setAcaoConflito(${i},'substituir')" class="conf-btn-substituir-${i} focus-ring rounded-full px-3 py-1 text-xs font-bold border ${c.acao==='substituir'?'border-emerald-300 bg-emerald-50 text-emerald-600':'border-slate-200 bg-white text-slate-500'}">Substituir</button>
           </div>
         </div>
         <div class="grid grid-cols-2 gap-3 text-xs">
@@ -2613,20 +2626,49 @@ function renderPreviewDispo(fileName, totalLinhas){
   atualizarResumoImportDispo();
 }
 
-function toggleConflitoDispo(idx, incluir){
-  _dispoConflitos[idx].incluir = incluir;
-  const btnIgn = document.querySelector(`.conflito-btn-ignorar-${idx}`);
-  const btnInc = document.querySelector(`.conflito-btn-incluir-${idx}`);
-  if(btnIgn) btnIgn.className = `conflito-btn-ignorar-${idx} focus-ring rounded-full px-3 py-1 text-xs font-bold border ${!incluir?'border-red-300 bg-red-50 text-red-600':'border-slate-200 bg-white text-slate-500'}`;
-  if(btnInc) btnInc.className = `conflito-btn-incluir-${idx} focus-ring rounded-full px-3 py-1 text-xs font-bold border ${incluir?'border-blue-300 bg-blue-50 text-blue-600':'border-slate-200 bg-white text-slate-500'}`;
+const _confCls = { ignorar:'border-red-300 bg-red-50 text-red-600', incluir:'border-blue-300 bg-blue-50 text-blue-600', substituir:'border-emerald-300 bg-emerald-50 text-emerald-600' };
+function _updateConfBtns(idx){
+  const acao = _dispoConflitos[idx].acao || 'ignorar';
+  ['ignorar','incluir','substituir'].forEach(act=>{
+    const el = document.querySelector(`.conf-btn-${act}-${idx}`);
+    if(el) el.className = `conf-btn-${act}-${idx} focus-ring rounded-full px-3 py-1 text-xs font-bold border ${act===acao?_confCls[act]:'border-slate-200 bg-white text-slate-500'}`;
+  });
+}
+function setAcaoConflito(idx, acao){
+  _dispoConflitos[idx].acao = acao;
+  _updateConfBtns(idx);
   atualizarResumoImportDispo();
 }
+function aplicarAcaoConflitosSelecionados(acao){
+  let n=0;
+  _dispoConflitos.forEach((c,i)=>{ if(c._sel){ c.acao=acao; _updateConfBtns(i); n++; } });
+  if(!n){ showToast('Selecione ao menos um conflito.', 'error'); return; }
+  atualizarResumoImportDispo();
+}
+function _syncConfSelUI(){
+  const n=_dispoConflitos.filter(c=>c._sel).length;
+  const el=document.getElementById('dispoConfSelCount'); if(el) el.textContent = n ? `${n} selecionado(s)` : '';
+  const all=document.getElementById('dispoConfCheckAll');
+  if(all){ all.checked = _dispoConflitos.length>0 && n===_dispoConflitos.length; all.indeterminate = n>0 && n<_dispoConflitos.length; }
+}
+document.addEventListener('change', (e)=>{
+  const t=e.target; if(!t) return;
+  if(t.classList && t.classList.contains('dispo-conf-chk')){
+    const i = +t.dataset.i; if(_dispoConflitos[i]) _dispoConflitos[i]._sel = t.checked;
+    _syncConfSelUI();
+  } else if(t.id === 'dispoConfCheckAll'){
+    _dispoConflitos.forEach(c=>c._sel = t.checked);
+    document.querySelectorAll('.dispo-conf-chk').forEach(c=>c.checked = t.checked);
+    _syncConfSelUI();
+  }
+});
 
 function atualizarResumoImportDispo(){
-  const incluidos = _dispoConflitos.filter(c=>c.incluir).length;
-  const ignorados = _dispoConflitos.filter(c=>!c.incluir).length;
-  const total = _dispoNovos.length + incluidos;
-  $('dispoResumoImport').textContent = `${_dispoNovos.length} novo(s) + ${incluidos} conflito(s) incluído(s) — ${ignorados} ignorado(s). Total a salvar: ${total + _dispoJsonAtual.length} produto(s).`;
+  const incl = _dispoConflitos.filter(c=>c.acao==='incluir').length;
+  const subs = _dispoConflitos.filter(c=>c.acao==='substituir').length;
+  const ign  = _dispoConflitos.filter(c=>(c.acao||'ignorar')==='ignorar').length;
+  const totalFinal = _dispoJsonAtual.length + _dispoNovos.length + incl;
+  $('dispoResumoImport').textContent = `${_dispoNovos.length} novo(s) · ${subs} substituído(s) · ${incl} incluído(s) · ${ign} ignorado(s). Total a salvar: ${totalFinal} produto(s).`;
 }
 
 async function confirmarImportarDispo(){
@@ -2635,8 +2677,10 @@ async function confirmarImportarDispo(){
   btn.disabled = true;
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
   try{
-    const novosParaSalvar = [..._dispoNovos, ..._dispoConflitos.filter(c=>c.incluir).map(c=>c.xlsx)];
-    const listaFinal = [..._dispoJsonAtual, ...novosParaSalvar];
+    const subsNums = new Set(_dispoConflitos.filter(c=>c.acao==='substituir').map(c=>String(c.atual.num)));
+    const base = _dispoJsonAtual.filter(r => !subsNums.has(String(r.num)));
+    const adicionar = [..._dispoNovos, ..._dispoConflitos.filter(c=>c.acao==='incluir'||c.acao==='substituir').map(c=>c.xlsx)];
+    const listaFinal = [...base, ...adicionar];
     const res = await fetch(WORKER_URL, {
       method: 'PATCH', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ action:'saveDispo', data: listaFinal })
@@ -2644,7 +2688,7 @@ async function confirmarImportarDispo(){
     if(!res.ok) throw new Error(`Worker falhou (${res.status})`);
     const result = await res.json();
     if(!result.success) throw new Error(result.error);
-    showToast(`DISPO importada! ${novosParaSalvar.length} produto(s) adicionado(s).`, 'success');
+    showToast(`DISPO importada! ${adicionar.length} produto(s) gravado(s).`, 'success');
     fecharModalDispo();
   }catch(err){
     console.error(err);

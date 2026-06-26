@@ -2245,65 +2245,27 @@ function refreshManutencaoUI(){
   }
 }
 async function toggleManutencao(){
-  if(_appPausado){
-    // Retomar — confirmação simples
-    abrirModalManutPausar('reativar');
+  const novoPausado = !_appPausado;
+  let message = '';
+  if(novoPausado){
+    if(!confirm('Pausar o app? Os vendedores verão a tela de manutenção e não conseguirão acessar o catálogo.')) return;
+    message = prompt('Mensagem que os vendedores verão:', 'Estamos em manutenção. Voltamos em breve!') || 'Estamos em manutenção. Voltamos em breve!';
   } else {
-    // Pausar — abre modal pra escolher motivo
-    abrirModalManutPausar('escolher');
+    if(!confirm('Retomar o app? Os vendedores voltarão a ter acesso normal.')) return;
   }
-}
-
-// ── MODAL PAUSAR / REATIVAR ───────────────────────────────────────────────────
-function abrirModalManutPausar(modo){
-  const m = $('modalManut');
-  if(!m) return;
-  // Reseta estado visual
-  m.dataset.modo = modo;
-  if(modo === 'escolher'){
-    $('manutTitulo').textContent = 'Por que pausar a vitrine?';
-    $('manutSubt').textContent   = 'Escolha o motivo para que os vendedores vejam a mensagem correta.';
-    $('manutOpcoes').style.display = 'grid';
-    $('manutReativar').style.display = 'none';
-  } else {
-    $('manutTitulo').textContent = 'Reativar a vitrine?';
-    $('manutSubt').textContent   = 'Os vendedores voltarão a ter acesso normal ao catálogo.';
-    $('manutOpcoes').style.display = 'none';
-    $('manutReativar').style.display = 'block';
-  }
-  m.classList.remove('hidden');
-}
-function fecharModalManut(){
-  $('modalManut').classList.add('hidden');
-}
-
-async function confirmarPausar(tipo){
-  // tipo: 'atualizando' | 'sem_estoque'
-  await aplicarStatus(true, tipo);
-}
-async function confirmarReativar(){
-  await aplicarStatus(false, '');
-}
-
-async function aplicarStatus(novoPausado, tipo){
-  const btnOk = novoPausado ? document.querySelector(`[data-tipo="${tipo}"]`) : $('btnConfirmarReativar');
-  const prev = btnOk ? btnOk.innerHTML : '';
-  if(btnOk){ btnOk.disabled = true; btnOk.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Aguarde...'; }
   try{
     const res = await fetch(WORKER_URL, {
       method:'PATCH', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'saveStatus', data:{ paused:novoPausado, tipo: tipo||'', message: '' } })
+      body: JSON.stringify({ action:'saveStatus', data:{ paused:novoPausado, message } })
     });
     const out = await res.json().catch(()=>({}));
     if(!res.ok || !out.success) throw new Error(out.error || res.status);
     _appPausado = novoPausado;
     refreshManutencaoUI();
-    showToast(novoPausado ? '⏸ Vitrine pausada.' : '▶ Vitrine reativada.', 'success');
-    fecharModalManut();
+    showToast(novoPausado ? 'App pausado para manutenção.' : 'App retomado.', 'success');
   }catch(err){
     console.error(err);
-    showToast('Erro ao alterar status do app.', 'error');
-    if(btnOk){ btnOk.disabled = false; btnOk.innerHTML = prev; }
+    showToast('Não foi possível alterar o status do app.', 'error');
   }
 }
 loadManutencaoStatus();
@@ -2493,8 +2455,21 @@ async function processarDispoXlsx(file){
   // Lê o xlsx
   const buf = await file.arrayBuffer();
   const wb  = XLSX.read(buf, { type:'array', cellDates:true });
-  const ws  = wb.Sheets[wb.SheetNames.includes('DISPO') ? 'DISPO' : wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(ws, { defval:null, raw:false });
+  // Aba: DISPO, senão REPASSES, senão a primeira
+  const _sheetName = wb.SheetNames.find(n=>String(n).toUpperCase()==='DISPO')
+                  || wb.SheetNames.find(n=>String(n).toUpperCase()==='REPASSES')
+                  || wb.SheetNames[0];
+  const ws  = wb.Sheets[_sheetName];
+  // Detecta a linha de cabeçalho (pula linhas de total/título no topo)
+  const _matrix = XLSX.utils.sheet_to_json(ws, { header:1, defval:null });
+  const _isHdr = (r)=>{
+    const cells = (r||[]).map(x => String(x==null?'':x).trim().toUpperCase());
+    return cells.includes('GCI') && cells.includes('SALDO') &&
+           (cells.includes('COR') || cells.includes('DESCRICAO') || cells.includes('PRODUTO'));
+  };
+  let _hdrIdx = _matrix.findIndex(_isHdr);
+  if(_hdrIdx < 0) _hdrIdx = 0;
+  const rows = XLSX.utils.sheet_to_json(ws, { range:_hdrIdx, defval:null, raw:false });
 
   const chaveAtual = new Map();
   for(const r of _dispoJsonAtual){
@@ -2502,9 +2477,33 @@ async function processarDispoXlsx(file){
     chaveAtual.set(k, r);
   }
 
-  // Colunas de grade dinâmicas
-  const colsFixas = new Set(['Nº','EBM','GCI','FILIAL','Código','Produto','COR','DATA ENTREGA','PEDIDO MÃE','SALDO']);
-  const colsGrade = rows.length > 0 ? Object.keys(rows[0]).filter(c => !colsFixas.has(c)) : [];
+  // Mapeamento por NOME com apelidos — aceita BASE_APP e Repasses_Atual
+  const _norm = s => String(s==null?'':s).trim().toUpperCase();
+  const _headerKeys = rows.length > 0 ? Object.keys(rows[0]) : [];
+  const _keyByName = {};
+  for(const k of _headerKeys){ _keyByName[_norm(k)] = k; }
+  const _resolve = (...aliases)=>{
+    for(const a of aliases){ const real = _keyByName[_norm(a)]; if(real !== undefined) return real; }
+    return null;
+  };
+  const colNum    = _resolve('Nº','N','CÓD REPASSE','COD REPASSE');
+  const colEbm    = _resolve('EBM');
+  const colGci    = _resolve('GCI');
+  const colFilial = _resolve('FILIAL');
+  const colCodigo = _resolve('Código','CODIGO','REFERENCIA','REFERÊNCIA');
+  const colProd   = _resolve('Produto','PRODUTO','DESCRICAO','DESCRIÇÃO');
+  const colCor    = _resolve('COR','Cor');
+  const colData   = _resolve('DATA ENTREGA');
+  const colPedMae = _resolve('PEDIDO MÃE','PEDIDO MAE');
+  const colSaldo  = _resolve('SALDO');
+
+  // Grade = só colunas que são tamanho (28–48, combinados 33/34, ou PP…U)
+  const _APPAREL = new Set(['PP','P','M','G','GG','XG','XGG','U','UN']);
+  const _isGradeCol = (name)=>{
+    const n = _norm(name);
+    return /^\d{1,2}$/.test(n) || /^\d{1,2}\/\d{1,2}$/.test(n) || _APPAREL.has(n);
+  };
+  const colsGrade = _headerKeys.filter(_isGradeCol);
 
   function rowToJson(row){
     const grade = {};
@@ -2512,16 +2511,17 @@ async function processarDispoXlsx(file){
       const v = row[col];
       grade[col] = (v === null || v === undefined || v === '') ? null : Number(v) || null;
     }
+    const _g = (col) => col ? row[col] : undefined;
     return {
-      num: String(row['Nº'] ?? row['N'] ?? '').trim(),
-      ebm: String(row['EBM'] || '').trim(),
-      gci: String(row['GCI'] || '').trim(),
-      filial: String(row['FILIAL'] || '').trim(),
-      codigo: String(row['Código'] || row['CODIGO'] || '').trim(),
-      produto: String(row['Produto'] || row['PRODUTO'] || '').trim(),
-      cor: String(row['COR'] || row['Cor'] || '').trim(),
-      dataEntrega: row['DATA ENTREGA'] ? (()=>{
-        const v = row['DATA ENTREGA'];
+      num: String(_g(colNum) ?? '').trim(),
+      ebm: String(_g(colEbm) || '').trim(),
+      gci: String(_g(colGci) || '').trim(),
+      filial: String(_g(colFilial) || '').trim(),
+      codigo: String(_g(colCodigo) || '').trim(),
+      produto: String(_g(colProd) || '').trim(),
+      cor: String(_g(colCor) || '').trim(),
+      dataEntrega: _g(colData) ? (()=>{
+        const v = _g(colData);
         let d = null;
         if(v instanceof Date){ d = v; }
         else if(typeof v === 'number' && v > 40000){ d = new Date(Date.UTC(1899,11,30)); d.setUTCDate(d.getUTCDate()+v); }
@@ -2529,8 +2529,8 @@ async function processarDispoXlsx(file){
         if(!d || isNaN(d)) return String(v);
         return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
       })() : null,
-      pedidoMae: String(row['PEDIDO MÃE'] || row['PEDIDO MAE'] || '').trim(),
-      saldo: Number(row['SALDO'] || 0),
+      pedidoMae: String(_g(colPedMae) || '').trim(),
+      saldo: Number(_g(colSaldo) || 0),
       grade
     };
   }
@@ -4128,78 +4128,5 @@ document.addEventListener('mouseup', (e)=>{
   setTimeout(setStickyOffset, 1200);
 })();
 </script>
-<!-- ═══ MODAL PAUSAR / REATIVAR VITRINE ═══════════════════════════════════════ -->
-<div id="modalManut" class="hidden fixed inset-0 z-[120] flex items-center justify-center p-4" style="background:rgba(15,23,42,.55); backdrop-filter:blur(2px)">
-  <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" style="font-family:Inter,system-ui,sans-serif">
-    <!-- Header -->
-    <div class="px-5 py-4 border-b border-slate-100 flex items-start gap-3">
-      <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-        style="background:#fef3c7;color:#d97706">
-        <i class="fa-solid fa-circle-pause text-lg"></i>
-      </div>
-      <div class="flex-1 min-w-0">
-        <div id="manutTitulo" class="text-base font-extrabold text-slate-900">Por que pausar a vitrine?</div>
-        <div id="manutSubt" class="text-xs text-slate-500 mt-1">Escolha o motivo para que os vendedores vejam a mensagem correta.</div>
-      </div>
-      <button onclick="fecharModalManut()" class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center flex-shrink-0">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
-    </div>
-
-    <!-- Opções (modo: escolher motivo de pausa) -->
-    <div id="manutOpcoes" class="p-5 grid gap-3">
-      <button data-tipo="atualizando" onclick="confirmarPausar('atualizando')"
-        class="text-left w-full rounded-xl border-2 border-slate-200 hover:border-blue-400 hover:bg-blue-50 p-4 transition-all flex items-start gap-3 group">
-        <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-          style="background:#dbeafe;color:#1d4ed8">
-          <i class="fa-solid fa-arrows-rotate text-lg"></i>
-        </div>
-        <div class="flex-1 min-w-0">
-          <div class="text-sm font-extrabold text-slate-900">Atualizando o estoque</div>
-          <div class="text-xs text-slate-500 mt-1 leading-snug">
-            Em breve estará disponível. Os vendedores verão "Atualizando..."
-          </div>
-        </div>
-        <i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-blue-500 mt-1"></i>
-      </button>
-
-      <button data-tipo="sem_estoque" onclick="confirmarPausar('sem_estoque')"
-        class="text-left w-full rounded-xl border-2 border-slate-200 hover:border-amber-400 hover:bg-amber-50 p-4 transition-all flex items-start gap-3 group">
-        <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-          style="background:#fef3c7;color:#b45309">
-          <i class="fa-solid fa-box-open text-lg"></i>
-        </div>
-        <div class="flex-1 min-w-0">
-          <div class="text-sm font-extrabold text-slate-900">Sem produtos para repasse</div>
-          <div class="text-xs text-slate-500 mt-1 leading-snug">
-            Não temos repasses no momento. Os vendedores verão "Sem produtos..."
-          </div>
-        </div>
-        <i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-amber-500 mt-1"></i>
-      </button>
-    </div>
-
-    <!-- Reativar (modo: ativar) -->
-    <div id="manutReativar" class="p-5" style="display:none">
-      <div class="rounded-xl bg-green-50 border border-green-200 p-4 text-sm text-green-800 mb-4 flex items-start gap-3">
-        <i class="fa-solid fa-circle-check mt-0.5"></i>
-        <span>Ao reativar, os vendedores voltam a ver o catálogo normalmente e a sua mensagem de manutenção desaparece.</span>
-      </div>
-      <button id="btnConfirmarReativar" onclick="confirmarReativar()"
-        class="w-full py-3 rounded-xl text-white text-sm font-extrabold flex items-center justify-center gap-2"
-        style="background:#16a34a">
-        <i class="fa-solid fa-circle-play"></i> Reativar vitrine
-      </button>
-    </div>
-
-    <!-- Footer -->
-    <div class="px-5 py-3 border-t border-slate-100 bg-slate-50">
-      <button onclick="fecharModalManut()" class="w-full py-2 rounded-lg text-sm font-bold text-slate-600 hover:bg-white hover:text-slate-900">
-        Cancelar
-      </button>
-    </div>
-  </div>
-</div>
-
 </body>
 </html>
