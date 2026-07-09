@@ -210,16 +210,16 @@
       margin-bottom:12px;
       font-size:12px;
     }
+    .icp-bar, .img-check-progress .icp-bar{
+      background:var(--muted-soft); border-radius:999px; height:6px; overflow:hidden;
+    }
+    .icp-fill, .img-check-progress .icp-fill{
+      background:var(--accent); height:100%; width:0%;
+      border-radius:999px; transition:width .3s;
+    }
     .img-check-progress .icp-head{
       display:flex; align-items:center; justify-content:space-between;
       font-weight:800; margin-bottom:6px;
-    }
-    .img-check-progress .icp-bar{
-      background:var(--muted-soft); border-radius:999px; height:6px; overflow:hidden;
-    }
-    .img-check-progress .icp-fill{
-      background:var(--accent); height:100%; width:0%;
-      border-radius:999px; transition:width .3s;
     }
     .img-check-progress .icp-stats{
       display:flex; gap:14px; margin-top:8px;
@@ -633,6 +633,13 @@
       <div class="text-sm font-bold text-slate-600">Passo 1 — Selecione uma ou mais planilhas</div>
       <div class="text-xs text-slate-400 mt-1">UA ou Olympikus (.xlsx, .xls) · pode selecionar várias de uma vez</div>
       <input type="file" id="inputXlsx" accept=".xlsx,.xls" multiple class="hidden" onchange="processarXlsxMulti(this.files)">
+    </div>
+
+    <!-- Processando (aparece depois que confirma o modal de config, some quando abre a análise) -->
+    <div id="importProcessando" class="hidden rounded-2xl p-8 text-center mb-4" style="border:2px solid var(--line); background:var(--muted-soft)">
+      <i class="fa-solid fa-circle-notch fa-spin text-2xl mb-3 block" style="color:var(--brand)"></i>
+      <div class="text-sm font-bold text-slate-600" id="importProcessandoTxt">Processando planilha(s)...</div>
+      <div class="icp-bar" style="max-width:320px; margin:12px auto 0;"><div id="importProcessandoBar" class="icp-fill" style="width:0%"></div></div>
     </div>
 
     <!-- Preview -->
@@ -2322,7 +2329,7 @@ function aplicarTabelaEspecial(item){
   return item;
 }
 
-function abrirImportar(){ $('modalImportar').classList.remove('hidden'); }
+function abrirImportar(){ $('modalImportar').classList.remove('hidden'); $('importProcessando')?.classList.add('hidden'); $('uploadArea').classList.remove('hidden'); }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PAUSAR / ATIVAR VITRINE
@@ -2407,6 +2414,7 @@ function fecharImportar(){
   $('modalImportar').classList.add('hidden');
   $('previewArea').classList.add('hidden');
   $('uploadArea').classList.remove('hidden');
+  $('importProcessando')?.classList.add('hidden');
   $('resumoImagensBlock').classList.add('hidden');
   $('imgUploadProgress').classList.add('hidden');
   $('inputXlsx').value='';
@@ -3487,6 +3495,21 @@ function pedirConfigImportacao(arquivos){
   });
 }
 
+// Alterna entre a dropzone (Passo 1) e o bloco "Processando..." dentro do modal de importar.
+// Sem isso, importações grandes (Pronta Entrega com centenas de produtos) ficam
+// vários segundos com a tela parada na dropzone vazia, parecendo travadas.
+function setImportProcessando(visivel, texto, pct){
+  const box = $('importProcessando');
+  const up  = $('uploadArea');
+  if(!box) return;
+  box.classList.toggle('hidden', !visivel);
+  if(up) up.classList.toggle('hidden', visivel);
+  if(visivel){
+    if(texto) $('importProcessandoTxt').textContent = texto;
+    if(typeof pct === 'number') $('importProcessandoBar').style.width = `${Math.max(0,Math.min(100,pct))}%`;
+  }
+}
+
 async function processarXlsxMulti(fileList){
   if(!fileList || !fileList.length) return;
   const arquivos = Array.from(fileList);
@@ -3497,6 +3520,8 @@ async function processarXlsxMulti(fileList){
   const { prevFat, configsPorArquivo } = cfg;
   // Indexa por nome de arquivo pra lookup rápido durante o processamento
   const cfgPorNome = new Map(configsPorArquivo.map(c => [c.arquivo, c]));
+
+  setImportProcessando(true, 'Carregando dados do banco...', 5);
 
   // Carrega JSON atual (1x)
   try{
@@ -3534,6 +3559,7 @@ async function processarXlsxMulti(fileList){
   _cruzadosTabEsp = 0;
 
   for(const file of arquivos){
+    setImportProcessando(true, `Lendo ${file.name}...`, 15);
     let qtdArquivo = 0;
     // Pega a config detectada deste arquivo
     const cfgArq = cfgPorNome.get(file.name) || { marca:'OLY', categoria:'', ehMeta:false, quinzena:'' };
@@ -3639,8 +3665,14 @@ async function processarXlsxMulti(fileList){
   });
   if(itensParaVerificar.length){
     showToast(`Verificando ${itensParaVerificar.length} imagem(ns)...`, 'info');
-    await verificarImagensImport(itensParaVerificar);
+    setImportProcessando(true, `Verificando imagens (0 / ${itensParaVerificar.length})...`, 30);
+    await verificarImagensImport(itensParaVerificar, (done, total) => {
+      const pct = 30 + Math.round((done/total) * 55); // 30%→85% do total da barra
+      setImportProcessando(true, `Verificando imagens (${done} / ${total})...`, pct);
+    });
   }
+
+  setImportProcessando(true, 'Classificando produtos...', 90);
 
   // ALÉM disso, re-verifica os itens AGUARDANDO IMAGEM já no banco
   // (caso a imagem já tenha sido subida via GitHub ou outro canal)
