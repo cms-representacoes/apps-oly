@@ -3561,6 +3561,7 @@ async function processarXlsxMulti(fileList){
   for(const file of arquivos){
     setImportProcessando(true, `Lendo ${file.name}...`, 15);
     let qtdArquivo = 0;
+    let _semMarcaDetectada = 0;
     // Pega a config detectada deste arquivo
     const cfgArq = cfgPorNome.get(file.name) || { marca:'OLY', categoria:'', ehMeta:false, quinzena:'' };
     try{
@@ -3569,7 +3570,6 @@ async function processarXlsxMulti(fileList){
       const ws  = wb.Sheets[wb.SheetNames[0]];
       // NOVO: usa o parser que pula linha mesclada automaticamente
       const rows = lerLinhasXlsx(ws);
-      let _semMarcaDetectada = 0;
       for(const row of rows){
         let categoriaOriginal = String(row['CATEGORIA']||'').trim().toUpperCase();
 
