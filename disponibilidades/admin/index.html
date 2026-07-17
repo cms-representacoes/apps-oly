@@ -895,7 +895,7 @@
       <p class="text-xs text-slate-500 mb-3 leading-relaxed">
         Importe a planilha de produtos promocionais. Ela fica <b>salva</b> e, a cada importação de estoque,
         o sistema marca automaticamente os produtos que pertencem a alguma campanha
-        (cruzamento por <b>Artigo + Cor</b>).
+        (cruzamento por <b>Artigo</b>).
       </p>
 
       <!-- Upload -->
@@ -904,6 +904,19 @@
         <div class="text-sm font-bold text-slate-600">Clique para selecionar a planilha</div>
         <div class="text-xs text-slate-400 mt-1">TABELA_ESPECIAL (.xlsx, .xls)</div>
         <input type="file" id="inputTabEsp" accept=".xlsx,.xls" class="hidden" onchange="processarTabelaEspXlsx(this.files[0])">
+      </div>
+
+      <!-- Vigências (aparece se a planilha tiver mais de 1 vigência distinta) -->
+      <div id="tabEspVigencias" class="hidden mt-4">
+        <div class="text-sm font-extrabold text-slate-700 mb-1">Vigência de cada campanha</div>
+        <p class="text-xs text-slate-500 mb-3 leading-relaxed">
+          Essa planilha tem produtos em mais de uma campanha ao mesmo tempo. Informe o período de cada
+          vigência abaixo — quando um artigo estiver em mais de uma, o sistema usa a que estiver valendo hoje.
+        </p>
+        <div id="tabEspVigenciasBody" class="space-y-2"></div>
+        <button onclick="confirmarVigenciasTabEsp()" class="mt-3 focus-ring rounded-xl px-4 py-2 text-sm font-extrabold text-white" style="background:#7c3aed">
+          <i class="fa-solid fa-check"></i> Confirmar vigências
+        </button>
       </div>
 
       <!-- Preview -->
@@ -917,7 +930,7 @@
             <thead class="bg-slate-50 text-slate-500">
               <tr>
                 <th class="text-left px-3 py-2">Artigo</th>
-                <th class="text-left px-3 py-2">Cor</th>
+                <th class="text-left px-3 py-2">Vigência</th>
                 <th class="text-left px-3 py-2">Campanha</th>
                 <th class="text-right px-3 py-2">Custo</th>
                 <th class="text-right px-3 py-2">MKP</th>
@@ -2209,17 +2222,23 @@ function normalizarCor(c){
     .replace(/^_+|_+$/g, '');
 }
 // Chave de cruzamento Artigo + Cor
-function chaveTabela(artigo, cor){
-  return `${String(artigo||'').trim().toUpperCase()}|${normalizarCor(cor)}`;
+// Chave da tabela especial: só ARTIGO (a planilha nova não distingue por cor —
+// a campanha vale pro artigo inteiro, independente da cor).
+function chaveTabela(artigo){
+  return String(artigo||'').trim().toUpperCase();
 }
 
 async function abrirTabelaEspecial(){
   $('modalTabelaEsp').classList.remove('hidden');
   $('tabEspUpload').classList.remove('hidden');
+  $('tabEspVigencias').classList.add('hidden');
   $('tabEspPreview').classList.add('hidden');
   $('tabEspResumo').textContent = '';
   $('btnSalvarTabEsp').disabled = true;
   _tabEspPendente = null;
+  _tabEspRowsBrutas = [];
+  _tabEspVigencias = [];
+  _tabEspFileName = '';
   // Carrega a tabela já salva (se houver)
   try{
     const res = await workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'getTabelaEspecial'}) });
@@ -2236,7 +2255,12 @@ async function abrirTabelaEspecial(){
 }
 function fecharTabelaEspecial(){ $('modalTabelaEsp').classList.add('hidden'); }
 
-// Lê a planilha de tabela especial
+// Lê a planilha de tabela especial (formato novo: COD ARTIGO, VIGÊNCIA, CODIGO TABELA,
+// TABELA ESPECIAL?, MKP, PREÇO NF, PDV — sem coluna COR).
+let _tabEspRowsBrutas = [];  // linhas cruas válidas, aguardando resolução de vigência
+let _tabEspVigencias = [];   // nomes distintos de vigência encontrados
+let _tabEspFileName = '';
+
 async function processarTabelaEspXlsx(file){
   if(!file) return;
   try{
@@ -2245,49 +2269,135 @@ async function processarTabelaEspXlsx(file){
     const ws   = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(ws, { defval:null });
 
-    const mapa = {};
+    const brutas = [];
     let ignoradas = 0;
     for(const row of rows){
-      const artigo = String(row['ARTIGO'] || '').trim().toUpperCase();
-      const cor    = row['COR'];
+      // Suporta o nome novo (COD ARTIGO) e o antigo (ARTIGO), pra não quebrar se
+      // um dia vier uma planilha no formato anterior.
+      const artigo = String(row['COD ARTIGO'] ?? row['ARTIGO'] ?? '').trim().toUpperCase();
       const codTab = String(row['CODIGO TABELA'] || '').trim().toUpperCase();
-      if(!artigo || !codTab){ ignoradas++; continue; }
-      const k = chaveTabela(artigo, cor);
-      mapa[k] = {
+      const flag   = String(row['TABELA ESPECIAL?'] ?? 'SIM').trim().toUpperCase();
+      if(!artigo || !codTab || flag !== 'SIM'){ ignoradas++; continue; }
+      brutas.push({
+        artigo,
+        vigencia: String(row['VIGÊNCIA'] ?? row['VIGENCIA'] ?? '').trim(),
         codigoTabela: codTab,
-        custo:        Number(row['CUSTO'] || 0),
-        mkp:          String(row['MKP'] || '').trim()
-      };
+        custo: Number(row['PREÇO NF'] ?? row['CUSTO'] ?? 0),
+        mkp:   row['MKP'] != null ? String(row['MKP']).trim() : '',
+        pdv:   row['PDV'] != null ? Number(row['PDV']) : null,
+        descricao: String(row['DESCRIÇÃO'] || '').trim()
+      });
     }
 
-    _tabEspPendente = mapa;
-    const total = Object.keys(mapa).length;
+    _tabEspRowsBrutas = brutas;
+    _tabEspFileName = file.name;
+    const nomesVigencia = [...new Set(brutas.map(r => r.vigencia).filter(Boolean))];
+    _tabEspVigencias = nomesVigencia;
 
-    // Preview
     $('tabEspUpload').classList.add('hidden');
-    $('tabEspPreview').classList.remove('hidden');
-    $('tabEspPreviewTitle').textContent = `${file.name} — ${rows.length} linha(s)`;
+    $('tabEspVigencias').classList.add('hidden');
+    $('tabEspPreview').classList.add('hidden');
 
-    const entries = Object.entries(mapa);
-    $('tabEspPreviewBody').innerHTML = entries.slice(0, 8).map(([k, v]) => {
-      const [art, cor] = k.split('|');
-      return `<tr class="border-t border-slate-100">
-        <td class="px-3 py-1.5 font-bold text-slate-700">${safeHtml(art)}</td>
-        <td class="px-3 py-1.5 text-slate-500">${safeHtml(cor)}</td>
-        <td class="px-3 py-1.5"><span class="rounded-full px-2 py-0.5 text-[10px] font-bold" style="background:rgba(192,132,252,.15);color:#7c3aed">${safeHtml(v.codigoTabela)}</span></td>
-        <td class="px-3 py-1.5 text-right text-slate-600">R$ ${(v.custo||0).toFixed(2)}</td>
-        <td class="px-3 py-1.5 text-right text-slate-600">${safeHtml(v.mkp||'—')}</td>
-      </tr>`;
-    }).join('');
-    $('tabEspPreviewMore').textContent = entries.length > 8 ? `+ ${entries.length - 8} produto(s)` : '';
-
-    $('tabEspResumo').innerHTML = `<b>${total}</b> produto(s) válido(s)` + (ignoradas ? ` · ${ignoradas} linha(s) ignorada(s)` : '');
-    $('btnSalvarTabEsp').disabled = total === 0;
-
+    // Se tem mais de 1 vigência distinta, precisa que o usuário informe as datas
+    // de cada uma antes de resolver qual campanha vale por artigo.
+    if(nomesVigencia.length > 1){
+      $('tabEspVigencias').classList.remove('hidden');
+      $('tabEspPreview').classList.add('hidden');
+      $('btnSalvarTabEsp').disabled = true;
+      $('tabEspResumo').textContent = '';
+      $('tabEspVigenciasBody').innerHTML = nomesVigencia.map((v, i) => `
+        <div class="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2">
+          <span class="text-xs font-bold text-slate-600 w-24 truncate" title="${safeHtml(v)}">${safeHtml(v)}</span>
+          <input type="date" id="vigInicio_${i}" class="flex-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs">
+          <span class="text-slate-300 text-xs">até</span>
+          <input type="date" id="vigFim_${i}" class="flex-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs">
+        </div>`).join('');
+    } else {
+      // 0 ou 1 vigência só — não tem ambiguidade, resolve direto (sem filtro de data)
+      montarTabEspPendente(brutas, ignoradas, file.name);
+    }
   }catch(e){
     console.error(e);
     showToast('Erro ao ler a planilha: ' + e.message, 'error');
   }
+}
+
+// Chamado depois que o usuário preenche as datas de cada vigência encontrada.
+// Resolve, por ARTIGO, qual linha vale HOJE (se o artigo tiver mais de uma).
+function confirmarVigenciasTabEsp(){
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const periodos = {};  // nome vigência → {inicio: Date|null, fim: Date|null}
+  for(let i = 0; i < _tabEspVigencias.length; i++){
+    const vi = $(`vigInicio_${i}`).value;
+    const vf = $(`vigFim_${i}`).value;
+    if(!vi || !vf){
+      showToast(`Preencha o período da vigência "${_tabEspVigencias[i]}"`, 'error');
+      return;
+    }
+    periodos[_tabEspVigencias[i]] = { inicio: new Date(vi+'T00:00:00'), fim: new Date(vf+'T23:59:59') };
+  }
+
+  // Agrupa as linhas brutas por artigo
+  const porArtigo = {};
+  for(const r of _tabEspRowsBrutas){
+    (porArtigo[r.artigo] = porArtigo[r.artigo] || []).push(r);
+  }
+
+  let semVigenciaAtiva = 0;
+  const resolvidas = [];
+  for(const [artigo, linhas] of Object.entries(porArtigo)){
+    if(linhas.length === 1){ resolvidas.push(linhas[0]); continue; }
+    // Mais de uma linha pro mesmo artigo → pega a que está valendo hoje
+    const ativa = linhas.find(r => {
+      const p = periodos[r.vigencia];
+      return p && hoje >= p.inicio && hoje <= p.fim;
+    });
+    if(ativa) resolvidas.push(ativa);
+    else semVigenciaAtiva++;
+  }
+
+  if(semVigenciaAtiva > 0){
+    showToast(`⚠️ ${semVigenciaAtiva} artigo(s) sem nenhuma vigência válida pra hoje — ficaram de fora`, 'warning');
+  }
+
+  $('tabEspVigencias').classList.add('hidden');
+  montarTabEspPendente(resolvidas, 0, _tabEspFileName || 'planilha', true);
+}
+
+// Monta o mapa final (_tabEspPendente) e mostra o preview — usado tanto no caminho
+// direto (sem ambiguidade de vigência) quanto depois de confirmarVigenciasTabEsp().
+function montarTabEspPendente(linhas, ignoradas, fileName, jaResolvidoPorVigencia){
+  const mapa = {};
+  for(const r of linhas){
+    const k = chaveTabela(r.artigo);
+    mapa[k] = {
+      codigoTabela: r.codigoTabela,
+      custo: r.custo,
+      mkp:   r.mkp,
+      vigencia: r.vigencia || ''
+    };
+  }
+
+  _tabEspPendente = mapa;
+  const total = Object.keys(mapa).length;
+
+  $('tabEspPreview').classList.remove('hidden');
+  $('tabEspPreviewTitle').textContent = `${fileName} — ${linhas.length} linha(s)`;
+
+  const entries = Object.entries(mapa);
+  $('tabEspPreviewBody').innerHTML = entries.slice(0, 8).map(([k, v]) => {
+    return `<tr class="border-t border-slate-100">
+      <td class="px-3 py-1.5 font-bold text-slate-700">${safeHtml(k)}</td>
+      <td class="px-3 py-1.5 text-slate-500">${safeHtml(v.vigencia || '—')}</td>
+      <td class="px-3 py-1.5"><span class="rounded-full px-2 py-0.5 text-[10px] font-bold" style="background:rgba(192,132,252,.15);color:#7c3aed">${safeHtml(v.codigoTabela)}</span></td>
+      <td class="px-3 py-1.5 text-right text-slate-600">R$ ${(v.custo||0).toFixed(2)}</td>
+      <td class="px-3 py-1.5 text-right text-slate-600">${safeHtml(v.mkp||'—')}</td>
+    </tr>`;
+  }).join('');
+  $('tabEspPreviewMore').textContent = entries.length > 8 ? `+ ${entries.length - 8} produto(s)` : '';
+
+  $('tabEspResumo').innerHTML = `<b>${total}</b> produto(s) válido(s)` + (ignoradas ? ` · ${ignoradas} linha(s) ignorada(s)` : '');
+  $('btnSalvarTabEsp').disabled = total === 0;
 }
 
 // Salva a tabela especial no Worker
@@ -2318,7 +2428,7 @@ async function salvarTabelaEspecial(){
 // Aplica a tabela especial a um item (cruzamento). Retorna o item modificado.
 function aplicarTabelaEspecial(item){
   if(!item || !item.artigo) return item;
-  const k = chaveTabela(item.artigo, item.cor);
+  const k = chaveTabela(item.artigo);
   const ref = _tabelaEspecial[k];
   if(ref){
     item.codigoTabela = ref.codigoTabela;
