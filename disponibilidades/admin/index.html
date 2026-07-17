@@ -2255,6 +2255,14 @@ async function abrirTabelaEspecial(){
 }
 function fecharTabelaEspecial(){ $('modalTabelaEsp').classList.add('hidden'); }
 
+// Arredonda o MKP pra 1 casa decimal — a coluna vem de fórmula no Excel e traz
+// sujeira de ponto flutuante (ex: 2.3000007667947213 em vez de 2.3).
+function formatMkp(v){
+  const n = Number(v);
+  if(isNaN(n)) return String(v).trim();
+  return (Math.round(n * 10) / 10).toFixed(1);
+}
+
 // Lê a planilha de tabela especial (formato novo: COD ARTIGO, VIGÊNCIA, CODIGO TABELA,
 // TABELA ESPECIAL?, MKP, PREÇO NF, PDV — sem coluna COR).
 let _tabEspRowsBrutas = [];  // linhas cruas válidas, aguardando resolução de vigência
@@ -2283,7 +2291,7 @@ async function processarTabelaEspXlsx(file){
         vigencia: String(row['VIGÊNCIA'] ?? row['VIGENCIA'] ?? '').trim(),
         codigoTabela: codTab,
         custo: Number(row['PREÇO NF'] ?? row['CUSTO'] ?? 0),
-        mkp:   row['MKP'] != null ? String(row['MKP']).trim() : '',
+        mkp:   row['MKP'] != null ? formatMkp(row['MKP']) : '',
         pdv:   row['PDV'] != null ? Number(row['PDV']) : null,
         descricao: String(row['DESCRIÇÃO'] || '').trim()
       });
