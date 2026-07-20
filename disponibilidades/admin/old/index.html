@@ -101,6 +101,7 @@
     .toast-success{ background:#f0fdf4; color:#166534; border-color:#bbf7d0; }
     .toast-error{ background:#fef2f2; color:#b91c1c; border-color:#fecaca; }
     .toast-info{ background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+    .toast-warning{ background:#fffbeb; color:#92400e; border-color:#fde68a; }
 
     /* Tooltips */
     [data-tip]{ position:relative; }
@@ -209,16 +210,16 @@
       margin-bottom:12px;
       font-size:12px;
     }
+    .icp-bar, .img-check-progress .icp-bar{
+      background:var(--muted-soft); border-radius:999px; height:6px; overflow:hidden;
+    }
+    .icp-fill, .img-check-progress .icp-fill{
+      background:var(--accent); height:100%; width:0%;
+      border-radius:999px; transition:width .3s;
+    }
     .img-check-progress .icp-head{
       display:flex; align-items:center; justify-content:space-between;
       font-weight:800; margin-bottom:6px;
-    }
-    .img-check-progress .icp-bar{
-      background:var(--muted-soft); border-radius:999px; height:6px; overflow:hidden;
-    }
-    .img-check-progress .icp-fill{
-      background:var(--accent); height:100%; width:0%;
-      border-radius:999px; transition:width .3s;
     }
     .img-check-progress .icp-stats{
       display:flex; gap:14px; margin-top:8px;
@@ -449,8 +450,11 @@
     <!-- Bulk actions (aparece quando há seleção) -->
     <div id="bulkBar" class="ml-auto flex items-center gap-2" style="display:none">
       <span class="text-xs font-bold" style="color:var(--muted)"><span id="bulkCount">0</span> selecionado(s)</span>
-      <button onclick="bulkOcultar()" class="focus-ring rounded-full border px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors" style="border-color:var(--line);background:var(--card);color:var(--muted)">
+      <button id="bulkOcultarBtn" onclick="bulkOcultar()" class="focus-ring rounded-full border px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors" style="border-color:var(--line);background:var(--card);color:var(--muted)">
         <i class="fa-solid fa-eye-slash text-[10px]"></i> Ocultar
+      </button>
+      <button id="bulkReexibirBtn" onclick="bulkReexibir()" class="focus-ring rounded-full border px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors" style="display:none;border-color:#AFA9EC;background:#EEEDFE;color:#3C3489">
+        <i class="fa-solid fa-eye text-[10px]"></i> Reexibir
       </button>
       <button onclick="bulkExcluir()" class="focus-ring rounded-full border px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors" style="border-color:#fecaca;background:#fef2f2;color:#b91c1c">
         <i class="fa-solid fa-trash-can text-[10px]"></i> Excluir
@@ -629,6 +633,13 @@
       <div class="text-sm font-bold text-slate-600">Passo 1 — Selecione uma ou mais planilhas</div>
       <div class="text-xs text-slate-400 mt-1">UA ou Olympikus (.xlsx, .xls) · pode selecionar várias de uma vez</div>
       <input type="file" id="inputXlsx" accept=".xlsx,.xls" multiple class="hidden" onchange="processarXlsxMulti(this.files)">
+    </div>
+
+    <!-- Processando (aparece depois que confirma o modal de config, some quando abre a análise) -->
+    <div id="importProcessando" class="hidden rounded-2xl p-8 text-center mb-4" style="border:2px solid var(--line); background:var(--muted-soft)">
+      <i class="fa-solid fa-circle-notch fa-spin text-2xl mb-3 block" style="color:var(--brand)"></i>
+      <div class="text-sm font-bold text-slate-600" id="importProcessandoTxt">Processando planilha(s)...</div>
+      <div class="icp-bar" style="max-width:320px; margin:12px auto 0;"><div id="importProcessandoBar" class="icp-fill" style="width:0%"></div></div>
     </div>
 
     <!-- Preview -->
@@ -884,7 +895,7 @@
       <p class="text-xs text-slate-500 mb-3 leading-relaxed">
         Importe a planilha de produtos promocionais. Ela fica <b>salva</b> e, a cada importação de estoque,
         o sistema marca automaticamente os produtos que pertencem a alguma campanha
-        (cruzamento por <b>Artigo + Cor</b>).
+        (cruzamento por <b>Artigo</b>).
       </p>
 
       <!-- Upload -->
@@ -893,6 +904,19 @@
         <div class="text-sm font-bold text-slate-600">Clique para selecionar a planilha</div>
         <div class="text-xs text-slate-400 mt-1">TABELA_ESPECIAL (.xlsx, .xls)</div>
         <input type="file" id="inputTabEsp" accept=".xlsx,.xls" class="hidden" onchange="processarTabelaEspXlsx(this.files[0])">
+      </div>
+
+      <!-- Vigências (aparece se a planilha tiver mais de 1 vigência distinta) -->
+      <div id="tabEspVigencias" class="hidden mt-4">
+        <div class="text-sm font-extrabold text-slate-700 mb-1">Vigência de cada campanha</div>
+        <p class="text-xs text-slate-500 mb-3 leading-relaxed">
+          Essa planilha tem produtos em mais de uma campanha ao mesmo tempo. Informe o período de cada
+          vigência abaixo — quando um artigo estiver em mais de uma, o sistema usa a que estiver valendo hoje.
+        </p>
+        <div id="tabEspVigenciasBody" class="space-y-2"></div>
+        <button onclick="confirmarVigenciasTabEsp()" class="mt-3 focus-ring rounded-xl px-4 py-2 text-sm font-extrabold text-white" style="background:#7c3aed">
+          <i class="fa-solid fa-check"></i> Confirmar vigências
+        </button>
       </div>
 
       <!-- Preview -->
@@ -906,7 +930,7 @@
             <thead class="bg-slate-50 text-slate-500">
               <tr>
                 <th class="text-left px-3 py-2">Artigo</th>
-                <th class="text-left px-3 py-2">Cor</th>
+                <th class="text-left px-3 py-2">Vigência</th>
                 <th class="text-left px-3 py-2">Campanha</th>
                 <th class="text-right px-3 py-2">Custo</th>
                 <th class="text-right px-3 py-2">MKP</th>
@@ -955,7 +979,7 @@ function workerFetch(opts = {}){
 const ADMIN_PASSWORD = 'cmsrepasse';
 const STORAGE_KEY_AUTH = 'disp_admin_auth_v1';
 // Base pública das imagens (mesma pasta usada pelo catálogo de Disponibilidades)
-const IMG_BASE = 'https://marcosrepcms-max.github.io/Catalogo-Olympikus/Catalogo/';
+const IMG_BASE = 'https://cms-representacoes.github.io/apps-oly/Catalogo/';
 
 const $ = id => document.getElementById(id);
 
@@ -1452,6 +1476,14 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
+  // ENTER confirma o diálogo de confirmação (se o botão OK estiver habilitado).
+  // Cobre exclusão simples e a que exige digitar "EXCLUIR".
+  if(e.key === 'Enter' && $('confirmOverlay')?.classList.contains('open')){
+    const ok = $('confirmOkBtn');
+    if(ok && !ok.disabled){ e.preventDefault(); confirmDialogResolve(true); }
+    return;
+  }
+
   // ESC fecha modais abertos (em ordem de prioridade)
   if(e.key === 'Escape'){
     if($('confirmOverlay')?.classList.contains('open')){ confirmDialogResolve(false); return; }
@@ -1689,6 +1721,10 @@ function refreshBulkBar(){
   const bar = $('bulkBar');
   if(bar) bar.style.display = n > 0 ? '' : 'none';
   const lbl = $('bulkCount'); if(lbl) lbl.textContent = String(n);
+  // Na visão "Ocultos" mostra Reexibir; nas demais, Ocultar
+  const isOcultos = STATE.filtro === 'ocultos';
+  const bOc = $('bulkOcultarBtn');   if(bOc) bOc.style.display = isOcultos ? 'none' : '';
+  const bRe = $('bulkReexibirBtn');  if(bRe) bRe.style.display = isOcultos ? '' : 'none';
   // Sincroniza o checkbox "selecionar todos"
   const all = $('bulkSelectAll');
   if(all){
@@ -1740,6 +1776,15 @@ async function bulkExcluir(){
     showToast(`${keys.length} produto(s) excluído(s).`, 'success');
     applyFilters();
   }catch(err){ console.error(err); showToast('Erro ao excluir.','error'); }
+}
+async function bulkReexibir(){
+  const keys = [...STATE.selecionados];
+  if(!keys.length) return;
+  keys.forEach(k => STATE.ocultos.delete(k));
+  await salvarOcultos();
+  STATE.selecionados.clear();
+  showToast(`${keys.length} produto(s) reexibido(s).`, 'success');
+  applyFilters();
 }
 
 
@@ -2177,17 +2222,23 @@ function normalizarCor(c){
     .replace(/^_+|_+$/g, '');
 }
 // Chave de cruzamento Artigo + Cor
-function chaveTabela(artigo, cor){
-  return `${String(artigo||'').trim().toUpperCase()}|${normalizarCor(cor)}`;
+// Chave da tabela especial: só ARTIGO (a planilha nova não distingue por cor —
+// a campanha vale pro artigo inteiro, independente da cor).
+function chaveTabela(artigo){
+  return String(artigo||'').trim().toUpperCase();
 }
 
 async function abrirTabelaEspecial(){
   $('modalTabelaEsp').classList.remove('hidden');
   $('tabEspUpload').classList.remove('hidden');
+  $('tabEspVigencias').classList.add('hidden');
   $('tabEspPreview').classList.add('hidden');
   $('tabEspResumo').textContent = '';
   $('btnSalvarTabEsp').disabled = true;
   _tabEspPendente = null;
+  _tabEspRowsBrutas = [];
+  _tabEspVigencias = [];
+  _tabEspFileName = '';
   // Carrega a tabela já salva (se houver)
   try{
     const res = await workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'getTabelaEspecial'}) });
@@ -2204,7 +2255,20 @@ async function abrirTabelaEspecial(){
 }
 function fecharTabelaEspecial(){ $('modalTabelaEsp').classList.add('hidden'); }
 
-// Lê a planilha de tabela especial
+// Arredonda o MKP pra 1 casa decimal — a coluna vem de fórmula no Excel e traz
+// sujeira de ponto flutuante (ex: 2.3000007667947213 em vez de 2.3).
+function formatMkp(v){
+  const n = Number(v);
+  if(isNaN(n)) return String(v).trim();
+  return (Math.round(n * 10) / 10).toFixed(1);
+}
+
+// Lê a planilha de tabela especial (formato novo: COD ARTIGO, VIGÊNCIA, CODIGO TABELA,
+// TABELA ESPECIAL?, MKP, PREÇO NF, PDV — sem coluna COR).
+let _tabEspRowsBrutas = [];  // linhas cruas válidas, aguardando resolução de vigência
+let _tabEspVigencias = [];   // nomes distintos de vigência encontrados
+let _tabEspFileName = '';
+
 async function processarTabelaEspXlsx(file){
   if(!file) return;
   try{
@@ -2213,49 +2277,135 @@ async function processarTabelaEspXlsx(file){
     const ws   = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(ws, { defval:null });
 
-    const mapa = {};
+    const brutas = [];
     let ignoradas = 0;
     for(const row of rows){
-      const artigo = String(row['ARTIGO'] || '').trim().toUpperCase();
-      const cor    = row['COR'];
+      // Suporta o nome novo (COD ARTIGO) e o antigo (ARTIGO), pra não quebrar se
+      // um dia vier uma planilha no formato anterior.
+      const artigo = String(row['COD ARTIGO'] ?? row['ARTIGO'] ?? '').trim().toUpperCase();
       const codTab = String(row['CODIGO TABELA'] || '').trim().toUpperCase();
-      if(!artigo || !codTab){ ignoradas++; continue; }
-      const k = chaveTabela(artigo, cor);
-      mapa[k] = {
+      const flag   = String(row['TABELA ESPECIAL?'] ?? 'SIM').trim().toUpperCase();
+      if(!artigo || !codTab || flag !== 'SIM'){ ignoradas++; continue; }
+      brutas.push({
+        artigo,
+        vigencia: String(row['VIGÊNCIA'] ?? row['VIGENCIA'] ?? '').trim(),
         codigoTabela: codTab,
-        custo:        Number(row['CUSTO'] || 0),
-        mkp:          String(row['MKP'] || '').trim()
-      };
+        custo: Number(row['PREÇO NF'] ?? row['CUSTO'] ?? 0),
+        mkp:   row['MKP'] != null ? formatMkp(row['MKP']) : '',
+        pdv:   row['PDV'] != null ? Number(row['PDV']) : null,
+        descricao: String(row['DESCRIÇÃO'] || '').trim()
+      });
     }
 
-    _tabEspPendente = mapa;
-    const total = Object.keys(mapa).length;
+    _tabEspRowsBrutas = brutas;
+    _tabEspFileName = file.name;
+    const nomesVigencia = [...new Set(brutas.map(r => r.vigencia).filter(Boolean))];
+    _tabEspVigencias = nomesVigencia;
 
-    // Preview
     $('tabEspUpload').classList.add('hidden');
-    $('tabEspPreview').classList.remove('hidden');
-    $('tabEspPreviewTitle').textContent = `${file.name} — ${rows.length} linha(s)`;
+    $('tabEspVigencias').classList.add('hidden');
+    $('tabEspPreview').classList.add('hidden');
 
-    const entries = Object.entries(mapa);
-    $('tabEspPreviewBody').innerHTML = entries.slice(0, 8).map(([k, v]) => {
-      const [art, cor] = k.split('|');
-      return `<tr class="border-t border-slate-100">
-        <td class="px-3 py-1.5 font-bold text-slate-700">${safeHtml(art)}</td>
-        <td class="px-3 py-1.5 text-slate-500">${safeHtml(cor)}</td>
-        <td class="px-3 py-1.5"><span class="rounded-full px-2 py-0.5 text-[10px] font-bold" style="background:rgba(192,132,252,.15);color:#7c3aed">${safeHtml(v.codigoTabela)}</span></td>
-        <td class="px-3 py-1.5 text-right text-slate-600">R$ ${(v.custo||0).toFixed(2)}</td>
-        <td class="px-3 py-1.5 text-right text-slate-600">${safeHtml(v.mkp||'—')}</td>
-      </tr>`;
-    }).join('');
-    $('tabEspPreviewMore').textContent = entries.length > 8 ? `+ ${entries.length - 8} produto(s)` : '';
-
-    $('tabEspResumo').innerHTML = `<b>${total}</b> produto(s) válido(s)` + (ignoradas ? ` · ${ignoradas} linha(s) ignorada(s)` : '');
-    $('btnSalvarTabEsp').disabled = total === 0;
-
+    // Se tem mais de 1 vigência distinta, precisa que o usuário informe as datas
+    // de cada uma antes de resolver qual campanha vale por artigo.
+    if(nomesVigencia.length > 1){
+      $('tabEspVigencias').classList.remove('hidden');
+      $('tabEspPreview').classList.add('hidden');
+      $('btnSalvarTabEsp').disabled = true;
+      $('tabEspResumo').textContent = '';
+      $('tabEspVigenciasBody').innerHTML = nomesVigencia.map((v, i) => `
+        <div class="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2">
+          <span class="text-xs font-bold text-slate-600 w-24 truncate" title="${safeHtml(v)}">${safeHtml(v)}</span>
+          <input type="date" id="vigInicio_${i}" class="flex-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs">
+          <span class="text-slate-300 text-xs">até</span>
+          <input type="date" id="vigFim_${i}" class="flex-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs">
+        </div>`).join('');
+    } else {
+      // 0 ou 1 vigência só — não tem ambiguidade, resolve direto (sem filtro de data)
+      montarTabEspPendente(brutas, ignoradas, file.name);
+    }
   }catch(e){
     console.error(e);
     showToast('Erro ao ler a planilha: ' + e.message, 'error');
   }
+}
+
+// Chamado depois que o usuário preenche as datas de cada vigência encontrada.
+// Resolve, por ARTIGO, qual linha vale HOJE (se o artigo tiver mais de uma).
+function confirmarVigenciasTabEsp(){
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const periodos = {};  // nome vigência → {inicio: Date|null, fim: Date|null}
+  for(let i = 0; i < _tabEspVigencias.length; i++){
+    const vi = $(`vigInicio_${i}`).value;
+    const vf = $(`vigFim_${i}`).value;
+    if(!vi || !vf){
+      showToast(`Preencha o período da vigência "${_tabEspVigencias[i]}"`, 'error');
+      return;
+    }
+    periodos[_tabEspVigencias[i]] = { inicio: new Date(vi+'T00:00:00'), fim: new Date(vf+'T23:59:59') };
+  }
+
+  // Agrupa as linhas brutas por artigo
+  const porArtigo = {};
+  for(const r of _tabEspRowsBrutas){
+    (porArtigo[r.artigo] = porArtigo[r.artigo] || []).push(r);
+  }
+
+  let semVigenciaAtiva = 0;
+  const resolvidas = [];
+  for(const [artigo, linhas] of Object.entries(porArtigo)){
+    if(linhas.length === 1){ resolvidas.push(linhas[0]); continue; }
+    // Mais de uma linha pro mesmo artigo → pega a que está valendo hoje
+    const ativa = linhas.find(r => {
+      const p = periodos[r.vigencia];
+      return p && hoje >= p.inicio && hoje <= p.fim;
+    });
+    if(ativa) resolvidas.push(ativa);
+    else semVigenciaAtiva++;
+  }
+
+  if(semVigenciaAtiva > 0){
+    showToast(`⚠️ ${semVigenciaAtiva} artigo(s) sem nenhuma vigência válida pra hoje — ficaram de fora`, 'warning');
+  }
+
+  $('tabEspVigencias').classList.add('hidden');
+  montarTabEspPendente(resolvidas, 0, _tabEspFileName || 'planilha', true);
+}
+
+// Monta o mapa final (_tabEspPendente) e mostra o preview — usado tanto no caminho
+// direto (sem ambiguidade de vigência) quanto depois de confirmarVigenciasTabEsp().
+function montarTabEspPendente(linhas, ignoradas, fileName, jaResolvidoPorVigencia){
+  const mapa = {};
+  for(const r of linhas){
+    const k = chaveTabela(r.artigo);
+    mapa[k] = {
+      codigoTabela: r.codigoTabela,
+      custo: r.custo,
+      mkp:   r.mkp,
+      vigencia: r.vigencia || ''
+    };
+  }
+
+  _tabEspPendente = mapa;
+  const total = Object.keys(mapa).length;
+
+  $('tabEspPreview').classList.remove('hidden');
+  $('tabEspPreviewTitle').textContent = `${fileName} — ${linhas.length} linha(s)`;
+
+  const entries = Object.entries(mapa);
+  $('tabEspPreviewBody').innerHTML = entries.slice(0, 8).map(([k, v]) => {
+    return `<tr class="border-t border-slate-100">
+      <td class="px-3 py-1.5 font-bold text-slate-700">${safeHtml(k)}</td>
+      <td class="px-3 py-1.5 text-slate-500">${safeHtml(v.vigencia || '—')}</td>
+      <td class="px-3 py-1.5"><span class="rounded-full px-2 py-0.5 text-[10px] font-bold" style="background:rgba(192,132,252,.15);color:#7c3aed">${safeHtml(v.codigoTabela)}</span></td>
+      <td class="px-3 py-1.5 text-right text-slate-600">R$ ${(v.custo||0).toFixed(2)}</td>
+      <td class="px-3 py-1.5 text-right text-slate-600">${safeHtml(v.mkp||'—')}</td>
+    </tr>`;
+  }).join('');
+  $('tabEspPreviewMore').textContent = entries.length > 8 ? `+ ${entries.length - 8} produto(s)` : '';
+
+  $('tabEspResumo').innerHTML = `<b>${total}</b> produto(s) válido(s)` + (ignoradas ? ` · ${ignoradas} linha(s) ignorada(s)` : '');
+  $('btnSalvarTabEsp').disabled = total === 0;
 }
 
 // Salva a tabela especial no Worker
@@ -2286,18 +2436,23 @@ async function salvarTabelaEspecial(){
 // Aplica a tabela especial a um item (cruzamento). Retorna o item modificado.
 function aplicarTabelaEspecial(item){
   if(!item || !item.artigo) return item;
-  const k = chaveTabela(item.artigo, item.cor);
+  const k = chaveTabela(item.artigo);
   const ref = _tabelaEspecial[k];
   if(ref){
     item.codigoTabela = ref.codigoTabela;
-    if(ref.custo) item.custo = ref.custo;
-    if(ref.mkp)   item.mkp   = ref.mkp;
+    item.custo = ref.custo || '';
+    item.mkp   = ref.mkp   || '';
+  } else {
+    // Artigo NÃO está em nenhuma campanha ativa na tabela especial salva agora
+    // → limpa (não deixa campanha "fantasma" grudada de uma importação antiga).
+    item.codigoTabela = '';
+    item.custo = '';
+    item.mkp   = '';
   }
-  // Regra 4: se NÃO está na tabela, mantém o que já tinha (não apaga).
   return item;
 }
 
-function abrirImportar(){ $('modalImportar').classList.remove('hidden'); }
+function abrirImportar(){ $('modalImportar').classList.remove('hidden'); $('importProcessando')?.classList.add('hidden'); $('uploadArea').classList.remove('hidden'); }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PAUSAR / ATIVAR VITRINE
@@ -2382,6 +2537,7 @@ function fecharImportar(){
   $('modalImportar').classList.add('hidden');
   $('previewArea').classList.add('hidden');
   $('uploadArea').classList.remove('hidden');
+  $('importProcessando')?.classList.add('hidden');
   $('resumoImagensBlock').classList.add('hidden');
   $('imgUploadProgress').classList.add('hidden');
   $('inputXlsx').value='';
@@ -2420,6 +2576,60 @@ function parseQuinzena(texto){
 // Ex: "2S26", "1S27", "2S27"...
 function ehColecaoMeta(categoria){
   return /^\d+S\d+$/.test(String(categoria||'').trim().toUpperCase());
+}
+
+// Detecta a MARCA (OLY/UA) pelo padrão do código ARTIGO — funciona linha a linha,
+// independente do nome do arquivo. Baseado em observação real dos exports "Analitico"
+// (tanto Pronta Entrega quanto Quinzena/2S26 seguem o mesmo padrão):
+//   OLY → 8 dígitos numéricos (ex: 43343458) OU 9-11 chars começando com "O" (ex: OIWB23823, OIMWL25503, OBMSR241922)
+//   UA  → sempre 7 dígitos numéricos (ex: 3025902)
+// Retorna '' se o padrão não bater com nenhum dos dois (quem chama decide o fallback).
+function detectarMarcaPorArtigo(artigo){
+  const a = String(artigo||'').trim().toUpperCase();
+  if(!a) return '';
+  if(/^\d{7}$/.test(a)) return 'UA';
+  if(/^\d{8}$/.test(a)) return 'OLY';
+  if(/^O[A-Z0-9]{8,10}$/.test(a)) return 'OLY';
+  return '';
+}
+
+// Classifica a CATEGORIA "bucket" (TENIS/CHINELO/VESTUARIO/MEIA/ACESSORIO) de UMA linha,
+// usada nos arquivos PRONTA ENTREGA (várias categorias/marcas misturadas no mesmo arquivo).
+// Ordem:
+//  1) Texto da coluna CATEGORIA do XLSX já é explícito (CHINELO, SLIDE, MEIA,
+//     ACESSORIO/ACCESSORIES, VESTUARIO/APPAREL, TENIS/FOOTWEAR) → usa direto.
+//  2) Senão (nome de linha esportiva tipo CORRIDA/TREINO/BASQUETE/GOLF, que não diz
+//     o tipo de produto) → decide pela grade de tamanhos preenchida nesta linha.
+function classificarCategoriaLinha(row){
+  const catTxt = String(row['CATEGORIA']||'')
+    .toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+
+  if(/CHINEL|SLIDE|SAND/.test(catTxt))                        return 'CHINELO';
+  if(/\bMEIA/.test(catTxt))                                   return 'MEIA';
+  if(/ACESSORI|ACCESSORIES|MOCHIL|BOLSA|BONE/.test(catTxt))   return 'ACESSORIO';
+  if(/VESTUARIO|APPAREL/.test(catTxt))                        return 'VESTUARIO';
+  if(/TENIS|CALCAD|FOOTWEAR/.test(catTxt))                    return 'TENIS';
+
+  // Fallback pela grade: pega as colunas de tamanho com valor > 0 nesta linha
+  const chaves = [];
+  for(const [col, val] of Object.entries(row)){
+    if(COLS_FIXAS.has(col)) continue;
+    const n = Number(val);
+    if(!isNaN(n) && n > 0) chaves.push(String(col).trim().toUpperCase());
+  }
+  if(!chaves.length) return '';
+
+  const faixasChinelo = ['33/34','35/36','37/38','39/40','41/42','43/44','45/46'];
+  if(chaves.some(k => faixasChinelo.includes(k))) return 'CHINELO';
+
+  // Números soltos (aceita vírgula/ponto decimal: "28,5") → calçado numerado
+  if(chaves.some(k => /^\d+([.,]\d+)?$/.test(k))) return 'TENIS';
+
+  const roupaKeys = ['PP','P','M','G','GG','2GG','M/G','XG','XGG'];
+  if(chaves.some(k => roupaKeys.includes(k))) return 'VESTUARIO';
+
+  // Só "U", G1/G2/G3 ou outra faixa não reconhecida → acessório
+  return 'ACESSORIO';
 }
 
 function rowToItem(row, quinzenaHint){
@@ -3184,7 +3394,14 @@ function detectarDoNome(fileName){
     .replace(/\s+/g, ' ').trim();
 
   // Detecta MARCA: começa com "UA" (Under Armour), senão é OLY
+  // (Nos arquivos PRONTA ENTREGA isso é só um palpite inicial — a marca real
+  //  de cada linha é confirmada por detectarMarcaPorArtigo durante a importação.)
   const marca = /^UA\b|\bUA\b/.test(nome) ? 'UA' : 'OLY';
+
+  // NOVO: arquivo "Pronta Entrega" (export único com todas as categorias
+  // misturadas) → categoria vira responsabilidade de classificarCategoriaLinha,
+  // linha a linha, durante a importação — não do nome do arquivo.
+  const ehProntaEntrega = /\bPRONTA\b/.test(nome);
 
   // Detecta TIPO 2S26 (coleção meta produtiva)
   // Padrões: "2 QUINZ AGOSTO", "2QUINZ", "QUINZ", "2S26"
@@ -3192,17 +3409,19 @@ function detectarDoNome(fileName){
 
   // Detecta CATEGORIA: a ordem importa (verifica do mais específico ao genérico)
   let categoria = '';
-  if(ehMeta){
+  if(ehProntaEntrega){
+    categoria = 'AUTO';  // classificado produto a produto na importação
+  } else if(ehMeta){
     categoria = '2S26';  // categoria padrão pra coleção meta
   } else if(/\b(TENIS|TÊNIS|CALCAD|SHOES)\b/.test(nome)){
     categoria = 'TENIS';
-  } else if(/\b(CHINEL|SAND)\b/.test(nome)){
+  } else if(/CHINEL|\bSAND\b/.test(nome)){
     categoria = 'CHINELO';
   } else if(/\bMEIA(S)?\b/.test(nome)){
     categoria = 'MEIA';
-  } else if(/\b(ACC|ACESSORI|MOCHIL|BOLSA|BONE)\b/.test(nome)){
+  } else if(/\bACC\b|ACESSORI|MOCHIL|\bBOLSA\b|\bBONE\b/.test(nome)){
     categoria = 'ACESSORIO';
-  } else if(/\b(VEST|CAMIS|ROUPA|MOLET|REGAT|BERMUD|SHORT|CALCA|JAQUET|AGASAL)\b/.test(nome)){
+  } else if(/VEST|CAMIS|\bROUPA\b|MOLET|REGAT|BERMUD|\bSHORT\b|\bCALCA\b|JAQUET|AGASAL/.test(nome)){
     categoria = 'VESTUARIO';
   }
 
@@ -3210,7 +3429,7 @@ function detectarDoNome(fileName){
   // Ex: "1 QUINZ DEZEMBRO" → "1Q_DEZ" · "2 QUINZ AGOSTO" → "2Q_AGO"
   const quinzena = ehMeta ? parseQuinzena(nome) : '';
 
-  return { marca, categoria, ehMeta, quinzena };
+  return { marca, categoria, ehMeta, ehProntaEntrega, quinzena };
 }
 
 // Detecta se a primeira linha do XLSX é título mesclado e pula
@@ -3252,7 +3471,8 @@ function pedirConfigImportacao(arquivos){
       detec: detectarDoNome(f.name)
     }));
 
-    // Detecta se TUDO foi reconhecido
+    // Detecta se TUDO foi reconhecido (arquivos "Pronta Entrega" sempre contam como OK —
+    // a categoria deles é classificada produto a produto, não precisa de seleção manual)
     const algumNaoDetectado = analises.some(a => !a.detec.categoria);
 
     // Sugestão de mês — mês atual em PT-BR
@@ -3286,12 +3506,22 @@ function pedirConfigImportacao(arquivos){
             ? `<span style="font-weight:700; color:#5b21b6">${safeHtml(a.detec.quinzena)}</span>`
             : `<span style="font-weight:700; color:#b91c1c">⚠️ não lida</span>`)
         : `<span style="color:#94a3b8">—</span>`;
+      // Pronta Entrega: marca e categoria são detectadas PRODUTO A PRODUTO (ARTIGO + grade),
+      // não pelo nome do arquivo — mostra badge de "automático" em vez do valor fixo
+      // Marca é detectada PRODUTO A PRODUTO (por ARTIGO) em qualquer arquivo do
+      // formato "Analitico" — tanto Pronta Entrega quanto Quinzena/2S26.
+      const marcaCell = (a.detec.ehProntaEntrega || a.detec.ehMeta)
+        ? `<span style="font-weight:700; color:#0369a1">🔎 auto (por produto)</span>`
+        : safeHtml(a.detec.marca);
+      const catCell = a.detec.ehProntaEntrega
+        ? `<span style="font-weight:700; color:#0369a1">🔎 auto (por produto)</span>`
+        : (ok ? safeHtml(a.detec.categoria) : selCat);
       return `
         <tr style="background:${corLinha}">
           <td style="padding:6px 8px; font-size:11px; color:${corTexto}">${iconeCheck}</td>
           <td style="padding:6px 8px; font-size:11px;">${safeHtml(a.nome)}</td>
-          <td style="padding:6px 8px; font-size:11px; font-weight:700">${safeHtml(a.detec.marca)}</td>
-          <td style="padding:6px 8px; font-size:11px; font-weight:700">${ok ? safeHtml(a.detec.categoria) : selCat}</td>
+          <td style="padding:6px 8px; font-size:11px; font-weight:700">${marcaCell}</td>
+          <td style="padding:6px 8px; font-size:11px; font-weight:700">${catCell}</td>
           <td style="padding:6px 8px; font-size:11px;">${quinzCell}</td>
         </tr>`;
     }).join('');
@@ -3304,7 +3534,7 @@ function pedirConfigImportacao(arquivos){
               ✨ Configurar importação
             </h2>
             <p style="margin:4px 0 0; font-size:12px; color:#64748b">
-              ${arquivos.length} arquivo(s) selecionado(s) · Detecção automática pelo nome
+              ${arquivos.length} arquivo(s) selecionado(s) · Detecção automática (arquivo Pronta Entrega classifica por produto)
             </p>
           </div>
           <div style="padding:16px 20px; overflow-y:auto; flex:1;">
@@ -3370,6 +3600,7 @@ function pedirConfigImportacao(arquivos){
           marca:   a.detec.marca,
           categoria,
           ehMeta,
+          ehProntaEntrega: a.detec.ehProntaEntrega,
           quinzena: a.detec.quinzena || ''
         };
       });
@@ -3390,6 +3621,21 @@ function pedirConfigImportacao(arquivos){
   });
 }
 
+// Alterna entre a dropzone (Passo 1) e o bloco "Processando..." dentro do modal de importar.
+// Sem isso, importações grandes (Pronta Entrega com centenas de produtos) ficam
+// vários segundos com a tela parada na dropzone vazia, parecendo travadas.
+function setImportProcessando(visivel, texto, pct){
+  const box = $('importProcessando');
+  const up  = $('uploadArea');
+  if(!box) return;
+  box.classList.toggle('hidden', !visivel);
+  if(up) up.classList.toggle('hidden', visivel);
+  if(visivel){
+    if(texto) $('importProcessandoTxt').textContent = texto;
+    if(typeof pct === 'number') $('importProcessandoBar').style.width = `${Math.max(0,Math.min(100,pct))}%`;
+  }
+}
+
 async function processarXlsxMulti(fileList){
   if(!fileList || !fileList.length) return;
   const arquivos = Array.from(fileList);
@@ -3400,6 +3646,8 @@ async function processarXlsxMulti(fileList){
   const { prevFat, configsPorArquivo } = cfg;
   // Indexa por nome de arquivo pra lookup rápido durante o processamento
   const cfgPorNome = new Map(configsPorArquivo.map(c => [c.arquivo, c]));
+
+  setImportProcessando(true, 'Carregando dados do banco...', 5);
 
   // Carrega JSON atual (1x)
   try{
@@ -3437,7 +3685,9 @@ async function processarXlsxMulti(fileList){
   _cruzadosTabEsp = 0;
 
   for(const file of arquivos){
+    setImportProcessando(true, `Lendo ${file.name}...`, 15);
     let qtdArquivo = 0;
+    let _semMarcaDetectada = 0;
     // Pega a config detectada deste arquivo
     const cfgArq = cfgPorNome.get(file.name) || { marca:'OLY', categoria:'', ehMeta:false, quinzena:'' };
     try{
@@ -3447,12 +3697,34 @@ async function processarXlsxMulti(fileList){
       // NOVO: usa o parser que pula linha mesclada automaticamente
       const rows = lerLinhasXlsx(ws);
       for(const row of rows){
-        // SOBREESCREVE colunas faltantes/erradas com valores da config
-        if(cfgArq.marca && !String(row['MARCA']||'').trim()){
+        let categoriaOriginal = String(row['CATEGORIA']||'').trim().toUpperCase();
+
+        // MARCA por linha (ARTIGO) SEMPRE — os exports "Analitico" (Pronta Entrega
+        // e Quinzena/2S26) seguem o mesmo padrão de código, então isso vale pros dois.
+        // Permite subir OLY+UA juntos em qualquer um dos dois fluxos.
+        const marcaPorArtigo = detectarMarcaPorArtigo(row['ARTIGO']);
+        if(marcaPorArtigo){
+          row['MARCA'] = marcaPorArtigo;
+        } else if(!String(row['MARCA']||'').trim()){
+          // ARTIGO com padrão não reconhecido → cai pro palpite do nome do arquivo
           row['MARCA'] = cfgArq.marca;
+          _semMarcaDetectada++;
         }
-        if(cfgArq.categoria){
-          // SEMPRE sobrescreve categoria (o XLSX bruto vem com sub-categoria errada)
+
+        // TIPO de produto por linha (TENIS/CHINELO/VESTUARIO/MEIA/ACESSORIO), calculado
+        // ANTES de mexer em row['CATEGORIA'] — precisa do texto original + grade intactos.
+        const bucket = classificarCategoriaLinha(row);
+
+        if(cfgArq.ehMeta){
+          // META PRODUTIVA: mantém CATEGORIA = "2S26" (ou o que veio da config) pra
+          // continuar disparando o fluxo de coleção no rowToItem (quinzena, T.GER etc).
+          // O tipo real do produto vai à parte, em item.categoriaProduto (segmentação).
+          row['CATEGORIA'] = cfgArq.categoria || categoriaOriginal;
+        } else if(cfgArq.ehProntaEntrega){
+          // PRONTA ENTREGA: a categoria da linha VIRA o próprio bucket detectado.
+          row['CATEGORIA'] = bucket || categoriaOriginal;
+        } else if(cfgArq.categoria){
+          // Fluxo legado: 1 arquivo = 1 categoria fixa, vinda do nome do arquivo
           row['CATEGORIA'] = cfgArq.categoria;
         }
         if(prevFat && !String(row['PREV. FAT']||'').trim()){
@@ -3460,6 +3732,8 @@ async function processarXlsxMulti(fileList){
         }
         const item = rowToItem(row, cfgArq.quinzena);
         if(!item.artigo) continue;
+        item.categoriaOriginal = categoriaOriginal;
+        item.categoriaProduto  = bucket || '';  // TENIS/CHINELO/VESTUARIO/MEIA/ACESSORIO — usado pra segmentar 2S26 na vitrine
         // Cruzamento automático com a tabela especial
         const antesCod = item.codigoTabela;
         aplicarTabelaEspecial(item);
@@ -3506,7 +3780,10 @@ async function processarXlsxMulti(fileList){
     }catch(e){
       console.error('Erro lendo', file.name, e);
     }
-    arquivosInfo.push({ nome: file.name, qtd: qtdArquivo });
+    arquivosInfo.push({ nome: file.name, qtd: qtdArquivo, semMarcaDetectada: _semMarcaDetectada });
+    if(_semMarcaDetectada > 0){
+      showToast(`⚠️ ${_semMarcaDetectada} produto(s) de "${file.name}" com ARTIGO em padrão não reconhecido — marca aplicada pelo nome do arquivo`, 'warning');
+    }
   }
 
   // ANTES de classificar, faz verificação REAL no GitHub Pages das imagens dos itens
@@ -3519,8 +3796,14 @@ async function processarXlsxMulti(fileList){
   });
   if(itensParaVerificar.length){
     showToast(`Verificando ${itensParaVerificar.length} imagem(ns)...`, 'info');
-    await verificarImagensImport(itensParaVerificar);
+    setImportProcessando(true, `Verificando imagens (0 / ${itensParaVerificar.length})...`, 30);
+    await verificarImagensImport(itensParaVerificar, (done, total) => {
+      const pct = 30 + Math.round((done/total) * 55); // 30%→85% do total da barra
+      setImportProcessando(true, `Verificando imagens (${done} / ${total})...`, pct);
+    });
   }
+
+  setImportProcessando(true, 'Classificando produtos...', 90);
 
   // ALÉM disso, re-verifica os itens AGUARDANDO IMAGEM já no banco
   // (caso a imagem já tenha sido subida via GitHub ou outro canal)
