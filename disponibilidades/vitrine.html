@@ -1423,8 +1423,12 @@
 <header id="headerVendedor" class="main-header px-4 py-3 sm:px-6">
   <div class="max-w-[1400px] mx-auto flex items-center justify-between gap-4 flex-wrap">
     <div class="flex items-center gap-3">
-      <a href="index.html" style="color:var(--muted);display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;text-decoration:none" class="hover:text-slate-900" title="Voltar e trocar marca">
-        <i class="fa-solid fa-arrow-left text-xs"></i> Trocar marca
+      <a href="https://cms-representacoes.github.io/apps-oly/" style="color:var(--muted);display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;text-decoration:none" class="hover:text-slate-900" title="Voltar ao Portal">
+        <i class="fa-solid fa-arrow-left text-xs"></i> Portal
+      </a>
+      <div class="w-px h-5" style="background:var(--line)"></div>
+      <a href="#" id="btnTrocarMarca" title="Trocar marca" style="width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);background:#fff">
+        <img id="btnTrocarMarcaImg" src="" alt="" style="width:100%;height:100%;object-fit:contain">
       </a>
       <div class="w-px h-5" style="background:var(--line)"></div>
       <!-- Identidade da marca ativa -->
@@ -4649,6 +4653,17 @@ function aplicarIdentidadeMarca(){
   document.documentElement.style.setProperty('--pulse-color-strong', info.pulseRgba);
   // Título da aba
   document.title = `${info.nome} — Disponibilidades`;
+
+  // Botão redondo de troca de marca: mostra a logo da OUTRA marca
+  const outraId = MARCA_ATIVA === 'oly' ? 'ua' : 'oly';
+  const outra = MARCA_INFO[outraId];
+  const tmImg = $('btnTrocarMarcaImg');
+  const tmBtn = $('btnTrocarMarca');
+  if(tmImg){ tmImg.src = outra.logo; tmImg.alt = outra.nome; }
+  if(tmBtn){
+    tmBtn.title = 'Trocar para ' + outra.nome;
+    tmBtn.onclick = (e) => { e.preventDefault(); window.location.href = 'vitrine.html?marca=' + outraId; };
+  }
 }
 // ═══════════════════════════════════════════════════════════════════════════
 // ── MODO CLIENTE — vitrine compartilhada (mobile) ──────────────────────────

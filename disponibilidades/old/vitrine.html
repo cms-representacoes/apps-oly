@@ -2316,6 +2316,14 @@ function categoriaKey(catRaw){
   return semAcento(String(catRaw||'').trim().toUpperCase());
 }
 
+// Categoria EFETIVA de um item: usa categoriaProduto (TENIS/CHINELO/VESTUARIO/MEIA/
+// ACESSORIO, calculado linha a linha no admin — funciona pra estoque E 2S26) quando
+// disponível; cai pra item.categoria em produtos importados antes dessa mudança
+// (nesses, item.categoria já era o bucket certo pra estoque — só não existe pra 2S26 antigo).
+function categoriaEfetiva(item){
+  return item?.categoriaProduto || item?.categoria || '';
+}
+
 // Ícone Font Awesome por categoria (casa por palavra-chave)
 function iconeCategoria(catKey){
   const c = catKey || '';
@@ -2458,7 +2466,7 @@ function renderDrawerOpcoes(){
   // Categoria — valores REAIS da coluna (sem agrupar)
   const catCount = {};
   for(const it of itensDaVisao){
-    const ck = categoriaKey(it.categoria);
+    const ck = categoriaKey(categoriaEfetiva(it));
     if(ck) catCount[ck] = (catCount[ck]||0) + 1;
   }
   const boxC = $('filtroCategoriaBox');
@@ -2553,7 +2561,7 @@ function applyFilters(){
     })
     .filter(item => !STATE.filtroCampanha || (item.codigoTabela||'') === STATE.filtroCampanha)
     .filter(item => STATE.filtroGenero.size === 0 || STATE.filtroGenero.has(String(item.genero||'').trim().toUpperCase()))
-    .filter(item => STATE.filtroCategoria.size === 0 || STATE.filtroCategoria.has(categoriaKey(item.categoria)))
+    .filter(item => STATE.filtroCategoria.size === 0 || STATE.filtroCategoria.has(categoriaKey(categoriaEfetiva(item))))
     .filter(item => {
       if(!q) return true;
       return `${item.descricao} ${item.artigo} ${item.cor} ${item.linha} ${item.empresa} ${item.codigoTabela||''}`.toLowerCase().includes(q);
@@ -2944,6 +2952,7 @@ async function criarLinkVitrine(){
       cor:          i.cor,
       descricao:    i.descricao,
       categoria:    i.categoria,
+      categoriaProduto: i.categoriaProduto || '',
       linha:        i.linha,
       genero:       i.genero,
       empresa:      i.empresa,
@@ -3634,6 +3643,7 @@ function mpCarregarRespostaNaSacola(link){
       descricao:  it.descricao,
       produto:    it.descricao,
       categoria:  it.categoria || (prodVitrine?.categoria || ''),
+      categoriaProduto: it.categoriaProduto || (prodVitrine?.categoriaProduto || ''),
       linha:      prodVitrine?.linha || '',
       genero:     prodVitrine?.genero || '',
       gradeDisp:  prodVitrine?.grade || {},
@@ -3727,7 +3737,7 @@ function ordenarSelecaoPdf(arr, modo){
     case 'disp_desc':  a.sort((x,y)=>totalDisp(y)-totalDisp(x)); break;
     default: // padrão: agrupa por categoria, depois nome
       a.sort((x,y)=>{
-        const cx = categoriaKey(x.categoria), cy = categoriaKey(y.categoria);
+        const cx = categoriaKey(categoriaEfetiva(x)), cy = categoriaKey(categoriaEfetiva(y));
         if(cx !== cy) return cx.localeCompare(cy);
         return String(x.descricao||'').localeCompare(String(y.descricao||''));
       });
@@ -4054,7 +4064,7 @@ function getItemTotalQty(it){
 //   Algoritmo: prioriza caixas de 12, o resto vai em caixas de 6.
 //   Vestuário/acessórios: célula vazia (sem caixa).
 function calcQtdCaixas(it, total){
-  if(!isFootwearCategory(it.categoria)) return '';  // vestuário/acessório: sem caixa
+  if(!isFootwearCategory(categoriaEfetiva(it))) return '';  // vestuário/acessório: sem caixa
   if(!total || total <= 0) return 0;
   const c12 = Math.floor(total / 12);
   const resto = total - (c12 * 12);
@@ -4147,6 +4157,7 @@ function cartAdd(produtoArtigo, produtoCor){
     descricao:  item.descricao,
     produto:    item.descricao,        // alias
     categoria:  item.categoria,
+    categoriaProduto: item.categoriaProduto || '',
     linha:      item.linha,
     genero:     item.genero,
     gradeDisp:  { ...(item.grade || {}) }, // disponibilidade copiada
@@ -4534,11 +4545,11 @@ function buildOrderExportRows(cfg){
     row[idx['Quantidade de Caixas']] = qtdCaixas;
 
     // Distribui tamanhos pelas colunas
-    if(isSockCategory(it.categoria)){
+    if(isSockCategory(categoriaEfetiva(it))){
       const sockCol = detectSockColumn(it);
       if(sockCol && idx[sockCol] !== undefined) row[idx[sockCol]] = totalQty;
       else warnings.push(`Meia sem faixa identificada: ${it.descricao||it.artigo}`);
-    } else if(isAccessoryCategory(it.categoria)){
+    } else if(isAccessoryCategory(categoriaEfetiva(it))){
       row[idx['U']] = totalQty;
     } else if(it.gradePedido && Object.keys(it.gradePedido).length){
       for(const [tam, qty] of Object.entries(it.gradePedido)){
@@ -4551,7 +4562,7 @@ function buildOrderExportRows(cfg){
     row[idx['Total']] = totalQty;
     aoa.push(row);
 
-    if(isFootwearCategory(it.categoria) && totalQty > 0 && totalQty % 6 !== 0){
+    if(isFootwearCategory(categoriaEfetiva(it)) && totalQty > 0 && totalQty % 6 !== 0){
       warnings.push(`Calçado fora do múltiplo de 6: ${it.descricao||it.artigo} — total ${totalQty}`);
     }
   }
@@ -5101,6 +5112,7 @@ async function cliEnviar(){
       descricao: p.descricao,
       pdv:       p.pdv,
       categoria: p.categoria,
+      categoriaProduto: p.categoriaProduto || '',
       grade:     v.grade || {}
     });
   }
