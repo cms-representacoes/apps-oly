@@ -373,12 +373,13 @@
     /* ── Login do Portal (sessão compartilhada) ── */
     .lg-bg{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;background:rgba(5,8,16,.72);padding:20px;font-family:'Plus Jakarta Sans',Inter,system-ui,sans-serif}
     .lg-bg[hidden]{display:none}
-    .lg-modal{background:#141c30;border:1px solid #253248;border-radius:24px;padding:32px 28px;max-width:380px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.5);max-height:90vh;overflow-y:auto}
+    .lg-modal{background:#141c30;border:1px solid #253248;border-radius:24px;padding:32px 28px;max-width:460px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.5);max-height:90vh;overflow-y:auto}
     .lg-icon{width:52px;height:52px;border-radius:16px;background:linear-gradient(150deg,#9c66ff 0%,#7c3aed 48%,#3b0c8e 100%);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:15px;margin-bottom:16px}
     .lg-title{font-size:20px;font-weight:800;color:#f1f5f9;margin-bottom:4px}
     .lg-sub{font-size:13px;color:#94a3b8;margin-bottom:22px}
-    .lg-list{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
-    .lg-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:14px;border:1px solid #253248;background:#0f172a;cursor:pointer;transition:.15s;width:100%;text-align:left;font-family:inherit}
+    .lg-list{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+    .lg-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;border:1px solid #253248;background:#0f172a;cursor:pointer;transition:.15s;width:100%;text-align:left;font-family:inherit}
+    .lg-name{line-height:1.2}
     .lg-item:hover{border-color:#7c3aed;background:#1a1030}
     .lg-avatar{width:34px;height:34px;border-radius:10px;background:#1e293b;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:800;color:#a5b4fc;flex:none}
     .lg-item.selected{border-color:#7c3aed;background:linear-gradient(150deg,rgba(156,102,255,.16),rgba(59,12,142,.16))}
@@ -398,7 +399,7 @@
 
     .welcome-bar{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:6px}
     .welcome-txt{font-size:13.5px;color:#94a3b8}
-    .welcome-txt b{color:#e2e8f0;font-weight:700}
+    .welcome-txt b{color:#e2e8f0;font-weight:800;font-size:17px}
     .welcome-switch{font-size:12px;color:#7c8cff;background:none;border:none;cursor:pointer;text-decoration:underline;font-family:inherit}
     .admin-only[hidden]{display:none !important}
   </style>
@@ -744,6 +745,7 @@
   ];
 
   function tituloCaso(s){
+    if(String(s || '').toUpperCase() === 'CMS') return 'CMS';
     return String(s || '').toLowerCase().split(' ').map(function(w){
       return w ? w[0].toUpperCase() + w.slice(1) : w;
     }).join(' ');
