@@ -188,29 +188,32 @@
 
     /* Botão PDF flutuante */
     .fab-pdf{
-      position:fixed; bottom:92px; right:24px; z-index:90;
+      z-index:90;
       background:var(--accent); color:#fff;
       border:none; border-radius:999px; cursor:pointer;
       padding:14px 24px; font-size:14px; font-weight:800;
       display:flex; align-items:center; gap:8px;
       box-shadow:0 8px 32px rgba(125,184,0,.35);
-      transition:all .15s; transform:translateY(80px); opacity:0;
+      transition:all .15s; opacity:0;
       pointer-events:none;
     }
-    .fab-pdf.visivel{ transform:translateY(0); opacity:1; pointer-events:auto; }
+    .fab-pdf.visivel{ opacity:1; pointer-events:auto; }
     .fab-pdf:hover{ background:#6aa100; }
 
     /* Botão Gerar Link flutuante — fica acima do PDF */
+    .fabs-row{
+      position:fixed; bottom:24px; right:24px; z-index:100;
+      display:flex; align-items:center; gap:12px;
+    }
     .fab-link{
-      position:fixed; bottom:84px; right:24px; z-index:100;
       background:#0f172a; color:#fff;
       border:none; border-radius:999px; cursor:pointer;
       padding:13px 22px; font-size:13px; font-weight:800;
       display:flex; align-items:center; gap:8px;
       box-shadow:0 8px 28px rgba(15,23,42,.32);
-      transition:all .15s; transform:translateY(80px); opacity:0;
+      transition:all .15s; opacity:0; pointer-events:none;
     }
-    .fab-link.visivel{ transform:translateY(0); opacity:1; }
+    .fab-link.visivel{ opacity:1; pointer-events:auto; }
     .fab-link:hover{ background:#1e293b; }
 
     /* Modais de link compartilhado */
@@ -758,7 +761,7 @@
     .spin{ animation:spin 1s linear infinite; }
     /* ═══ SACOLA / FAB ═══════════════════════════════════════════════════ */
     .fab-cart{
-      position:fixed; bottom:24px; right:24px; z-index:50;
+      z-index:50;
       width:auto; height:54px; padding:0 22px; border-radius:999px;
       background:var(--accent); color:#fff; border:none;
       display:none; align-items:center; gap:10px;
@@ -1587,18 +1590,6 @@
   </aside>
 </div>
 
-<!-- FAB PDF -->
-<button class="fab-pdf" id="fabPDF" onclick="gerarPDF()">
-  <i class="fa-solid fa-file-pdf"></i>
-  Gerar PDF <span id="fabCount" class="bg-slate-900 text-[var(--accent)] text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
-</button>
-
-<!-- FAB Gerar Link (acima do PDF) -->
-<button class="fab-link" id="fabLink" onclick="abrirGerarLink()">
-  <i class="fa-solid fa-link"></i>
-  Gerar link <span id="fabLinkCount" class="bg-white text-slate-900 text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
-</button>
-
 <!-- Modal: Gerar Link (formulário) -->
 <div id="modalGerarLink" class="link-modal-bg hidden" onclick="if(event.target===this)fecharGerarLink()">
   <div class="link-modal-card">
@@ -1711,11 +1702,21 @@
   </div>
 </div>
 
-<!-- ── FAB Sacola ──────────────────────────────────────────────────────── -->
-<button id="cartFab" class="fab-cart" onclick="abrirSacola()" title="Abrir sacola">
-  <i class="fa-solid fa-bag-shopping"></i>
-  Sacola <span id="cartBadge" class="badge">0</span>
-</button>
+<!-- ── Botões flutuantes (lado a lado) ────────────────────────────────── -->
+<div class="fabs-row">
+  <button class="fab-pdf" id="fabPDF" onclick="gerarPDF()">
+    <i class="fa-solid fa-file-pdf"></i>
+    Gerar PDF <span id="fabCount" class="bg-slate-900 text-[var(--accent)] text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
+  </button>
+  <button class="fab-link" id="fabLink" onclick="abrirGerarLink()">
+    <i class="fa-solid fa-link"></i>
+    Gerar link <span id="fabLinkCount" class="bg-white text-slate-900 text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
+  </button>
+  <button id="cartFab" class="fab-cart" onclick="abrirSacola()" title="Abrir sacola">
+    <i class="fa-solid fa-bag-shopping"></i>
+    Sacola <span id="cartBadge" class="badge">0</span>
+  </button>
+</div>
 
 <!-- ── Modal Sacola ───────────────────────────────────────────────────── -->
 <div id="cartModal" class="modal-bg hidden" onclick="if(event.target===this)fecharSacola()">
@@ -2700,9 +2701,9 @@ function buildCardHtml(item){
       <i class="fa-${isSel?'solid':'regular'} fa-heart"></i>
     </button>
     ${imgSrc ? `<button class="btn-zoom" onclick="abrirZoom('${safeHtml(imgSrc)}')" title="Zoom"><i class="fa-solid fa-magnifying-glass-plus"></i></button>` : ''}
-    <button class="card-add-btn${STATE.cart.has(cartKey(item))?' added':''}" onclick="event.stopPropagation();cartAdd('${safeHtml(item.artigo)}','${safeHtml(item.cor)}')" title="Adicionar à sacola">
+    ${ehMeta ? '' : `<button class="card-add-btn${STATE.cart.has(cartKey(item))?' added':''}" onclick="event.stopPropagation();cartAdd('${safeHtml(item.artigo)}','${safeHtml(item.cor)}')" title="Adicionar à sacola">
       <i class="fa-solid fa-${STATE.cart.has(cartKey(item))?'check':'plus'}"></i>
-    </button>
+    </button>`}
     <div class="card-img">
       ${imgSrc
         ? `<img src="${safeHtml(imgSrc)}" alt="${safeHtml(item.descricao)}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden')">`
@@ -4165,6 +4166,10 @@ function cartAdd(produtoArtigo, produtoCor){
     String(i.cor||'').toUpperCase()    === produtoCor.toUpperCase()
   );
   if(!item){ showToast('Produto não encontrado','error'); return; }
+  if(item._meta){
+    showToast('Produto 2S26 é só consulta de meta produtiva — não pode ser pedido.', 'info');
+    return;
+  }
   const k = cartKey(item);
   if(STATE.cart.has(k)){
     showToast(`${item.descricao} já está na sacola`, 'info');
