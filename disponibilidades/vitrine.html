@@ -4160,16 +4160,14 @@ function saveCartToStorage(){
 
 // Adiciona item à sacola (sem alterar grade ainda)
 function cartAdd(produtoArtigo, produtoCor){
-  // Acha o item original
+  // Acha o item original — só a versão "estoque" (não a "meta"), já que a mesma
+  // referência ARTIGO|COR pode existir duplicada nas duas visões (Disponíveis x 2S26).
   const item = STATE.itens.find(i =>
     String(i.artigo||'').toUpperCase() === produtoArtigo.toUpperCase() &&
-    String(i.cor||'').toUpperCase()    === produtoCor.toUpperCase()
+    String(i.cor||'').toUpperCase()    === produtoCor.toUpperCase() &&
+    !i._meta
   );
   if(!item){ showToast('Produto não encontrado','error'); return; }
-  if(item._meta){
-    showToast('Produto 2S26 é só consulta de meta produtiva — não pode ser pedido.', 'info');
-    return;
-  }
   const k = cartKey(item);
   if(STATE.cart.has(k)){
     showToast(`${item.descricao} já está na sacola`, 'info');
