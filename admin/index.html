@@ -484,21 +484,18 @@
 
   <main class="min-h-screen p-4 sm:p-6">
     <section id="loginScreen" class="mx-auto max-w-md pt-16 sm:pt-24">
-      <div class="rounded-[32px] border border-slate-200 bg-white p-6 sm:p-8 shadow-card">
+      <div class="rounded-[32px] border border-slate-200 bg-white p-6 sm:p-8 shadow-card text-center">
         <div class="mx-auto h-14 w-14 rounded-2xl bg-[var(--brand-soft)] text-[var(--brand)] flex items-center justify-center text-2xl">
           <i class="fa-solid fa-shield-halved"></i>
         </div>
 
-        <h1 class="mt-5 text-2xl font-extrabold">Painel Administrativo</h1>
-        <p class="mt-2 text-sm text-slate-500">Entre com a senha para visualizar pedidos enviados pelos vendedores.</p>
+        <h1 class="mt-5 text-2xl font-extrabold">Acesso restrito</h1>
+        <p class="mt-2 text-sm text-slate-500">Esse painel é exclusivo da CMS. Entre pelo Portal com o usuário CMS para acessar.</p>
 
-        <div class="mt-5">
-          <label class="text-xs font-bold text-slate-500">Senha</label>
-          <input id="adminPassword" type="password" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold" placeholder="Digite a senha" style="background:var(--card);color:var(--text);border-color:var(--line)" />
-        </div>
-
-        <button id="btnAdminLogin" class="focus-ring mt-5 w-full rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white">Entrar</button>
-        <div class="mt-3 text-xs text-slate-400">Acesso interno. Troque a senha no arquivo quando necessário.</div>
+        <a href="https://cms-representacoes.github.io/apps-oly/" class="focus-ring mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white">
+          <i class="fa-solid fa-arrow-left"></i>
+          <span>Voltar ao Portal</span>
+        </a>
       </div>
     </section>
 
@@ -562,6 +559,11 @@
               <i id="iconManutencao" class="fa-solid fa-screwdriver-wrench"></i>
               <span id="lblManutencao" class="hidden sm:inline">Pausar app</span>
             </button>
+
+            <a href="https://cms-representacoes.github.io/apps-oly/" title="Voltar ao Portal"
+              class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
+              <i class="fa-solid fa-arrow-left text-xs"></i>
+            </a>
 
             <button id="btnLogout" title="Sair"
               class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
@@ -1186,7 +1188,20 @@ const STORAGE_KEYS = {
   adminAuth:'repasse_admin_auth_v1',
   adminScope:'repasse_admin_scope_v1'
 };
-const ADMIN_PASSWORD = 'cmsrepasse';
+// ── Sessão compartilhada do Portal (login único) ───────────────────────────
+function getPortalSession(){
+  try{
+    const raw = localStorage.getItem('cms_portal_session_v1');
+    if(!raw) return null;
+    const s = JSON.parse(raw);
+    if(!s || !s.expiraEm || new Date(s.expiraEm).getTime() < Date.now()) return null;
+    return s;
+  }catch(_){ return null; }
+}
+function isCmsLogado(){
+  const s = getPortalSession();
+  return !!(s && s.nome === 'CMS');
+}
 const STATUS_OPTIONS = ['Pendente','Aprovado','Cancelado'];
 
 const STATE = {
@@ -1665,7 +1680,7 @@ async function workerDeleteOrder(id){
 }
 
 async function applyAuthUI(){
-  const ok = localStorage.getItem(STORAGE_KEYS.adminAuth) === 'ok';
+  const ok = isCmsLogado();
 
   $('loginScreen').classList.toggle('hidden', ok);
   $('adminApp').classList.toggle('hidden', !ok);
@@ -3649,24 +3664,9 @@ async function relatorioExportPdf(){
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-$('btnAdminLogin').addEventListener('click', async ()=>{
-  if($('adminPassword').value !== ADMIN_PASSWORD){
-    showToast('Senha inválida.', 'error');
-    return;
-  }
-
-  localStorage.setItem(STORAGE_KEYS.adminAuth, 'ok');
-  $('adminPassword').value = '';
-  await applyAuthUI();
-});
-
-$('adminPassword').addEventListener('keydown', async (e)=>{
-  if(e.key === 'Enter') $('btnAdminLogin').click();
-});
-
 $('btnLogout').addEventListener('click', ()=>{
-  localStorage.removeItem(STORAGE_KEYS.adminAuth);
-  applyAuthUI();
+  localStorage.removeItem('cms_portal_session_v1');
+  window.location.href = 'https://cms-representacoes.github.io/apps-oly/';
 });
 
 $('btnRefresh').addEventListener('click', async ()=>{ await loadAdmin(); });
