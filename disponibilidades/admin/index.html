@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <style>
     :root{
@@ -785,8 +786,14 @@
         <div class="text-[10px] text-slate-500 mt-1 font-mono" id="imgLoteAtual">—</div>
       </div>
     </div>
+    <div class="px-5 py-2 text-[11px] text-center" style="color:var(--muted)">
+      O envio automático está com instabilidade. Se falhar, use "Baixar renomeadas" e suba manualmente pelo GitHub.
+    </div>
     <div class="px-5 py-3 border-t border-slate-100 bg-slate-50 flex gap-2">
       <button onclick="fecharImagensLote()" class="flex-1 py-2 rounded-lg border border-slate-200 text-sm font-bold text-slate-600 bg-white hover:bg-slate-50">Fechar</button>
+      <button id="btnImgLoteBaixar" onclick="baixarImagensLoteRenomeadas()" class="flex-1 py-2 rounded-lg border-2 text-sm font-extrabold disabled:opacity-50" style="border-color:#d97706;color:#d97706;background:#fff">
+        <i class="fa-solid fa-download"></i> Baixar renomeadas
+      </button>
       <button id="btnImgLoteEnviar" onclick="enviarImagensLoteSimples()" disabled class="flex-1 py-2 rounded-lg text-white text-sm font-extrabold disabled:opacity-50" style="background:#d97706">
         <i class="fa-solid fa-upload"></i> Enviar imagens
       </button>
@@ -994,7 +1001,7 @@ function isCmsLogado(){
   return !!(s && s.nome === 'CMS');
 }
 // Base pública das imagens (mesma pasta usada pelo catálogo de Disponibilidades)
-const IMG_BASE = 'https://cms-representacoes.github.io/apps-oly-v2/imagens_olympikus/';
+const IMG_BASE = 'https://cms-representacoes.github.io/apps-oly/Catalogo/';
 
 const $ = id => document.getElementById(id);
 
@@ -1103,6 +1110,45 @@ function processarImagensLoteSimples(fileList){
     </div>` : ''}
   `;
   $('btnImgLoteEnviar').disabled = (_imgLoteCasadas.length === 0);
+}
+
+// Fallback manual: empacota as imagens já casadas com produtos num .zip, com o
+// nome de arquivo já no padrão certo (ARTIGO_COR.jpg) — pra subir manualmente
+// pelo próprio site do GitHub, sem depender do envio automático.
+async function baixarImagensLoteRenomeadas(){
+  if(!_imgLoteCasadas.length){
+    showToast('Nenhuma imagem correspondente pra baixar.', 'info');
+    return;
+  }
+  const btn = $('btnImgLoteBaixar');
+  const prev = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Preparando...';
+  try{
+    const zip = new JSZip();
+    for(const chave of _imgLoteCasadas){
+      const file = _imgLote.get(chave);
+      if(!file) continue;
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      zip.file(`${chave}.${ext === 'png' ? 'jpg' : ext}`, file);
+    }
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `imagens_disponibilidades_${new Date().toISOString().slice(0,10)}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast(`${_imgLoteCasadas.length} imagem(ns) baixada(s) — extrai o .zip e arrasta pro GitHub.`, 'success');
+  }catch(e){
+    console.error(e);
+    showToast('Erro ao gerar o .zip: ' + e.message, 'error');
+  }finally{
+    btn.disabled = false;
+    btn.innerHTML = prev;
+  }
 }
 
 async function enviarImagensLoteSimples(){
