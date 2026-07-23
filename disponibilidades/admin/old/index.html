@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <style>
     :root{
@@ -785,8 +786,14 @@
         <div class="text-[10px] text-slate-500 mt-1 font-mono" id="imgLoteAtual">—</div>
       </div>
     </div>
+    <div class="px-5 py-2 text-[11px] text-center" style="color:var(--muted)">
+      O envio automático está com instabilidade. Se falhar, use "Baixar renomeadas" e suba manualmente pelo GitHub.
+    </div>
     <div class="px-5 py-3 border-t border-slate-100 bg-slate-50 flex gap-2">
       <button onclick="fecharImagensLote()" class="flex-1 py-2 rounded-lg border border-slate-200 text-sm font-bold text-slate-600 bg-white hover:bg-slate-50">Fechar</button>
+      <button id="btnImgLoteBaixar" onclick="baixarImagensLoteRenomeadas()" class="flex-1 py-2 rounded-lg border-2 text-sm font-extrabold disabled:opacity-50" style="border-color:#d97706;color:#d97706;background:#fff">
+        <i class="fa-solid fa-download"></i> Baixar renomeadas
+      </button>
       <button id="btnImgLoteEnviar" onclick="enviarImagensLoteSimples()" disabled class="flex-1 py-2 rounded-lg text-white text-sm font-extrabold disabled:opacity-50" style="background:#d97706">
         <i class="fa-solid fa-upload"></i> Enviar imagens
       </button>
@@ -932,6 +939,7 @@
             <thead class="bg-slate-50 text-slate-500">
               <tr>
                 <th class="text-left px-3 py-2">Artigo</th>
+                <th class="text-left px-3 py-2">Marca</th>
                 <th class="text-left px-3 py-2">Vigência</th>
                 <th class="text-left px-3 py-2">Campanha</th>
                 <th class="text-right px-3 py-2">Custo</th>
@@ -1102,6 +1110,45 @@ function processarImagensLoteSimples(fileList){
     </div>` : ''}
   `;
   $('btnImgLoteEnviar').disabled = (_imgLoteCasadas.length === 0);
+}
+
+// Fallback manual: empacota as imagens já casadas com produtos num .zip, com o
+// nome de arquivo já no padrão certo (ARTIGO_COR.jpg) — pra subir manualmente
+// pelo próprio site do GitHub, sem depender do envio automático.
+async function baixarImagensLoteRenomeadas(){
+  if(!_imgLoteCasadas.length){
+    showToast('Nenhuma imagem correspondente pra baixar.', 'info');
+    return;
+  }
+  const btn = $('btnImgLoteBaixar');
+  const prev = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Preparando...';
+  try{
+    const zip = new JSZip();
+    for(const chave of _imgLoteCasadas){
+      const file = _imgLote.get(chave);
+      if(!file) continue;
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      zip.file(`${chave}.${ext === 'png' ? 'jpg' : ext}`, file);
+    }
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `imagens_disponibilidades_${new Date().toISOString().slice(0,10)}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast(`${_imgLoteCasadas.length} imagem(ns) baixada(s) — extrai o .zip e arrasta pro GitHub.`, 'success');
+  }catch(e){
+    console.error(e);
+    showToast('Erro ao gerar o .zip: ' + e.message, 'error');
+  }finally{
+    btn.disabled = false;
+    btn.innerHTML = prev;
+  }
 }
 
 async function enviarImagensLoteSimples(){
@@ -2250,7 +2297,11 @@ async function abrirTabelaEspecial(){
   const st = $('tabEspStatus');
   if(n > 0){
     const campanhas = [...new Set(Object.values(_tabelaEspecial).map(v=>v.codigoTabela).filter(Boolean))].sort();
-    st.innerHTML = `<i class="fa-solid fa-circle-check" style="color:#16a34a"></i> <span class="text-slate-600"><b>${n}</b> produto(s) na tabela salva — campanhas: <b>${campanhas.join(', ')||'—'}</b></span>`;
+    const vals = Object.values(_tabelaEspecial);
+    const nOly = vals.filter(v => v.marca === 'OLY').length;
+    const nUa  = vals.filter(v => v.marca === 'UA').length;
+    const marcaTxt = (nOly || nUa) ? ` (${[nOly?`${nOly} OLY`:'', nUa?`${nUa} UA`:''].filter(Boolean).join(' · ')})` : '';
+    st.innerHTML = `<i class="fa-solid fa-circle-check" style="color:#16a34a"></i> <span class="text-slate-600"><b>${n}</b> produto(s) na tabela salva${marcaTxt} — campanhas: <b>${campanhas.join(', ')||'—'}</b></span>`;
   } else {
     st.innerHTML = `<i class="fa-solid fa-circle-info" style="color:#f59e0b"></i> <span class="text-slate-600">Nenhuma tabela especial salva ainda.</span>`;
   }
@@ -2288,8 +2339,10 @@ async function processarTabelaEspXlsx(file){
       const codTab = String(row['CODIGO TABELA'] || '').trim().toUpperCase();
       const flag   = String(row['TABELA ESPECIAL?'] ?? 'SIM').trim().toUpperCase();
       if(!artigo || !codTab || flag !== 'SIM'){ ignoradas++; continue; }
+      const marcaPlan = String(row['MARCA'] || '').trim().toUpperCase();
       brutas.push({
         artigo,
+        marca: (marcaPlan === 'UA' || marcaPlan === 'OLY') ? marcaPlan : '',
         vigencia: String(row['VIGÊNCIA'] ?? row['VIGENCIA'] ?? '').trim(),
         codigoTabela: codTab,
         custo: Number(row['PREÇO NF'] ?? row['CUSTO'] ?? 0),
@@ -2378,14 +2431,17 @@ function confirmarVigenciasTabEsp(){
 // direto (sem ambiguidade de vigência) quanto depois de confirmarVigenciasTabEsp().
 function montarTabEspPendente(linhas, ignoradas, fileName, jaResolvidoPorVigencia){
   const mapa = {};
+  const porMarca = { OLY:0, UA:0, '—':0 };
   for(const r of linhas){
     const k = chaveTabela(r.artigo);
     mapa[k] = {
       codigoTabela: r.codigoTabela,
       custo: r.custo,
       mkp:   r.mkp,
+      marca: r.marca || '',
       vigencia: r.vigencia || ''
     };
+    porMarca[r.marca || '—'] = (porMarca[r.marca || '—'] || 0) + 1;
   }
 
   _tabEspPendente = mapa;
@@ -2396,8 +2452,10 @@ function montarTabEspPendente(linhas, ignoradas, fileName, jaResolvidoPorVigenci
 
   const entries = Object.entries(mapa);
   $('tabEspPreviewBody').innerHTML = entries.slice(0, 8).map(([k, v]) => {
+    const corMarca = v.marca === 'UA' ? '#dc2626' : (v.marca === 'OLY' ? '#2563eb' : '#94a3b8');
     return `<tr class="border-t border-slate-100">
       <td class="px-3 py-1.5 font-bold text-slate-700">${safeHtml(k)}</td>
+      <td class="px-3 py-1.5"><span class="rounded-full px-2 py-0.5 text-[10px] font-bold" style="background:${corMarca}18;color:${corMarca}">${safeHtml(v.marca || '—')}</span></td>
       <td class="px-3 py-1.5 text-slate-500">${safeHtml(v.vigencia || '—')}</td>
       <td class="px-3 py-1.5"><span class="rounded-full px-2 py-0.5 text-[10px] font-bold" style="background:rgba(192,132,252,.15);color:#7c3aed">${safeHtml(v.codigoTabela)}</span></td>
       <td class="px-3 py-1.5 text-right text-slate-600">R$ ${(v.custo||0).toFixed(2)}</td>
@@ -2406,7 +2464,12 @@ function montarTabEspPendente(linhas, ignoradas, fileName, jaResolvidoPorVigenci
   }).join('');
   $('tabEspPreviewMore').textContent = entries.length > 8 ? `+ ${entries.length - 8} produto(s)` : '';
 
-  $('tabEspResumo').innerHTML = `<b>${total}</b> produto(s) válido(s)` + (ignoradas ? ` · ${ignoradas} linha(s) ignorada(s)` : '');
+  const resumoMarca = [
+    porMarca.OLY ? `${porMarca.OLY} OLY` : '',
+    porMarca.UA ? `${porMarca.UA} UA` : '',
+    porMarca['—'] ? `${porMarca['—']} sem marca` : ''
+  ].filter(Boolean).join(' · ');
+  $('tabEspResumo').innerHTML = `<b>${total}</b> produto(s) válido(s)` + (resumoMarca ? ` (${resumoMarca})` : '') + (ignoradas ? ` · ${ignoradas} linha(s) ignorada(s)` : '');
   $('btnSalvarTabEsp').disabled = total === 0;
 }
 
@@ -2425,8 +2488,29 @@ async function salvarTabelaEspecial(){
     if(!res.ok) throw new Error('Worker ' + res.status);
     _tabelaEspecial = _tabEspPendente;
     _tabEspPendente = null;
-    showToast(`Tabela especial salva — ${Object.keys(_tabelaEspecial).length} produto(s)`, 'success');
+
+    // Reaplica a tabela especial a TODOS os produtos já salvos, sem precisar
+    // reimportar o estoque inteiro de novo (o cruzamento normal só roda na hora
+    // de importar produto — aqui a gente refaz ele manualmente pra já refletir).
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Atualizando produtos...';
+    let nCruzados = 0;
+    try{
+      const resGet = await workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'getDisponibilidades'}) });
+      const itens = resGet.ok ? (await resGet.json() || []) : [];
+      for(const item of itens){
+        const antesCod = item.codigoTabela;
+        aplicarTabelaEspecial(item);
+        if(item.codigoTabela && item.codigoTabela !== antesCod) nCruzados++;
+      }
+      await workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'saveDisponibilidades', data:itens}) });
+    }catch(e2){
+      console.error('Erro ao reaplicar tabela especial aos produtos:', e2);
+      showToast('Tabela salva, mas houve erro ao reaplicar aos produtos — reimporte o estoque pra garantir.', 'warning');
+    }
+
+    showToast(`Tabela especial salva — ${Object.keys(_tabelaEspecial).length} produto(s) na tabela, ${nCruzados} produto(s) atualizado(s) na vitrine`, 'success');
     fecharTabelaEspecial();
+    if(typeof carregarDadosProdutos === 'function') carregarDadosProdutos();
   }catch(e){
     console.error(e);
     showToast('Erro ao salvar: ' + e.message, 'error');
@@ -2440,7 +2524,11 @@ function aplicarTabelaEspecial(item){
   if(!item || !item.artigo) return item;
   const k = chaveTabela(item.artigo);
   const ref = _tabelaEspecial[k];
-  if(ref){
+  // Se a tabela especial tem marca registrada, só aplica quando bate com a marca
+  // do item — trava de segurança extra (o artigo já não colide entre marcas, mas
+  // fica registrado o cruzamento certinho, caso um dia colida).
+  const marcaBate = !ref || !ref.marca || !item.marca || ref.marca === item.marca;
+  if(ref && marcaBate){
     item.codigoTabela = ref.codigoTabela;
     item.custo = ref.custo || '';
     item.mkp   = ref.mkp   || '';

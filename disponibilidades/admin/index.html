@@ -2308,12 +2308,13 @@ async function abrirTabelaEspecial(){
 }
 function fecharTabelaEspecial(){ $('modalTabelaEsp').classList.add('hidden'); }
 
-// Arredonda o MKP pra 1 casa decimal — a coluna vem de fórmula no Excel e traz
-// sujeira de ponto flutuante (ex: 2.3000007667947213 em vez de 2.3).
+// Limpa a "sujeira" de ponto flutuante que vem de fórmula no Excel (ex:
+// 2.3000007667947213 em vez de 2.3), SEM perder casas decimais reais do MKP
+// (ex: 2.85 continua 2.85, não vira 2.9).
 function formatMkp(v){
   const n = Number(v);
   if(isNaN(n)) return String(v).trim();
-  return (Math.round(n * 10) / 10).toFixed(1);
+  return String(Math.round(n * 100) / 100);
 }
 
 // Lê a planilha de tabela especial (formato novo: COD ARTIGO, VIGÊNCIA, CODIGO TABELA,
