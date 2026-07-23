@@ -317,23 +317,18 @@
 
 <!-- ── AUTH GUARD ─────────────────────────────────────────────────────────── -->
 <div id="loginScreen" class="fixed inset-0 z-[200] flex items-center justify-center p-4" style="background:var(--bg)">
-  <div class="w-full max-w-sm rounded-[28px] border border-slate-200 bg-white p-8 shadow-card" style="background:var(--card);border-color:var(--line)">
-    <div class="mb-6 text-center">
+  <div class="w-full max-w-sm rounded-[28px] border border-slate-200 bg-white p-8 shadow-card text-center" style="background:var(--card);border-color:var(--line)">
+    <div class="mb-6">
       <div class="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style="background:rgba(204,255,0,.15)">
         <i class="fa-solid fa-warehouse text-2xl" style="color:var(--accent-dark)"></i>
       </div>
-      <div class="text-xl font-extrabold">Admin • Disponibilidades</div>
-      <div class="text-sm text-slate-500 mt-1">Acesso restrito</div>
+      <div class="text-xl font-extrabold">Acesso restrito</div>
+      <div class="text-sm text-slate-500 mt-1">Esse painel é exclusivo da CMS. Entre pelo Portal com o usuário CMS para acessar.</div>
     </div>
-    <div>
-      <label class="text-xs font-bold text-slate-500 block mb-1">Senha</label>
-      <input id="adminPassword" type="password" class="focus-ring w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold mb-4"
-        style="background:var(--card);color:var(--text);border-color:var(--line)"
-        placeholder="Digite a senha" onkeydown="if(event.key==='Enter') doLogin()">
-      <div id="loginError" class="hidden rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700 mb-4">Senha incorreta.</div>
-      <button onclick="doLogin()" class="w-full rounded-2xl py-3 text-sm font-extrabold text-slate-900"
-        style="background:var(--accent)">Entrar</button>
-    </div>
+    <a href="https://cms-representacoes.github.io/apps-oly/" class="focus-ring w-full rounded-2xl py-3 text-sm font-extrabold text-slate-900 flex items-center justify-center gap-2" style="background:var(--accent)">
+      <i class="fa-solid fa-arrow-left"></i>
+      <span>Voltar ao Portal</span>
+    </a>
   </div>
 </div>
 
@@ -393,6 +388,13 @@
           <i id="btnPausarIcon" class="fa-solid fa-circle-pause text-xs"></i>
           <span id="btnPausarTxt">Pausar vitrine</span>
         </button>
+        <!-- Voltar ao Portal -->
+        <a href="https://cms-representacoes.github.io/apps-oly/" data-tip="Voltar ao Portal"
+          class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors"
+          style="border-color:#94a3b8;background:#f1f5f9;color:#475569">
+          <i class="fa-solid fa-arrow-left text-xs"></i>
+          <span>Portal</span>
+        </a>
         <!-- Tela cheia -->
         <button onclick="toggleFullscreen()" data-tip="Tela cheia"
           class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
@@ -976,8 +978,20 @@ function workerFetch(opts = {}){
   }
   return fetch(WORKER_URL, { ...opts, headers });
 }
-const ADMIN_PASSWORD = 'cmsrepasse';
-const STORAGE_KEY_AUTH = 'disp_admin_auth_v1';
+// ── Sessão compartilhada do Portal (login único) ───────────────────────────
+function getPortalSession(){
+  try{
+    const raw = localStorage.getItem('cms_portal_session_v1');
+    if(!raw) return null;
+    const s = JSON.parse(raw);
+    if(!s || !s.expiraEm || new Date(s.expiraEm).getTime() < Date.now()) return null;
+    return s;
+  }catch(_){ return null; }
+}
+function isCmsLogado(){
+  const s = getPortalSession();
+  return !!(s && s.nome === 'CMS');
+}
 // Base pública das imagens (mesma pasta usada pelo catálogo de Disponibilidades)
 const IMG_BASE = 'https://cms-representacoes.github.io/apps-oly/Catalogo/';
 
@@ -1177,21 +1191,9 @@ async function enviarImagensLoteSimples(){
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ── AUTH ─────────────────────────────────────────────────────────────────────
-function doLogin(){
-  const pwd = $('adminPassword').value;
-  if(pwd === ADMIN_PASSWORD){
-    localStorage.setItem(STORAGE_KEY_AUTH, 'ok');
-    $('loginScreen').classList.add('hidden');
-    $('adminApp').classList.remove('hidden');
-    loadData();
-  } else {
-    $('loginError').classList.remove('hidden');
-  }
-}
-
 function doLogout(){
-  localStorage.removeItem(STORAGE_KEY_AUTH);
-  window.location.replace('../../');
+  localStorage.removeItem('cms_portal_session_v1');
+  window.location.href = 'https://cms-representacoes.github.io/apps-oly/';
 }
 
 // ── DARK MODE ─────────────────────────────────────────────────────────────────
@@ -4369,13 +4371,11 @@ async function confirmarImportar(){
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
-if(localStorage.getItem(STORAGE_KEY_AUTH)==='ok'){
+if(isCmsLogado()){
   $('loginScreen').classList.add('hidden');
   $('adminApp').classList.remove('hidden');
   loadData();
 }
-
-$('adminPassword').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 </script>
 </body>
 </html>
