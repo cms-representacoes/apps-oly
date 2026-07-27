@@ -1577,7 +1577,10 @@ function applyFilters(){
   // o card — ele continua visível (podendo mostrar "0 pares" pra reserva
   // nova) até o admin aprovar e realmente zerar.
   function zeradoPorAprovacao(item){
-    const siblings = getItemSiblings(item);
+    const siblings = STATE.raw.filter(x =>
+      normalizeText(x.produto) === normalizeText(item.produto) &&
+      normalizeText(x.cor) === normalizeText(item.cor)
+    );
     const remainingAprovado = siblings.reduce((s,x) => s + getApprovedOnlyRemaining(x), 0);
     return remainingAprovado <= 0;
   }
