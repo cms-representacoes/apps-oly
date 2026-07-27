@@ -180,6 +180,17 @@
         </div>
 
         <div class="flex items-center gap-2">
+        <a href="https://cms-representacoes.github.io/apps-oly/"
+          class="focus-ring hidden sm:inline-flex h-9 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-3 text-sm font-bold text-slate-600 hover:bg-slate-50"
+          title="Voltar ao Portal">
+          <i class="fa-solid fa-arrow-left text-xs"></i>
+          <span>Portal</span>
+        </a>
+        <a href="https://cms-representacoes.github.io/apps-oly/"
+          class="focus-ring inline-flex sm:hidden h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+          title="Voltar ao Portal" aria-label="Voltar ao Portal">
+          <i class="fa-solid fa-arrow-left text-sm"></i>
+        </a>
         <button id="btnOpenCart" class="focus-ring inline-flex items-center gap-2 rounded-full bg-[var(--brand)] px-4 py-2 text-sm font-extrabold text-white shadow-soft">
           <i class="fa-solid fa-cart-shopping"></i>
           <span>Sacola</span>
@@ -710,7 +721,7 @@ const PREPOSTOS = [
   '109839 - MARIANA',
   '1333497 - RAFAEL',
   '25471 - WILLAME',
-  '25745 - LÉO',
+  '25745 - LEANDRO',
   '4322318 - CHRISTIAN LUCAS',
   '25846 - CMS'
 ];
@@ -777,7 +788,7 @@ const PREPOSTO_NAME_BY_CODE = {
   '109839':'MARIANA',
   '1333497':'RAFAEL',
   '25471':'WILLAME',
-  '25745':'LÉO',
+  '25745':'LEANDRO',
   '4322318':'CHRISTIAN LUCAS',
   '25846':'CMS'
 };
@@ -947,9 +958,22 @@ function updateOrdersScopeButtons(){
     btn.classList.toggle('text-[var(--brand)]', active);
   });
 }
-function getVendedorSession(){ return readJsonSafe(STORAGE_KEYS.vendedorSession, null); }
+function getPortalSession(){
+  try{
+    var raw = localStorage.getItem('cms_portal_session_v1');
+    if(!raw) return null;
+    var s = JSON.parse(raw);
+    if(!s || !s.expiraEm || new Date(s.expiraEm).getTime() < Date.now()) return null;
+    return s;
+  }catch(_){ return null; }
+}
+function getVendedorSession(){
+  var portal = getPortalSession();
+  if(portal) return { codigo: portal.codigo, nome: portal.nome };
+  return readJsonSafe(STORAGE_KEYS.vendedorSession, null);
+}
 function setVendedorSession(s){ localStorage.setItem(STORAGE_KEYS.vendedorSession, JSON.stringify(s)); }
-function clearVendedorSession(){ localStorage.removeItem(STORAGE_KEYS.vendedorSession); }
+function clearVendedorSession(){ localStorage.removeItem(STORAGE_KEYS.vendedorSession); localStorage.removeItem('cms_portal_session_v1'); }
 
 function applyVendedorSession(){
   const session = getVendedorSession();
