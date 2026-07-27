@@ -981,12 +981,24 @@ function applyVendedorSession(){
   const headerNome = $('headerVendedorNome');
   const btnLogout = $('btnVendedorLogout');
   const preposto = $('checkoutPreposto');
+  const isCms = session && session.nome === 'CMS';
 
   if(session){
     loginScreen.classList.add('hidden');
     if(headerNome){ headerNome.textContent = session.nome; headerNome.classList.remove('hidden'); }
     if(btnLogout){ btnLogout.classList.remove('hidden'); btnLogout.classList.add('inline-flex'); }
-    if(preposto){ preposto.value = `${session.codigo} - ${session.nome}`; preposto.disabled = true; preposto.classList.add('opacity-70','cursor-not-allowed'); }
+    if(preposto){
+      if(isCms){
+        // CMS pode fazer pedido em nome de qualquer vendedor — campo fica livre
+        preposto.disabled = false;
+        preposto.classList.remove('opacity-70','cursor-not-allowed');
+        if(!preposto.value) preposto.value = `${session.codigo} - ${session.nome}`;
+      } else {
+        preposto.value = `${session.codigo} - ${session.nome}`;
+        preposto.disabled = true;
+        preposto.classList.add('opacity-70','cursor-not-allowed');
+      }
+    }
   } else {
     loginScreen.classList.remove('hidden');
     if(headerNome) headerNome.classList.add('hidden');
@@ -1484,6 +1496,7 @@ function mergeData(prodRows, dispoRows){
       categoria,
       segmento: String(ref['Segmento'] ?? ref['SEGMENTO'] ?? '').trim(),
       genero: String(ref['Gênero'] ?? ref['Genero'] ?? ref['GENERO'] ?? '').trim(),
+      pdv: toNumber(ref['Preço'] ?? ref['Preco'] ?? ref['PRECO'] ?? 0),
     };
   }).filter(item => item.codigo && item.produto && item.availableUnits > 0);
 }
@@ -1723,6 +1736,7 @@ function renderCatalog(){
           <div class="min-w-0">
             <div class="text-xl font-extrabold leading-tight">${safeHtml(item.produto)}</div>
             <div class="mt-1 text-sm text-slate-500">${safeHtml(item.codigo)}</div>
+            ${displayItem.pdv > 0 ? `<div class="mt-1 text-lg font-black" style="color:var(--brand)">R$ ${Number(displayItem.pdv).toFixed(2)}</div>` : ''}
             ${displayItem.prevFaturamento ? `<div class="mt-1 text-xs font-bold text-[var(--brand)]"><i class="fa-regular fa-calendar mr-1"></i>Prev. Fat. ${safeHtml(formatDate(displayItem.prevFaturamento))}</div>` : ''}
           </div>
           <div class="text-right">${isMulti ? availabilityChipsMulti(siblings) : availabilityChips(displayItem)}</div>
@@ -1800,6 +1814,7 @@ function renderCatalog(){
         <div class="min-w-0">
           <div class="text-[17px] font-extrabold leading-tight">${safeHtml(displayItem.produto)}</div>
           <div class="mt-1 text-sm text-slate-500">${safeHtml(displayItem.codigo)} · ${safeHtml(displayItem.cor)}</div>
+          ${displayItem.pdv > 0 ? `<div class="mt-1 text-base font-black" style="color:var(--brand)">R$ ${Number(displayItem.pdv).toFixed(2)}</div>` : ''}
           ${displayItem.filial ? `<div class="mt-1"><span class="chip text-[11px]" style="background:#E1F5EE;color:#085041;border:0.5px solid #9FE1CB"><i class="fa-solid fa-industry"></i> ${safeHtml(displayItem.filial)}</span></div>` : ''}
           ${isMulti
             ? `<div class="mt-2"><span class="chip chip-blue"><i class="fa-solid fa-layer-group"></i> ${siblings.length} grades disponíveis</span></div>`
@@ -1823,6 +1838,7 @@ function renderCatalog(){
         <div class="min-w-0">
           <div class="text-[13px] font-extrabold leading-tight line-clamp-2">${safeHtml(displayItem.produto)}</div>
           <div class="mt-1 text-[11px] text-slate-500 truncate">${safeHtml(displayItem.codigo)} · ${safeHtml(displayItem.cor)}</div>
+          ${displayItem.pdv > 0 ? `<div class="mt-1 text-sm font-black" style="color:var(--brand)">R$ ${Number(displayItem.pdv).toFixed(2)}</div>` : ''}
           ${isMulti
             ? `<div class="mt-1"><span class="chip chip-blue text-[10px]"><i class="fa-solid fa-layer-group"></i> ${siblings.length} grades</span></div>
                <button class="btnOpenMultiGradeList btn-grade-mobile focus-ring mt-2"><i class="fa-solid fa-ruler-combined grade-pulse-icon"></i><span>Ver grades</span></button>`
@@ -2283,7 +2299,8 @@ function validateCartAgainstAvailability(){
 }
 function validateCheckout(){
   const session = getVendedorSession();
-  const preposto = session ? `${session.codigo} - ${session.nome}` : $('checkoutPreposto').value;
+  const isCms = session && session.nome === 'CMS';
+  const preposto = (session && !isCms) ? `${session.codigo} - ${session.nome}` : $('checkoutPreposto').value;
   const cliente = $('checkoutCliente').value.trim();
   const prazo = $('checkoutPrazo').value;
   if(!preposto){ toast('Selecione o preposto'); return false; }
@@ -2316,7 +2333,8 @@ async function submitOrder(options = {}){
 
     const now = new Date();
     const session = getVendedorSession();
-    const prepostoValue = session ? `${session.codigo} - ${session.nome}` : $('checkoutPreposto').value;
+    const isCms = session && session.nome === 'CMS';
+    const prepostoValue = (session && !isCms) ? `${session.codigo} - ${session.nome}` : $('checkoutPreposto').value;
     const preposto = parsePreposto(prepostoValue);
     const clienteCodigo = $('checkoutCliente').value.trim();
     const clienteNome = ($('checkoutClienteNome')?.value || '').trim();
@@ -2708,6 +2726,14 @@ async function buildCatalogPdfBlob(showGrade){
     sc(C.muted); doc.text('Cor:', tx, ty);
     sc(C.text); doc.text(String(item.cor || '-'), tx + 24, ty);
     ty += 14;
+
+    // PDV
+    if(Number(item.pdv) > 0){
+      doc.setFont('helvetica','bold'); doc.setFontSize(13);
+      sc(C.blue);
+      doc.text(`R$ ${Number(item.pdv).toFixed(2)}`, tx, ty);
+      ty += 16;
+    }
 
     // Divisor
     sc(C.border,'draw'); doc.setLineWidth(0.4);

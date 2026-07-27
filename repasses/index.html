@@ -1458,14 +1458,14 @@ function inferMode(grade, categoria, produto){
 function mergeData(prodRows, dispoRows){
   const byKey = new Map();
   for(const r of prodRows){
-    const key = `${String(r['Código'] ?? r['Codigo'] ?? r['CODIGO'] ?? '').trim()}|${String(r['Cor'] ?? r['COR'] ?? '').trim().toUpperCase()}`;
-    byKey.set(key, r);
+    const key = String(r['Código'] ?? r['Codigo'] ?? r['CODIGO'] ?? '').trim();
+    if(!byKey.has(key)) byKey.set(key, r); // mantém a 1ª ocorrência daquele código
   }
 
   return dispoRows.map((r, idx)=>{
     const codigo = String(r['Código'] ?? r['Codigo'] ?? r['CODIGO'] ?? '').trim();
     const cor = String(r['COR'] ?? r['Cor'] ?? '').trim().toUpperCase();
-    const ref = byKey.get(`${codigo}|${cor}`) || {};
+    const ref = byKey.get(codigo) || {};
     const grade = gradeEntriesFromRow(r);
     const categoria = String(ref['Categoria'] ?? ref['CATEGORIA'] ?? '').trim();
     const produto = String(r['Produto'] ?? r['PRODUTO'] ?? ref['Produto'] ?? '').trim();
