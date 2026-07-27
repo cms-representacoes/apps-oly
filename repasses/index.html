@@ -1190,12 +1190,15 @@ function getItemUnits(item){
     ? amount * (Number(item?.packSize || 0) || 1)
     : amount;
 }
-function getDispoImpactMap(){
+function getDispoImpactMap(onlyApproved){
   // byNum: reserva por Nº (pedidos novos). byGci: pedidos antigos sem Nº (legado).
   const byNum = new Map();
   const byGci = new Map();
   for(const order of STATE.orders){
-    if(!shouldReserveDispo(order)) continue;
+    if(order?.archived) continue;
+    const status = sanitizeDisplayText(order?.status);
+    const counts = onlyApproved ? status === 'Aprovado' : isReservedStatus(status);
+    if(!counts) continue;
     for(const item of (order.items || [])){
       const units = getItemUnits(item);
       const num = sanitizeDisplayText(String(item?.num || ''));
@@ -1230,6 +1233,19 @@ function getReservedUnitsFromOrders(item){
     reserved += byGci.get(gci);
   }
   return reserved;
+}
+// Restante contando SÓ pedidos com status "Aprovado" (pendente não entra aqui).
+// Usado só pra decidir se o card some da vitrine — os limites de quantidade
+// pro carrinho continuam considerando pedidos pendentes também (não muda).
+function getApprovedOnlyRemaining(item){
+  const { byNum, byGci } = getDispoImpactMap(true);
+  const num = sanitizeDisplayText(String(item?.num || ''));
+  let reserved = byNum.get(num) || 0;
+  const gci = sanitizeDisplayText(String(item?.gci || ''));
+  if(gci && byGci.has(gci) && legacyCarrierNumForGci(gci) === num){
+    reserved += byGci.get(gci);
+  }
+  return Math.max(0, Number(item?.availableUnits || 0) - reserved);
 }
 function getLoggedSellerCode(){
   const s = (typeof getVendedorSession === 'function') ? getVendedorSession() : null;
@@ -1554,29 +1570,20 @@ function sortView(items){
 }
 function applyFilters(){
   const q = normalizeText(STATE.search);
-  const now = Date.now();
-  const h24 = 24 * 60 * 60 * 1000;
 
-  // Determina quando um item ficou com saldo zero (pelo updatedAt do pedido aprovado mais recente vinculado)
-  function esgotadoHaMais24h(item){
-    const units = remainingUnits(item);
-    if(units > 0) return false; // tem saldo, não é esgotado
-    // Busca o pedido aprovado mais recente que usa este GCI
-    const gci = sanitizeDisplayText(String(item.gci||''));
-    const pedidosVinculados = STATE.orders.filter(o => {
-      if(!['Pendente','Aprovado'].includes((o.status||'').trim())) return false;
-      return (o.items||[]).some(i => sanitizeDisplayText(String(i.gci||'')) === gci);
-    });
-    if(!pedidosVinculados.length) return false; // esgotado sem pedidos → continua visível
-    const maisRecente = pedidosVinculados.reduce((a,b) =>
-      new Date(b.updatedAt||b.createdAt||0) > new Date(a.updatedAt||a.createdAt||0) ? b : a
-    );
-    const ts = new Date(maisRecente.updatedAt || maisRecente.createdAt || 0).getTime();
-    return (now - ts) > h24;
+  // Um produto some da vitrine quando os pedidos JÁ APROVADOS (sozinhos, sem
+  // contar pendentes) já consomem todo o saldo daquele grupo (todas as
+  // entregas/grades do mesmo produto+cor). Pedido só pendente nunca esconde
+  // o card — ele continua visível (podendo mostrar "0 pares" pra reserva
+  // nova) até o admin aprovar e realmente zerar.
+  function zeradoPorAprovacao(item){
+    const siblings = getItemSiblings(item);
+    const remainingAprovado = siblings.reduce((s,x) => s + getApprovedOnlyRemaining(x), 0);
+    return remainingAprovado <= 0;
   }
 
   STATE.view = sortView(STATE.raw.filter(item=>{
-    if(esgotadoHaMais24h(item)) return false;
+    if(zeradoPorAprovacao(item)) return false;
     const _rc = getSellerRateioCap(item);
     if(_rc.limited && _rc.cap <= 0) return false; // sem cota -> some pro vendedor
     const categoryLabel = CATEGORY_LABELS[item.categoria] || item.categoria;
