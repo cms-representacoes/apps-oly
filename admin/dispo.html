@@ -792,8 +792,21 @@ const STORAGE_KEYS = {
   adminAuth: 'repasse_admin_auth_v1'
 };
 
-// ── AUTH GUARD ────────────────────────────────────────────────────────────────
-if(localStorage.getItem(STORAGE_KEYS.adminAuth) !== 'ok'){
+// ── AUTH GUARD (SSO do Portal — mesmo padrão do index.html) ───────────────────
+function getPortalSession(){
+  try{
+    const raw = localStorage.getItem('cms_portal_session_v1');
+    if(!raw) return null;
+    const s = JSON.parse(raw);
+    if(!s || !s.expiraEm || new Date(s.expiraEm).getTime() < Date.now()) return null;
+    return s;
+  }catch(_){ return null; }
+}
+function isCmsLogado(){
+  const s = getPortalSession();
+  return !!(s && s.nome === 'CMS');
+}
+if(!isCmsLogado()){
   window.location.replace('./index.html');
 }
 
@@ -2137,8 +2150,8 @@ $('btnRefreshDispo').addEventListener('click', async () => {
 });
 
 $('btnLogout').addEventListener('click', () => {
-  localStorage.removeItem(STORAGE_KEYS.adminAuth);
-  window.location.replace('./index.html');
+  localStorage.removeItem('cms_portal_session_v1');
+  window.location.href = 'https://cms-representacoes.github.io/apps-oly/';
 });
 
 $('dispoSearch').addEventListener('input', (e) => {
