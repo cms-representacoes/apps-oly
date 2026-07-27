@@ -160,6 +160,22 @@ if(localStorage.getItem('admin_dark') === '1' || localStorage.getItem('dispo_dar
 
 const WORKER_URL = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
 
+// ── AUTH GUARD (SSO do Portal — mesmo padrão do index.html) ───────────────────
+function getPortalSession(){
+  try{
+    const raw = localStorage.getItem('cms_portal_session_v1');
+    if(!raw) return null;
+    const s = JSON.parse(raw);
+    if(!s || !s.expiraEm || new Date(s.expiraEm).getTime() < Date.now()) return null;
+    return s;
+  }catch(_){ return null; }
+}
+function isCmsLogado(){
+  const s = getPortalSession();
+  return !!(s && s.nome === 'CMS');
+}
+if(!isCmsLogado()) window.location.replace('./index.html');
+
 function showToast(msg, type='info'){
   const t = document.createElement('div');
   t.className = `toast ${type}`;
