@@ -239,21 +239,6 @@
     <div id="resultado"></div>
   </div>
 
-  <div class="card">
-    <h2><span class="num">4</span> Exportar</h2>
-    <label>VENDEDOR</label>
-    <select id="vendedorExportSelect">
-      <option value="">— Selecione —</option>
-    </select>
-    <button id="btnExportarVendedor" class="btn-primary" style="margin-top:10px" onclick="exportarVendedor()">
-      <i class="fa-solid fa-file-excel"></i> Exportar este vendedor
-    </button>
-    <button id="btnExportarTodos" class="btn-primary" style="margin-top:10px;background:var(--brand-dark)" onclick="exportarTodos()">
-      <i class="fa-solid fa-layer-group"></i> Exportar todos (CMS)
-    </button>
-    <div id="exportResultado"></div>
-  </div>
-
 </div>
 
 <script>
@@ -289,10 +274,6 @@ function init(){
   sel.innerHTML = '<option value="">— Selecione —</option>' +
     VENDEDORES.map(v => `<option value="${v.codigo}">${v.codigo} – ${v.nome}</option>`).join('');
   sel.addEventListener('change', verificarPodeEnviar);
-
-  const selExp = $('vendedorExportSelect');
-  selExp.innerHTML = '<option value="">— Selecione —</option>' +
-    VENDEDORES.map(v => `<option value="${v.codigo}">${v.codigo} – ${v.nome}</option>`).join('');
 
   // restaura token salvo
   const t = localStorage.getItem(ADMIN_TOKEN_LS);
@@ -454,120 +435,6 @@ async function salvar(){
         <i class="fa-solid fa-triangle-exclamation"></i> Erro: ${safeHtml(e.message || 'falha')}
       </div>`;
     showToast('Erro ao enviar', 'error');
-  }finally{
-    btn.disabled = false;
-    btn.innerHTML = prev;
-  }
-}
-
-// Cabeçalhos do arquivo exportado (mesma ordem usada no cadastro)
-const EXPORT_HEADERS = ['Código','Nome','CPF/CNPJ','Telefone','Cidade','Estado','Email NFe','Email Retorno Bancário','Somente à Vista'];
-function clienteParaLinha(c, comVendedor){
-  const base = [c.codigo, c.nome, c.cnpj, c.telefone, c.cidade, c.estado, c.emailNfe, c.emailBancario, c.avista];
-  return comVendedor ? [comVendedor, ...base] : base;
-}
-function baixarXlsx(linhas, headers, nomeArquivo){
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...linhas]);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
-  XLSX.writeFile(wb, nomeArquivo);
-}
-
-async function exportarVendedor(){
-  const vendedor = $('vendedorExportSelect').value;
-  if(!vendedor){ showToast('Selecione o vendedor', 'error'); return; }
-  const vendItem = VENDEDORES.find(v => v.codigo === vendedor);
-
-  const btn = $('btnExportarVendedor');
-  const prev = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Exportando...';
-  $('exportResultado').innerHTML = '';
-
-  try{
-    const res = await fetch(WORKER_URL, {
-      method:'PATCH',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'getClientes', vendedor })
-    });
-    const json = await res.json();
-    if(!res.ok || !json.success) throw new Error(json.erro || res.status);
-    const clientes = json.clientes || [];
-    if(!clientes.length){
-      showToast(`${vendItem.nome} ainda não tem clientes salvos`, 'error');
-      return;
-    }
-    const linhas = clientes.map(c => clienteParaLinha(c));
-    baixarXlsx(linhas, EXPORT_HEADERS, `clientes_${vendItem.nome.toLowerCase()}.xlsx`);
-    $('exportResultado').innerHTML = `
-      <div class="alert success" style="margin-top:12px">
-        <i class="fa-solid fa-circle-check"></i> ${clientes.length} cliente(s) de ${vendItem.nome} exportado(s)
-      </div>`;
-  }catch(e){
-    console.error(e);
-    $('exportResultado').innerHTML = `
-      <div class="alert error" style="margin-top:12px">
-        <i class="fa-solid fa-triangle-exclamation"></i> Erro: ${safeHtml(e.message || 'falha')}
-      </div>`;
-    showToast('Erro ao exportar', 'error');
-  }finally{
-    btn.disabled = false;
-    btn.innerHTML = prev;
-  }
-}
-
-async function exportarTodos(){
-  const btn = $('btnExportarTodos');
-  const prev = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Buscando vendedores...';
-  $('exportResultado').innerHTML = '';
-
-  try{
-    const resLista = await fetch(WORKER_URL, {
-      method:'PATCH',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'listClientesVendedores' })
-    });
-    const jsonLista = await resLista.json();
-    if(!resLista.ok || !jsonLista.success) throw new Error(jsonLista.erro || resLista.status);
-    const codigos = (jsonLista.vendedores || []).map(v => v.codigo);
-    if(!codigos.length){ showToast('Nenhum vendedor com clientes salvos ainda', 'error'); return; }
-
-    const linhas = [];
-    let totalClientes = 0;
-    for(let i = 0; i < codigos.length; i++){
-      const codigo = codigos[i];
-      const vendItem = VENDEDORES.find(v => v.codigo === codigo);
-      const nomeVend = vendItem ? vendItem.nome : codigo;
-      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Buscando ${nomeVend} (${i+1}/${codigos.length})...`;
-
-      const res = await fetch(WORKER_URL, {
-        method:'PATCH',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ action:'getClientes', vendedor: codigo })
-      });
-      const json = await res.json();
-      if(!res.ok || !json.success) continue; // pula vendedor com erro, não trava o resto
-      const clientes = json.clientes || [];
-      totalClientes += clientes.length;
-      for(const c of clientes) linhas.push(clienteParaLinha(c, nomeVend));
-    }
-
-    if(!linhas.length){ showToast('Nenhum cliente encontrado', 'error'); return; }
-
-    baixarXlsx(linhas, ['Vendedor', ...EXPORT_HEADERS], `clientes_todos.xlsx`);
-    $('exportResultado').innerHTML = `
-      <div class="alert success" style="margin-top:12px">
-        <i class="fa-solid fa-circle-check"></i> ${totalClientes} cliente(s) de ${codigos.length} vendedor(es) exportado(s)
-      </div>`;
-  }catch(e){
-    console.error(e);
-    $('exportResultado').innerHTML = `
-      <div class="alert error" style="margin-top:12px">
-        <i class="fa-solid fa-triangle-exclamation"></i> Erro: ${safeHtml(e.message || 'falha')}
-      </div>`;
-    showToast('Erro ao exportar todos', 'error');
   }finally{
     btn.disabled = false;
     btn.innerHTML = prev;
