@@ -275,6 +275,10 @@
               <select id="filterGenero" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold"></select>
             </div>
             <div>
+              <label class="text-xs font-bold text-slate-500">Prev. Faturamento</label>
+              <select id="filterPrevFat" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold"></select>
+            </div>
+            <div>
               <label class="text-xs font-bold text-slate-500">Ordenação</label>
               <select id="sortBy" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold">
                 <option value="produto">Produto A-Z</option>
@@ -734,7 +738,7 @@ const STATE = {
   raw: [],
   view: [],
   search: '',
-  filters: { categoria:'', segmento:'', genero:'', sort:'entregaAsc' },
+  filters: { categoria:'', segmento:'', genero:'', prevFat:'', sort:'entregaAsc' },
   cart: new Map(),
   orders: [],
   ocultos: new Set(),
@@ -1535,6 +1539,18 @@ function remainingPacks(item){
     ? Math.floor(remainingUnits(item) / item.packSize)
     : remainingUnits(item);
 }
+const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+// A partir de "DD/MM/AAAA" (já formatado por formatDate), devolve a chave
+// "AAAA-MM" (pra ordenar certo cronologicamente) e o rótulo "Mês/AAAA".
+function mesAnoFromPrevFat(item){
+  const str = formatDate(item.prevFaturamento);
+  const m = String(str||'').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if(!m) return null;
+  const [, , mm, aaaa] = m;
+  const idx = Number(mm) - 1;
+  if(idx < 0 || idx > 11) return null;
+  return { key:`${aaaa}-${mm}`, label:`${MESES_PT[idx]}/${aaaa}` };
+}
 function buildFilters(){
   const uniq = (arr)=>Array.from(new Set(arr.filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b), 'pt-BR', { sensitivity:'base' }));
   const fill = (id, values, label)=>{
@@ -1543,6 +1559,16 @@ function buildFilters(){
   fill('filterCategoria', uniq(STATE.raw.map(x=>CATEGORY_LABELS[x.categoria] || x.categoria)), 'Todas as categorias');
   fill('filterSegmento', uniq(STATE.raw.map(x=>x.segmento)), 'Todos os segmentos');
   fill('filterGenero', uniq(STATE.raw.map(x=>x.genero)), 'Todos os gêneros');
+
+  const mesesMap = new Map();
+  STATE.raw.forEach(x=>{
+    const m = mesAnoFromPrevFat(x);
+    if(m && !mesesMap.has(m.key)) mesesMap.set(m.key, m.label);
+  });
+  const mesesOrdenados = [...mesesMap.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+  $('filterPrevFat').innerHTML = `<option value="">Todos os meses</option>` +
+    mesesOrdenados.map(([key,label])=>`<option value="${safeHtml(key)}">${safeHtml(label)}</option>`).join('');
+
   $('checkoutPreposto').innerHTML += PREPOSTOS.map(v=>`<option value="${safeHtml(v)}">${safeHtml(v)}</option>`).join('');
   $('checkoutPrazo').innerHTML += PRAZOS.map(v=>`<option value="${safeHtml(v)}">${safeHtml(v)}</option>`).join('');
   $('checkoutCampanha').innerHTML += CAMPANHAS.map(v=>`<option value="${safeHtml(v)}">${safeHtml(v)}</option>`).join('');
@@ -1595,7 +1621,8 @@ function applyFilters(){
     const hitCat = !STATE.filters.categoria || categoryLabel === STATE.filters.categoria;
     const hitSeg = !STATE.filters.segmento || item.segmento === STATE.filters.segmento;
     const hitGen = !STATE.filters.genero || item.genero === STATE.filters.genero;
-    return hitQ && hitCat && hitSeg && hitGen;
+    const hitMes = !STATE.filters.prevFat || (mesAnoFromPrevFat(item)?.key === STATE.filters.prevFat);
+    return hitQ && hitCat && hitSeg && hitGen && hitMes;
   }));
   renderCatalog();
   renderKpis();
@@ -2966,15 +2993,17 @@ function bindEvents(){
   $('filterCategoria').addEventListener('change', e=>{ STATE.filters.categoria = e.target.value; applyFilters(); });
   $('filterSegmento').addEventListener('change', e=>{ STATE.filters.segmento = e.target.value; applyFilters(); });
   $('filterGenero').addEventListener('change', e=>{ STATE.filters.genero = e.target.value; applyFilters(); });
+  $('filterPrevFat').addEventListener('change', e=>{ STATE.filters.prevFat = e.target.value; applyFilters(); });
   $('sortBy').addEventListener('change', e=>{ STATE.filters.sort = e.target.value; applyFilters(); });
 
   $('btnClearFilters').addEventListener('click', ()=>{
     STATE.search = '';
-    STATE.filters = { categoria:'', segmento:'', genero:'', sort:'produto' };
+    STATE.filters = { categoria:'', segmento:'', genero:'', prevFat:'', sort:'produto' };
     $('searchInputTop').value = '';
     $('filterCategoria').value = '';
     $('filterSegmento').value = '';
     $('filterGenero').value = '';
+    $('filterPrevFat').value = '';
     $('sortBy').value = 'produto';
     applyFilters();
   });
