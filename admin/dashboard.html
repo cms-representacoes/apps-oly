@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Dashboard — Repasse Olympikus</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
@@ -188,7 +187,6 @@
 
 <script>
 const WORKER_URL = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
-const DISPO_URL  = '../DISPO.xlsx';
 const HOJE = new Date();
 
 let STATE = { orders:[], dispoRows:[], period:'24h' };
@@ -196,11 +194,26 @@ let chartStatus=null, chartVend=null;
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
 function fmt(n){ return Number(n||0).toLocaleString('pt-BR'); }
-function fmtDate(v){
-  if(!v) return '—';
+// Aceita "DD/MM/AAAA" (formato do dispo.json), serial do Excel, ou ISO —
+// new Date("DD/MM/AAAA") direto dá data inválida em JS, por isso trata à parte.
+function parseDataBR(v){
+  if(!v) return null;
   const n=Number(v);
-  if(!isNaN(n)&&n>40000&&n<60000){ const d=new Date(Date.UTC(1899,11,30)); d.setUTCDate(d.getUTCDate()+n); return d.toLocaleDateString('pt-BR'); }
-  const d=new Date(v); return isNaN(d)?'—':d.toLocaleDateString('pt-BR');
+  if(!isNaN(n)&&n>40000&&n<60000){ const d=new Date(Date.UTC(1899,11,30)); d.setUTCDate(d.getUTCDate()+n); return d; }
+  const str=String(v).trim();
+  const br=str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if(br){
+    const [, dd, mm, aaaaRaw]=br;
+    const aaaa=aaaaRaw.length===2?`20${aaaaRaw}`:aaaaRaw;
+    const d=new Date(Number(aaaa), Number(mm)-1, Number(dd));
+    return isNaN(d)?null:d;
+  }
+  const d=new Date(str);
+  return isNaN(d)?null:d;
+}
+function fmtDate(v){
+  const d=parseDataBR(v);
+  return d?d.toLocaleDateString('pt-BR'):'—';
 }
 function canonicalStatus(s){
   const n=String(s||'').trim().toLowerCase();
@@ -214,9 +227,9 @@ function getItemUnits(item){
   return grade || Number(item.totalUnits||0);
 }
 function diasAte(dataStr){
-  if(!dataStr) return 999;
-  const d=new Date(dataStr);
-  return isNaN(d)?999:Math.round((d-HOJE)/(1000*60*60*24));
+  const d=parseDataBR(dataStr);
+  if(!d) return 999;
+  return Math.round((d-HOJE)/(1000*60*60*24));
 }
 function getStatusPrazo(dl){
   if(dl<0)  return{label:'Vencido',         cls:'badge-venc',cor:'#94a3b8'};
@@ -249,14 +262,12 @@ async function loadAll(){
   try{
     const [ordRes, dispoRes] = await Promise.all([
       fetch(`${WORKER_URL}?t=${Date.now()}`,{cache:'no-store'}),
-      fetch(`${DISPO_URL}?t=${Date.now()}`,{cache:'no-store'})
+      fetch(WORKER_URL,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'getDispo'}),cache:'no-store'})
     ]);
     if(ordRes.ok){ const d=await ordRes.json(); STATE.orders=Array.isArray(d)?d:(d.orders||[]); }
     if(dispoRes.ok){
-      const buf=await dispoRes.arrayBuffer();
-      const wb=XLSX.read(buf,{type:'array',cellDates:true});
-      const ws=wb.Sheets[wb.SheetNames.find(n=>n.toUpperCase()==='DISPO')||wb.SheetNames[0]];
-      STATE.dispoRows=XLSX.utils.sheet_to_json(ws,{defval:null,raw:false});
+      const d=await dispoRes.json();
+      STATE.dispoRows=Array.isArray(d)?d:[];
     }
   }catch(e){ console.error(e); }
   icon.className='fa-solid fa-rotate text-xs';
@@ -282,10 +293,10 @@ function render(){
   // Saldo DISPO
   const { pendMap, aprovMap } = buildDispoMaps();
   const saldoTotal=STATE.dispoRows.reduce((s,r)=>{
-    const gci=String(r['GCI']||'').trim();
-    const cod=String(r['Código']||r['CODIGO']||'').trim();
+    const gci=String(r.gci||'').trim();
+    const cod=String(r.codigo||'').trim();
     const key=gci||cod;
-    const saldo=Number(r['SALDO']||0);
+    const saldo=Number(r.saldo||0);
     const p=pendMap.get(key)||0, a=aprovMap.get(key)||0;
     return s+Math.max(0,saldo-p-a);
   },0);
@@ -382,13 +393,13 @@ function expandVend(nome, d){
 
 function renderDispo(pendMap, aprovMap){
   const rows=STATE.dispoRows.map(r=>{
-    const gci=String(r['GCI']||'').trim();
-    const cod=String(r['Código']||r['CODIGO']||'').trim();
+    const gci=String(r.gci||'').trim();
+    const cod=String(r.codigo||'').trim();
     const key=gci||cod;
-    const saldo=Number(r['SALDO']||0);
+    const saldo=Number(r.saldo||0);
     const p=pendMap.get(key)||0, a=aprovMap.get(key)||0;
     const saldoReal=saldo-p-a;
-    return{ produto:String(r['Produto']||r['PRODUTO']||'').trim(), cor:String(r['COR']||r['Cor']||'').trim(), saldoReal, saldo };
+    return{ produto:String(r.produto||'').trim(), cor:String(r.cor||'').trim(), saldoReal, saldo };
   }).filter(r=>r.produto);
   document.getElementById('dispoCount').textContent=`${rows.length} produto${rows!==1?'s':''}`;
   document.getElementById('dispoGrid').innerHTML=rows.map(r=>{
@@ -412,20 +423,20 @@ function renderPrazo(){
     for(const item of (o.items||[])){ gciComPedido.add(String(item.gci||item.codigo||'').trim()); }
   }
   const semPedido=STATE.dispoRows.filter(r=>{
-    const gci=String(r['GCI']||'').trim();
-    const cod=String(r['Código']||r['CODIGO']||'').trim();
+    const gci=String(r.gci||'').trim();
+    const cod=String(r.codigo||'').trim();
     return !gciComPedido.has(gci) && !gciComPedido.has(cod);
   }).map(r=>{
-    const prevFat=r['DATA ENTREGA']||r['DATA_ENTREGA']||null;
+    const prevFat=r.dataEntrega||null;
     const diasPrevFat=diasAte(prevFat);
     const diasLimite=diasPrevFat-45;
     const status=getStatusPrazo(diasLimite);
-    const limiteDate=prevFat?new Date(prevFat):null;
+    const limiteDate=parseDataBR(prevFat);
     if(limiteDate) limiteDate.setDate(limiteDate.getDate()-45);
     return{
-      produto:String(r['Produto']||r['PRODUTO']||'').trim(),
-      cor:String(r['COR']||r['Cor']||'').trim(),
-      saldo:Number(r['SALDO']||0),
+      produto:String(r.produto||'').trim(),
+      cor:String(r.cor||'').trim(),
+      saldo:Number(r.saldo||0),
       prevStr:fmtDate(prevFat),
       limiteStr:limiteDate?limiteDate.toLocaleDateString('pt-BR'):'—',
       diasLimite, status
