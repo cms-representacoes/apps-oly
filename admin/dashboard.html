@@ -354,7 +354,7 @@ function render(){
   document.getElementById('kSaldo').textContent=fmt(saldoTotal);
 
   renderRanking(orders);
-  renderProdutosRanking(aprov);
+  renderProdutosRanking(aprov, buildSaldoLookup(pendMap, aprovMap));
   renderDispo(pendMap, aprovMap);
   renderPrazo();
 }
@@ -376,6 +376,21 @@ function buildDispoMaps(){
 }
 
 // ── RANKING DE VENDEDORES ───────────────────────────────────────────────────
+function buildSaldoLookup(pendMap, aprovMap){
+  const lookup=new Map(); // "produto|cor" normalizado → saldoReal
+  for(const r of STATE.dispoRows){
+    const gci=String(r.gci||'').trim();
+    const cod=String(r.codigo||'').trim();
+    const key=gci||cod;
+    const saldo=Number(r.saldo||0);
+    const p=pendMap.get(key)||0, a=aprovMap.get(key)||0;
+    const saldoReal=saldo-p-a;
+    const prodKey=`${String(r.produto||'').trim().toUpperCase()}|${String(r.cor||'').trim().toUpperCase()}`;
+    lookup.set(prodKey, (lookup.get(prodKey)||0)+saldoReal);
+  }
+  return lookup;
+}
+
 function renderRanking(orders){
   const PREPOSTOS=['JORGE','MARIANA','RAFAEL','WILLAME','LEANDRO','CHRISTIAN LUCAS','CMS'];
   const map=new Map();
@@ -383,11 +398,11 @@ function renderRanking(orders){
     const nome=o.preposto?.nome||o.preposto?.codigo||'—';
     if(!map.has(nome)) map.set(nome,{pares:0,pedidos:0,aprov:0,pend:0,canc:0});
     const e=map.get(nome);
-    e.pedidos++;
     const st=canonicalStatus(o.status);
+    if(st==='Cancelado'){ e.canc++; continue; } // cancelado não conta no ranking
+    e.pedidos++;
     if(st==='Aprovado') e.aprov++;
-    else if(st==='Pendente') e.pend++;
-    else e.canc++;
+    else e.pend++;
     e.pares+=(o.items||[]).reduce((s,i)=>s+getItemUnits(i),0);
   }
   for(const p of PREPOSTOS){ if(!map.has(p)) map.set(p,{pares:0,pedidos:0,aprov:0,pend:0,canc:0}); }
@@ -427,7 +442,7 @@ function expandVend(nome, dJson){
 }
 
 // ── PRODUTOS MAIS REPASSADOS ─────────────────────────────────────────────────
-function renderProdutosRanking(aprovOrders){
+function renderProdutosRanking(aprovOrders, saldoLookup){
   const map=new Map();
   for(const o of aprovOrders){
     for(const item of (o.items||[])){
@@ -440,7 +455,10 @@ function renderProdutosRanking(aprovOrders){
       map.get(key).pares+=u;
     }
   }
-  const sorted=[...map.values()].sort((a,b)=>b.pares-a.pares);
+  const sorted=[...map.values()].map(p=>{
+    const lookupKey=`${p.produto.toUpperCase()}|${p.cor.toUpperCase()}`;
+    return{ ...p, saldo: saldoLookup?.get(lookupKey) ?? null };
+  }).sort((a,b)=>b.pares-a.pares);
   ultimoProdutosRanking = sorted;
   produtosExpandido = false;
   renderProdutosRankingLista();
@@ -451,12 +469,15 @@ function renderProdutosRankingLista(){
   const max = sorted[0]?.pares || 1;
   document.getElementById('produtosRankList').innerHTML = lista.map((p,i)=>{
     const pct = Math.round(p.pares/max*100);
+    const saldoTxt = p.saldo===null ? '—' : fmt(p.saldo);
+    const saldoCls = p.saldo!==null && p.saldo<=0 ? 'sit-crit' : (p.saldo!==null && p.saldo<=12 ? 'sit-low' : 'sit-ok');
     return`<div class="rank-row" style="cursor:default">
       <div class="rank-pos">${i+1}</div>
       <div class="rank-info">
         <div class="rank-name">${p.produto}</div>
         <div class="rank-sub">${p.cor||'—'}</div>
       </div>
+      <span class="chip ${saldoCls}" title="Saldo atual em estoque">${saldoTxt} em estoque</span>
       <div class="rank-bar-wrap"><div class="rank-bar" style="width:${pct}%"></div></div>
       <div class="rank-val">${fmt(p.pares)}</div>
     </div>`;
