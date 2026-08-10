@@ -77,9 +77,6 @@
   .rank-col-head{display:flex;align-items:center;gap:10px;padding:0 0 8px;border-bottom:1px solid var(--line);
     font-family:"Space Grotesk",sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.08em;
     text-transform:uppercase;color:var(--mute)}
-  .rank-col-head-name{flex:1;margin-left:56px}
-  .rank-col-head-qtd{width:118px;text-align:right;flex-shrink:0}
-  .rank-col-head-det{width:28px;text-align:center;flex-shrink:0}
   .rank-row:last-child{border-bottom:none}
   .rank-row:hover{background:var(--line-2)}
   .rank-pos{font-family:"Space Grotesk",sans-serif;font-size:12px;font-weight:600;color:var(--mute);width:16px;flex-shrink:0;text-align:center}
@@ -192,9 +189,12 @@
     </div>
     <div class="card">
       <div class="rank-col-head">
-        <span class="rank-col-head-name">Vendedor</span>
-        <span class="rank-col-head-qtd">Pares</span>
-        <span class="rank-col-head-det">Detalhes</span>
+        <div style="width:16px;flex-shrink:0"></div>
+        <div style="width:30px;flex-shrink:0"></div>
+        <div style="flex:1">Vendedor</div>
+        <div style="width:56px;flex-shrink:0"></div>
+        <div style="min-width:52px;text-align:right;flex-shrink:0">Pares</div>
+        <div style="width:28px;flex-shrink:0"></div>
       </div>
       <div id="rankingList"></div>
     </div>
@@ -284,8 +284,12 @@ function canonicalStatus(s){
 }
 function getItemUnits(item){
   if(!item) return 0;
-  const grade=(item.grade||[]).reduce((s,g)=>s+Number(g.qty||0),0);
-  return grade || Number(item.totalUnits||0);
+  // totalUnits já vem calculado certo pelo vitrine.html (considera a quantidade
+  // de caixas: amount × packSize). item.grade é só a distribuição de UMA caixa —
+  // usar ele primeiro subestima o total quando o pedido tem mais de 1 caixa.
+  const totalUnits = Number(item.totalUnits || 0);
+  if(totalUnits > 0) return totalUnits;
+  return (item.grade||[]).reduce((s,g)=>s+Number(g.qty||0),0);
 }
 function diasAte(dataStr){
   const d=parseDataBR(dataStr);
