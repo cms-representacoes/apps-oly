@@ -7,7 +7,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
@@ -490,7 +490,75 @@
     ::-webkit-scrollbar-thumb:hover{background:#aeb8d3;border:3px solid transparent;background-clip:content-box}
     .table-wrap thead th{background:#f7f8fc;color:#5c6675;letter-spacing:.02em}
     .icon-btn:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       TEMA PREMIUM — visual neutro/minimalista, alternativo ao padrão colorido.
+       Ativado via body.theme-premium (botão "Tema Premium" em Mais opções).
+       Ícones continuam Font Awesome (não trocados nessa versão).
+    ═══════════════════════════════════════════════════════════════════════ */
+    body.theme-premium{ background:#fafafa; }
+    body.theme-premium .cms-badge{
+      background:#18181b!important; box-shadow:none!important;
+    }
+    body.theme-premium #btnDesmembramentos{
+      background:#18181b!important; box-shadow:none!important;
+    }
+    body.theme-premium #btnDesmembramentos:hover{ background:#27272a!important; }
+
+    /* Filtros viram abas neutras, sem pill colorida */
+    body.theme-premium .filter-pill{
+      background:transparent!important; border:none!important; box-shadow:none!important;
+      border-radius:0!important; padding:8px 2px!important; margin-right:16px;
+      border-bottom:2px solid transparent!important; color:#71717a!important; font-weight:600;
+    }
+    body.theme-premium .filter-pill:hover{ color:#18181b!important; background:transparent!important; }
+    body.theme-premium .filter-pill.active{
+      color:#18181b!important; border-bottom-color:#18181b!important;
+    }
+    body.theme-premium .filter-pill i{ color:#a1a1aa!important; }
+    body.theme-premium #filterPills{ gap:0; border-bottom:1px solid #f4f4f5; padding-bottom:0; }
+
+    /* Chips de Situação: só cor de verdade em Esgotado/Ruptura */
+    body.theme-premium .chip{
+      background:transparent!important; box-shadow:none!important; border:none!important;
+      padding:0!important; font-weight:600!important;
+    }
+    body.theme-premium .chip-success{ color:#a1a1aa!important; }
+    body.theme-premium .chip-warning{ color:#a1a1aa!important; }
+    body.theme-premium .chip-danger{ color:#dc2626!important; }
+    body.theme-premium .chip-blue{ color:#3f3f46!important; }
+    body.theme-premium .chip-gray{ color:#71717a!important; }
+    body.theme-premium .badge-ruptura{ animation:none; }
+
+    /* Selinhos pequenos ficam neutros também */
+    body.theme-premium .badge-nova{ background:#f4f4f5!important; color:#3f3f46!important; box-shadow:none!important; }
+    body.theme-premium .badge-parcial{ background:#f4f4f5!important; color:#3f3f46!important; box-shadow:none!important; }
+    body.theme-premium .badge-total{ background:#f4f4f5!important; color:#3f3f46!important; box-shadow:none!important; }
+    body.theme-premium .badge-rateio{ background:#f4f4f5!important; color:#3f3f46!important; box-shadow:none!important; }
+
+    /* Barra de progresso: neutra, só vermelho em perigo real */
+    body.theme-premium .progress-ok{ background:#d4d4d8!important; }
+    body.theme-premium .progress-warning{ background:#d4d4d8!important; }
+    body.theme-premium .progress-danger{ background:#dc2626!important; }
+
+    /* Tabela: fonte Inter, bordas mais suaves, densidade maior */
+    body.theme-premium .table-wrap, body.theme-premium .table-wrap *{
+      font-family:'Inter',system-ui,-apple-system,sans-serif;
+    }
+    body.theme-premium .table-wrap thead th{
+      background:#fff!important; color:#a1a1aa!important; font-weight:600;
+      border-bottom:1px solid #eeeef0!important;
+    }
+    body.theme-premium .table-wrap tbody td{
+      padding:9px 14px!important; border-bottom:1px solid #f4f4f5!important;
+    }
+    body.theme-premium .table-wrap tbody tr:hover{ background:#fafafa!important; }
+
+    /* Cards/seções com borda mais discreta */
+    body.theme-premium .rounded-\[28px\]{ border-color:#eeeef0!important; box-shadow:0 1px 2px rgba(0,0,0,.03)!important; }
+    body.theme-premium header{ border-color:#eeeef0!important; }
 </style>
+
 </head>
 <body>
   <div id="toastWrap" class="toast-wrap"></div>
@@ -524,7 +592,7 @@
             </div>
 
             <!-- Consultar desmembramentos -->
-            <a href="./dispo_consulta.html" title="Consultar desmembramentos"
+            <a id="btnDesmembramentos" href="./dispo_consulta.html" title="Consultar desmembramentos"
               class="focus-ring rounded-full px-4 py-2 text-sm font-bold text-white flex items-center gap-2 transition-transform hover:-translate-y-0.5"
               style="background:linear-gradient(135deg,#5B69E8,#2836D4);box-shadow:0 4px 14px rgba(40,54,212,.35)">
               <i class="fa-solid fa-list-check text-xs"></i>
@@ -579,6 +647,13 @@
               <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colDesmembrado" onchange="toggleCol('desmembrado',this.checked)"> Desmembrado</label>
             </div>
           </div>
+
+          <!-- Tema Premium (visual neutro/minimalista, alternativo ao visual colorido padrão) -->
+          <button id="btnTemaPremium" onclick="toggleTemaPremium()" title="Alternar visual"
+            class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-1.5">
+            <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
+            <span id="lblTemaPremium">Tema Premium</span>
+          </button>
         </div>
       </header>
 
@@ -1998,6 +2073,21 @@ function toggleDark(){
   localStorage.setItem('dispo_dark', isDark ? '1' : '0');
   localStorage.setItem('admin_dark', isDark ? '1' : '0');
   $('darkIcon').className = isDark ? 'fa-solid fa-sun text-amber-400 text-xs' : 'fa-solid fa-moon text-slate-400 text-xs';
+}
+
+// ── TEMA PREMIUM (visual neutro alternativo) ──────────────────────────────────
+function toggleTemaPremium(){
+  const on = document.body.classList.toggle('theme-premium');
+  localStorage.setItem('dispo_tema_premium', on ? '1' : '0');
+  const lbl = $('lblTemaPremium');
+  if(lbl) lbl.textContent = on ? 'Tema Premium ✓' : 'Tema Premium';
+}
+if(localStorage.getItem('dispo_tema_premium') === '1'){
+  document.addEventListener('DOMContentLoaded', ()=>{
+    document.body.classList.add('theme-premium');
+    const lbl = $('lblTemaPremium');
+    if(lbl) lbl.textContent = 'Tema Premium ✓';
+  });
 }
 // Lê admin_dark (definido no index) como fonte principal; dispo_dark como fallback
 const _darkOn = localStorage.getItem('admin_dark') === '1' || localStorage.getItem('dispo_dark') === '1';
