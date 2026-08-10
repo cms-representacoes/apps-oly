@@ -86,6 +86,12 @@
   .rank-bar-wrap{width:56px;height:5px;background:var(--line-2);border-radius:999px;overflow:hidden;flex-shrink:0}
   .rank-bar{height:100%;border-radius:999px;background:var(--ftw)}
   .rank-val{font-family:"Space Grotesk",sans-serif;font-size:13px;font-weight:700;color:var(--ink);min-width:52px;text-align:right;flex-shrink:0}
+  .btn-detalhe{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--card);
+    color:var(--mute);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:11px}
+  .btn-detalhe:hover{border-color:#CBD2DC;color:var(--ink)}
+  .btn-detalhe.open{background:var(--ftw);border-color:var(--ftw);color:#fff}
+  .btn-detalhe.open i{transform:rotate(180deg)}
+  .btn-detalhe i{transition:transform .15s}
   .expand-box{background:var(--line-2);border-radius:10px;padding:12px 14px;margin-top:10px;font-size:12.5px}
   .expand-box .row{display:flex;justify-content:space-between;padding:4px 0}
   .chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:600}
@@ -391,7 +397,10 @@ function buildSaldoLookup(pendMap, aprovMap){
   return lookup;
 }
 
+let ultimoOrdersPeriodo = [];
+
 function renderRanking(orders){
+  ultimoOrdersPeriodo = orders;
   const PREPOSTOS=['JORGE','MARIANA','RAFAEL','WILLAME','LEANDRO','CHRISTIAN LUCAS','CMS'];
   const map=new Map();
   for(const o of orders){
@@ -413,7 +422,7 @@ function renderRanking(orders){
 
   document.getElementById('rankingList').innerHTML=(comAtiv.map(([nome,d],i)=>{
     const pct=Math.round(d.pares/maxPares*100);
-    return`<div class="rank-row" onclick="expandVend('${safeAttr(nome)}',${safeAttr(JSON.stringify(d))})">
+    return`<div class="rank-row" style="cursor:default">
       <div class="rank-pos">${i+1}</div>
       <div class="rank-avatar">${iniciais(nome)}</div>
       <div class="rank-info">
@@ -422,23 +431,72 @@ function renderRanking(orders){
       </div>
       <div class="rank-bar-wrap"><div class="rank-bar" style="width:${pct}%"></div></div>
       <div class="rank-val">${fmt(d.pares)}</div>
+      <button class="btn-detalhe" onclick="toggleVendDetalhe('${safeAttr(nome)}')" title="Ver produtos e clientes">
+        <i class="fa-solid fa-chevron-down"></i>
+      </button>
     </div>`;
   }).join('') || '<div class="empty-msg">Nenhum pedido no período.</div>')
   + (semAtiv.length ? `<div class="rank-sub" style="padding:10px 0 0">Sem pedido no período: ${semAtiv.map(([n])=>n).join(', ')}</div>` : '');
 }
 function safeAttr(s){ return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
-function expandVend(nome, dJson){
-  const d = JSON.parse(dJson.replace(/&#39;/g,"'").replace(/&quot;/g,'"'));
+function toggleVendDetalhe(nome){
   const detail=document.getElementById('vendDetail');
-  if(detail.dataset.nome===nome&&!detail.classList.contains('hidden')){ detail.classList.add('hidden'); detail.dataset.nome=''; return; }
+  const btn=document.querySelector(`.btn-detalhe[onclick*="${nome.replace(/'/g,"\\'")}"]`);
+  if(detail.dataset.nome===nome && !detail.classList.contains('hidden')){
+    detail.classList.add('hidden'); detail.dataset.nome='';
+    if(btn) btn.classList.remove('open');
+    return;
+  }
+  document.querySelectorAll('.btn-detalhe.open').forEach(b=>b.classList.remove('open'));
+  if(btn) btn.classList.add('open');
   detail.dataset.nome=nome; detail.classList.remove('hidden');
-  detail.innerHTML=`<div style="font-weight:600;margin-bottom:6px">${nome}</div>
-    <div class="row"><span style="color:var(--mute)">Total de pares</span><span style="font-weight:600">${fmt(d.pares)}</span></div>
-    <div class="row"><span style="color:var(--mute)">Pedidos</span><span style="font-weight:600">${d.pedidos}</span></div>
-    <div class="row"><span style="color:var(--mute)">Aprovados</span><span style="font-weight:600;color:#15803d">${d.aprov}</span></div>
-    <div class="row"><span style="color:var(--mute)">Pendentes</span><span style="font-weight:600;color:#b45309">${d.pend}</span></div>
-    <div class="row"><span style="color:var(--mute)">Cancelados</span><span style="font-weight:600;color:#b91c1c">${d.canc}</span></div>`;
+
+  const doVendedor = ultimoOrdersPeriodo.filter(o => (o.preposto?.nome||o.preposto?.codigo||'—')===nome);
+  const naoCancelados = doVendedor.filter(o => canonicalStatus(o.status)!=='Cancelado');
+  const aprov = doVendedor.filter(o => canonicalStatus(o.status)==='Aprovado');
+  const pend  = doVendedor.filter(o => canonicalStatus(o.status)==='Pendente');
+  const pares = naoCancelados.reduce((s,o)=>(o.items||[]).reduce((ss,i)=>ss+getItemUnits(i),s),0);
+
+  // Produtos repassados (pares aprovados, por produto+cor)
+  const produtosMap=new Map();
+  for(const o of aprov){
+    for(const item of (o.items||[])){
+      const produto=String(item.produto||'').trim(); if(!produto) continue;
+      const cor=String(item.cor||'').trim();
+      const key=`${produto}|${cor}`;
+      const u=getItemUnits(item);
+      produtosMap.set(key, (produtosMap.get(key)||0)+u);
+    }
+  }
+  const topProdutos=[...produtosMap.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  // Clientes atendidos (todos os pedidos não cancelados)
+  const clientesMap=new Map();
+  for(const o of naoCancelados){
+    const cli = o.clienteNome ? o.clienteNome : (o.clienteCodigo || 'Sem cliente informado');
+    if(!clientesMap.has(cli)) clientesMap.set(cli, {pedidos:0, pares:0});
+    const c=clientesMap.get(cli);
+    c.pedidos++;
+    c.pares+=(o.items||[]).reduce((s,i)=>s+getItemUnits(i),0);
+  }
+  const topClientes=[...clientesMap.entries()].sort((a,b)=>b[1].pares-a[1].pares).slice(0,5);
+
+  detail.innerHTML=`<div style="font-weight:600;margin-bottom:8px">${nome}</div>
+    <div class="row"><span style="color:var(--mute)">Total de pares</span><span style="font-weight:600">${fmt(pares)}</span></div>
+    <div class="row"><span style="color:var(--mute)">Aprovados</span><span style="font-weight:600;color:#15803d">${aprov.length}</span></div>
+    <div class="row"><span style="color:var(--mute)">Pendentes</span><span style="font-weight:600;color:#b45309">${pend.length}</span></div>
+
+    <div style="font-weight:600;margin:12px 0 6px">Produtos repassados</div>
+    ${topProdutos.length ? topProdutos.map(([k,v])=>{
+      const [produto,cor]=k.split('|');
+      return `<div class="row"><span>${produto}${cor?` · ${cor}`:''}</span><span style="font-weight:600">${fmt(v)} pares</span></div>`;
+    }).join('') : '<div style="color:var(--mute)">Nenhum pedido aprovado ainda.</div>'}
+
+    <div style="font-weight:600;margin:12px 0 6px">Clientes atendidos</div>
+    ${topClientes.length ? topClientes.map(([nomeCli,c])=>
+      `<div class="row"><span>${nomeCli}</span><span style="font-weight:600">${c.pedidos} pedido${c.pedidos!==1?'s':''} · ${fmt(c.pares)} pares</span></div>`
+    ).join('') : '<div style="color:var(--mute)">Nenhum pedido no período.</div>'}`;
 }
 
 // ── PRODUTOS MAIS REPASSADOS ─────────────────────────────────────────────────
