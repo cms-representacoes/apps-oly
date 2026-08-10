@@ -40,6 +40,17 @@
     @media (min-width:640px){ .portal-card{ border-radius:20px; padding:16px 18px; min-height:128px; } }
     @media (min-width:1024px){ .portal-card{ border-radius:22px; padding:18px 20px; min-height:136px; } }
     .portal-card:active{ transform:scale(.98); }
+    .resumo-pill{
+      position:absolute; top:14px; right:14px; z-index:5;
+      display:flex; align-items:center; gap:6px;
+      background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.25);
+      border-radius:999px; padding:6px 12px 6px 10px;
+      font-size:11.5px; font-weight:700; color:#fff; cursor:pointer;
+      transition:background .15s, transform .15s;
+    }
+    .resumo-pill:hover{ background:rgba(255,255,255,.28); transform:translateY(-1px); }
+    .resumo-pill svg{ width:14px; height:14px; flex-shrink:0; }
+    .resumo-pill[hidden]{ display:none !important; }
     @media (hover:hover){ .portal-card:hover{ transform:translateY(-4px); } }
 
     .card-repasse{ background:linear-gradient(150deg,#3b6ef0 0%,#1d4cd8 48%,#0a2280 100%); border:1px solid rgba(120,170,255,.32); }
@@ -358,18 +369,16 @@
     .fab-clientes:hover{ transform:translateY(-2px); box-shadow:0 10px 28px rgba(8,145,178,.55), 0 4px 10px rgba(0,0,0,.18); }
     .fab-perf{ color:#2a1d00; background:linear-gradient(135deg,#F2B705 0%,#C77F0A 100%); box-shadow:0 6px 22px rgba(200,127,10,.45), 0 2px 6px rgba(0,0,0,.12); }
     .fab-perf:hover{ transform:translateY(-2px); box-shadow:0 10px 28px rgba(200,127,10,.55), 0 4px 10px rgba(0,0,0,.18); }
-    .fab-repasses{ background:linear-gradient(135deg,#5B69E8 0%,#2836D4 100%); box-shadow:0 6px 22px rgba(40,54,212,.45), 0 2px 6px rgba(0,0,0,.12); }
-    .fab-repasses:hover{ transform:translateY(-2px); box-shadow:0 10px 28px rgba(40,54,212,.55), 0 4px 10px rgba(0,0,0,.18); }
-    .fab-rfv svg, .fab-clientes svg, .fab-perf svg, .fab-repasses svg{ width:18px; height:18px; }
+    .fab-rfv svg, .fab-clientes svg, .fab-perf svg{ width:18px; height:18px; }
     @media(max-width:380px){
       .fab-stack{ gap:10px; }
-      .fab-rfv, .fab-clientes, .fab-perf, .fab-repasses{
+      .fab-rfv, .fab-clientes, .fab-perf{
         padding:13px;
         border-radius:50%;
         width:54px; height:54px;
         justify-content:center;
       }
-      .fab-rfv span, .fab-clientes span, .fab-perf span, .fab-repasses span{ display:none; }
+      .fab-rfv span, .fab-clientes span, .fab-perf span{ display:none; }
     }
 
     /* ── Login do Portal (sessão compartilhada) ── */
@@ -442,6 +451,11 @@
     <div class="w-full max-w-4xl grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-5 fade-up-3">
 
       <a href="https://cms-representacoes.github.io/apps-oly/repasses/" class="portal-card card-repasse focus-ring">
+        <span id="resumoRepassesBtn" class="resumo-pill admin-only" hidden
+          onclick="event.preventDefault(); event.stopPropagation(); window.location.href='https://cms-representacoes.github.io/apps-oly/admin/dashboard.html';">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>
+          Resumo
+        </span>
         <div class="portal-card-tag tag-repasse">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
           Repasses
@@ -685,14 +699,6 @@
       <circle cx="12" cy="12" r="0.7" fill="currentColor" stroke="none"/>
     </svg>
     <span>RFV</span>
-  </a>
-
-  <a href="https://cms-representacoes.github.io/apps-oly/admin/dashboard.html" id="fabRepasses" class="fab-repasses admin-only" title="Dashboard de Repasses" aria-label="Dashboard de Repasses" hidden>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 17l6-6 4 4 8-8"/>
-      <path d="M17 7h4v4"/>
-    </svg>
-    <span>Repasses</span>
   </a>
 
   <a href="#" id="fabPerf" class="fab-perf" title="Análise de Performance" aria-label="Análise de Performance">
