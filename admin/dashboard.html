@@ -57,7 +57,7 @@
 
   /* KPIs compactos */
   .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:22px}
-  @media(min-width:640px){ .kpis{grid-template-columns:repeat(4,1fr)} }
+  @media(min-width:640px){ .kpis{grid-template-columns:repeat(3,1fr)} }
   .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
   .kpi-label{font-size:10px;font-weight:600;color:var(--mute);text-transform:uppercase;letter-spacing:.06em}
   .kpi-val{font-family:"Space Grotesk",sans-serif;font-size:20px;font-weight:700;margin-top:2px;color:var(--ink)}
@@ -74,6 +74,12 @@
 
   /* ranking rows */
   .rank-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-2);cursor:pointer}
+  .rank-col-head{display:flex;align-items:center;gap:10px;padding:0 0 8px;border-bottom:1px solid var(--line);
+    font-family:"Space Grotesk",sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--mute)}
+  .rank-col-head-name{flex:1;margin-left:56px}
+  .rank-col-head-qtd{width:118px;text-align:right;flex-shrink:0}
+  .rank-col-head-det{width:28px;text-align:center;flex-shrink:0}
   .rank-row:last-child{border-bottom:none}
   .rank-row:hover{background:var(--line-2)}
   .rank-pos{font-family:"Space Grotesk",sans-serif;font-size:12px;font-weight:600;color:var(--mute);width:16px;flex-shrink:0;text-align:center}
@@ -177,21 +183,20 @@
       <div class="kpi-label">Pedidos pendentes</div>
       <div class="kpi-val num" id="kPend">—</div>
     </div>
-    <div class="kpi">
-      <div class="kpi-label">Taxa de aprovação</div>
-      <div class="kpi-val num" id="kTaxa">—</div>
-    </div>
   </div>
 
   <!-- RANKING DE VENDEDORES -->
   <div class="block">
     <div class="block-head">
       <h3>Ranking de vendedores</h3>
-      <span class="block-sub">no período · clique pra detalhar</span>
     </div>
     <div class="card">
+      <div class="rank-col-head">
+        <span class="rank-col-head-name">Vendedor</span>
+        <span class="rank-col-head-qtd">Pares</span>
+        <span class="rank-col-head-det">Detalhes</span>
+      </div>
       <div id="rankingList"></div>
-      <div id="vendDetail" class="hidden expand-box"></div>
     </div>
   </div>
 
@@ -222,7 +227,7 @@
   <div class="block">
     <div class="block-head">
       <h3>Atenção ao prazo</h3>
-      <span class="block-sub">produtos em estoque sem nenhum pedido ainda</span>
+      <span class="block-sub">Itens do estoque ainda sem pedido registrado</span>
     </div>
     <div class="card">
       <div class="prazo-legend" style="margin-bottom:10px">
@@ -344,8 +349,6 @@ function render(){
 
   document.getElementById('kPend').textContent=fmt(pend.length);
   document.getElementById('kAprovPares').textContent=fmt(paresAprov);
-  const totOrders=orders.length||1;
-  document.getElementById('kTaxa').textContent=Math.round(aprov.length/totOrders*100)+'%';
 
   // Saldo em estoque (todos os pedidos, não só o período — é foto do agora)
   const { pendMap, aprovMap } = buildDispoMaps();
@@ -418,10 +421,10 @@ function renderRanking(orders){
   const sorted=[...map.entries()].sort((a,b)=>b[1].pares-a[1].pares);
   const maxPares=sorted[0]?.[1]?.pares||1;
   const comAtiv=sorted.filter(([,d])=>d.pedidos>0);
-  const semAtiv=sorted.filter(([,d])=>d.pedidos===0);
 
-  document.getElementById('rankingList').innerHTML=(comAtiv.map(([nome,d],i)=>{
+  document.getElementById('rankingList').innerHTML=comAtiv.map(([nome,d],i)=>{
     const pct=Math.round(d.pares/maxPares*100);
+    const slotId=`vendSlot-${nome.replace(/[^A-Z0-9]/gi,'')}`;
     return`<div class="rank-row" style="cursor:default">
       <div class="rank-pos">${i+1}</div>
       <div class="rank-avatar">${iniciais(nome)}</div>
@@ -431,26 +434,28 @@ function renderRanking(orders){
       </div>
       <div class="rank-bar-wrap"><div class="rank-bar" style="width:${pct}%"></div></div>
       <div class="rank-val">${fmt(d.pares)}</div>
-      <button class="btn-detalhe" onclick="toggleVendDetalhe('${safeAttr(nome)}')" title="Ver produtos e clientes">
+      <button class="btn-detalhe" onclick="toggleVendDetalhe('${safeAttr(nome)}','${slotId}')" title="Ver produtos e clientes deste vendedor">
         <i class="fa-solid fa-chevron-down"></i>
       </button>
-    </div>`;
-  }).join('') || '<div class="empty-msg">Nenhum pedido no período.</div>')
-  + (semAtiv.length ? `<div class="rank-sub" style="padding:10px 0 0">Sem pedido no período: ${semAtiv.map(([n])=>n).join(', ')}</div>` : '');
+    </div>
+    <div class="vend-detail-slot hidden" id="${slotId}"></div>`;
+  }).join('') || '<div class="empty-msg">Nenhum pedido no período.</div>';
 }
 function safeAttr(s){ return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
-function toggleVendDetalhe(nome){
-  const detail=document.getElementById('vendDetail');
-  const btn=document.querySelector(`.btn-detalhe[onclick*="${nome.replace(/'/g,"\\'")}"]`);
-  if(detail.dataset.nome===nome && !detail.classList.contains('hidden')){
-    detail.classList.add('hidden'); detail.dataset.nome='';
-    if(btn) btn.classList.remove('open');
-    return;
-  }
+function toggleVendDetalhe(nome, slotId){
+  const slot=document.getElementById(slotId);
+  const btn=document.querySelector(`.btn-detalhe[onclick*="${slotId}"]`);
+  const jaAberto = slot.dataset.aberto==='1';
+
+  // Fecha qualquer outro detalhe aberto antes de abrir este
+  document.querySelectorAll('.vend-detail-slot').forEach(s=>{ s.classList.add('hidden'); s.dataset.aberto='0'; s.innerHTML=''; });
   document.querySelectorAll('.btn-detalhe.open').forEach(b=>b.classList.remove('open'));
+
+  if(jaAberto) return; // só fechava
+  slot.classList.remove('hidden');
+  slot.dataset.aberto='1';
   if(btn) btn.classList.add('open');
-  detail.dataset.nome=nome; detail.classList.remove('hidden');
 
   const doVendedor = ultimoOrdersPeriodo.filter(o => (o.preposto?.nome||o.preposto?.codigo||'—')===nome);
   const naoCancelados = doVendedor.filter(o => canonicalStatus(o.status)!=='Cancelado');
@@ -474,7 +479,7 @@ function toggleVendDetalhe(nome){
   // Clientes atendidos (todos os pedidos não cancelados)
   const clientesMap=new Map();
   for(const o of naoCancelados){
-    const cli = o.clienteNome ? o.clienteNome : (o.clienteCodigo || 'Sem cliente informado');
+    const cli = o.clienteNome ? o.clienteNome : (o.clienteCodigo || 'Cliente não informado');
     if(!clientesMap.has(cli)) clientesMap.set(cli, {pedidos:0, pares:0});
     const c=clientesMap.get(cli);
     c.pedidos++;
@@ -482,10 +487,10 @@ function toggleVendDetalhe(nome){
   }
   const topClientes=[...clientesMap.entries()].sort((a,b)=>b[1].pares-a[1].pares).slice(0,5);
 
-  detail.innerHTML=`<div style="font-weight:600;margin-bottom:8px">${nome}</div>
+  slot.innerHTML=`<div class="expand-box">
     <div class="row"><span style="color:var(--mute)">Total de pares</span><span style="font-weight:600">${fmt(pares)}</span></div>
-    <div class="row"><span style="color:var(--mute)">Aprovados</span><span style="font-weight:600;color:#15803d">${aprov.length}</span></div>
-    <div class="row"><span style="color:var(--mute)">Pendentes</span><span style="font-weight:600;color:#b45309">${pend.length}</span></div>
+    <div class="row"><span style="color:var(--mute)">Pedidos aprovados</span><span style="font-weight:600;color:#15803d">${aprov.length}</span></div>
+    <div class="row"><span style="color:var(--mute)">Pedidos pendentes</span><span style="font-weight:600;color:#b45309">${pend.length}</span></div>
 
     <div style="font-weight:600;margin:12px 0 6px">Produtos repassados</div>
     ${topProdutos.length ? topProdutos.map(([k,v])=>{
@@ -496,7 +501,8 @@ function toggleVendDetalhe(nome){
     <div style="font-weight:600;margin:12px 0 6px">Clientes atendidos</div>
     ${topClientes.length ? topClientes.map(([nomeCli,c])=>
       `<div class="row"><span>${nomeCli}</span><span style="font-weight:600">${c.pedidos} pedido${c.pedidos!==1?'s':''} · ${fmt(c.pares)} pares</span></div>`
-    ).join('') : '<div style="color:var(--mute)">Nenhum pedido no período.</div>'}`;
+    ).join('') : '<div style="color:var(--mute)">Nenhum pedido no período.</div>'}
+  </div>`;
 }
 
 // ── PRODUTOS MAIS REPASSADOS ─────────────────────────────────────────────────
@@ -608,7 +614,7 @@ function renderPrazo(){
 function renderPrazoLista(){
   const semPedido = ultimoPrazoLista;
   if(!semPedido.length){
-    document.getElementById('prazoLista').innerHTML='<div class="empty-msg">Todos os produtos têm pedidos.</div>';
+    document.getElementById('prazoLista').innerHTML='<div class="empty-msg">Todos os itens do estoque possuem pedido registrado.</div>';
     document.getElementById('btnMaisPrazo').classList.add('hidden');
     return;
   }
