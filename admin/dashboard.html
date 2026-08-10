@@ -57,10 +57,11 @@
 
   /* KPIs compactos */
   .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:22px}
-  @media(min-width:640px){ .kpis{grid-template-columns:repeat(3,1fr)} }
-  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;
+    box-shadow:0 2px 10px rgba(40,54,212,.10);transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease}
+  .kpi:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(40,54,212,.28);border-color:var(--ftw-lite)}
   .kpi-label{font-size:10px;font-weight:600;color:var(--mute);text-transform:uppercase;letter-spacing:.06em}
-  .kpi-val{font-family:"Space Grotesk",sans-serif;font-size:20px;font-weight:700;margin-top:2px;color:var(--ink)}
+  .kpi-val{font-family:"Space Grotesk",sans-serif;font-size:20px;font-weight:700;margin-top:2px;color:var(--ftw)}
 
   /* blocos */
   .block{padding:18px 0}
@@ -73,22 +74,23 @@
   .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px}
 
   /* ranking rows */
-  .rank-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-2);cursor:pointer}
+  .rank-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-2);cursor:pointer;
+    transition:background .15s ease}
   .rank-col-head{display:flex;align-items:center;gap:10px;padding:0 0 8px;border-bottom:1px solid var(--line);
     font-family:"Space Grotesk",sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.08em;
     text-transform:uppercase;color:var(--mute)}
   .rank-row:last-child{border-bottom:none}
-  .rank-row:hover{background:var(--line-2)}
+  .rank-row:hover{background:color-mix(in srgb, var(--ftw) 7%, transparent)}
   .rank-pos{font-family:"Space Grotesk",sans-serif;font-size:12px;font-weight:600;color:var(--mute);width:16px;flex-shrink:0;text-align:center}
-  .rank-avatar{width:30px;height:30px;border-radius:9px;background:color-mix(in srgb, var(--ftw) 14%, transparent);
-    color:var(--ftw);font-family:"Space Grotesk",sans-serif;font-size:11px;font-weight:700;
-    display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .rank-avatar{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg, var(--ftw-lite), var(--ftw));
+    color:#fff;font-family:"Space Grotesk",sans-serif;font-size:11px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 6px rgba(40,54,212,.3)}
   .rank-info{flex:1;min-width:0}
   .rank-name{font-size:13px;font-weight:600;color:var(--ink)}
   .rank-sub{font-size:11.5px;color:var(--mute);margin-top:1px}
   .rank-bar-wrap{width:56px;height:5px;background:var(--line-2);border-radius:999px;overflow:hidden;flex-shrink:0}
-  .rank-bar{height:100%;border-radius:999px;background:var(--ftw)}
-  .rank-val{font-family:"Space Grotesk",sans-serif;font-size:13px;font-weight:700;color:var(--ink);min-width:52px;text-align:right;flex-shrink:0}
+  .rank-bar{height:100%;border-radius:999px;background:linear-gradient(90deg, var(--ftw-lite), var(--ftw))}
+  .rank-val{font-family:"Space Grotesk",sans-serif;font-size:13px;font-weight:700;color:var(--ftw);min-width:52px;text-align:right;flex-shrink:0}
   .btn-detalhe{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--card);
     color:var(--mute);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:11px}
   .btn-detalhe:hover{border-color:#CBD2DC;color:var(--ink)}
@@ -102,21 +104,15 @@
   .chip-aprov{background:color-mix(in srgb, #22c55e 16%, transparent);color:#15803d}
   .chip-canc{background:color-mix(in srgb, #ef4444 16%, transparent);color:#b91c1c}
   .chip-off{background:var(--line-2);color:var(--mute)}
-  .sit-ok{background:color-mix(in srgb, #22c55e 16%, transparent);color:#15803d}
-  .sit-low{background:color-mix(in srgb, #f59e0b 16%, transparent);color:#b45309}
-  .sit-crit{background:color-mix(in srgb, #ef4444 16%, transparent);color:#b91c1c}
   .badge-crit{background:color-mix(in srgb, #ef4444 16%, transparent);color:#991b1b}
   .badge-atenc{background:color-mix(in srgb, #f59e0b 16%, transparent);color:#92400e}
   .badge-ok{background:color-mix(in srgb, #22c55e 16%, transparent);color:#166534}
   .badge-venc{background:var(--line-2);color:var(--slate)}
 
-  /* saldo em estoque */
-  .stock-grid{display:grid;grid-template-columns:1fr;gap:8px}
-  @media(min-width:640px){ .stock-grid{grid-template-columns:1fr 1fr} }
-  .stock-item{display:flex;align-items:center;gap:10px;background:var(--line-2);border-radius:12px;padding:9px 12px}
-  .stock-info{flex:1;min-width:0}
-  .stock-name{font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .stock-sub{font-size:11px;color:var(--mute);margin-top:1px}
+  /* seletor de ordenação */
+  .sort-select{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:12px;color:var(--slate);
+    border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 10px;cursor:pointer}
+  .sort-select:hover{border-color:#CBD2DC}
 
   /* prazo */
   .prazo-row{display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--line-2)}
@@ -176,10 +172,6 @@
       <div class="kpi-label">Pares repassados</div>
       <div class="kpi-val num" id="kAprovPares">—</div>
     </div>
-    <div class="kpi">
-      <div class="kpi-label">Pedidos pendentes</div>
-      <div class="kpi-val num" id="kPend">—</div>
-    </div>
   </div>
 
   <!-- RANKING DE VENDEDORES -->
@@ -216,15 +208,23 @@
   <div class="block">
     <div class="block-head">
       <h3>Saldo atual em estoque</h3>
-      <span class="block-sub" id="dispoCount"></span>
+      <select id="dispoSort" class="sort-select" onchange="reordenarDispo(this.value)">
+        <option value="qtd_desc">Quantidade — maior primeiro</option>
+        <option value="qtd_asc">Quantidade — menor primeiro</option>
+        <option value="prazo_asc">Faturamento mais próximo</option>
+        <option value="nome_asc">Nome do produto (A-Z)</option>
+      </select>
     </div>
     <div class="card">
-      <div id="dispoGrid" class="stock-grid"></div>
+      <span class="block-sub" id="dispoCount" style="display:block;margin-bottom:10px"></span>
+      <div id="dispoList"></div>
+      <button class="btn-ver-mais hidden" id="btnMaisDispo" onclick="expandirDispo()">Ver mais produtos</button>
     </div>
   </div>
 
-  <!-- PRODUTOS SEM PEDIDO — PRAZO -->
-  <div class="block">
+  <!-- PRODUTOS SEM PEDIDO — PRAZO (oculto a pedido do usuário; lógica mantida no
+       código pra reativar rápido no futuro — só remover o style="display:none") -->
+  <div class="block" id="blocoPrazo" style="display:none">
     <div class="block-head">
       <h3>Atenção ao prazo</h3>
       <span class="block-sub">Itens do estoque ainda sem pedido registrado</span>
@@ -347,11 +347,9 @@ async function loadAll(){
 // ── RENDER ────────────────────────────────────────────────────────────────────
 function render(){
   const orders=ordersInPeriod();
-  const pend=orders.filter(o=>canonicalStatus(o.status)==='Pendente');
   const aprov=orders.filter(o=>canonicalStatus(o.status)==='Aprovado');
   const paresAprov=aprov.reduce((s,o)=>(o.items||[]).reduce((ss,i)=>ss+getItemUnits(i),s),0);
 
-  document.getElementById('kPend').textContent=fmt(pend.length);
   document.getElementById('kAprovPares').textContent=fmt(paresAprov);
 
   // Saldo em estoque (todos os pedidos, não só o período — é foto do agora)
@@ -492,19 +490,19 @@ function toggleVendDetalhe(nome, slotId){
   const topClientes=[...clientesMap.entries()].sort((a,b)=>b[1].pares-a[1].pares).slice(0,5);
 
   slot.innerHTML=`<div class="expand-box">
-    <div class="row"><span style="color:var(--mute)">Total de pares</span><span style="font-weight:600">${fmt(pares)}</span></div>
+    <div class="row"><span style="color:var(--mute)">Total de pares</span><span style="font-weight:600;color:var(--ftw)">${fmt(pares)}</span></div>
     <div class="row"><span style="color:var(--mute)">Pedidos aprovados</span><span style="font-weight:600;color:#15803d">${aprov.length}</span></div>
     <div class="row"><span style="color:var(--mute)">Pedidos pendentes</span><span style="font-weight:600;color:#b45309">${pend.length}</span></div>
 
     <div style="font-weight:600;margin:12px 0 6px">Produtos repassados</div>
     ${topProdutos.length ? topProdutos.map(([k,v])=>{
       const [produto,cor]=k.split('|');
-      return `<div class="row"><span>${produto}${cor?` · ${cor}`:''}</span><span style="font-weight:600">${fmt(v)} pares</span></div>`;
+      return `<div class="row"><span>${produto}${cor?` · ${cor}`:''}</span><span style="font-weight:600;color:var(--ftw)">${fmt(v)} pares</span></div>`;
     }).join('') : '<div style="color:var(--mute)">Nenhum pedido aprovado ainda.</div>'}
 
     <div style="font-weight:600;margin:12px 0 6px">Clientes atendidos</div>
     ${topClientes.length ? topClientes.map(([nomeCli,c])=>
-      `<div class="row"><span>${nomeCli}</span><span style="font-weight:600">${c.pedidos} pedido${c.pedidos!==1?'s':''} · ${fmt(c.pares)} pares</span></div>`
+      `<div class="row"><span>${nomeCli}</span><span style="font-weight:600;color:var(--ftw)">${c.pedidos} pedido${c.pedidos!==1?'s':''} · ${fmt(c.pares)} pares</span></div>`
     ).join('') : '<div style="color:var(--mute)">Nenhum pedido no período.</div>'}
   </div>`;
 }
@@ -538,14 +536,13 @@ function renderProdutosRankingLista(){
   document.getElementById('produtosRankList').innerHTML = lista.map((p,i)=>{
     const pct = Math.round(p.pares/max*100);
     const saldoTxt = p.saldo===null ? '—' : fmt(p.saldo);
-    const saldoCls = p.saldo!==null && p.saldo<=0 ? 'sit-crit' : (p.saldo!==null && p.saldo<=12 ? 'sit-low' : 'sit-ok');
     return`<div class="rank-row" style="cursor:default">
       <div class="rank-pos">${i+1}</div>
       <div class="rank-info">
         <div class="rank-name">${p.produto}</div>
         <div class="rank-sub">${p.cor||'—'}</div>
       </div>
-      <span class="chip ${saldoCls}" title="Saldo atual em estoque">${saldoTxt} em estoque</span>
+      <span class="chip chip-off" title="Saldo atual em estoque">${saldoTxt} em estoque</span>
       <div class="rank-bar-wrap"><div class="rank-bar" style="width:${pct}%"></div></div>
       <div class="rank-val">${fmt(p.pares)}</div>
     </div>`;
@@ -558,29 +555,111 @@ function renderProdutosRankingLista(){
 function expandirProdutos(){ produtosExpandido=!produtosExpandido; renderProdutosRankingLista(); }
 
 // ── SALDO ATUAL EM ESTOQUE ───────────────────────────────────────────────────
+let ultimoDispoLista = [];
+let dispoExpandido = false;
+let dispoSortAtual = 'qtd_desc';
+
 function renderDispo(pendMap, aprovMap){
-  const rows=STATE.dispoRows.map(r=>{
+  const porCor=STATE.dispoRows.map(r=>{
     const gci=String(r.gci||'').trim();
     const cod=String(r.codigo||'').trim();
     const key=gci||cod;
     const saldo=Number(r.saldo||0);
     const p=pendMap.get(key)||0, a=aprovMap.get(key)||0;
     const saldoReal=saldo-p-a;
-    return{ produto:String(r.produto||'').trim(), cor:String(r.cor||'').trim(), saldoReal };
-  }).filter(r=>r.produto).sort((a,b)=>a.saldoReal-b.saldoReal);
+    return{
+      produto:String(r.produto||'').trim(),
+      cor:String(r.cor||'').trim(),
+      saldoReal,
+      prevFat:r.dataEntrega||null
+    };
+  }).filter(r=>r.produto);
 
-  document.getElementById('dispoCount').textContent=`${rows.length} produto${rows.length!==1?'s':''}`;
-  document.getElementById('dispoGrid').innerHTML=rows.map(r=>{
-    const sit=r.saldoReal<=0?{cls:'sit-crit',l:'Crítico'}:r.saldoReal<=12?{cls:'sit-low',l:'Baixo'}:{cls:'sit-ok',l:'Saudável'};
-    return`<div class="stock-item">
-      <div class="stock-info">
-        <div class="stock-name">${r.produto}</div>
-        <div class="stock-sub">${r.cor} · ${fmt(r.saldoReal)} pares</div>
-      </div>
-      <span class="chip ${sit.cls}">${sit.l}</span>
-    </div>`;
-  }).join('') || '<div class="empty-msg">Nenhum produto no estoque.</div>';
+  // Agrupa por produto (descrição) — as cores viram o detalhe, exibido ao clicar.
+  const porProduto=new Map();
+  for(const r of porCor){
+    if(!porProduto.has(r.produto)) porProduto.set(r.produto, { produto:r.produto, saldoTotal:0, cores:[], prevFatMaisProxima:null });
+    const g=porProduto.get(r.produto);
+    g.saldoTotal+=r.saldoReal;
+    g.cores.push({ cor:r.cor, saldoReal:r.saldoReal });
+    const d=parseDataBR(r.prevFat);
+    if(d && (!g.prevFatMaisProxima || d<g.prevFatMaisProxima)) g.prevFatMaisProxima=d;
+  }
+
+  ultimoDispoLista = [...porProduto.values()];
+  dispoExpandido = false;
+  document.getElementById('dispoCount').textContent=`${ultimoDispoLista.length} produto${ultimoDispoLista.length!==1?'s':''}`;
+  renderDispoLista();
 }
+
+function ordenarDispoLista(lista, modo){
+  const arr=[...lista];
+  if(modo==='qtd_asc')  arr.sort((a,b)=>a.saldoTotal-b.saldoTotal);
+  else if(modo==='prazo_asc') arr.sort((a,b)=>{
+    if(!a.prevFatMaisProxima && !b.prevFatMaisProxima) return 0;
+    if(!a.prevFatMaisProxima) return 1;
+    if(!b.prevFatMaisProxima) return -1;
+    return a.prevFatMaisProxima-b.prevFatMaisProxima;
+  });
+  else if(modo==='nome_asc') arr.sort((a,b)=>a.produto.localeCompare(b.produto,'pt-BR'));
+  else arr.sort((a,b)=>b.saldoTotal-a.saldoTotal); // qtd_desc (padrão)
+  return arr;
+}
+
+function renderDispoLista(){
+  const ordenada=ordenarDispoLista(ultimoDispoLista, dispoSortAtual);
+  const lista = dispoExpandido ? ordenada : ordenada.slice(0, TOP_N);
+  const max = ordenada[0]?.saldoTotal || 1;
+
+  document.getElementById('dispoList').innerHTML = lista.map((p,i)=>{
+    const pct = Math.max(2, Math.round(p.saldoTotal/max*100));
+    const slotId=`dispoSlot-${i}-${p.produto.replace(/[^A-Z0-9]/gi,'')}`;
+    return`<div class="rank-row" style="cursor:default">
+      <div class="rank-pos">${i+1}</div>
+      <div class="rank-info">
+        <div class="rank-name">${p.produto}</div>
+        <div class="rank-sub">${p.cores.length} cor${p.cores.length!==1?'es':''}</div>
+      </div>
+      <div class="rank-bar-wrap"><div class="rank-bar" style="width:${pct}%"></div></div>
+      <div class="rank-val">${fmt(p.saldoTotal)}</div>
+      <button class="btn-detalhe" onclick="toggleDispoDetalhe('${slotId}', ${i})" title="Ver cores e quantidades">
+        <i class="fa-solid fa-chevron-down"></i>
+      </button>
+    </div>
+    <div class="vend-detail-slot hidden" id="${slotId}"></div>`;
+  }).join('') || '<div class="empty-msg">Nenhum produto no estoque.</div>';
+
+  const btn=document.getElementById('btnMaisDispo');
+  btn.classList.toggle('hidden', ordenada.length<=TOP_N);
+  btn.textContent = dispoExpandido ? 'Ver menos' : `Ver mais produtos (${ordenada.length-TOP_N})`;
+}
+
+function toggleDispoDetalhe(slotId, idx){
+  const slot=document.getElementById(slotId);
+  const btn=document.querySelector(`.btn-detalhe[onclick*="${slotId}"]`);
+  const jaAberto = slot.dataset.aberto==='1';
+
+  document.querySelectorAll('.vend-detail-slot').forEach(s=>{ s.classList.add('hidden'); s.dataset.aberto='0'; s.innerHTML=''; });
+  document.querySelectorAll('.btn-detalhe.open').forEach(b=>b.classList.remove('open'));
+  if(jaAberto) return;
+
+  slot.classList.remove('hidden');
+  slot.dataset.aberto='1';
+  if(btn) btn.classList.add('open');
+
+  const ordenada=ordenarDispoLista(ultimoDispoLista, dispoSortAtual);
+  const lista = dispoExpandido ? ordenada : ordenada.slice(0, TOP_N);
+  const produto = lista[idx];
+  if(!produto) return;
+  const cores=[...produto.cores].sort((a,b)=>b.saldoReal-a.saldoReal);
+
+  slot.innerHTML=`<div class="expand-box">
+    ${cores.map(c=>`<div class="row"><span>${c.cor||'—'}</span><span style="font-weight:600;color:var(--ftw)">${fmt(c.saldoReal)} pares</span></div>`).join('')}
+  </div>`;
+}
+
+function reordenarDispo(modo){ dispoSortAtual=modo; dispoExpandido=false; renderDispoLista(); }
+function expandirDispo(){ dispoExpandido=!dispoExpandido; renderDispoLista(); }
 
 // ── ATENÇÃO AO PRAZO ─────────────────────────────────────────────────────────
 function renderPrazo(){
