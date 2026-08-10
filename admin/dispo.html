@@ -7,7 +7,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
@@ -34,6 +34,12 @@
       --muted-soft:#eaedf5;
       --partial:#c2410c;
       --partial-soft:#fef0e2;
+    }
+    .cms-badge{
+      width:38px;height:38px;border-radius:12px;flex:none;display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(135deg,#5B69E8,#2836D4);color:#fff;
+      font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:12px;letter-spacing:.02em;
+      box-shadow:0 4px 12px rgba(40,54,212,.28);
     }
     .dark{
       --bg:#0f172a;
@@ -88,7 +94,7 @@
     *{ box-sizing:border-box; }
 
     body{
-      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      font-family:'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       background:var(--bg);
       color:var(--text);
     }
@@ -492,58 +498,33 @@
 
       <!-- HEADER -->
       <header class="rounded-[32px] border border-slate-200 bg-white p-4 sm:p-5 shadow-card mb-4 sticky top-4 z-30">
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div class="flex items-center gap-4">
+        <div class="flex flex-wrap lg:flex-nowrap items-center justify-between gap-3">
+          <div class="flex items-center gap-3 flex-shrink-0">
             <button onclick="voltarParaPedidos()"
               class="focus-ring flex items-center justify-center h-10 w-10 rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
               title="Voltar para pedidos">
               <i class="fa-solid fa-arrow-left text-sm"></i>
             </button>
-            <div>
-              <div class="text-xs font-bold text-slate-500">Controle de estoque</div>
-              <div class="text-2xl sm:text-3xl font-extrabold">Painel DISPO</div>
-            </div>
+            <span class="cms-badge">CMS</span>
+            <span class="text-lg font-extrabold text-slate-900">Estoque</span>
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
             <!-- Busca -->
-            <div class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 min-w-[260px]">
+            <div class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 min-w-[200px]">
               <i class="fa-solid fa-magnifying-glass text-slate-400 text-sm"></i>
               <input id="dispoSearch"
                 class="focus-ring w-full bg-transparent text-sm outline-none"
                 placeholder="Buscar código, produto ou cor" />
-            </div>
-
-            <button id="btnRefreshDispo"
-              class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2">
-              <i class="fa-solid fa-rotate-right text-slate-400"></i>
-              Atualizar DISPO
-            </button>
-
-            <!-- Ocultar KPIs -->
-            <button id="btnToggleKpis" onclick="toggleKpis()" title="Ocultar/exibir KPIs"
-              class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2">
-              <i class="fa-regular fa-eye text-slate-400" id="kpiEyeIcon"></i>
-              <span class="hidden sm:inline text-xs">KPIs</span>
-            </button>
-
-            <!-- Ocultar colunas -->
-            <div class="relative" id="colToggleWrap">
-              <button onclick="toggleColMenu()" title="Colunas"
-                class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2">
-                <i class="fa-solid fa-table-columns text-slate-400 text-xs"></i>
-                <span class="hidden sm:inline text-xs">Colunas</span>
+              <button id="btnClearSearchDispo" class="focus-ring hidden text-slate-400 hover:text-slate-600" title="Limpar (Esc)">
+                <i class="fa-solid fa-xmark text-xs"></i>
               </button>
-              <div id="colMenu" class="hidden absolute right-0 top-12 bg-white border border-slate-200 rounded-2xl shadow-lg p-3 z-50 flex flex-col gap-2 min-w-[160px]">
-                <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colPendente" checked onchange="toggleCol('pendente',this.checked)"> Pendente</label>
-                <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colAprovado" checked onchange="toggleCol('aprovado',this.checked)"> Aprovado</label>
-                <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colPedidoMae" checked onchange="toggleCol('pedidoMae',this.checked)"> Pedido Mãe</label>
-              </div>
             </div>
 
             <!-- Consultar desmembramentos -->
             <a href="./dispo_consulta.html" title="Consultar desmembramentos"
-              class="focus-ring rounded-full border border-[var(--brand)] bg-[var(--brand-soft)] px-4 py-2 text-sm font-bold text-[var(--brand)] flex items-center gap-2 hover:bg-[var(--brand)] hover:text-white transition-colors">
+              class="focus-ring rounded-full px-4 py-2 text-sm font-bold text-white flex items-center gap-2 transition-transform hover:-translate-y-0.5"
+              style="background:linear-gradient(135deg,#5B69E8,#2836D4);box-shadow:0 4px 14px rgba(40,54,212,.35)">
               <i class="fa-solid fa-list-check text-xs"></i>
               <span class="hidden sm:inline">Desmembramentos</span>
             </a>
@@ -556,20 +537,50 @@
 
             <!-- Dark mode -->
             <button id="btnDarkMode" onclick="toggleDark()" title="Modo escuro"
-              class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2">
-              <i class="fa-solid fa-moon text-slate-400 text-xs" id="darkIcon"></i>
+              class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
+              <i class="fa-solid fa-moon text-xs" id="darkIcon"></i>
             </button>
 
-            <button id="btnLogout"
-              class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
-              Sair
+            <button id="btnMaisOpcoesDispo" class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-500 flex items-center gap-2 hover:bg-slate-50">
+              <i class="fa-solid fa-ellipsis"></i>
+              Mais opções
+              <i id="iconMaisOpcoesDispo" class="fa-solid fa-chevron-down text-[10px]" style="transition:transform .15s"></i>
             </button>
+          </div>
+        </div>
+
+        <div id="painelMaisOpcoesDispo" class="hidden mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2">
+          <button id="btnRefreshDispo"
+            class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-1.5">
+            <i class="fa-solid fa-rotate-right text-xs"></i>
+            Atualizar DISPO
+          </button>
+
+          <!-- Ocultar KPIs -->
+          <button id="btnToggleKpis" onclick="toggleKpis()" title="Ocultar/exibir KPIs"
+            class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-1.5">
+            <i class="fa-regular fa-eye-slash text-xs" id="kpiEyeIcon"></i>
+            KPIs
+          </button>
+
+          <!-- Ocultar colunas -->
+          <div class="relative" id="colToggleWrap">
+            <button onclick="toggleColMenu()" title="Colunas"
+              class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-1.5">
+              <i class="fa-solid fa-table-columns text-xs"></i>
+              Colunas
+            </button>
+            <div id="colMenu" class="hidden absolute left-0 top-10 bg-white border border-slate-200 rounded-2xl shadow-lg p-3 z-50 flex flex-col gap-2 min-w-[160px]">
+              <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colPendente" onchange="toggleCol('pendente',this.checked)"> Pendente</label>
+              <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colAprovado" onchange="toggleCol('aprovado',this.checked)"> Aprovado</label>
+              <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colPedidoMae" onchange="toggleCol('pedidoMae',this.checked)"> Pedido Mãe</label>
+            </div>
           </div>
         </div>
       </header>
 
       <!-- KPI CARDS -->
-      <div id="kpiBlock" class="grid grid-cols-2 xl:grid-cols-6 gap-3 mb-4">
+      <div id="kpiBlock" class="hidden grid grid-cols-2 xl:grid-cols-6 gap-3 mb-4">
         <div class="kpi-card">
           <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Linhas na DISPO</div>
           <div id="kpiLinhas" class="mt-2 text-3xl font-extrabold">—</div>
@@ -671,7 +682,7 @@
 
         <!-- TABLE -->
         <div id="tableWrap" class="table-wrap hidden">
-          <table>
+          <table class="col-hide-pendente col-hide-aprovado col-hide-pedidoMae">
             <thead>
               <tr>
                 <th class="th-chk" style="width:36px;text-align:center"><input type="checkbox" id="dispoCheckAll" class="dispo-chk-all" title="Selecionar todos"></th>
@@ -2012,12 +2023,11 @@ function toggleKpis(){
   const block = $('kpiBlock');
   const icon  = $('kpiEyeIcon');
   const hidden = block.classList.toggle('hidden');
-  icon.className = hidden ? 'fa-regular fa-eye-slash text-slate-400' : 'fa-regular fa-eye text-slate-400';
-  localStorage.setItem('dispo_kpi_hidden', hidden ? '1' : '0');
+  icon.className = hidden ? 'fa-regular fa-eye-slash text-xs' : 'fa-regular fa-eye text-xs';
 }
 
 // ── TOGGLE COLUNAS ────────────────────────────────────────────────────────────
-const _colState = { pendente:true, aprovado:true, pedidoMae:true };
+const _colState = { pendente:false, aprovado:false, pedidoMae:false };
 function toggleColMenu(){
   $('colMenu').classList.toggle('hidden');
 }
@@ -2030,31 +2040,14 @@ function toggleCol(col, visible){
   if(!table) return;
   if(visible) table.classList.remove(`col-hide-${col}`);
   else        table.classList.add(`col-hide-${col}`);
-  // Salva estado das colunas
-  const saved = JSON.parse(localStorage.getItem('dispo_cols')||'{}');
-  saved[col] = visible;
-  localStorage.setItem('dispo_cols', JSON.stringify(saved));
   // Sincroniza checkbox
   const cb = document.getElementById(`col${col.charAt(0).toUpperCase()+col.slice(1)}`);
   if(cb) cb.checked = visible;
 }
 
 // ── RESTAURAR LAYOUT ──────────────────────────────────────────────────────────
-function restoreLayout(){
-  // KPIs
-  if(localStorage.getItem('dispo_kpi_hidden') === '1'){
-    const block = $('kpiBlock');
-    const icon  = $('kpiEyeIcon');
-    if(block){ block.classList.add('hidden'); }
-    if(icon){ icon.className = 'fa-regular fa-eye-slash text-slate-400'; }
-  }
-  // Colunas
-  const savedCols = JSON.parse(localStorage.getItem('dispo_cols')||'{}');
-  for(const [col, visible] of Object.entries(savedCols)){
-    _colState[col] = visible;
-    if(!visible) toggleCol(col, false);
-  }
-}
+// KPIs e Colunas agora começam sempre ocultos (não é mais lembrado entre sessões)
+function restoreLayout(){}
 restoreLayout();
 
 // ── OCULTAR / REEXIBIR ───────────────────────────────────────────────────────
@@ -2149,15 +2142,38 @@ $('btnRefreshDispo').addEventListener('click', async () => {
   await loadDispo();
 });
 
-$('btnLogout').addEventListener('click', () => {
-  localStorage.removeItem('cms_portal_session_v1');
-  window.location.href = 'https://cms-representacoes.github.io/apps-oly/';
-});
-
 $('dispoSearch').addEventListener('input', (e) => {
   STATE.searchQuery = e.target.value;
   renderDispo();
 });
+
+// ── Busca: botão X + tecla Esc pra limpar ──────────────────────────────────────
+(function(){
+  const input = $('dispoSearch');
+  const clearBtn = $('btnClearSearchDispo');
+  if(!input || !clearBtn) return;
+  function updateClearBtn(){ clearBtn.classList.toggle('hidden', !input.value); }
+  input.addEventListener('input', updateClearBtn);
+  input.addEventListener('keydown', e=>{
+    if(e.key === 'Escape'){ input.value=''; updateClearBtn(); input.dispatchEvent(new Event('input')); }
+  });
+  clearBtn.addEventListener('click', ()=>{
+    input.value=''; updateClearBtn(); input.focus(); input.dispatchEvent(new Event('input'));
+  });
+})();
+
+// ── Painel "Mais opções": abre fechado por padrão, alterna ao clicar ──────────
+(function(){
+  const btn = $('btnMaisOpcoesDispo');
+  const painel = $('painelMaisOpcoesDispo');
+  const icon = $('iconMaisOpcoesDispo');
+  if(!btn || !painel) return;
+  btn.addEventListener('click', ()=>{
+    const abrindo = painel.classList.contains('hidden');
+    painel.classList.toggle('hidden');
+    if(icon) icon.style.transform = abrindo ? 'rotate(180deg)' : '';
+  });
+})();
 
 // Filter pills
 $('filterPills').addEventListener('click', (e) => {
