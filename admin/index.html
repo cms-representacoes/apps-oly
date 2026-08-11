@@ -1733,6 +1733,12 @@ async function loadAdmin(){
 
     applyFilters();
     renderKpisOperacionais();
+
+    // Carrega o DISPO em paralelo (não trava a tela) e, quando pronto, re-renderiza
+    // pra mostrar o selo de "Faturamento atualizado" em pedidos cujo produto mudou.
+    if(!_dispoRows){
+      getDispoGciMap().then(()=>{ if(_dispoRows) applyFilters(); }).catch(()=>{});
+    }
   }catch(err){
     console.error(err);
     showToast('Não foi possível carregar os pedidos sincronizados pelo Worker.', 'error');
@@ -1842,6 +1848,13 @@ function renderList(){
       : `Cliente ${safeHtml(order.clienteCodigo)}`;
     const totalUnits = getOrderUnits(order);
     const nItems = (order.items||[]).length;
+    const mudancasFat = (order.items||[])
+      .map(item => checkPrevFaturamentoMudou(item))
+      .filter(c => c.mudou);
+    const fatMudou = mudancasFat.length > 0;
+    const fatMudouTitle = fatMudou
+      ? mudancasFat.map(c => `${c.de} → ${c.para}`).join(' · ')
+      : '';
     const lastAcao = (order.history||[]).slice(-1)[0];
     const cardStatus = getStatusVisual(order.status);
 
@@ -1918,6 +1931,7 @@ function renderList(){
               ${nItems > 1 ? `<span style="font-size:11px;font-weight:700;background:var(--muted-soft);color:var(--muted);border-radius:999px;padding:2px 9px;flex-shrink:0">${nItems} produtos</span>` : ''}
               ${order.isDuplicate ? `<span style="font-size:11px;font-weight:700;background:var(--warning-soft);color:var(--warning);border-radius:999px;padding:2px 9px;flex-shrink:0">⚠ Duplicata</span>` : ''}
               ${(order.history||[]).some(h=>h.label==='Antecipado') ? `<span style="font-size:11px;font-weight:700;background:#EEEDFE;color:#3C3489;border-radius:999px;padding:2px 9px;flex-shrink:0">↑ Antecipado</span>` : ''}
+              ${fatMudou ? `<span title="Prev. Faturamento: ${safeHtml(fatMudouTitle)}" style="font-size:11px;font-weight:700;background:var(--warning-soft);color:var(--warning);border-radius:999px;padding:2px 9px;flex-shrink:0;cursor:help"><i class="fa-solid fa-triangle-exclamation" style="font-size:9px"></i> Faturamento atualizado</span>` : ''}
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
@@ -3933,28 +3947,50 @@ async function marcarComoExportado(orders){
 }
 
 // ── DISPO GCI→NÚM MAP ────────────────────────────────────────────────────────
-const DISPO_FILE_URL = '../DISPO.xlsx';
-let _dispoGciMap = null; // cache: Map<gci, num>
+let _dispoGciMap = null;  // cache: Map<gci, num>
+let _dispoRows = null;    // cache: array bruto do DISPO (pra comparar Prev. Fat.)
 
 async function getDispoGciMap(){
   if(_dispoGciMap) return _dispoGciMap;
   try{
-    const res = await fetch(`${DISPO_FILE_URL}?t=${Date.now()}`, { cache:'no-store' });
+    const res = await fetch(WORKER_URL, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'getDispo'}) });
     if(!res.ok) return new Map();
-    const buf = await res.arrayBuffer();
-    const wb = XLSX.read(buf, { type:'array' });
-    const ws = wb.Sheets[wb.SheetNames.find(n=>n.toUpperCase()==='DISPO')||wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, { defval:null });
+    const rows = await res.json();
+    _dispoRows = Array.isArray(rows) ? rows : [];
     _dispoGciMap = new Map();
-    for(const r of rows){
-      const gci  = String(r['GCI']  || '').trim();
-      const ebm  = String(r['EBM']  || '').trim();
-      const num  = String(r['Nº']   ?? r['N'] ?? r['Numero'] ?? '').trim();
+    for(const r of _dispoRows){
+      const gci  = String(r.gci || '').trim();
+      const ebm  = String(r.ebm || '').trim();
+      const num  = String(r.num ?? '').trim();
       if(gci && num) _dispoGciMap.set(gci, num);
       if(ebm && num) _dispoGciMap.set(ebm, num);
     }
   }catch(e){ console.error('Erro ao carregar DISPO para Nº:', e); return new Map(); }
   return _dispoGciMap;
+}
+
+// Retorna a linha atual do DISPO pro item de um pedido (por GCI, com EBM/código
+// como reserva), ou null se não achar.
+function getDispoRowAtual(item){
+  if(!_dispoRows) return null;
+  const gci = String(item?.gci || '').trim();
+  const ebm = String(item?.ebm || '').trim();
+  const cod = String(item?.codigo || '').trim();
+  return _dispoRows.find(r => (gci && String(r.gci||'').trim() === gci))
+      || _dispoRows.find(r => (ebm && String(r.ebm||'').trim() === ebm))
+      || _dispoRows.find(r => (cod && String(r.codigo||'').trim() === cod))
+      || null;
+}
+
+// Compara a Prev. Faturamento gravada no pedido com a atual do DISPO.
+// Retorna {mudou:true, de, para} se houver diferença, senão {mudou:false}.
+function checkPrevFaturamentoMudou(item){
+  const atual = getDispoRowAtual(item);
+  if(!atual || !atual.dataEntrega) return { mudou:false };
+  const gravada = formatDate(item.prevFaturamento) || '—';
+  const atualFmt = formatDate(atual.dataEntrega) || '—';
+  if(gravada === '—' || atualFmt === '—' || gravada === atualFmt) return { mudou:false };
+  return { mudou:true, de:gravada, para:atualFmt };
 }
 
 function resolveNumDispo(item, gciMap){
