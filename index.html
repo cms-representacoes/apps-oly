@@ -40,6 +40,17 @@
     @media (min-width:640px){ .portal-card{ border-radius:20px; padding:16px 18px; min-height:128px; } }
     @media (min-width:1024px){ .portal-card{ border-radius:22px; padding:18px 20px; min-height:136px; } }
     .portal-card:active{ transform:scale(.98); }
+    .resumo-pill{
+      position:absolute; top:14px; right:14px; z-index:5;
+      display:flex; align-items:center; gap:6px;
+      background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.25);
+      border-radius:999px; padding:6px 12px 6px 10px;
+      font-size:11.5px; font-weight:700; color:#fff; cursor:pointer;
+      transition:background .15s, transform .15s;
+    }
+    .resumo-pill:hover{ background:rgba(255,255,255,.28); transform:translateY(-1px); }
+    .resumo-pill svg{ width:14px; height:14px; flex-shrink:0; }
+    .resumo-pill[hidden]{ display:none !important; }
     @media (hover:hover){ .portal-card:hover{ transform:translateY(-4px); } }
 
     .card-repasse{ background:linear-gradient(150deg,#3b6ef0 0%,#1d4cd8 48%,#0a2280 100%); border:1px solid rgba(120,170,255,.32); }
@@ -440,6 +451,11 @@
     <div class="w-full max-w-4xl grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-5 fade-up-3">
 
       <a href="https://cms-representacoes.github.io/apps-oly/repasses/" class="portal-card card-repasse focus-ring">
+        <span id="resumoRepassesBtn" class="resumo-pill admin-only" hidden
+          onclick="event.preventDefault(); event.stopPropagation(); window.location.href='https://cms-representacoes.github.io/apps-oly/admin/dashboard.html';">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>
+          Resumo
+        </span>
         <div class="portal-card-tag tag-repasse">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
           Repasses
