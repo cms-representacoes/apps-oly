@@ -1260,6 +1260,109 @@ async function excluirDaDispoJson(row){
   }
 }
 
+// ===== Edição inline de um produto da DISPO =====
+let _editProdutoNumOriginal = null;
+
+function abrirEditarProduto(num){
+  const row = STATE.dispoRows.find(r => String(r.num) === String(num));
+  if(!row){ showToast('Linha não encontrada.', 'error'); return; }
+  _editProdutoNumOriginal = String(row.num ?? '');
+
+  $('editarProdutoTitulo').textContent = `${row.produto || '—'} · ${row.cor || '—'}`;
+  $('editProduto').value = row.produto || '';
+  $('editCor').value = row.cor || '';
+  $('editCodigo').value = row.codigo || '';
+  $('editGci').value = row.gci || '';
+  $('editNum').value = row.num || '';
+  $('editFilial').value = row.filial || '';
+  $('editDataEntrega').value = row.dataEntrega || '';
+  $('editPedidoMae').value = row.pedidoMae || '';
+  $('editSaldo').value = row.saldo ?? 0;
+
+  // Grade: um campo numérico por tamanho já existente na linha
+  const gradeGrid = $('editGradeGrid');
+  const grade = row.grade || {};
+  gradeGrid.innerHTML = Object.keys(grade).map(tam => `
+    <div>
+      <label style="font-size:10px;font-weight:700;color:var(--muted);display:block;text-align:center">${safeHtml(tam)}</label>
+      <input type="number" min="0" data-tam="${safeHtml(tam)}" class="edit-grade-input"
+        value="${grade[tam] ?? ''}" placeholder="0"
+        style="width:100%;margin-top:2px;padding:6px 4px;border:1px solid var(--line);border-radius:8px;font-size:12px;text-align:center;background:var(--bg);color:var(--text)">
+    </div>
+  `).join('');
+
+  $('editarProdutoModal').style.display = 'flex';
+}
+
+function fecharEditarProduto(){
+  $('editarProdutoModal').style.display = 'none';
+  _editProdutoNumOriginal = null;
+}
+
+async function salvarEdicaoProduto(){
+  if(_editProdutoNumOriginal === null) return;
+  const row = STATE.dispoRows.find(r => String(r.num) === _editProdutoNumOriginal);
+  if(!row){ showToast('Linha não encontrada.', 'error'); return; }
+
+  const saldoNum = Number($('editSaldo').value);
+  if(Number.isNaN(saldoNum)){ showToast('Saldo DISPO precisa ser um número.', 'error'); return; }
+
+  const dataStr = $('editDataEntrega').value.trim();
+  if(dataStr && !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dataStr)){
+    showToast('Data inválida — use o formato DD/MM/AAAA.', 'error');
+    return;
+  }
+
+  // Monta a nova grade a partir dos campos exibidos
+  const novaGrade = {};
+  document.querySelectorAll('.edit-grade-input').forEach(inp=>{
+    const tam = inp.dataset.tam;
+    const v = inp.value.trim();
+    novaGrade[tam] = v === '' ? null : Number(v);
+  });
+
+  const btn = $('editarProdutoBtnSalvar');
+  const prevLabel = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Salvando...';
+
+  try{
+    // Atualiza só esta linha, mantendo o restante de STATE.dispoRows intacto
+    row.produto = $('editProduto').value.trim();
+    row.cor = $('editCor').value.trim();
+    row.codigo = $('editCodigo').value.trim();
+    row.gci = $('editGci').value.trim();
+    row.num = $('editNum').value.trim();
+    row.filial = $('editFilial').value.trim();
+    row.dataEntrega = dataStr;
+    row.pedidoMae = $('editPedidoMae').value.trim();
+    row.saldo = saldoNum;
+    row.grade = novaGrade;
+
+    const res = await workerFetch({
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'saveDispo', data: STATE.dispoRows.map(r => ({
+        num: r.num, ebm: r.ebm, gci: r.gci, filial: r.filial,
+        codigo: r.codigo, produto: r.produto, cor: r.cor,
+        dataEntrega: r.dataEntrega, pedidoMae: r.pedidoMae,
+        saldo: r.saldo, grade: r.grade || {}
+      }))})
+    });
+    if(!res.ok) throw new Error('Falha ao salvar');
+    const result = await res.json();
+    if(!result.success) throw new Error(result.error);
+
+    fecharEditarProduto();
+    renderDispo();
+    showToast(`"${row.produto}" atualizado.`, 'success');
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao salvar. Tente novamente.', 'error');
+  }finally{
+    btn.disabled = false; btn.textContent = prevLabel;
+  }
+}
+
 // ===== Seleção em lote da DISPO =====
 const _dispoSelecionados = new Set();
 function atualizarBulkBarDispo(){
@@ -1620,6 +1723,7 @@ function renderDispo(){
         </td>
         <td>
           <div class="btn-group">
+            <button class="icon-btn btn-editar-dispo" title="Editar dados do produto" onclick="abrirEditarProduto('${safeHtml(String(row.num||''))}')" style="color:var(--brand);border-color:var(--brand-soft)"><i class="fa-solid fa-pen" style="font-size:12px"></i></button>
             ${STATE.activeFilter === 'ocultos'
               ? `<button class="icon-btn reexibir btn-reexibir" data-gci="${safeHtml(String(row.gci||''))}" title="Reexibir"><i class="fa-solid fa-eye" style="font-size:12px"></i></button>`
               : STATE.activeFilter === 'finalizados'
@@ -2385,6 +2489,68 @@ loadDispo();
     </div>
   </div>
 </div>
+<!-- MODAL DE EDIÇÃO DE PRODUTO -->
+<div id="editarProdutoModal" style="position:fixed;inset:0;z-index:200;background:rgba(2,6,23,.55);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
+  <div style="width:100%;max-width:520px;margin-top:40px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px">
+      <div>
+        <div style="font-size:11px;font-weight:800;color:var(--brand);text-transform:uppercase;letter-spacing:.04em">Editar produto</div>
+        <div id="editarProdutoTitulo" style="font-size:17px;font-weight:900;color:var(--text)"></div>
+      </div>
+      <button onclick="fecharEditarProduto()" style="border:0;background:transparent;color:var(--muted);font-size:24px;cursor:pointer;line-height:1">&times;</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted)">Produto</label>
+        <input id="editProduto" type="text" style="width:100%;margin-top:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted)">Cor</label>
+        <input id="editCor" type="text" style="width:100%;margin-top:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted)">Código</label>
+        <input id="editCodigo" type="text" style="width:100%;margin-top:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted)">GCI</label>
+        <input id="editGci" type="text" style="width:100%;margin-top:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted)">Nº</label>
+        <input id="editNum" type="text" style="width:100%;margin-top:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted)">Filial</label>
+        <input id="editFilial" type="text" style="width:100%;margin-top:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted)">Prev. Faturamento (DD/MM/AAAA)</label>
+        <input id="editDataEntrega" type="text" placeholder="31/07/2026" style="width:100%;margin-top:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted)">Pedido Mãe</label>
+        <input id="editPedidoMae" type="text" style="width:100%;margin-top:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted)">Saldo DISPO</label>
+        <input id="editSaldo" type="number" style="width:100%;margin-top:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
+      </div>
+    </div>
+
+    <div style="margin-top:14px">
+      <label style="font-size:11px;font-weight:700;color:var(--muted)">Grade (quantidade por tamanho)</label>
+      <div id="editGradeGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;margin-top:6px"></div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+      <button id="editarProdutoBtnSalvar" onclick="salvarEdicaoProduto()" style="flex:1;min-width:140px;background:var(--brand);color:#fff;border:0;border-radius:999px;padding:11px;font-weight:800;font-size:14px;cursor:pointer">Salvar alterações</button>
+      <button onclick="fecharEditarProduto()" style="background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:11px 16px;font-weight:700;font-size:13px;cursor:pointer">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL DE CONFIRMAÇÃO -->
 <div id="confirmModal" onclick="if(event.target===this)_confirmClose(false)" style="position:fixed;inset:0;z-index:210;background:rgba(2,6,23,.55);display:none;align-items:center;justify-content:center;padding:16px">
   <div style="width:100%;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:24px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
