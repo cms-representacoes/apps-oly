@@ -187,11 +187,10 @@
   <!-- RANKING DE VENDEDORES -->
   <div class="block">
     <div class="block-head">
-      <h3>Ranking de vendedores</h3>
+      <h3>Vendedores</h3>
     </div>
     <div class="card">
       <div class="rank-col-head" style="gap:12px;padding-left:8px;padding-right:8px">
-        <div style="width:24px;flex-shrink:0"></div>
         <div style="width:38px;flex-shrink:0"></div>
         <div style="flex:1">Vendedor</div>
         <div style="width:72px;flex-shrink:0"></div>
@@ -199,22 +198,6 @@
         <div style="width:28px;flex-shrink:0"></div>
       </div>
       <div id="rankingList"></div>
-    </div>
-  </div>
-
-  <!-- PRODUTOS MAIS REPASSADOS -->
-  <div class="block">
-    <div class="block-head">
-      <h3>Produtos mais repassados</h3>
-      <span class="block-sub">pares aprovados no período</span>
-    </div>
-    <div class="card">
-      <div class="rank-col-head" style="padding-left:8px;padding-right:8px">
-        <div style="flex:1">Produto</div>
-        <div style="min-width:56px;text-align:right;flex-shrink:0">Qtde</div>
-      </div>
-      <div id="produtosRankList"></div>
-      <button class="btn-ver-mais hidden" id="btnMaisProdutos" onclick="expandirProdutos()">Ver mais produtos</button>
     </div>
   </div>
 
@@ -233,6 +216,22 @@
       <span class="block-sub" id="dispoCount" style="display:block;margin-bottom:10px"></span>
       <div id="dispoList"></div>
       <button class="btn-ver-mais hidden" id="btnMaisDispo" onclick="expandirDispo()">Ver mais produtos</button>
+    </div>
+  </div>
+
+  <!-- PRODUTOS MAIS REPASSADOS -->
+  <div class="block">
+    <div class="block-head">
+      <h3>Produtos mais repassados</h3>
+      <span class="block-sub">pares aprovados no período</span>
+    </div>
+    <div class="card">
+      <div class="rank-col-head" style="padding-left:8px;padding-right:8px">
+        <div style="flex:1">Produto</div>
+        <div style="min-width:56px;text-align:right;flex-shrink:0">Qtde</div>
+      </div>
+      <div id="produtosRankList"></div>
+      <button class="btn-ver-mais hidden" id="btnMaisProdutos" onclick="expandirProdutos()">Ver mais produtos</button>
     </div>
   </div>
 
@@ -442,7 +441,6 @@ function renderRanking(orders){
     const pct=Math.round(d.pares/maxPares*100);
     const slotId=`vendSlot-${nome.replace(/[^A-Z0-9]/gi,'')}`;
     return`<div class="rank-row${i%2?' row-alt':''}" style="cursor:default">
-      <div class="rank-pos">${i+1}</div>
       <div class="rank-avatar">${iniciais(nome)}</div>
       <div class="rank-info">
         <div class="rank-name">${nome}</div>
@@ -552,7 +550,6 @@ function renderProdutosRankingLista(){
     const saldoTxt = p.saldo===null ? '—' : (p.saldo<=0 ? 'Esgotado' : `${fmt(p.saldo)} em estoque`);
     const saldoCls = p.saldo===null ? 'chip-off' : (p.saldo<=0 ? 'sit-crit' : (p.saldo<=12 ? 'sit-low' : 'sit-ok'));
     return`<div class="rank-row${i%2?' row-alt':''}" style="cursor:default">
-      <div class="rank-pos">${i+1}</div>
       <div class="rank-info">
         <div class="rank-name">${p.produto}</div>
         <div class="rank-sub">${p.cor||'—'}</div>
@@ -631,7 +628,6 @@ function renderDispoLista(){
     const pct = Math.max(2, Math.round(p.saldoTotal/max*100));
     const slotId=`dispoSlot-${i}-${p.produto.replace(/[^A-Z0-9]/gi,'')}`;
     return`<div class="rank-row${i%2?' row-alt':''}" style="cursor:default">
-      <div class="rank-pos">${i+1}</div>
       <div class="rank-info">
         <div class="rank-name">${p.produto}</div>
         <div class="rank-sub">${new Set(p.cores.map(c=>c.cor)).size} cor${new Set(p.cores.map(c=>c.cor)).size!==1?'es':''}</div>
