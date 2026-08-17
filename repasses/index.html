@@ -107,6 +107,8 @@
       .drawer{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
       .safe-bottom{padding-bottom:calc(1rem + env(safe-area-inset-bottom,0px)) !important}
 
+      .fab-cart{display:flex}
+
       .list-row-desktop{display:none}
       .list-row-mobile{display:grid;grid-template-columns:86px minmax(0,1fr) auto;gap:12px;align-items:center}
       #appHeader{position:fixed;left:0;right:0;top:0;z-index:70;width:100%;transition:transform .26s ease, opacity .18s ease;will-change:transform}
@@ -155,6 +157,29 @@
     .cli-hint.ok{color:#047857}
     .cli-hint.warn{color:#b45309}
     .cli-hint.muted{color:#94a3b8}
+
+    /* ── Sacola flutuante (só mobile, onde o header some ao rolar) ── */
+    .fab-cart{
+      display:none; /* liberado no @media mobile */
+      position:fixed; z-index:45;
+      left:calc(16px + env(safe-area-inset-left,0px));
+      bottom:calc(16px + env(safe-area-inset-bottom,0px));
+      width:58px; height:58px; border-radius:999px; border:none; padding:0;
+      align-items:center; justify-content:center;
+      background:linear-gradient(135deg,#22c55e 0%,#15803d 100%);
+      color:#fff; font-size:21px; cursor:pointer;
+      box-shadow:0 8px 24px rgba(21,128,61,.45), 0 2px 6px rgba(0,0,0,.15);
+      transition:transform .15s, box-shadow .15s;
+    }
+    .fab-cart:active{transform:scale(.93)}
+    .fab-cart-badge{
+      position:absolute; top:-3px; right:-3px;
+      min-width:23px; height:23px; padding:0 5px; border-radius:999px;
+      background:#fff; color:#15803d; border:2px solid #15803d;
+      font-size:11.5px; font-weight:900; line-height:1;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .fab-cart-badge.hidden{display:none}
 
     /* ── Botão limpar (×) dentro dos campos ── */
     .field-clear{position:relative; display:block}
@@ -371,6 +396,11 @@
       </div>
     </div>
   </main>
+
+  <button id="fabCart" class="fab-cart focus-ring" type="button" title="Abrir sacola" aria-label="Abrir sacola">
+    <i class="fa-solid fa-cart-shopping"></i>
+    <span id="fabCartBadge" class="fab-cart-badge hidden">0</span>
+  </button>
 
   <div id="cartDrawerWrap" class="hidden fixed inset-0 z-50">
     <div class="backdrop absolute inset-0" data-close-cart="true"></div>
@@ -1948,6 +1978,11 @@ function renderCart(){
   const items = Array.from(STATE.cart.values()).sort((a,b)=>String(a.produto).localeCompare(String(b.produto), 'pt-BR', { sensitivity:'base' }));
   $('cartCountBadge').classList.toggle('hidden', items.length === 0);
   $('cartCountBadge').textContent = items.length;
+  const fabBadge = $('fabCartBadge');
+  if(fabBadge){
+    fabBadge.classList.toggle('hidden', items.length === 0);
+    fabBadge.textContent = items.length;
+  }
   $('cartEmptyState').classList.toggle('hidden', items.length !== 0);
 
   const totalPacks = items.reduce((sum, item)=>sum + Number(item.amount || 0), 0);
@@ -2291,7 +2326,7 @@ function closeCheckout(){
 // é o código do preposto — o mesmo que já usamos para montar o pedido.
 const CLIENTES_CACHE_KEY = 'repasse_clientes_cache_v1';
 const CLIENTES_TTL_MS = 12 * 60 * 60 * 1000;
-const CLIENTES_STATE = { vendedor:'', lista:[], loadedFor:'', loading:false, matches:[], active:-1, bound:false };
+const CLIENTES_STATE = { vendedor:'', lista:[], loadedFor:'', loading:false, todos:false, matches:[], active:-1, bound:false };
 
 function clientePrepostoCodigo(){
   const session = getVendedorSession();
@@ -2317,38 +2352,92 @@ function gravarCacheClientes(vendedor, clientes){
   }catch(_){ /* cota cheia: segue sem cache, só fica mais lento */ }
 }
 
+// O CMS entra com o preposto já preenchido como "25846 - CMS", que não tem base
+// própria. Nesse caso (e em qualquer preposto ainda sem importação) ele passa a
+// buscar em todas as bases, marcando de qual vendedor é cada cliente.
+async function carregarTodasAsBases(){
+  const nomePorCodigo = {};
+  PREPOSTOS.forEach(p => {
+    const partes = splitPrepostoParts(p);
+    if(partes.codigo) nomePorCodigo[partes.codigo] = partes.nome;
+  });
+
+  let codigos = [];
+  try{
+    const list = await workerRequest('PATCH', { action:'listClientesVendedores' });
+    codigos = Array.isArray(list?.vendedores)
+      ? list.vendedores.map(v => String(v.codigo || '').trim()).filter(Boolean)
+      : [];
+  }catch(_){ codigos = []; }
+  if(!codigos.length) codigos = Object.keys(nomePorCodigo);
+
+  const partes = await Promise.all(codigos.map(async codigo => {
+    try{
+      const json = await workerRequest('PATCH', { action:'getClientes', vendedor: codigo });
+      const lista = Array.isArray(json?.clientes) ? json.clientes : [];
+      return lista.map(c => ({ ...c, _vend: nomePorCodigo[codigo] || codigo }));
+    }catch(_){ return []; }
+  }));
+  return partes.flat();
+}
+
+function aplicarListaClientes(lista, chave){
+  CLIENTES_STATE.lista = lista;
+  CLIENTES_STATE.todos = !!(lista.length && lista[0]._vend);
+  CLIENTES_STATE.loadedFor = chave;
+  atualizarPlaceholderCliente();
+  avaliarCodigoCliente();
+}
+
+// Mostra o estado da base já na abertura, sem depender do blur
+function atualizarPlaceholderCliente(){
+  const input = $('checkoutCliente');
+  if(!input) return;
+  if(CLIENTES_STATE.loading){ input.placeholder = 'Carregando clientes...'; return; }
+  const n = CLIENTES_STATE.lista.length;
+  input.placeholder = n
+    ? `Buscar entre ${n} clientes — código ou nome`
+    : 'Digite o código do cliente';
+}
+
 async function carregarClientesDoPreposto(){
+  const session = getVendedorSession();
+  const isCms = !!(session && session.nome === 'CMS');
   const vendedor = clientePrepostoCodigo();
-  if(!vendedor){
+  const chave = vendedor || (isCms ? 'todos' : '');
+
+  if(!chave){
     CLIENTES_STATE.vendedor = ''; CLIENTES_STATE.lista = [];
-    setHintCliente(null); return;
+    CLIENTES_STATE.loadedFor = ''; CLIENTES_STATE.todos = false;
+    setHintCliente(null); atualizarPlaceholderCliente(); return;
   }
   // loadedFor evita refazer a chamada para quem ainda não tem base importada
-  if(CLIENTES_STATE.loadedFor === vendedor) return;
+  if(CLIENTES_STATE.loadedFor === chave) return;
 
-  CLIENTES_STATE.vendedor = vendedor;
+  CLIENTES_STATE.vendedor = chave;
   CLIENTES_STATE.lista = [];
+  CLIENTES_STATE.todos = false;
 
-  const cached = lerCacheClientes(vendedor);
-  if(cached){
-    CLIENTES_STATE.lista = cached;
-    CLIENTES_STATE.loadedFor = vendedor;
-    avaliarCodigoCliente();
-    return;
-  }
+  const cached = lerCacheClientes(chave);
+  if(cached){ aplicarListaClientes(cached, chave); return; }
 
   CLIENTES_STATE.loading = true;
+  atualizarPlaceholderCliente();
   try{
-    const json = await workerRequest('PATCH', { action:'getClientes', vendedor });
-    if(CLIENTES_STATE.vendedor !== vendedor) return; // trocou de preposto no meio da busca
-    const lista = Array.isArray(json?.clientes) ? json.clientes : [];
-    CLIENTES_STATE.lista = lista;
-    CLIENTES_STATE.loadedFor = vendedor; // erro não marca, para tentar de novo depois
-    if(lista.length) gravarCacheClientes(vendedor, lista);
+    let lista = [];
+    if(vendedor){
+      const json = await workerRequest('PATCH', { action:'getClientes', vendedor });
+      lista = Array.isArray(json?.clientes) ? json.clientes : [];
+    }
+    if(!lista.length && isCms) lista = await carregarTodasAsBases();
+    if(CLIENTES_STATE.vendedor !== chave) return; // trocou de preposto no meio da busca
+    aplicarListaClientes(lista, chave);           // erro não marca, para tentar de novo depois
+    if(lista.length) gravarCacheClientes(chave, lista);
   }catch(err){
     console.warn('Base de clientes indisponível:', err);
   }finally{
     CLIENTES_STATE.loading = false;
+    atualizarPlaceholderCliente();
     avaliarCodigoCliente();
   }
 }
@@ -2400,7 +2489,7 @@ function renderSugestoesCliente(){
   const matches = CLIENTES_STATE.matches;
   if(!matches.length){ fecharSugestoesCliente(); return; }
   box.innerHTML = matches.map((c, i)=>{
-    const loc = [c.cidade, c.estado].filter(Boolean).join(' · ');
+    const loc = [c.cidade, c.estado, c._vend].filter(Boolean).join(' · ');
     return `<button type="button" class="cli-opt${i === CLIENTES_STATE.active ? ' active' : ''}" role="option" data-idx="${i}">
       <span class="cli-opt-cod">${safeHtml(c.codigo)}</span>
       <span class="cli-opt-txt">
@@ -2435,6 +2524,7 @@ function avaliarCodigoCliente(){
     setHintCliente('muted','Base de clientes deste preposto ainda não foi importada — digite o código normalmente.');
     return;
   }
+  const escopo = CLIENTES_STATE.todos ? 'em nenhuma base' : 'na sua base';
   if(!/^\d+$/.test(v)){
     setHintCliente('warn','Escolha um cliente da lista ou digite o código.');
     return;
@@ -2444,9 +2534,9 @@ function avaliarCodigoCliente(){
     const nomeEl = $('checkoutClienteNome');
     if(nomeEl && !nomeEl.value.trim()) nomeEl.value = String(achado.nome || '');
     const loc = [achado.cidade, achado.estado].filter(Boolean).join('/');
-    setHintCliente('ok', `${achado.nome || ''}${loc ? ` · ${loc}` : ''}`);
+    setHintCliente('ok', `${achado.nome || ''}${loc ? ` · ${loc}` : ''}${achado._vend ? ` · ${achado._vend}` : ''}`);
   }else{
-    setHintCliente('warn','Cliente sem cadastro na sua base — o pedido segue normalmente.');
+    setHintCliente('warn', `Cliente sem cadastro ${escopo} — o pedido segue normalmente.`);
   }
 }
 
@@ -2554,6 +2644,7 @@ function initClienteAutocomplete(){
       CLIENTES_STATE.vendedor = '';
       CLIENTES_STATE.lista = [];
       CLIENTES_STATE.loadedFor = '';
+      CLIENTES_STATE.todos = false;
       fecharSugestoesCliente();
       carregarClientesDoPreposto();
     });
@@ -3274,6 +3365,7 @@ function bindEvents(){
   $('btnMultiGradeConfirm').addEventListener('click', confirmMultiGrade);
 
   $('btnOpenCart').addEventListener('click', openCart);
+  $('fabCart')?.addEventListener('click', openCart);
   $('btnOrders').addEventListener('click', openOrders);
   $('btnRefreshStock').addEventListener('click', ()=>refreshStockFromSource({ silent:false, reason:'manual', force:true }));
   $('btnGenerateCatalogPdf').addEventListener('click', openCatalogPdfModal);
