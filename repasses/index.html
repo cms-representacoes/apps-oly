@@ -99,10 +99,23 @@
       }
     }
     @media (max-width: 767px){
+      /* iOS dá zoom ao focar campo com fonte < 16px — e não desfaz ao sair */
+      input,select,textarea{font-size:16px !important}
+
+      /* Área segura: o viewport é viewport-fit=cover, então o app ocupa
+         o notch e a barra de gestos e precisa compensar por conta própria. */
+      .drawer{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+      .safe-bottom{padding-bottom:calc(1rem + env(safe-area-inset-bottom,0px)) !important}
+
       .list-row-desktop{display:none}
       .list-row-mobile{display:grid;grid-template-columns:86px minmax(0,1fr) auto;gap:12px;align-items:center}
       #appHeader{position:fixed;left:0;right:0;top:0;z-index:70;width:100%;transition:transform .26s ease, opacity .18s ease;will-change:transform}
-      .header-shell{padding-top:10px !important;padding-bottom:8px !important}
+      .header-shell{
+        padding-top:calc(10px + env(safe-area-inset-top,0px)) !important;
+        padding-bottom:8px !important;
+        padding-left:calc(1rem + env(safe-area-inset-left,0px)) !important;
+        padding-right:calc(1rem + env(safe-area-inset-right,0px)) !important;
+      }
       .header-brand-logo,.cms-badge{height:34px;width:34px;border-radius:14px}
       #btnToggleFilters,#btnOrders,#btnRefreshStock,#btnNotifVendedor{width:44px;height:44px;padding:0;border-radius:999px}
       #btnOpenCart{width:44px;height:44px}
@@ -111,6 +124,56 @@
       body.mobile-header-ready main{padding-top:calc(var(--mobile-header-offset) + 12px) !important}
       body.filters-open #filtersPanel{top:108px;max-height:calc(100dvh - 122px)}
     }
+    /* ── Autocomplete de cliente (checkout) ── */
+    .cli-combo{position:relative}
+    .cli-sug{
+      position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:80;
+      background:#fff; border:1px solid #e2e8f0; border-radius:16px;
+      box-shadow:0 12px 32px rgba(15,23,42,.14);
+      max-height:236px; overflow-y:auto; padding:6px;
+    }
+    .cli-sug[hidden]{display:none}
+    .cli-opt{
+      display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+      padding:9px 10px; border-radius:11px; cursor:pointer;
+      border:none; background:none; font-family:inherit;
+    }
+    .cli-opt:hover,.cli-opt.active{background:#eef2ff}
+    .cli-opt-cod{
+      flex:0 0 auto; min-width:54px; text-align:center;
+      background:#e0e7ff; color:#3730a3; border-radius:7px; padding:3px 7px;
+      font-size:11px; font-weight:800; font-variant-numeric:tabular-nums;
+    }
+    .cli-opt-txt{min-width:0; flex:1}
+    .cli-opt-nome{display:block; font-size:12.5px; font-weight:800; color:#0f172a;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .cli-opt-loc{display:block; font-size:10.5px; font-weight:700; color:#94a3b8;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .cli-sug-info{padding:10px 12px; font-size:12px; font-weight:700; color:#94a3b8}
+    .cli-hint{margin-top:6px; font-size:11.5px; font-weight:700; line-height:1.35}
+    .cli-hint[hidden]{display:none}
+    .cli-hint.ok{color:#047857}
+    .cli-hint.warn{color:#b45309}
+    .cli-hint.muted{color:#94a3b8}
+
+    /* ── Botão limpar (×) dentro dos campos ── */
+    .field-clear{position:relative; display:block}
+    .field-clear > input, .field-clear > textarea{padding-right:40px}
+    .field-clear-btn{
+      position:absolute; right:10px; top:50%; transform:translateY(-50%);
+      width:24px; height:24px; border-radius:999px; border:none; padding:0; z-index:5;
+      display:none; align-items:center; justify-content:center;
+      background:#e2e8f0; color:#475569; cursor:pointer;
+      transition:background .15s, color .15s;
+    }
+    .field-clear-btn.show{display:flex}
+    .field-clear-btn:hover{background:#cbd5e1; color:#0f172a}
+    .field-clear-btn:active{transform:translateY(-50%) scale(.9)}
+    .field-clear-btn svg{width:12px; height:12px}
+    /* no textarea o × fica no topo, não no meio */
+    .field-clear.is-area .field-clear-btn{top:12px; transform:none}
+    .field-clear.is-area .field-clear-btn:active{transform:scale(.9)}
+
     @keyframes pulse-badge{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.2)} }
   
     /* ══ Design refresh — camada visual (não altera comportamento) ══ */
@@ -336,7 +399,7 @@
         <div id="cartItems" class="space-y-3"></div>
       </div>
 
-      <div class="border-t border-slate-200 bg-white px-5 py-4">
+      <div class="safe-bottom border-t border-slate-200 bg-white px-5 py-4">
         <div class="grid grid-cols-2 gap-3 text-sm">
           <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
             <div class="text-xs font-bold text-slate-500">Caixas / volumes</div>
@@ -380,7 +443,11 @@
               </div>
               <div>
                 <label class="text-xs font-bold text-slate-500">Cliente *</label>
-                <input id="checkoutCliente" inputmode="numeric" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold" placeholder="Digite o código do cliente" />
+                <div class="cli-combo">
+                  <input id="checkoutCliente" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="clienteSug" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold" placeholder="Digite o código ou o nome do cliente" />
+                  <div id="clienteSug" class="cli-sug" role="listbox" aria-label="Clientes encontrados" hidden></div>
+                </div>
+                <div id="clienteHint" class="cli-hint" hidden></div>
               </div>
               <div>
                 <label class="text-xs font-bold text-slate-500">Nome do cliente <span class="text-slate-400 font-semibold">(opcional)</span></label>
@@ -415,7 +482,7 @@
         </div>
       </div>
 
-      <div class="border-t border-slate-200 bg-white px-5 py-4">
+      <div class="safe-bottom border-t border-slate-200 bg-white px-5 py-4">
         <div class="flex flex-col sm:flex-row gap-3 sm:justify-end">
           <button id="btnBackToCart" class="focus-ring rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-extrabold text-slate-700">Voltar</button>
           <button id="btnSubmitOrder" class="focus-ring rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white">Confirmar pedido</button>
@@ -481,7 +548,7 @@
         </div>
         <div id="ordersList" class="space-y-3"></div>
       </div>
-      <div class="border-t border-slate-200 bg-white px-4 py-3 sm:hidden">
+      <div class="safe-bottom border-t border-slate-200 bg-white px-4 py-3 sm:hidden">
         <button data-close-orders="true"
           class="focus-ring w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-extrabold text-slate-700">
           <i class="fa-solid fa-xmark mr-2"></i>Fechar pedidos
@@ -504,7 +571,7 @@
             <button id="btnCloseConflictModal" title="Fechar" class="focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white"><i class="fa-solid fa-xmark"></i></button>
           </div>
         </div>
-        <div class="max-h-[70vh] overflow-y-auto px-5 py-4">
+        <div class="max-h-[70dvh] overflow-y-auto px-5 py-4">
           <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
             Alguns itens mudaram de saldo desde a montagem da sacola. Revise abaixo antes de prosseguir.
           </div>
@@ -681,7 +748,7 @@
             <button id="btnCloseMultiGrade" title="Fechar" class="focus-ring h-10 w-10 rounded-full border border-slate-200 bg-white"><i class="fa-solid fa-xmark"></i></button>
           </div>
         </div>
-        <div id="multiGradeList" class="px-5 py-4 space-y-3 max-h-[65vh] overflow-y-auto"></div>
+        <div id="multiGradeList" class="px-5 py-4 space-y-3 max-h-[65dvh] overflow-y-auto"></div>
         <div class="border-t border-slate-200 bg-slate-50 px-5 py-4">
           <button id="btnMultiGradeConfirm" class="focus-ring w-full rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white disabled:opacity-50 disabled:cursor-not-allowed">
             Adicionar selecionados à sacola
@@ -2210,10 +2277,289 @@ function openCheckout(){
   renderCheckoutSummary();
   $('checkoutDrawerWrap').classList.remove('hidden');
   requestAnimationFrame(()=> $('checkoutDrawer').classList.add('open'));
+  initClienteAutocomplete();
 }
 function closeCheckout(){
   $('checkoutDrawer').classList.remove('open');
+  fecharSugestoesCliente();
   setTimeout(()=> $('checkoutDrawerWrap').classList.add('hidden'), 240);
+}
+
+// ── AUTOCOMPLETE DE CLIENTE ───────────────────────────────────────────────────
+// Busca na base que o admin importa em /clientes/admin. O Worker guarda um
+// arquivo por vendedor (data/clientes/<codigo>.json), então a chave de consulta
+// é o código do preposto — o mesmo que já usamos para montar o pedido.
+const CLIENTES_CACHE_KEY = 'repasse_clientes_cache_v1';
+const CLIENTES_TTL_MS = 12 * 60 * 60 * 1000;
+const CLIENTES_STATE = { vendedor:'', lista:[], loadedFor:'', loading:false, matches:[], active:-1, bound:false };
+
+function clientePrepostoCodigo(){
+  const session = getVendedorSession();
+  const isCms = session && session.nome === 'CMS';
+  if(session && !isCms) return String(session.codigo || '').trim();
+  return normalizePreposto($('checkoutPreposto')?.value || '').codigo || '';
+}
+
+function lerCacheClientes(vendedor){
+  try{
+    const all = JSON.parse(localStorage.getItem(CLIENTES_CACHE_KEY) || '{}');
+    const entry = all[vendedor];
+    if(!entry || !Array.isArray(entry.clientes)) return null;
+    if(Date.now() - (entry.ts || 0) > CLIENTES_TTL_MS) return null;
+    return entry.clientes;
+  }catch(_){ return null; }
+}
+function gravarCacheClientes(vendedor, clientes){
+  try{
+    const all = JSON.parse(localStorage.getItem(CLIENTES_CACHE_KEY) || '{}');
+    all[vendedor] = { ts: Date.now(), clientes };
+    localStorage.setItem(CLIENTES_CACHE_KEY, JSON.stringify(all));
+  }catch(_){ /* cota cheia: segue sem cache, só fica mais lento */ }
+}
+
+async function carregarClientesDoPreposto(){
+  const vendedor = clientePrepostoCodigo();
+  if(!vendedor){
+    CLIENTES_STATE.vendedor = ''; CLIENTES_STATE.lista = [];
+    setHintCliente(null); return;
+  }
+  // loadedFor evita refazer a chamada para quem ainda não tem base importada
+  if(CLIENTES_STATE.loadedFor === vendedor) return;
+
+  CLIENTES_STATE.vendedor = vendedor;
+  CLIENTES_STATE.lista = [];
+
+  const cached = lerCacheClientes(vendedor);
+  if(cached){
+    CLIENTES_STATE.lista = cached;
+    CLIENTES_STATE.loadedFor = vendedor;
+    avaliarCodigoCliente();
+    return;
+  }
+
+  CLIENTES_STATE.loading = true;
+  try{
+    const json = await workerRequest('PATCH', { action:'getClientes', vendedor });
+    if(CLIENTES_STATE.vendedor !== vendedor) return; // trocou de preposto no meio da busca
+    const lista = Array.isArray(json?.clientes) ? json.clientes : [];
+    CLIENTES_STATE.lista = lista;
+    CLIENTES_STATE.loadedFor = vendedor; // erro não marca, para tentar de novo depois
+    if(lista.length) gravarCacheClientes(vendedor, lista);
+  }catch(err){
+    console.warn('Base de clientes indisponível:', err);
+  }finally{
+    CLIENTES_STATE.loading = false;
+    avaliarCodigoCliente();
+  }
+}
+
+function buscarClientes(termo){
+  const q = normalizeText(termo);
+  if(!q) return [];
+  const soDigitos = /^\d+$/.test(q);
+  const achados = [];
+  for(const c of CLIENTES_STATE.lista){
+    const cod = String(c.codigo ?? '').trim();
+    const nome = normalizeText(c.nome);
+    let score = -1;
+    if(soDigitos){
+      if(cod === q) score = 0;
+      else if(cod.startsWith(q)) score = 1;
+      else if(cod.includes(q)) score = 2;
+      else if(nome.includes(q)) score = 4;
+    }else{
+      if(nome.startsWith(q)) score = 0;
+      else if(nome.includes(q)) score = 2;
+    }
+    if(score >= 0) achados.push({ c, score });
+  }
+  achados.sort((a,b)=> a.score - b.score || String(a.c.nome||'').localeCompare(String(b.c.nome||'')));
+  return achados.slice(0, 8).map(x => x.c);
+}
+
+function setHintCliente(tipo, texto){
+  const el = $('clienteHint');
+  if(!el) return;
+  if(!tipo){ el.hidden = true; el.textContent = ''; return; }
+  el.className = `cli-hint ${tipo}`;
+  el.textContent = texto || '';
+  el.hidden = false;
+}
+
+function fecharSugestoesCliente(){
+  const box = $('clienteSug');
+  if(box){ box.hidden = true; box.innerHTML = ''; }
+  $('checkoutCliente')?.setAttribute('aria-expanded','false');
+  CLIENTES_STATE.matches = [];
+  CLIENTES_STATE.active = -1;
+}
+
+function renderSugestoesCliente(){
+  const box = $('clienteSug');
+  if(!box) return;
+  const matches = CLIENTES_STATE.matches;
+  if(!matches.length){ fecharSugestoesCliente(); return; }
+  box.innerHTML = matches.map((c, i)=>{
+    const loc = [c.cidade, c.estado].filter(Boolean).join(' · ');
+    return `<button type="button" class="cli-opt${i === CLIENTES_STATE.active ? ' active' : ''}" role="option" data-idx="${i}">
+      <span class="cli-opt-cod">${safeHtml(c.codigo)}</span>
+      <span class="cli-opt-txt">
+        <span class="cli-opt-nome">${safeHtml(c.nome || '—')}</span>
+        ${loc ? `<span class="cli-opt-loc">${safeHtml(loc)}</span>` : ''}
+      </span>
+    </button>`;
+  }).join('');
+  box.hidden = false;
+  $('checkoutCliente')?.setAttribute('aria-expanded','true');
+}
+
+function escolherClienteSugerido(idx){
+  const c = CLIENTES_STATE.matches[idx];
+  if(!c) return;
+  $('checkoutCliente').value = String(c.codigo ?? '');
+  const nomeEl = $('checkoutClienteNome');
+  if(nomeEl) nomeEl.value = String(c.nome ?? '');
+  fecharSugestoesCliente();
+  const loc = [c.cidade, c.estado].filter(Boolean).join('/');
+  setHintCliente('ok', `${c.nome || ''}${loc ? ` · ${loc}` : ''}`);
+}
+
+// Avalia o que está digitado sem bloquear nada: só informa.
+function avaliarCodigoCliente(){
+  const input = $('checkoutCliente');
+  if(!input) return;
+  const v = (input.value || '').trim();
+  if(!v){ setHintCliente(null); return; }
+  if(CLIENTES_STATE.loading){ setHintCliente('muted','Carregando a base de clientes...'); return; }
+  if(!CLIENTES_STATE.lista.length){
+    setHintCliente('muted','Base de clientes deste preposto ainda não foi importada — digite o código normalmente.');
+    return;
+  }
+  if(!/^\d+$/.test(v)){
+    setHintCliente('warn','Escolha um cliente da lista ou digite o código.');
+    return;
+  }
+  const achado = CLIENTES_STATE.lista.find(c => String(c.codigo ?? '').trim() === v);
+  if(achado){
+    const nomeEl = $('checkoutClienteNome');
+    if(nomeEl && !nomeEl.value.trim()) nomeEl.value = String(achado.nome || '');
+    const loc = [achado.cidade, achado.estado].filter(Boolean).join('/');
+    setHintCliente('ok', `${achado.nome || ''}${loc ? ` · ${loc}` : ''}`);
+  }else{
+    setHintCliente('warn','Cliente sem cadastro na sua base — o pedido segue normalmente.');
+  }
+}
+
+// ── BOTÃO LIMPAR (×) NOS CAMPOS DE TEXTO DO CHECKOUT ──────────────────────────
+const CAMPOS_LIMPAVEIS = ['checkoutCliente','checkoutClienteNome','checkoutObs'];
+
+function atualizarBotaoLimpar(el){
+  const btn = el?.parentElement?.querySelector(':scope > .field-clear-btn');
+  if(btn) btn.classList.toggle('show', String(el.value || '').length > 0);
+}
+
+function limparCampo(el){
+  if(!el) return;
+  el.value = '';
+  // dispara 'input' para o autocomplete reagir (fecha lista, limpa o aviso)
+  el.dispatchEvent(new Event('input', { bubbles:true }));
+  atualizarBotaoLimpar(el);
+  el.focus();
+}
+
+// Usado pelo Esc global: só assume o Esc se o campo tiver conteúdo,
+// senão deixa o comportamento normal (fechar o painel) seguir.
+function limparCampoPorEsc(target){
+  if(!target || !target.dataset || !target.dataset.clearReady) return false;
+  if(!String(target.value || '').length) return false;
+  limparCampo(target);
+  return true;
+}
+
+function montarBotaoLimpar(id){
+  const el = $(id);
+  if(!el || el.dataset.clearReady) return;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'field-clear' + (el.tagName === 'TEXTAREA' ? ' is-area' : '');
+  // a margem sai do campo e vai para o wrapper, para o × centralizar no campo
+  if(el.classList.contains('mt-1')){ el.classList.remove('mt-1'); wrap.classList.add('mt-1'); }
+  el.parentNode.insertBefore(wrap, el);
+  wrap.appendChild(el);
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'field-clear-btn';
+  btn.tabIndex = -1;
+  btn.title = 'Limpar';
+  btn.setAttribute('aria-label', 'Limpar campo');
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  btn.addEventListener('mousedown', (e)=> e.preventDefault()); // não tira o foco do campo
+  btn.addEventListener('click', ()=> limparCampo(el));
+  wrap.appendChild(btn);
+
+  el.dataset.clearReady = '1';
+  el.addEventListener('input', ()=> atualizarBotaoLimpar(el));
+  atualizarBotaoLimpar(el);
+}
+
+function initClienteAutocomplete(){
+  const input = $('checkoutCliente');
+  const box = $('clienteSug');
+  if(!input || !box) return;
+
+  if(!CLIENTES_STATE.bound){
+    CLIENTES_STATE.bound = true;
+    CAMPOS_LIMPAVEIS.forEach(montarBotaoLimpar);
+
+    input.addEventListener('input', ()=>{
+      CLIENTES_STATE.matches = buscarClientes(input.value);
+      CLIENTES_STATE.active = CLIENTES_STATE.matches.length ? 0 : -1;
+      renderSugestoesCliente();
+      setHintCliente(null);
+    });
+
+    input.addEventListener('keydown', (e)=>{
+      const n = CLIENTES_STATE.matches.length;
+      if(e.key === 'Escape'){ fecharSugestoesCliente(); return; }
+      if(!n) return;
+      if(e.key === 'ArrowDown'){
+        e.preventDefault();
+        CLIENTES_STATE.active = (CLIENTES_STATE.active + 1) % n;
+        renderSugestoesCliente();
+      }else if(e.key === 'ArrowUp'){
+        e.preventDefault();
+        CLIENTES_STATE.active = (CLIENTES_STATE.active - 1 + n) % n;
+        renderSugestoesCliente();
+      }else if(e.key === 'Enter' && CLIENTES_STATE.active >= 0){
+        e.preventDefault();
+        escolherClienteSugerido(CLIENTES_STATE.active);
+      }
+    });
+
+    input.addEventListener('blur', ()=>{
+      setTimeout(()=>{ fecharSugestoesCliente(); avaliarCodigoCliente(); }, 120);
+    });
+
+    // mousedown (e não click) para disparar antes do blur fechar a lista
+    box.addEventListener('mousedown', (e)=>{
+      const btn = e.target.closest('.cli-opt');
+      if(!btn) return;
+      e.preventDefault();
+      escolherClienteSugerido(Number(btn.dataset.idx));
+    });
+
+    // CMS troca de preposto → recarrega a base daquele vendedor
+    $('checkoutPreposto')?.addEventListener('change', ()=>{
+      CLIENTES_STATE.vendedor = '';
+      CLIENTES_STATE.lista = [];
+      CLIENTES_STATE.loadedFor = '';
+      fecharSugestoesCliente();
+      carregarClientesDoPreposto();
+    });
+  }
+
+  carregarClientesDoPreposto();
 }
 function openGradeSheet(item){
   $('gradeSheetTitle').textContent = item.produto;
@@ -2315,7 +2661,7 @@ function validateCheckout(){
   const prazo = $('checkoutPrazo').value;
   if(!preposto){ toast('Selecione o preposto'); return false; }
   if(!cliente){ toast('Preencha o cliente'); return false; }
-  if(!/^\d+$/.test(cliente)){ toast('Cliente deve conter apenas números'); return false; }
+  if(!/^\d+$/.test(cliente)){ toast('Escolha um cliente da lista ou digite o código'); return false; }
   if(!prazo){ toast('Selecione o prazo'); return false; }
   return true;
 }
@@ -2423,6 +2769,8 @@ async function submitOrder(options = {}){
     if(!getVendedorSession()) $('checkoutPreposto').value = '';
     $('checkoutCliente').value = '';
     if($('checkoutClienteNome')) $('checkoutClienteNome').value = '';
+    setHintCliente(null);
+    fecharSugestoesCliente();
     $('checkoutPrazo').value = '';
     $('checkoutCampanha').value = '';
     $('checkoutObs').value = '';
@@ -2890,6 +3238,13 @@ function bindEvents(){
   // ── ESC global ────────────────────────────────────────────────────────────
   document.addEventListener('keydown', (e)=>{
     if(e.key !== 'Escape') return;
+    // Esc em um campo com texto limpa o campo em vez de fechar o painel.
+    // Campo vazio segue o fluxo normal abaixo (fechar modal/drawer).
+    if(limparCampoPorEsc(e.target)){
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     e.preventDefault();
     if($('multiGradeModalWrap') && !$('multiGradeModalWrap').classList.contains('hidden')){ closeMultiGradeModal(); return; }
     if($('duplicateModalWrap') && !$('duplicateModalWrap').classList.contains('hidden')){ closeDuplicateModal(); return; }
