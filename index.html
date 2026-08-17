@@ -4,6 +4,11 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <meta name="theme-color" content="#0f172a">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Portal CMS">
   <title>Portal do Vendedor · CMS Representações</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -443,6 +448,100 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
+
+<!-- Splash animada: aparece só quando o portal é aberto pelo ícone do app
+     (modo standalone). Mesmo ritmo da splash do Performance de Vendas —
+     no lugar do gráfico de barras, um tênis desenhado a traço. -->
+<div id="appSplash" hidden>
+  <div class="spl-box">
+    <div class="spl-logo">CMS<span class="spl-shine"></span></div>
+    <div class="spl-name">CMS Representações</div>
+    <div class="spl-sub">Portal do Vendedor</div>
+    <div class="spl-shoe" aria-hidden="true">
+      <svg viewBox="0 0 128 64" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path class="spl-p spl-outline" stroke-width="3"
+          d="M12 44 C8 44 6 48 8 51 C10 54 14 54 18 54 L104 54 C110 54 114 50 113 44
+             C112 34 110 25 104 19 C98 13 89 12 83 17 C77 22 70 26 60 28
+             C46 31 28 33 20 37 C15 39 13 41 12 44 Z"/>
+        <path class="spl-p spl-midsole" stroke-width="2.2"
+          d="M9 46 C32 43 72 43 112 45"/>
+        <path class="spl-p spl-lace l1" stroke-width="2.2" d="M38 33 L46 29"/>
+        <path class="spl-p spl-lace l2" stroke-width="2.2" d="M48 31 L56 27"/>
+        <path class="spl-p spl-lace l3" stroke-width="2.2" d="M58 29 L66 24"/>
+        <path class="spl-p spl-swoosh" stroke-width="2.6"
+          d="M26 44 C44 41 62 36 80 28"/>
+      </svg>
+    </div>
+  </div>
+</div>
+<style>
+  #appSplash{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;
+    background:linear-gradient(160deg,#9B6BF0,#7C3AED 55%,#6D28D9);
+    opacity:1;transition:opacity .45s ease}
+  #appSplash.out{opacity:0;pointer-events:none}
+  #appSplash[hidden]{display:none}
+  .spl-box{display:flex;flex-direction:column;align-items:center;gap:10px;
+    animation:splIn .5s cubic-bezier(.22,1,.36,1) both}
+  .spl-logo{position:relative;overflow:hidden;width:92px;height:92px;border-radius:24px;
+    background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);
+    display:grid;place-items:center;color:#fff;font:700 30px "Space Grotesk",sans-serif;
+    letter-spacing:.02em;box-shadow:0 14px 40px rgba(0,0,0,.25);
+    animation:splPulse 1.6s ease-in-out .4s infinite}
+  .spl-shine{position:absolute;top:-30%;left:-80%;width:55%;height:160%;transform:rotate(18deg);
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);
+    animation:splShine 1.8s ease-in-out .6s infinite}
+  .spl-name{color:#fff;font:600 15px "Space Grotesk",sans-serif;letter-spacing:.01em}
+  .spl-sub{color:rgba(255,255,255,.75);font:500 11.5px "Inter",sans-serif;
+    letter-spacing:.14em;text-transform:uppercase}
+
+  /* ── O tênis: cada traço se desenha com stroke-dashoffset ── */
+  .spl-shoe{width:136px;margin-top:14px;color:#fff;
+    animation:splFlutua 2.4s ease-in-out 2.1s infinite}
+  .spl-shoe svg{display:block;width:100%;height:auto}
+  .spl-p{stroke-dasharray:var(--len,300);stroke-dashoffset:var(--len,300);
+    animation:splRisca .9s cubic-bezier(.22,1,.36,1) forwards}
+  .spl-outline{animation-duration:1.05s;animation-delay:.35s}
+  .spl-midsole{animation-duration:.5s;animation-delay:1s}
+  .spl-lace{animation-duration:.35s}
+  .spl-lace.l1{animation-delay:1.15s}
+  .spl-lace.l2{animation-delay:1.28s}
+  .spl-lace.l3{animation-delay:1.41s}
+  .spl-swoosh{animation-duration:.5s;animation-delay:1.55s}
+
+  @keyframes splRisca{to{stroke-dashoffset:0}}
+  @keyframes splFlutua{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+  @keyframes splIn{from{transform:scale(.86);opacity:0}to{transform:scale(1);opacity:1}}
+  @keyframes splPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+  @keyframes splShine{0%{left:-80%}55%,100%{left:130%}}
+  @media (prefers-reduced-motion:reduce){
+    .spl-logo,.spl-shine,.spl-shoe{animation:none}
+    .spl-p{animation:none;stroke-dashoffset:0}
+  }
+</style>
+<script>
+(function(){
+  // só no app instalado (Android: display-mode; iOS: navigator.standalone)
+  const standalone = window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+  if(!standalone) return;
+  const el = document.getElementById('appSplash');
+  el.hidden = false;
+  // mede cada traço para o desenho terminar exatamente junto com a animação
+  el.querySelectorAll('.spl-p').forEach(function(p){
+    try{ p.style.setProperty('--len', p.getTotalLength()); }catch(_){}
+  });
+  const inicio = Date.now();
+  const MIN = 2600;   // um ciclo completo da coreografia, sem pressa
+  const MAX = 6000;   // nunca fica presa
+  window.__hideSplash = function(){
+    const espera = Math.max(0, MIN - (Date.now() - inicio));
+    setTimeout(function(){ el.classList.add('out');
+      setTimeout(function(){ el.hidden = true; }, 500); }, espera);
+  };
+  setTimeout(function(){ window.__hideSplash && window.__hideSplash(); }, MAX);
+})();
+</script>
+
   <main class="min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 py-3 sm:py-5">
 
     <header class="header-bar fade-up-1">
@@ -903,6 +1002,9 @@
   });
 
   aplicarSessao();
+
+  // portal montado (login ou cards) — libera a splash
+  if(window.__hideSplash){ window.__hideSplash(); window.__hideSplash = null; }
 })();
 </script>
 
