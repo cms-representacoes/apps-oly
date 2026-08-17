@@ -67,18 +67,26 @@
     @keyframes availabilityPulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(249,115,22,.12)}50%{transform:scale(1.04);box-shadow:0 0 0 6px rgba(249,115,22,0)}}
     #appHeader{transition:transform .28s ease, box-shadow .2s ease}
     .header-shell{position:relative}
-    .header-row-single{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-    .header-brand{display:flex;align-items:center;gap:12px;min-width:0;flex:0 1 auto}
+    .header-row-single{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
+    .header-brand{display:flex;align-items:center;gap:12px;min-width:0;flex:0 0 auto}
+    .header-actions-scroll{
+      display:flex;align-items:center;gap:10px;flex:1;min-width:0;
+      overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none;padding:2px 2px 6px;
+    }
+    .header-actions-scroll::-webkit-scrollbar{display:none}
+    .header-actions-scroll > *{flex:0 0 auto}
     .header-brand-logo{height:44px;width:44px;overflow:hidden;border-radius:18px;border:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
     .cms-badge{
       height:44px;width:44px;border-radius:14px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
       background:linear-gradient(135deg,#5B69E8,#2836D4);color:#fff;
-      font-weight:800;font-size:12px;letter-spacing:.02em;
+      font-size:16px;
       box-shadow:0 4px 12px rgba(40,54,212,.28);
     }
     .header-brand-title{min-width:0}
     .header-secondary-actions{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
-    .search-shell{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:10px 14px;flex:1 1 200px;min-width:160px;max-width:380px}
+    .search-shell{display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:0;width:40px;height:40px;overflow:hidden;flex:0 0 auto;transition:all .2s ease}
+    .search-shell.expanded{flex:1 1 200px;width:auto;min-width:160px;max-width:380px;height:auto;padding:10px 14px;justify-content:flex-start}
+    .search-shell:not(.expanded) input,.search-shell:not(.expanded) #btnClearSearchTop{display:none}
     .icon-btn-mobile{display:inline-flex;align-items:center;justify-content:center}
     .header-handle{display:none}
     #appHeader.header-hidden-mobile{transform:translate3d(0, calc(-100% - 18px), 0) !important;opacity:0 !important;pointer-events:none !important}
@@ -95,12 +103,7 @@
       .list-row-mobile{display:grid;grid-template-columns:86px minmax(0,1fr) auto;gap:12px;align-items:center}
       #appHeader{position:fixed;left:0;right:0;top:0;z-index:70;width:100%;transition:transform .26s ease, opacity .18s ease;will-change:transform}
       .header-shell{padding-top:10px !important;padding-bottom:8px !important}
-      .header-row-single{gap:8px;row-gap:8px}
-      .header-brand{gap:10px;min-width:0;flex:1 1 100%;order:1}
       .header-brand-logo,.cms-badge{height:34px;width:34px;border-radius:14px}
-      .header-brand-title .truncate{font-size:17px;line-height:1.1;white-space:normal}
-      .search-shell{order:2;flex:1 1 100%;min-width:0;width:100%;max-width:none;padding:10px 12px;min-height:44px}
-      #searchInputTop{font-size:15px}
       #btnToggleFilters,#btnOrders,#btnRefreshStock,#btnNotifVendedor{width:44px;height:44px;padding:0;border-radius:999px}
       #btnOpenCart{width:44px;height:44px}
       .header-handle{display:block;width:56px;height:5px;border-radius:999px;background:#dbe1ea;margin:8px auto 0;box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
@@ -170,7 +173,7 @@
     <div class="header-shell mx-auto max-w-7xl px-4 sm:px-6 py-4">
       <div class="header-row-single">
         <div class="header-brand">
-          <span class="cms-badge">CMS</span>
+          <span class="cms-badge"><i class="fa-solid fa-arrow-right-arrow-left"></i></span>
           <div class="header-brand-title min-w-0">
             <div class="truncate text-sm sm:text-base font-extrabold">Repasses</div>
             <div class="truncate text-[11px] font-bold text-slate-400">Olympikus · Under Armour</div>
@@ -178,48 +181,55 @@
           </div>
         </div>
 
-        <button id="btnToggleFilters" title="Filtros" class="focus-ring icon-btn-mobile inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">
-          <i class="fa-solid fa-sliders"></i>
-          <span class="hidden sm:inline">Filtros</span>
-        </button>
+        <div class="header-actions-scroll">
+          <button id="btnToggleFilters" title="Filtros" class="focus-ring icon-btn-mobile inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">
+            <i class="fa-solid fa-sliders"></i>
+            <span class="hidden sm:inline">Filtros</span>
+          </button>
 
-        <div class="search-shell">
-          <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
-          <input id="searchInputTop" class="focus-ring w-full bg-transparent text-sm outline-none placeholder:text-slate-400" placeholder="Buscar produto, código ou cor" />
+          <div class="search-shell" id="searchShell">
+            <button id="btnSearchToggle" title="Buscar" aria-label="Buscar" class="focus-ring flex-shrink-0 flex items-center justify-center text-slate-400" style="width:20px">
+              <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+            <input id="searchInputTop" class="focus-ring w-full bg-transparent text-sm outline-none placeholder:text-slate-400" placeholder="Buscar produto, código ou cor" />
+            <button id="btnClearSearchTop" title="Limpar (Esc)" class="focus-ring hidden flex-shrink-0 text-slate-400 hover:text-slate-600">
+              <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+          </div>
+
+          <button id="btnNotifVendedor" class="focus-ring relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700" title="Novidades" aria-label="Novidades">
+            <i class="fa-solid fa-bell text-sm"></i>
+            <span id="badgeNotifVendedor" class="hidden absolute -top-2 -right-2 min-w-[20px] h-[20px] px-1 bg-emerald-600 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white" style="animation:pulse-badge 1s infinite">0</span>
+          </button>
+
+          <button id="btnOrders" class="focus-ring inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700" aria-label="Meus pedidos" title="Meus pedidos">
+            <i class="fa-regular fa-rectangle-list text-sm"></i>
+            <span class="hidden sm:inline">Meus pedidos</span>
+          </button>
+
+          <button id="btnRefreshStock" class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-700" aria-label="Atualizar saldo" title="Atualizar saldo">
+            <i class="fa-solid fa-rotate text-sm"></i>
+          </button>
+
+          <a href="https://cms-representacoes.github.io/apps-oly/"
+            class="focus-ring hidden sm:inline-flex h-9 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-3 text-sm font-bold text-slate-600 hover:bg-slate-50"
+            title="Voltar ao Portal">
+            <i class="fa-solid fa-arrow-left text-xs"></i>
+            <span>Portal</span>
+          </a>
+          <a href="https://cms-representacoes.github.io/apps-oly/"
+            class="focus-ring inline-flex sm:hidden h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+            title="Voltar ao Portal" aria-label="Voltar ao Portal">
+            <i class="fa-solid fa-arrow-left text-sm"></i>
+          </a>
+
+          <button id="btnOpenCart" title="Sacola" aria-label="Sacola"
+            class="focus-ring relative inline-flex h-11 w-11 items-center justify-center rounded-full text-white"
+            style="background:linear-gradient(135deg,#5B69E8,#2836D4);box-shadow:0 4px 14px rgba(40,54,212,.35)">
+            <i class="fa-solid fa-cart-shopping"></i>
+            <span id="cartCountBadge" class="hidden absolute -top-1.5 -right-1.5 min-w-[20px] h-[20px] px-1 rounded-full bg-white text-[var(--brand)] text-[11px] font-extrabold flex items-center justify-center border-2 border-white shadow">0</span>
+          </button>
         </div>
-
-        <button id="btnNotifVendedor" class="focus-ring relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700" title="Novidades" aria-label="Novidades">
-          <i class="fa-solid fa-bell text-sm"></i>
-          <span id="badgeNotifVendedor" class="hidden absolute -top-2 -right-2 min-w-[20px] h-[20px] px-1 bg-emerald-600 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white" style="animation:pulse-badge 1s infinite">0</span>
-        </button>
-
-        <button id="btnOrders" class="focus-ring inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700" aria-label="Meus pedidos" title="Meus pedidos">
-          <i class="fa-regular fa-rectangle-list text-sm"></i>
-          <span class="hidden sm:inline">Meus pedidos</span>
-        </button>
-
-        <button id="btnRefreshStock" class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-700" aria-label="Atualizar saldo" title="Atualizar saldo">
-          <i class="fa-solid fa-rotate text-sm"></i>
-        </button>
-
-        <a href="https://cms-representacoes.github.io/apps-oly/"
-          class="focus-ring hidden sm:inline-flex h-9 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-3 text-sm font-bold text-slate-600 hover:bg-slate-50"
-          title="Voltar ao Portal">
-          <i class="fa-solid fa-arrow-left text-xs"></i>
-          <span>Portal</span>
-        </a>
-        <a href="https://cms-representacoes.github.io/apps-oly/"
-          class="focus-ring inline-flex sm:hidden h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-          title="Voltar ao Portal" aria-label="Voltar ao Portal">
-          <i class="fa-solid fa-arrow-left text-sm"></i>
-        </a>
-
-        <button id="btnOpenCart" title="Sacola" aria-label="Sacola"
-          class="focus-ring relative inline-flex h-11 w-11 items-center justify-center rounded-full text-white"
-          style="background:linear-gradient(135deg,#5B69E8,#2836D4);box-shadow:0 4px 14px rgba(40,54,212,.35)">
-          <i class="fa-solid fa-cart-shopping"></i>
-          <span id="cartCountBadge" class="hidden absolute -top-1.5 -right-1.5 min-w-[20px] h-[20px] px-1 rounded-full bg-white text-[var(--brand)] text-[11px] font-extrabold flex items-center justify-center border-2 border-white shadow">0</span>
-        </button>
       </div>
 
       <div class="header-handle" aria-hidden="true"></div>
@@ -2969,7 +2979,46 @@ function bindEvents(){
     toast('Sacola limpa');
   });
 
-  $('searchInputTop').addEventListener('input', e=>{ STATE.search = e.target.value; applyFilters(); });
+  $('searchInputTop').addEventListener('input', e=>{
+    STATE.search = e.target.value;
+    $('btnClearSearchTop').classList.toggle('hidden', !e.target.value);
+    applyFilters();
+  });
+
+  // ── Busca colapsável: só a lupa por padrão, expande ao clicar ──────────────
+  (function(){
+    const shell = $('searchShell');
+    const input = $('searchInputTop');
+    const toggleBtn = $('btnSearchToggle');
+    const clearBtn = $('btnClearSearchTop');
+
+    function expandSearch(){
+      shell.classList.add('expanded');
+      input.focus();
+    }
+    function clearSearch(){
+      input.value = '';
+      STATE.search = '';
+      clearBtn.classList.add('hidden');
+      applyFilters();
+    }
+    toggleBtn.addEventListener('click', ()=>{
+      if(shell.classList.contains('expanded') && !input.value){
+        shell.classList.remove('expanded');
+      } else {
+        expandSearch();
+      }
+    });
+    input.addEventListener('keydown', e=>{
+      if(e.key === 'Escape'){ clearSearch(); shell.classList.remove('expanded'); input.blur(); }
+    });
+    clearBtn.addEventListener('click', ()=>{ clearSearch(); input.focus(); });
+    input.addEventListener('blur', ()=>{
+      // Dá um tempinho pro clique no X ainda funcionar antes de colapsar
+      setTimeout(()=>{ if(!input.value && document.activeElement !== input) shell.classList.remove('expanded'); }, 150);
+    });
+  })();
+
   $('filterCategoria').addEventListener('change', e=>{ STATE.filters.categoria = e.target.value; applyFilters(); });
   $('filterSegmento').addEventListener('change', e=>{ STATE.filters.segmento = e.target.value; applyFilters(); });
   $('filterGenero').addEventListener('change', e=>{ STATE.filters.genero = e.target.value; applyFilters(); });
@@ -2980,6 +3029,8 @@ function bindEvents(){
     STATE.search = '';
     STATE.filters = { categoria:'', segmento:'', genero:'', prevFat:'', sort:'produto' };
     $('searchInputTop').value = '';
+    $('btnClearSearchTop').classList.add('hidden');
+    $('searchShell').classList.remove('expanded');
     $('filterCategoria').value = '';
     $('filterSegmento').value = '';
     $('filterGenero').value = '';
