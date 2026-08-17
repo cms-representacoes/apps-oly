@@ -67,14 +67,18 @@
     @keyframes availabilityPulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(249,115,22,.12)}50%{transform:scale(1.04);box-shadow:0 0 0 6px rgba(249,115,22,0)}}
     #appHeader{transition:transform .28s ease, box-shadow .2s ease}
     .header-shell{position:relative}
-    .header-row-primary,.header-row-secondary{display:flex;align-items:center;gap:12px}
-    .header-row-primary{justify-content:space-between}
-    .header-brand{display:flex;align-items:center;gap:12px;min-width:0}
+    .header-row-single{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .header-brand{display:flex;align-items:center;gap:12px;min-width:0;flex:0 1 auto}
     .header-brand-logo{height:44px;width:44px;overflow:hidden;border-radius:18px;border:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+    .cms-badge{
+      height:44px;width:44px;border-radius:14px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(135deg,#5B69E8,#2836D4);color:#fff;
+      font-weight:800;font-size:12px;letter-spacing:.02em;
+      box-shadow:0 4px 12px rgba(40,54,212,.28);
+    }
     .header-brand-title{min-width:0}
     .header-secondary-actions{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
-    .search-shell{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:10px 14px;min-width:210px}
-    .header-segmented{display:inline-flex;align-items:center;border:1px solid var(--line);background:#fff;border-radius:999px;padding:4px}
+    .search-shell{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:10px 14px;flex:1 1 200px;min-width:160px;max-width:380px}
     .icon-btn-mobile{display:inline-flex;align-items:center;justify-content:center}
     .header-handle{display:none}
     #appHeader.header-hidden-mobile{transform:translate3d(0, calc(-100% - 18px), 0) !important;opacity:0 !important;pointer-events:none !important}
@@ -91,18 +95,14 @@
       .list-row-mobile{display:grid;grid-template-columns:86px minmax(0,1fr) auto;gap:12px;align-items:center}
       #appHeader{position:fixed;left:0;right:0;top:0;z-index:70;width:100%;transition:transform .26s ease, opacity .18s ease;will-change:transform}
       .header-shell{padding-top:10px !important;padding-bottom:8px !important}
-      .header-row-primary{gap:10px;margin-bottom:8px}
-      .header-brand{gap:10px;min-width:0;flex:1}
-      .header-brand-logo{height:34px;width:34px;border-radius:14px}
+      .header-row-single{gap:8px;row-gap:8px}
+      .header-brand{gap:10px;min-width:0;flex:1 1 100%;order:1}
+      .header-brand-logo,.cms-badge{height:34px;width:34px;border-radius:14px}
       .header-brand-title .truncate{font-size:17px;line-height:1.1;white-space:normal}
-      #btnOpenCart{padding:10px 14px;font-size:14px;gap:8px;min-height:42px;white-space:nowrap;flex:0 0 auto}
-      #btnOpenCart #cartCountBadge{display:inline-flex !important;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;font-size:11px}
-      .header-row-secondary{display:grid;grid-template-columns:44px minmax(0,1fr) auto 44px 44px;gap:8px;align-items:center}
-      .search-shell{min-width:0;width:100%;padding:10px 12px;min-height:44px}
+      .search-shell{order:2;flex:1 1 100%;min-width:0;width:100%;max-width:none;padding:10px 12px;min-height:44px}
       #searchInputTop{font-size:15px}
-      #btnToggleFilters,#btnOrders,#btnRefreshStock{width:44px;height:44px;padding:0;border-radius:999px}
-      .header-segmented{padding:3px;min-height:44px}
-      #btnViewCards,#btnViewList{padding:8px 14px;font-size:13px}
+      #btnToggleFilters,#btnOrders,#btnRefreshStock,#btnNotifVendedor{width:44px;height:44px;padding:0;border-radius:999px}
+      #btnOpenCart{width:44px;height:44px}
       .header-handle{display:block;width:56px;height:5px;border-radius:999px;background:#dbe1ea;margin:8px auto 0;box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
       .top-actions > *{flex:0 0 auto}
       body.mobile-header-ready main{padding-top:calc(var(--mobile-header-offset) + 12px) !important}
@@ -168,18 +168,40 @@
 
   <header id="appHeader" class="sticky top-0 z-40 border-b border-slate-200 glass">
     <div class="header-shell mx-auto max-w-7xl px-4 sm:px-6 py-4">
-      <div class="header-row-primary">
+      <div class="header-row-single">
         <div class="header-brand">
-          <div class="header-brand-logo">
-            <img id="brandLogo" alt="Logo" class="h-full w-full object-contain" />
-          </div>
+          <span class="cms-badge">CMS</span>
           <div class="header-brand-title min-w-0">
-            <div class="truncate text-lg sm:text-xl font-extrabold">Repasse Olympikus</div>
+            <div class="truncate text-sm sm:text-base font-extrabold">Repasses</div>
+            <div class="truncate text-[11px] font-bold text-slate-400">Olympikus · Under Armour</div>
             <div id="headerVendedorNome" class="text-xs font-bold text-[var(--brand)] hidden"></div>
           </div>
         </div>
 
-        <div class="flex items-center gap-2">
+        <button id="btnToggleFilters" title="Filtros" class="focus-ring icon-btn-mobile inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">
+          <i class="fa-solid fa-sliders"></i>
+          <span class="hidden sm:inline">Filtros</span>
+        </button>
+
+        <div class="search-shell">
+          <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
+          <input id="searchInputTop" class="focus-ring w-full bg-transparent text-sm outline-none placeholder:text-slate-400" placeholder="Buscar produto, código ou cor" />
+        </div>
+
+        <button id="btnNotifVendedor" class="focus-ring relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700" title="Novidades" aria-label="Novidades">
+          <i class="fa-solid fa-bell text-sm"></i>
+          <span id="badgeNotifVendedor" class="hidden absolute -top-2 -right-2 min-w-[20px] h-[20px] px-1 bg-emerald-600 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white" style="animation:pulse-badge 1s infinite">0</span>
+        </button>
+
+        <button id="btnOrders" class="focus-ring inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700" aria-label="Meus pedidos" title="Meus pedidos">
+          <i class="fa-regular fa-rectangle-list text-sm"></i>
+          <span class="hidden sm:inline">Meus pedidos</span>
+        </button>
+
+        <button id="btnRefreshStock" class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-700" aria-label="Atualizar saldo" title="Atualizar saldo">
+          <i class="fa-solid fa-rotate text-sm"></i>
+        </button>
+
         <a href="https://cms-representacoes.github.io/apps-oly/"
           class="focus-ring hidden sm:inline-flex h-9 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-3 text-sm font-bold text-slate-600 hover:bg-slate-50"
           title="Voltar ao Portal">
@@ -191,49 +213,12 @@
           title="Voltar ao Portal" aria-label="Voltar ao Portal">
           <i class="fa-solid fa-arrow-left text-sm"></i>
         </a>
-        <button id="btnOpenCart" class="focus-ring inline-flex items-center gap-2 rounded-full bg-[var(--brand)] px-4 py-2 text-sm font-extrabold text-white shadow-soft">
+
+        <button id="btnOpenCart" title="Sacola" aria-label="Sacola"
+          class="focus-ring relative inline-flex h-11 w-11 items-center justify-center rounded-full text-white"
+          style="background:linear-gradient(135deg,#5B69E8,#2836D4);box-shadow:0 4px 14px rgba(40,54,212,.35)">
           <i class="fa-solid fa-cart-shopping"></i>
-          <span>Sacola</span>
-          <span id="cartCountBadge" class="hidden rounded-full bg-white/18 px-2 py-0.5 text-xs">0</span>
-        </button>
-        <button id="btnVendedorLogout"
-          class="focus-ring hidden h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
-          title="Sair">
-          <i class="fa-solid fa-right-from-bracket text-sm"></i>
-        </button>
-        </div>
-      </div>
-
-      <div class="header-row-secondary">
-        <button id="btnToggleFilters" class="focus-ring icon-btn-mobile inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">
-          <i class="fa-solid fa-sliders"></i>
-          <span class="hidden sm:inline">Filtros</span>
-        </button>
-
-        <div class="search-shell">
-          <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
-          <input id="searchInputTop" class="focus-ring w-full bg-transparent text-sm outline-none placeholder:text-slate-400" placeholder="Buscar produto, código ou cor" />
-        </div>
-
-        <div class="header-segmented">
-          <button id="btnViewCards" class="focus-ring rounded-full px-3 py-2 text-sm font-bold text-slate-700 bg-slate-100">Cards</button>
-          <button id="btnViewList" class="focus-ring rounded-full px-3 py-2 text-sm font-bold text-slate-700">Lista</button>
-        </div>
-
-        <button id="btnNotifVendedor" class="focus-ring relative icon-btn-mobile inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700" title="Novidades">
-          <i class="fa-solid fa-bell"></i>
-          <span class="hidden sm:inline">Novidades</span>
-          <span id="badgeNotifVendedor" class="hidden absolute -top-2 -right-2 min-w-[20px] h-[20px] px-1 bg-emerald-600 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white" style="animation:pulse-badge 1s infinite">0</span>
-        </button>
-
-        <button id="btnOrders" class="focus-ring icon-btn-mobile inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700" aria-label="Meus pedidos" title="Meus pedidos">
-          <i class="fa-regular fa-rectangle-list"></i>
-          <span class="hidden sm:inline">Meus pedidos</span>
-        </button>
-
-        <button id="btnRefreshStock" class="focus-ring icon-btn-mobile inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-700" aria-label="Atualizar saldo" title="Atualizar saldo">
-          <i class="fa-solid fa-rotate"></i>
-          <span class="hidden sm:inline">Atualizar saldo</span>
+          <span id="cartCountBadge" class="hidden absolute -top-1.5 -right-1.5 min-w-[20px] h-[20px] px-1 rounded-full bg-white text-[var(--brand)] text-[11px] font-extrabold flex items-center justify-center border-2 border-white shadow">0</span>
         </button>
       </div>
 
@@ -258,7 +243,7 @@
               <div class="text-xs font-bold text-slate-500">Busca refinada</div>
               <div class="text-lg font-extrabold">Filtros</div>
             </div>
-            <button id="btnCloseFilters" class="focus-ring h-10 w-10 rounded-full border border-slate-200 lg:hidden"><i class="fa-solid fa-xmark"></i></button>
+            <button id="btnCloseFilters" title="Fechar" class="focus-ring h-10 w-10 rounded-full border border-slate-200 lg:hidden"><i class="fa-solid fa-xmark"></i></button>
           </div>
 
           <div class="mt-4 space-y-3">
@@ -325,7 +310,7 @@
             <div class="text-sm text-slate-500">Conferência</div>
             <div class="text-[30px] leading-none font-extrabold">Minha Sacola</div>
           </div>
-          <button class="focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white" data-close-cart="true"><i class="fa-solid fa-xmark"></i></button>
+          <button class="focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white" data-close-cart="true" title="Fechar"><i class="fa-solid fa-xmark"></i></button>
         </div>
       </div>
 
@@ -370,7 +355,7 @@
             <div class="text-sm text-slate-500">Etapa final</div>
             <div class="text-[30px] leading-none font-extrabold">Finalizar pedido</div>
           </div>
-          <button class="focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white" data-close-checkout="true"><i class="fa-solid fa-xmark"></i></button>
+          <button class="focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white" data-close-checkout="true" title="Fechar"><i class="fa-solid fa-xmark"></i></button>
         </div>
       </div>
 
@@ -440,7 +425,7 @@
             <div class="text-sm text-slate-500">Pedidos sincronizados</div>
             <div class="text-[30px] leading-none font-extrabold">Meus pedidos</div>
           </div>
-          <button class="focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white" data-close-orders="true"><i class="fa-solid fa-xmark"></i></button>
+          <button class="focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white" data-close-orders="true" title="Fechar"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <!-- Busca -->
         <div class="relative mt-3">
@@ -508,7 +493,7 @@
               <div class="text-sm text-slate-500">Revalidação de saldo</div>
               <div class="text-[28px] leading-none font-extrabold">Ajustes no pedido</div>
             </div>
-            <button id="btnCloseConflictModal" class="focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white"><i class="fa-solid fa-xmark"></i></button>
+            <button id="btnCloseConflictModal" title="Fechar" class="focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white"><i class="fa-solid fa-xmark"></i></button>
           </div>
         </div>
         <div class="max-h-[70vh] overflow-y-auto px-5 py-4">
@@ -552,7 +537,7 @@
           <div class="text-xs font-bold text-slate-500">Grade disponível</div>
           <div id="gradeSheetTitle" class="text-lg font-extrabold"></div>
         </div>
-        <button class="focus-ring h-10 w-10 rounded-full border border-slate-200 bg-white" data-close-grade="true"><i class="fa-solid fa-xmark"></i></button>
+        <button class="focus-ring h-10 w-10 rounded-full border border-slate-200 bg-white" data-close-grade="true" title="Fechar"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div id="gradeSheetContent" class="mt-4 flex flex-wrap gap-2"></div>
       <div id="gradeSheetMeta" class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-extrabold text-slate-700"></div>
@@ -570,7 +555,7 @@
               <div class="text-sm text-slate-500">Catálogo comercial</div>
               <div class="text-[26px] leading-none font-extrabold">Gerar PDF</div>
             </div>
-            <button id="btnCloseCatalogPdfModal" class="focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white"><i class="fa-solid fa-xmark"></i></button>
+            <button id="btnCloseCatalogPdfModal" title="Fechar" class="focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white"><i class="fa-solid fa-xmark"></i></button>
           </div>
         </div>
         <div class="px-5 py-4 space-y-4">
@@ -621,7 +606,7 @@
               <div class="text-sm text-slate-500">PDF concluído</div>
               <div class="text-[26px] leading-none font-extrabold">Compartilhar catálogo?</div>
             </div>
-            <button id="btnCloseCatalogShareModal" class="focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white"><i class="fa-solid fa-xmark"></i></button>
+            <button id="btnCloseCatalogShareModal" title="Fechar" class="focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white"><i class="fa-solid fa-xmark"></i></button>
           </div>
         </div>
         <div class="px-5 py-4 space-y-4">
@@ -685,7 +670,7 @@
               <div id="multiGradeTitle" class="text-xl font-extrabold"></div>
               <div id="multiGradeSubtitle" class="mt-1 text-sm text-slate-500"></div>
             </div>
-            <button id="btnCloseMultiGrade" class="focus-ring h-10 w-10 rounded-full border border-slate-200 bg-white"><i class="fa-solid fa-xmark"></i></button>
+            <button id="btnCloseMultiGrade" title="Fechar" class="focus-ring h-10 w-10 rounded-full border border-slate-200 bg-white"><i class="fa-solid fa-xmark"></i></button>
           </div>
         </div>
         <div id="multiGradeList" class="px-5 py-4 space-y-3 max-h-[65vh] overflow-y-auto"></div>
@@ -742,7 +727,7 @@ const STATE = {
   cart: new Map(),
   orders: [],
   ocultos: new Set(),
-  viewMode: localStorage.getItem(STORAGE_KEYS.view) || 'cards',
+  viewMode: 'cards', // visualização por Lista foi desativada — só Cards
   pendingConflictCheck: null,
   latestCatalogPdfBlob: null,
   latestCatalogPdfFileName: '',
@@ -1166,7 +1151,7 @@ async function refreshStockFromSource(options = {}){
     if(btn){
       btn.disabled = false;
       btn.classList.remove('opacity-70');
-      btn.innerHTML = prevHtml || '<i class="fa-solid fa-rotate"></i><span class="hidden sm:inline">Atualizar saldo</span>';
+      btn.innerHTML = prevHtml || '<i class="fa-solid fa-rotate text-sm"></i>';
     }
   }
 }
@@ -1724,10 +1709,8 @@ function quickAdd(item){
   toast('Adicionado à sacola');
 }
 function renderCatalog(){
-  $('cardsWrap').classList.toggle('hidden', STATE.viewMode !== 'cards');
-  $('listWrap').classList.toggle('hidden', STATE.viewMode !== 'list');
-  $('btnViewCards').classList.toggle('bg-slate-100', STATE.viewMode === 'cards');
-  $('btnViewList').classList.toggle('bg-slate-100', STATE.viewMode === 'list');
+  $('cardsWrap').classList.remove('hidden');
+  $('listWrap').classList.add('hidden');
 
   const wrap = $('cardsWrap');
   const listWrap = $('listWrap');
@@ -1801,9 +1784,9 @@ function renderCatalog(){
           <div class="mt-2 flex flex-wrap gap-2">${gradeHtml(displayItem.grade)}</div>
         </div>` : ''}
         <div class="mt-4 flex items-center justify-end gap-2">
-          <button class="btnMinus qty-btn focus-ring"><i class="fa-solid fa-minus"></i></button>
+          <button class="btnMinus qty-btn focus-ring" title="Diminuir"><i class="fa-solid fa-minus"></i></button>
           <div class="qty min-w-[28px] text-center text-lg font-extrabold">1</div>
-          <button class="btnPlus qty-btn focus-ring"><i class="fa-solid fa-plus"></i></button>
+          <button class="btnPlus qty-btn focus-ring" title="Aumentar"><i class="fa-solid fa-plus"></i></button>
         </div>
         <button class="btnAdd focus-ring mt-4 w-full rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white ${freeAmount <= 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${freeAmount <= 0 ? 'disabled' : ''}>
           ${freeAmount <= 0 ? 'Esgotado' : (displayItem.mode === 'boxed' ? `Adicionar ${displayItem.packSize} pares à sacola` : 'Adicionar à sacola')}
@@ -1940,7 +1923,7 @@ function renderCart(){
                   : `<span class="chip chip-gray"><i class="fa-solid fa-cubes-stacked"></i> ${item.amount} unidade${item.amount > 1 ? 's' : ''}</span>`}
               </div>
             </div>
-            <button class="btnRemove focus-ring h-10 w-10 rounded-full border border-slate-200 bg-white text-[var(--brand)]"><i class="fa-solid fa-trash"></i></button>
+            <button class="btnRemove focus-ring h-10 w-10 rounded-full border border-slate-200 bg-white text-[var(--brand)]" title="Remover da sacola"><i class="fa-solid fa-trash"></i></button>
           </div>
 
           ${item.grade.length ? `
@@ -1956,9 +1939,9 @@ function renderCart(){
                 : `${totalUnitsItem} unidade${totalUnitsItem > 1 ? 's' : ''} no total`}
             </div>
             <div class="flex items-center gap-2">
-              <button class="btnMinus qty-btn focus-ring"><i class="fa-solid fa-minus"></i></button>
+              <button class="btnMinus qty-btn focus-ring" title="Diminuir"><i class="fa-solid fa-minus"></i></button>
               <div class="min-w-[28px] text-center text-lg font-extrabold">${item.amount}</div>
-              <button class="btnPlus qty-btn focus-ring"><i class="fa-solid fa-plus"></i></button>
+              <button class="btnPlus qty-btn focus-ring" title="Aumentar"><i class="fa-solid fa-plus"></i></button>
             </div>
           </div>
         </div>
@@ -2472,8 +2455,6 @@ async function submitOrder(options = {}){
 }
 async function loadCatalog(){
   try{
-    $('brandLogo').src = DEFAULTS.logoPath;
-
     // Carrega produtos.json e dispo.json via Worker em paralelo
     const [prodRes, dispoRes, ocultosRes, rateioRes] = await Promise.all([
       fetch(WORKER_CONFIG.endpoint, {
@@ -2915,7 +2896,6 @@ function bindEvents(){
   $('btnLogin').addEventListener('click', handleLogin);
   $('loginSenha').addEventListener('keydown', (e)=>{ if(e.key === 'Enter') handleLogin(); });
   $('loginNome').addEventListener('keydown', (e)=>{ if(e.key === 'Enter') $('loginSenha').focus(); });
-  $('btnVendedorLogout').addEventListener('click', handleLogout);
 
   // ── ESC global ────────────────────────────────────────────────────────────
   document.addEventListener('keydown', (e)=>{
@@ -3017,8 +2997,6 @@ function bindEvents(){
   });
   $('btnCloseFilters').addEventListener('click', ()=>document.body.classList.remove('filters-open'));
 
-  $('btnViewCards').addEventListener('click', ()=>{ STATE.viewMode = 'cards'; saveViewMode(); renderCatalog(); });
-  $('btnViewList').addEventListener('click', ()=>{ STATE.viewMode = 'list'; saveViewMode(); renderCatalog(); });
   $('btnOrdersScopePendente').addEventListener('click', ()=>{ setOrdersScope('Pendente'); renderOrders(); });
   $('btnOrdersScopeAprovado').addEventListener('click', ()=>{ setOrdersScope('Aprovado'); renderOrders(); });
   $('btnOrdersScopeCancelado').addEventListener('click', ()=>{ setOrdersScope('Cancelado'); renderOrders(); });
