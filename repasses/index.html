@@ -106,6 +106,8 @@
          o notch e a barra de gestos e precisa compensar por conta própria. */
       .drawer{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
       .safe-bottom{padding-bottom:calc(1rem + env(safe-area-inset-bottom,0px)) !important}
+      /* drawers colam no topo da tela: sem isso o cabeçalho (e o X) some sob a barra de status */
+      .safe-top{padding-top:calc(1rem + env(safe-area-inset-top,0px)) !important}
 
       .list-row-desktop{display:none}
       .list-row-mobile{display:grid;grid-template-columns:86px minmax(0,1fr) auto;gap:12px;align-items:center}
@@ -406,13 +408,13 @@
   <div id="cartDrawerWrap" class="hidden fixed inset-0 z-50">
     <div class="backdrop absolute inset-0" data-close-cart="true"></div>
     <aside id="cartDrawer" class="drawer absolute right-0 top-0 bottom-0 w-full max-w-xl bg-[#f8f9fc] shadow-card flex flex-col">
-      <div class="border-b border-slate-200 bg-white px-5 py-4">
+      <div class="safe-top border-b border-slate-200 bg-white px-5 py-4">
         <div class="flex items-start justify-between gap-3">
           <div>
             <div class="text-sm text-slate-500">Conferência</div>
             <div class="text-[30px] leading-none font-extrabold">Minha Sacola</div>
           </div>
-          <button class="focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white" data-close-cart="true" title="Fechar"><i class="fa-solid fa-xmark"></i></button>
+          <button class="focus-ring h-11 w-11 rounded-full border border-slate-300 bg-slate-100 text-slate-700 text-lg" data-close-cart="true" title="Fechar"><i class="fa-solid fa-xmark"></i></button>
         </div>
       </div>
 
@@ -443,6 +445,10 @@
         </div>
         <div class="mt-3 grid gap-3">
           <button id="btnProceedOrder" class="focus-ring rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white">Continuar para pedido</button>
+          <button data-close-cart="true"
+            class="focus-ring sm:hidden rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-extrabold text-slate-700">
+            <i class="fa-solid fa-xmark mr-2"></i>Fechar sacola
+          </button>
         </div>
       </div>
     </aside>
@@ -451,13 +457,13 @@
   <div id="checkoutDrawerWrap" class="hidden fixed inset-0 z-[60]">
     <div class="backdrop absolute inset-0" data-close-checkout="true"></div>
     <aside id="checkoutDrawer" class="drawer absolute right-0 top-0 bottom-0 w-full max-w-2xl bg-[#f8f9fc] shadow-card flex flex-col">
-      <div class="border-b border-slate-200 bg-white px-5 py-4">
+      <div class="safe-top border-b border-slate-200 bg-white px-5 py-4">
         <div class="flex items-start justify-between gap-3">
           <div>
             <div class="text-sm text-slate-500">Etapa final</div>
             <div class="text-[30px] leading-none font-extrabold">Finalizar pedido</div>
           </div>
-          <button class="focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white" data-close-checkout="true" title="Fechar"><i class="fa-solid fa-xmark"></i></button>
+          <button class="focus-ring h-11 w-11 rounded-full border border-slate-300 bg-slate-100 text-slate-700 text-lg" data-close-checkout="true" title="Fechar"><i class="fa-solid fa-xmark"></i></button>
         </div>
       </div>
 
@@ -525,13 +531,13 @@
   <div id="ordersDrawerWrap" class="hidden fixed inset-0 z-50">
     <div class="backdrop absolute inset-0" data-close-orders="true"></div>
     <aside id="ordersDrawer" class="drawer absolute right-0 top-0 bottom-0 w-full max-w-2xl bg-[#f8f9fc] shadow-card flex flex-col">
-      <div class="border-b border-slate-200 bg-white px-5 py-4">
+      <div class="safe-top border-b border-slate-200 bg-white px-5 py-4">
         <div class="flex items-start justify-between gap-3">
           <div>
             <div class="text-sm text-slate-500">Pedidos sincronizados</div>
             <div class="text-[30px] leading-none font-extrabold">Meus pedidos</div>
           </div>
-          <button class="focus-ring h-11 w-11 rounded-full border border-slate-200 bg-white" data-close-orders="true" title="Fechar"><i class="fa-solid fa-xmark"></i></button>
+          <button class="focus-ring h-11 w-11 rounded-full border border-slate-300 bg-slate-100 text-slate-700 text-lg" data-close-orders="true" title="Fechar"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <!-- Busca -->
         <div class="relative mt-3">
