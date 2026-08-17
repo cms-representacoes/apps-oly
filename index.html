@@ -457,64 +457,95 @@
     <div class="spl-logo">CMS<span class="spl-shine"></span></div>
     <div class="spl-name">CMS Representações</div>
     <div class="spl-sub">Portal do Vendedor</div>
-    <div class="spl-shoe" aria-hidden="true">
-      <svg viewBox="0 0 128 64" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-        <path class="spl-p spl-outline" stroke-width="3"
-          d="M12 44 C8 44 6 48 8 51 C10 54 14 54 18 54 L104 54 C110 54 114 50 113 44
-             C112 34 110 25 104 19 C98 13 89 12 83 17 C77 22 70 26 60 28
-             C46 31 28 33 20 37 C15 39 13 41 12 44 Z"/>
-        <path class="spl-p spl-midsole" stroke-width="2.2"
-          d="M9 46 C32 43 72 43 112 45"/>
-        <path class="spl-p spl-lace l1" stroke-width="2.2" d="M38 33 L46 29"/>
-        <path class="spl-p spl-lace l2" stroke-width="2.2" d="M48 31 L56 27"/>
-        <path class="spl-p spl-lace l3" stroke-width="2.2" d="M58 29 L66 24"/>
-        <path class="spl-p spl-swoosh" stroke-width="2.6"
-          d="M26 44 C44 41 62 36 80 28"/>
+    <div class="spl-run" aria-hidden="true">
+      <svg viewBox="0 0 128 104" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <!-- linhas de velocidade, atrás do corredor -->
+        <path class="spl-p spl-vel v1" stroke-width="2.4" d="M10 34 L32 34"/>
+        <path class="spl-p spl-vel v2" stroke-width="2.4" d="M4 50 L28 50"/>
+        <path class="spl-p spl-vel v3" stroke-width="2.4" d="M12 64 L30 64"/>
+
+        <g class="spl-body">
+          <circle class="spl-p spl-head" cx="84" cy="18" r="9" stroke-width="3"/>
+          <path class="spl-p spl-torso" stroke-width="3.4" d="M78 29 L56 60"/>
+
+          <!-- braços giram no ombro -->
+          <g transform="translate(72,36)">
+            <g class="spl-limb spl-arm-a"><path class="spl-p" stroke-width="3" d="M0 0 L16 6 L26 -4"/></g>
+            <g class="spl-limb spl-arm-b"><path class="spl-p" stroke-width="3" d="M0 0 L-14 8 L-24 0"/></g>
+          </g>
+
+          <!-- pernas giram no quadril -->
+          <g transform="translate(56,60)">
+            <g class="spl-limb spl-leg-a"><path class="spl-p" stroke-width="3.2" d="M0 0 L16 14 L10 32"/></g>
+            <g class="spl-limb spl-leg-b"><path class="spl-p" stroke-width="3.2" d="M0 0 L-16 12 L-10 30"/></g>
+          </g>
+        </g>
       </svg>
     </div>
   </div>
 </div>
 <style>
+  /* Paleta do próprio portal: a splash dissolve na tela que ela abre */
   #appSplash{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;
-    background:linear-gradient(160deg,#9B6BF0,#7C3AED 55%,#6D28D9);
+    background:linear-gradient(160deg,#1e293b,#0f172a 55%,#020617);
     opacity:1;transition:opacity .45s ease}
   #appSplash.out{opacity:0;pointer-events:none}
   #appSplash[hidden]{display:none}
   .spl-box{display:flex;flex-direction:column;align-items:center;gap:10px;
     animation:splIn .5s cubic-bezier(.22,1,.36,1) both}
+  /* mesma geometria e fonte do Performance; sobre o marinho, o quadrado
+     usa o roxo do badge CMS do header em vez do branco translúcido */
   .spl-logo{position:relative;overflow:hidden;width:92px;height:92px;border-radius:24px;
-    background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);
+    background:linear-gradient(145deg,#a970ff 0%,#8b5cf6 48%,#7439e0 100%);
+    border:1px solid rgba(190,160,255,.30);
     display:grid;place-items:center;color:#fff;font:700 30px "Space Grotesk",sans-serif;
-    letter-spacing:.02em;box-shadow:0 14px 40px rgba(0,0,0,.25);
+    letter-spacing:.02em;box-shadow:0 14px 40px rgba(124,58,237,.45);
     animation:splPulse 1.6s ease-in-out .4s infinite}
   .spl-shine{position:absolute;top:-30%;left:-80%;width:55%;height:160%;transform:rotate(18deg);
     background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);
     animation:splShine 1.8s ease-in-out .6s infinite}
-  .spl-name{color:#fff;font:600 15px "Space Grotesk",sans-serif;letter-spacing:.01em}
-  .spl-sub{color:rgba(255,255,255,.75);font:500 11.5px "Inter",sans-serif;
+  .spl-name{color:#f1f5f9;font:600 15px "Space Grotesk",sans-serif;letter-spacing:.01em}
+  .spl-sub{color:#94a3b8;font:500 11.5px "Inter",sans-serif;
     letter-spacing:.14em;text-transform:uppercase}
 
-  /* ── O tênis: cada traço se desenha com stroke-dashoffset ── */
-  .spl-shoe{width:136px;margin-top:14px;color:#fff;
-    animation:splFlutua 2.4s ease-in-out 2.1s infinite}
-  .spl-shoe svg{display:block;width:100%;height:auto}
-  .spl-p{stroke-dasharray:var(--len,300);stroke-dashoffset:var(--len,300);
-    animation:splRisca .9s cubic-bezier(.22,1,.36,1) forwards}
-  .spl-outline{animation-duration:1.05s;animation-delay:.35s}
-  .spl-midsole{animation-duration:.5s;animation-delay:1s}
-  .spl-lace{animation-duration:.35s}
-  .spl-lace.l1{animation-delay:1.15s}
-  .spl-lace.l2{animation-delay:1.28s}
-  .spl-lace.l3{animation-delay:1.41s}
-  .spl-swoosh{animation-duration:.5s;animation-delay:1.55s}
+  /* ── O corredor: cada traço se desenha, depois os membros giram ── */
+  .spl-run{width:152px;margin-top:8px;color:#fff}
+  .spl-run svg{display:block;width:100%;height:auto}
+
+  /* fase 1 — desenho (stroke-dashoffset) */
+  .spl-p{stroke-dasharray:var(--len,200);stroke-dashoffset:var(--len,200);
+    animation:splRisca .5s cubic-bezier(.22,1,.36,1) forwards}
+  .spl-head{animation-delay:.35s}
+  .spl-torso{animation-delay:.55s}
+  .spl-arm-a .spl-p{animation-duration:.4s;animation-delay:.80s}
+  .spl-arm-b .spl-p{animation-duration:.4s;animation-delay:.92s}
+  .spl-leg-a .spl-p{animation-duration:.4s;animation-delay:1.04s}
+  .spl-leg-b .spl-p{animation-duration:.4s;animation-delay:1.16s}
+
+  /* fase 2 — linhas de velocidade entram em 1,55s (onde ficava a seta) */
+  .spl-vel{animation:splRisca .45s cubic-bezier(.22,1,.36,1) forwards,
+                    splVel .7s ease-in-out infinite;
+           animation-delay:1.55s, 2.1s}
+  .spl-vel.v2{animation-delay:1.65s, 2.22s}
+  .spl-vel.v3{animation-delay:1.75s, 2.34s}
+
+  /* fase 3 — corrida em loop a partir de 2,1s */
+  .spl-limb{transform-origin:0 0}
+  .spl-arm-a,.spl-leg-b{animation:splPassoA .62s ease-in-out 2.1s infinite}
+  .spl-arm-b,.spl-leg-a{animation:splPassoB .62s ease-in-out 2.1s infinite}
+  .spl-body{animation:splSalta .31s ease-in-out 2.1s infinite}
 
   @keyframes splRisca{to{stroke-dashoffset:0}}
-  @keyframes splFlutua{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+  @keyframes splPassoA{0%,100%{transform:rotate(-26deg)}50%{transform:rotate(26deg)}}
+  @keyframes splPassoB{0%,100%{transform:rotate(26deg)}50%{transform:rotate(-26deg)}}
+  @keyframes splSalta{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+  @keyframes splVel{0%,100%{opacity:.35;transform:translateX(0)}
+                    50%{opacity:1;transform:translateX(-7px)}}
   @keyframes splIn{from{transform:scale(.86);opacity:0}to{transform:scale(1);opacity:1}}
   @keyframes splPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
   @keyframes splShine{0%{left:-80%}55%,100%{left:130%}}
   @media (prefers-reduced-motion:reduce){
-    .spl-logo,.spl-shine,.spl-shoe{animation:none}
+    .spl-logo,.spl-shine,.spl-body,.spl-limb,.spl-vel{animation:none}
     .spl-p{animation:none;stroke-dashoffset:0}
   }
 </style>
