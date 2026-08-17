@@ -85,29 +85,43 @@
     .arrow-icon{ transition:transform .2s; }
     a:hover .arrow-icon, a:focus-visible .arrow-icon{ transform:translateX(6px); }
 
-    /* ── Header ── */
+    /* ── Header (barra única: logo + saudação + admin) ── */
     .header-bar{
       width:100%;
-      max-width:1280px;
+      max-width:56rem; /* alinhado à largura da grade de cards (max-w-4xl) */
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:10px;
-      margin-bottom:18px;
+      margin-bottom:12px;
       padding:0 4px;
     }
-    @media (min-width:640px){ .header-bar{ margin-bottom:22px; gap:14px; } }
-    .header-left{ display:flex;align-items:center;gap:10px;flex-wrap:wrap; }
-    @media (min-width:640px){ .header-left{ gap:14px;flex-wrap:nowrap; } }
-    .logo-group{ display:flex;align-items:center;gap:8px; }
-    @media (min-width:640px){ .logo-group{ gap:12px; } }
-    .logo-img{ height:38px;width:auto;object-fit:contain; }
-    @media (min-width:640px){ .logo-img{ height:48px; } }
-    @media (min-width:1024px){ .logo-img{ height:56px; } }
-    .logo-divider-h{ height:18px;width:1px;background:#334155; }
-    @media (min-width:640px){ .logo-divider-h{ height:20px; } }
-    .portal-label{ font-size:12px;font-weight:600;color:#94a3b8; white-space:nowrap; }
-    @media (min-width:640px){ .portal-label{ font-size:14px; } }
+    @media (min-width:640px){ .header-bar{ margin-bottom:16px; gap:14px; } }
+    .header-left{ display:flex;align-items:center;gap:9px;min-width:0;flex:1; }
+    @media (min-width:640px){ .header-left{ gap:12px; } }
+    .logo-group{ display:flex;align-items:center;gap:8px;flex:none; }
+    .logo-divider-h{ height:20px;width:1px;background:#334155;flex:none; }
+
+    /* ── Badge CMS — gradiente roxo liso (sem padrão atrás do texto) ── */
+    .cms-badge{
+      position:relative; flex:none;
+      width:36px; height:36px; border-radius:11px;
+      display:flex; align-items:center; justify-content:center;
+      background:linear-gradient(145deg,#a970ff 0%,#8b5cf6 48%,#7439e0 100%);
+      box-shadow:0 6px 18px rgba(124,58,237,.42), inset 0 1px 0 rgba(255,255,255,.24);
+    }
+    @media (min-width:640px){ .cms-badge{ width:40px;height:40px;border-radius:12px; } }
+    .cms-badge span{
+      font-size:12px; font-weight:900; color:#fff; letter-spacing:.02em; line-height:1;
+    }
+    @media (min-width:640px){ .cms-badge span{ font-size:13px; } }
+
+    /* Nome ao lado do badge */
+    .brand-wordmark{
+      font-size:15px; font-weight:800; color:#f1f5f9;
+      letter-spacing:.06em; line-height:1; white-space:nowrap;
+    }
+    @media (min-width:640px){ .brand-wordmark{ font-size:17px; } }
 
     /* ── Botão Admin (header) ── */
     .btn-admin{
@@ -115,20 +129,16 @@
       display:inline-flex;
       align-items:center;
       justify-content:center;
-      gap:6px;
-      height:40px;
-      min-width:40px;
-      padding:0 10px;
+      width:34px;
+      height:34px;
       border-radius:999px;
       background:rgba(245,158,11,.1);
       border:1px solid rgba(245,158,11,.3);
       color:#fbbf24;
-      font-size:12px;
-      font-weight:700;
       cursor:pointer;
       transition:all .15s ease;
     }
-    @media (min-width:640px){ .btn-admin{ height:42px; padding:0 14px; font-size:13px; gap:8px; } }
+    @media (min-width:640px){ .btn-admin{ width:38px;height:38px; } }
     .btn-admin:active{ transform:scale(.96); }
     @media (hover:hover){
       .btn-admin:hover{
@@ -137,10 +147,8 @@
         color:#fcd34d;
       }
     }
-    .btn-admin svg{ width:16px;height:16px;flex-shrink:0; }
-    @media (min-width:640px){ .btn-admin svg{ width:18px;height:18px; } }
-    .btn-admin-label{ display:none; }
-    @media (min-width:480px){ .btn-admin-label{ display:inline; } }
+    .btn-admin svg{ width:17px;height:17px;flex-shrink:0; }
+    @media (min-width:640px){ .btn-admin svg{ width:19px;height:19px; } }
 
     /* ── Modal Admin ── */
     .modal-overlay{
@@ -408,44 +416,60 @@
     .lg-btn:disabled{opacity:.6;cursor:default}
     .lg-note{font-size:11.5px;color:#64748b;margin-top:10px;text-align:center}
 
-    .welcome-bar{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:6px}
-    .welcome-txt{font-size:13.5px;color:#94a3b8}
-    .welcome-txt b{color:#e2e8f0;font-weight:800;font-size:17px}
-    .welcome-switch{font-size:12px;color:#7c8cff;background:none;border:none;cursor:pointer;text-decoration:underline;font-family:inherit}
+    /* Saudação compacta — o próprio chip troca de usuário */
+    .welcome-bar{display:flex;align-items:center;gap:9px;min-width:0}
+    .welcome-bar[hidden]{display:none !important}
+    .welcome-chip{
+      display:inline-flex;align-items:center;gap:7px;
+      max-width:100%;min-width:0;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:999px;
+      padding:5px 11px;
+      cursor:pointer;font-family:inherit;
+      transition:background .15s, border-color .15s, transform .15s;
+    }
+    @media (hover:hover){ .welcome-chip:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.18)} }
+    .welcome-chip:active{transform:scale(.97)}
+    .welcome-chip:focus-visible{outline:2px solid #a5b4fc;outline-offset:2px}
+    .welcome-txt{font-size:13px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+    @media (min-width:640px){ .welcome-txt{font-size:13.5px} }
+    .welcome-txt b{color:#e2e8f0;font-weight:800;font-size:14px}
+    @media (max-width:420px){ .welcome-hi{display:none} } /* em telas estreitas mostra só o nome */
+    .welcome-chip svg{width:13px;height:13px;color:#64748b;flex:none}
+    @media (hover:hover){ .welcome-chip:hover svg{color:#a5b4fc} }
     .admin-only[hidden]{display:none !important}
   </style>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <main class="min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 py-4 sm:py-6">
+  <main class="min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 py-3 sm:py-5">
 
     <header class="header-bar fade-up-1">
       <div class="header-left">
         <div class="logo-group">
-          <img src="./logo-olympikus.png" alt="Olympikus" class="logo-img" onerror="this.style.display='none'">
-          <img src="./logo-underarmour.png" alt="Under Armour" class="logo-img" onerror="this.style.display='none'">
+          <div class="cms-badge" role="img" aria-label="CMS Representações"><span>CMS</span></div>
+          <span class="brand-wordmark">PASS</span>
         </div>
-        <div class="logo-divider-h"></div>
-        <span class="portal-label">Portal do Vendedor</span>
+        <div class="welcome-bar" id="welcomeBar" hidden>
+          <div class="logo-divider-h"></div>
+          <button class="welcome-chip" id="btnTrocarUsuario" type="button" title="Trocar usuário" aria-label="Trocar usuário">
+            <span class="welcome-txt" id="welcomeTxt"></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          </button>
+        </div>
       </div>
 
-      <button id="btnAdmin" class="btn-admin admin-only" type="button" aria-label="Abrir área administrativa" hidden>
+      <button id="btnAdmin" class="btn-admin admin-only" type="button" title="Área administrativa" aria-label="Abrir área administrativa" hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
           <circle cx="12" cy="12" r="3"/>
         </svg>
-        <span class="btn-admin-label">Admin</span>
       </button>
     </header>
 
-    <div class="welcome-bar fade-up-2" id="welcomeBar" hidden style="margin-bottom:10px">
-      <span class="welcome-txt" id="welcomeTxt"></span>
-      <button class="welcome-switch" id="btnTrocarUsuario" type="button">Trocar usuário</button>
-    </div>
-
-    <div class="text-center mb-4 sm:mb-5 fade-up-2 px-2">
-      <h1 class="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight mb-1">Selecione o catálogo</h1>
-      <p class="text-slate-400 text-xs sm:text-sm">Escolha a área que deseja acessar</p>
+    <div class="text-center mb-3 sm:mb-4 fade-up-2 px-2">
+      <h1 class="text-lg sm:text-xl lg:text-2xl font-black tracking-tight">Selecione o catálogo</h1>
     </div>
 
     <div class="w-full max-w-4xl grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-5 fade-up-3">
@@ -509,7 +533,7 @@
 
     </div>
 
-    <footer class="mt-4 sm:mt-5 text-xs text-slate-600 fade-up-3 text-center px-4">
+    <footer class="mt-3 sm:mt-4 text-xs text-slate-600 fade-up-3 text-center px-4">
       CMS · Representações
     </footer>
 
@@ -866,7 +890,7 @@
       return;
     }
 
-    welcomeTxt.innerHTML = saudacao() + ', <b>' + tituloCaso(session.nome) + '</b> 👋';
+    welcomeTxt.innerHTML = '<span class="welcome-hi">' + saudacao() + ', </span><b>' + tituloCaso(session.nome) + '</b> 👋';
     welcomeBar.hidden = false;
 
     var isCms = session.nome === 'CMS';
