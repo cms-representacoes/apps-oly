@@ -134,6 +134,8 @@
       box-shadow:0 12px 32px rgba(15,23,42,.14);
       max-height:236px; overflow-y:auto; padding:6px;
     }
+    /* tablet e desktop têm altura sobrando — mostra mais linhas sem rolar */
+    @media (min-width:768px){ .cli-sug{max-height:340px} }
     .cli-sug[hidden]{display:none}
     .cli-opt{
       display:flex; align-items:center; gap:10px; width:100%; text-align:left;
@@ -2331,9 +2333,11 @@ function closeCheckout(){
 // Busca na base que o admin importa em /clientes/admin. O Worker guarda um
 // arquivo por vendedor (data/clientes/<codigo>.json), então a chave de consulta
 // é o código do preposto — o mesmo que já usamos para montar o pedido.
-const CLIENTES_CACHE_KEY = 'repasse_clientes_cache_v1';
+// v2: invalida os caches v1, que podiam ter guardado carga incompleta
+const CLIENTES_CACHE_KEY = 'repasse_clientes_cache_v2';
 const CLIENTES_TTL_MS = 12 * 60 * 60 * 1000;
-const CLIENTES_STATE = { vendedor:'', lista:[], loadedFor:'', loading:false, todos:false, matches:[], active:-1, bound:false };
+const LIMITE_SUGESTOES = 40;
+const CLIENTES_STATE = { vendedor:'', lista:[], loadedFor:'', loading:false, todos:false, falhas:[], matches:[], totalAchados:0, active:-1, bound:false };
 
 function clientePrepostoCodigo(){
   const session = getVendedorSession();
@@ -2378,20 +2382,32 @@ async function carregarTodasAsBases(){
   }catch(_){ codigos = []; }
   if(!codigos.length) codigos = Object.keys(nomePorCodigo);
 
-  const partes = await Promise.all(codigos.map(async codigo => {
+  // Falha de UMA base não pode passar por sucesso: quem cai aqui entra em
+  // `falhas`, e quem chama decide não cachear nem marcar como carregado.
+  const falhas = [];
+  async function buscarBase(codigo, tentativa){
     try{
       const json = await workerRequest('PATCH', { action:'getClientes', vendedor: codigo });
       const lista = Array.isArray(json?.clientes) ? json.clientes : [];
       return lista.map(c => ({ ...c, _vend: nomePorCodigo[codigo] || codigo }));
-    }catch(_){ return []; }
-  }));
-  return partes.flat();
+    }catch(err){
+      if(tentativa < 2) return buscarBase(codigo, tentativa + 1); // uma segunda chance
+      falhas.push(nomePorCodigo[codigo] || codigo);
+      console.warn('Base de clientes de ' + codigo + ' falhou:', err);
+      return [];
+    }
+  }
+
+  const partes = await Promise.all(codigos.map(c => buscarBase(c, 1)));
+  return { clientes: partes.flat(), falhas: falhas };
 }
 
-function aplicarListaClientes(lista, chave){
+function aplicarListaClientes(lista, chave, falhas){
   CLIENTES_STATE.lista = lista;
   CLIENTES_STATE.todos = !!(lista.length && lista[0]._vend);
-  CLIENTES_STATE.loadedFor = chave;
+  CLIENTES_STATE.falhas = falhas || [];
+  // carga incompleta não vira "carregado": na próxima abertura tenta de novo
+  CLIENTES_STATE.loadedFor = CLIENTES_STATE.falhas.length ? '' : chave;
   atualizarPlaceholderCliente();
   avaliarCodigoCliente();
 }
@@ -2432,14 +2448,20 @@ async function carregarClientesDoPreposto(){
   atualizarPlaceholderCliente();
   try{
     let lista = [];
+    let falhas = [];
     if(vendedor){
       const json = await workerRequest('PATCH', { action:'getClientes', vendedor });
       lista = Array.isArray(json?.clientes) ? json.clientes : [];
     }
-    if(!lista.length && isCms) lista = await carregarTodasAsBases();
+    if(!lista.length && isCms){
+      const r = await carregarTodasAsBases();
+      lista = r.clientes;
+      falhas = r.falhas;
+    }
     if(CLIENTES_STATE.vendedor !== chave) return; // trocou de preposto no meio da busca
-    aplicarListaClientes(lista, chave);           // erro não marca, para tentar de novo depois
-    if(lista.length) gravarCacheClientes(chave, lista);
+    aplicarListaClientes(lista, chave, falhas);   // erro não marca, para tentar de novo depois
+    // só guarda em cache o que veio completo — senão o erro dura 12h
+    if(lista.length && !falhas.length) gravarCacheClientes(chave, lista);
   }catch(err){
     console.warn('Base de clientes indisponível:', err);
   }finally{
@@ -2470,7 +2492,8 @@ function buscarClientes(termo){
     if(score >= 0) achados.push({ c, score });
   }
   achados.sort((a,b)=> a.score - b.score || String(a.c.nome||'').localeCompare(String(b.c.nome||'')));
-  return achados.slice(0, 8).map(x => x.c);
+  CLIENTES_STATE.totalAchados = achados.length;
+  return achados.slice(0, LIMITE_SUGESTOES).map(x => x.c);
 }
 
 function setHintCliente(tipo, texto){
@@ -2505,6 +2528,10 @@ function renderSugestoesCliente(){
       </span>
     </button>`;
   }).join('');
+  // avisa quando a lista foi cortada, para ninguém achar que "acabou"
+  if(CLIENTES_STATE.totalAchados > matches.length){
+    box.innerHTML += `<div class="cli-sug-info">Mostrando ${matches.length} de ${CLIENTES_STATE.totalAchados} — digite mais para refinar</div>`;
+  }
   box.hidden = false;
   $('checkoutCliente')?.setAttribute('aria-expanded','true');
 }
@@ -2525,7 +2552,15 @@ function avaliarCodigoCliente(){
   const input = $('checkoutCliente');
   if(!input) return;
   const v = (input.value || '').trim();
-  if(!v){ setHintCliente(null); return; }
+  if(!v){
+    if(CLIENTES_STATE.falhas.length){
+      setHintCliente('warn', 'Não carregou a base de ' + CLIENTES_STATE.falhas.join(', ')
+        + ' — feche e reabra a sacola para tentar de novo.');
+    }else{
+      setHintCliente(null);
+    }
+    return;
+  }
   if(CLIENTES_STATE.loading){ setHintCliente('muted','Carregando a base de clientes...'); return; }
   if(!CLIENTES_STATE.lista.length){
     setHintCliente('muted','Base de clientes deste preposto ainda não foi importada — digite o código normalmente.');
@@ -2652,6 +2687,7 @@ function initClienteAutocomplete(){
       CLIENTES_STATE.lista = [];
       CLIENTES_STATE.loadedFor = '';
       CLIENTES_STATE.todos = false;
+      CLIENTES_STATE.falhas = [];
       fecharSugestoesCliente();
       carregarClientesDoPreposto();
     });
