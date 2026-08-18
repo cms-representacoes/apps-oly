@@ -134,7 +134,9 @@
     .confirm-card.warning .confirm-icon{ background:#fef3c7; color:#a16207; }
     .confirm-card.info .confirm-icon{ background:#dbeafe; color:#1d4ed8; }
     .confirm-title{ font-size:17px; font-weight:800; margin-bottom:6px; }
-    .confirm-message{ font-size:13px; color:var(--muted); line-height:1.5; margin-bottom:16px; }
+    /* pre-line: a mensagem é montada com \n (ex.: lista de itens a excluir) e
+       o elemento usa textContent, então sem isto tudo viraria um bloco corrido */
+    .confirm-message{ font-size:13px; color:var(--muted); line-height:1.5; margin-bottom:16px; white-space:pre-line; }
     .confirm-require-label{ font-size:12px; color:var(--muted); margin-bottom:6px; }
     .confirm-require-input{
       width:100%; padding:10px 12px; border-radius:10px;
@@ -504,6 +506,11 @@
           <button onclick="verifyAllImages(true)" data-tip="Reverificar todas as imagens ignorando o cache de 12h"
             class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
             <i class="fa-solid fa-rotate text-xs"></i> Verificar imagens
+          </button>
+          <button onclick="limparSaldoBaixo()" data-tip="Excluir tudo que não é completo ou parcial (baixa planilha antes)"
+            class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors"
+            style="border-color:#fca5a5;background:#fef2f2;color:#b91c1c">
+            <i class="fa-solid fa-broom text-xs"></i> Limpar fora da vitrine
           </button>
           <button onclick="abrirBuscaImagens()" data-tip="Buscar automaticamente as imagens que faltam, no Trade Squash"
             class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors"
@@ -1462,6 +1469,117 @@ function toggleDark(){
 document.addEventListener('DOMContentLoaded', ()=>{
   if(localStorage.getItem('disp_dark')==='1') $('darkIcon').className = 'fa-solid fa-sun text-amber-400 text-xs';
 });
+
+// ── LIMPEZA: tudo que não entraria hoje na vitrine ───────────────────────────
+// A classificação age só na IMPORTAÇÃO (decide o bucket e se o item vem
+// marcado). Ela não mexe no que já está no disponibilidades.json — por isso
+// esta limpeza existe: aplica o MESMO critério ao que já foi importado.
+//
+// Regra: sobrevive quem é 'completo' ou 'parcial'. Todo o resto sai.
+//
+// Duas coisas que a classificação decide ANTES de olhar o tipo do produto, e
+// que por isso entram na faxina mesmo não sendo calçado nem confecção:
+//   • canal exclusivo (DTC/ML) — o próprio código diz "não vai pra vitrine"
+//   • PDV zerado — sem preço não há venda
+// Aparecem separados no resumo da confirmação, para você ver antes de aceitar.
+const LIMPEZA_GRUPOS = {
+  exclusivo:  'Canal exclusivo (DTC/ML)',
+  sem_preco:  'Sem preço (PDV zerado)',
+  acessorio:  `Acessórios/meias abaixo de ${ACESSORIO_MIN} un.`,
+  calcado:    'Calçados sem grade comercial',
+  confeccao:  'Confecções sem grade comercial',
+  outro:      'Grade não reconhecida'
+};
+
+function grupoDaLimpeza(classif){
+  if(classif.bucket === 'exclusivo') return 'exclusivo';
+  if(classif.bucket === 'sem_preco') return 'sem_preco';
+  if(classif.tipo === 'acessorio')   return 'acessorio';
+  if(classif.tipo === 'confeccao')   return 'confeccao';
+  if(['calcado_masc','calcado_fem','chinelo'].includes(classif.tipo)) return 'calcado';
+  return 'outro';
+}
+
+function itensForaDaVitrine(){
+  const alvos = [];
+  for(const item of STATE.itens){
+    const classif = classificarGrade(item);
+    if(classif.bucket === 'completo' || classif.bucket === 'parcial') continue;
+    alvos.push({ item, classif, grupo: grupoDaLimpeza(classif) });
+  }
+  return alvos;
+}
+
+async function limparSaldoBaixo(){
+  const alvos = itensForaDaVitrine();
+  if(!alvos.length){
+    showToast('Nenhum item fora do critério da vitrine.', 'info');
+    return;
+  }
+
+  // Resumo por motivo — é o que permite conferir antes de apagar
+  const porGrupo = {};
+  for(const a of alvos) porGrupo[a.grupo] = (porGrupo[a.grupo] || 0) + 1;
+  const resumo = Object.keys(LIMPEZA_GRUPOS)
+    .filter(g => porGrupo[g])
+    .map(g => `• ${porGrupo[g]} — ${LIMPEZA_GRUPOS[g]}`)
+    .join('\n');
+
+  const restantes = STATE.itens.length - alvos.length;
+  const ok = await confirmDialog({
+    title: 'Limpar itens fora da vitrine',
+    message:
+      `${alvos.length} de ${STATE.itens.length} item(ns) serão excluídos ` +
+      `permanentemente. Sobram ${restantes}.\n\n` +
+      `${resumo}\n\n` +
+      `Ficam apenas os classificados como COMPLETO ou PARCIAL.\n` +
+      `Uma planilha com todos os excluídos será baixada antes, ` +
+      `para você conseguir reimportar se precisar.`,
+    confirmLabel: 'Baixar planilha e excluir',
+    type: 'danger',
+    requireWord: 'LIMPAR'
+  });
+  if(!ok) return;
+
+  // Backup ANTES de apagar. O Worker não faz snapshot de disponibilidades.json
+  // (só de pedidos/dispo/produtos), então esta planilha é a rede de segurança
+  // mais direta — além do histórico de commits do GitHub.
+  try{
+    exportarFiltradoXlsx(alvos.map(a => a.item));
+  }catch(err){ // eslint-disable-line
+    console.error(err);
+    const seguir = await confirmDialog({
+      title: 'Falha ao gerar a planilha de backup',
+      message: 'Não consegui baixar o arquivo de segurança. Excluir mesmo assim?',
+      confirmLabel: 'Excluir sem backup',
+      type: 'danger',
+      requireWord: 'EXCLUIR'
+    });
+    if(!seguir) return;
+  }
+
+  const chaves = new Set(alvos.map(a => ocultarKey(a.item)));
+  const antes = STATE.itens.length;
+  STATE.itens = STATE.itens.filter(i => !chaves.has(ocultarKey(i)));
+
+  try{
+    const res = await workerFetch({
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'saveDisponibilidades', data: STATE.itens })
+    });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    STATE.lastSync = Date.now();
+    updateLastSyncLabel();
+    STATE.selecionados.clear();
+    showToast(`${antes - STATE.itens.length} item(ns) removido(s).`, 'success');
+    applyFilters();
+  }catch(err){
+    console.error(err);
+    // Não salvou: devolve o estado para não divergir do que está no servidor
+    showToast('Erro ao salvar — nada foi removido. Recarregando...', 'error');
+    loadData();
+  }
+}
 
 // ── BUSCA AUTOMÁTICA DE IMAGENS (Trade Squash) ───────────────────────────────
 // O trabalho pesado roda no Worker; aqui a gente só monta os lotes, mostra o
@@ -3686,10 +3804,13 @@ async function anlExecutarSalvar(itens){
 //   - CALÇADO MASCULINO: 38-43 todos OK → completo · falta 1 → parcial · 2+ → crítico
 //   - CALÇADO FEMININO: 34-39 todos OK → completo · falta 1 → parcial · 2+ → crítico
 //   - CONFECÇÃO: P, M, G todos OK → completo · 2 de 3 → parcial · <2 → crítico
-//   - ACESSÓRIOS (U): soma ≥ 6 → completo · senão → crítico
+//   - ACESSÓRIOS e MEIAS: soma ≥ 24 → completo · 12 a 23 → parcial · < 12 → crítico
 //   - PDV = 0 → bucket especial "sem preço"
 
 const SALDO_MIN = 5;
+// Piso de unidades para acessórios/meias entrarem no import.
+// Abaixo disso o item cai em "crítico" e não vem marcado por padrão.
+const ACESSORIO_MIN = 12;
 
 // Detecta o "tipo" de produto pelo padrão da grade
 // Retorna: 'calcado_masc' | 'calcado_fem' | 'chinelo' | 'confeccao' | 'acessorio' | 'outro'
@@ -3804,11 +3925,15 @@ function classificarGrade(item){
 
   if(tipo === 'acessorio'){
     // Soma TODAS as grades disponíveis (independente de quais sejam — 33/38, 39/44, U, etc)
-    // Mínimo: 24 unidades
+    // 24+ = completo · 12 a 23 = parcial · abaixo de 12 = crítico.
+    // O piso de 12 existe porque antes qualquer soma > 0 virava parcial, e
+    // parcial entra marcado por padrão no import — então uma peça avulsa
+    // era importada sem ninguém escolher.
     let soma = 0;
     for(const v of Object.values(grade)) soma += (Number(v)||0);
     if(soma >= 24) return { bucket:'completo', motivo:`${soma} unidades`, tipo };
-    if(soma > 0)   return { bucket:'parcial',  motivo:`Apenas ${soma} un. (mínimo 24)`, tipo };
+    if(soma >= ACESSORIO_MIN) return { bucket:'parcial', motivo:`${soma} un. (ideal 24)`, tipo };
+    if(soma > 0)   return { bucket:'critico', motivo:`Apenas ${soma} un. (mínimo ${ACESSORIO_MIN})`, tipo };
     return { bucket:'critico', motivo:'Sem saldo', tipo };
   }
 
