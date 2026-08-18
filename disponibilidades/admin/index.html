@@ -158,9 +158,13 @@
     .confirm-card.danger .confirm-btn.primary:hover{ background:#b91c1c; }
     .confirm-btn.primary:disabled{ opacity:.4; cursor:not-allowed; }
 
-    /* Last sync */
-    #lastSyncLabel{ cursor:pointer; padding:6px 10px; border-radius:999px; transition:all .12s; border:1px solid transparent; }
-    #lastSyncLabel:hover{ background:var(--muted-soft); border-color:var(--line); color:var(--text); }
+    /* Last sync — agora um chip ao lado do nome do relatório.
+       Regra por id (1,0,0) porque ela vencia .sync-chip e apagava a borda. */
+    #lastSyncLabel{
+      cursor:pointer; padding:3px 10px; border-radius:999px;
+      transition:all .12s; border:1px solid var(--line); background:var(--bg);
+    }
+    #lastSyncLabel:hover{ background:var(--muted-soft); border-color:var(--muted); color:var(--text); }
     .img-badge.has:hover{ background:#bbf7d0!important; transform:scale(1.05); }
     .img-badge.miss:hover{ background:#fecaca!important; transform:scale(1.05); }
     .img-badge.checking{ cursor:wait; }
@@ -311,6 +315,110 @@
       padding:40px 20px; text-align:center; color:#94a3b8;
     }
     .anl-empty i{ font-size:28px; margin-bottom:10px; display:block; }
+
+    /* ── Botão × da busca ──
+       Seletor de id (1,0,0) para não depender da ordem das classes do Tailwind. */
+    #searchClear{
+      display:none; align-items:center; justify-content:center;
+      border:0; cursor:pointer; padding:0;
+      transition:filter .15s, transform .15s;
+    }
+    #searchClear.show{ display:flex; }
+
+    /* ── Badge CMS (mesmo acabamento do portal) ── */
+    .cms-badge{
+      position:relative; flex:none;
+      width:40px; height:40px; border-radius:13px;
+      display:flex; align-items:center; justify-content:center;
+      background:linear-gradient(145deg,#a970ff 0%,#8b5cf6 48%,#7439e0 100%);
+      box-shadow:0 6px 18px rgba(124,58,237,.42), inset 0 1px 0 rgba(255,255,255,.24);
+      color:#fff; font-size:12px; font-weight:900; letter-spacing:.02em;
+    }
+
+    /* ── Botões de ação só-ícone, acabamento premium ──
+       Gradiente + luz interna na borda de cima + sombra na própria cor.
+       Cada função mantém a sua cor, para seguirem distinguíveis de relance. */
+    .btn-ic{
+      width:38px; height:38px; border-radius:12px; flex:none;
+      display:inline-flex; align-items:center; justify-content:center;
+      border:1px solid rgba(255,255,255,.26);
+      background:linear-gradient(145deg, var(--ic-a) 0%, var(--ic-b) 55%, var(--ic-c) 100%);
+      color:#fff; font-size:13.5px; cursor:pointer;
+      box-shadow:0 4px 12px var(--ic-sh), inset 0 1px 0 rgba(255,255,255,.30);
+      transition:transform .15s, box-shadow .15s, filter .15s;
+    }
+    .btn-ic:hover{
+      transform:translateY(-1px); filter:brightness(1.07);
+      box-shadow:0 8px 20px var(--ic-sh), inset 0 1px 0 rgba(255,255,255,.36);
+    }
+    .btn-ic:active{ transform:translateY(0) scale(.94); }
+    .btn-ic.ic-lima    { --ic-a:#d9f99d; --ic-b:#a3e635; --ic-c:#65a30d; --ic-sh:rgba(101,163,13,.40); color:#1a2e05; }
+    .btn-ic.ic-ambar   { --ic-a:#fde68a; --ic-b:#f59e0b; --ic-c:#b45309; --ic-sh:rgba(180,83,9,.40); color:#451a03; }
+    .btn-ic.ic-cinza   { --ic-a:#cbd5e1; --ic-b:#94a3b8; --ic-c:#64748b; --ic-sh:rgba(71,85,105,.38); color:#1e293b; }
+    .btn-ic.ic-vermelho{ --ic-a:#fca5a5; --ic-b:#ef4444; --ic-c:#b91c1c; --ic-sh:rgba(185,28,28,.42); color:#fff; }
+    .btn-ic.ic-roxo    { --ic-a:#c4b5fd; --ic-b:#8b5cf6; --ic-c:#6d28d9; --ic-sh:rgba(109,40,217,.40); color:#fff; }
+
+    /* ── Grupo de ações secundárias (colunas / tabela especial) ──
+       Id como seletor para não depender da ordem das classes do Tailwind. */
+    #acoesSecundarias{ display:none; align-items:center; gap:8px; }
+    #acoesSecundarias.show{ display:flex; }
+
+    /* ── Modal de busca automática de imagens ── */
+    .bi-opt{
+      display:flex; align-items:center; gap:10px;
+      padding:11px 14px; border-radius:14px; cursor:pointer;
+      border:1px solid var(--line); background:var(--bg);
+      transition:border-color .15s, background .15s;
+    }
+    .bi-opt:hover{ border-color:var(--accent-dark); }
+    .bi-opt:has(input:checked){
+      border-color:var(--accent-dark);
+      background:rgba(204,255,0,.10);
+    }
+    .bi-opt input{ accent-color:var(--accent-dark); width:16px; height:16px; flex:none; }
+    .bi-opt-nome{ flex:1; font-size:14px; font-weight:700; }
+    .bi-opt-cont{
+      font-size:11px; font-weight:800; color:var(--muted);
+      background:var(--line); border-radius:999px; padding:2px 9px;
+    }
+    #biLog div{ padding:1px 0; }
+    #biLog .ok  { color:#4ade80; }
+    #biLog .dup { color:#fbbf24; }
+    #biLog .nao { color:#f87171; }
+    #biLog .inf { color:#94a3b8; }
+
+    /* Separa os filtros de marca/status dos selects, na mesma fileira */
+    .filtro-sep{
+      width:1px; height:22px; flex:none;
+      background:var(--line); margin:0 4px;
+    }
+    @media (max-width:640px){ .filtro-sep{ display:none; } }
+
+    /* Chip da última sincronização, agora ao lado do nome do relatório */
+    .sync-chip{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:3px 10px; border-radius:999px;
+      border:1px solid var(--line); background:var(--bg);
+      font-size:10.5px; font-weight:700; color:var(--muted);
+      cursor:pointer; transition:filter .15s;
+    }
+    .sync-chip:hover{ filter:brightness(.96); }
+
+    /* Aviso de acesso liberado localmente (nunca aparece no site publicado) */
+    #avisoLocal{
+      position:fixed; z-index:9999;
+      left:12px; bottom:12px;
+      display:flex; align-items:center; gap:7px;
+      padding:7px 13px; border-radius:999px;
+      background:#7c2d12; color:#fed7aa;
+      border:1px solid #c2410c;
+      font-size:11.5px; font-weight:700;
+      box-shadow:0 8px 22px rgba(0,0,0,.28);
+      pointer-events:none;
+    }
+    #avisoLocal b{ color:#fff; }
+    #searchClear:hover{ filter:brightness(.9); }
+    #searchClear:active{ transform:scale(.9); }
   </style>
 </head>
 <body>
@@ -339,132 +447,226 @@
   <header id="adminHeader" class="rounded-[32px] border border-slate-200 bg-white p-4 sm:p-5 shadow-card sticky top-4 z-30 mb-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <a href="../../" class="focus-ring flex items-center justify-center h-10 w-10 rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors" data-tip="Voltar ao portal">
-          <i class="fa-solid fa-arrow-left text-sm"></i>
-        </a>
+        <div class="cms-badge" role="img" aria-label="CMS Representações" data-tip="CMS Representações">CMS</div>
         <div>
           <div class="text-xs font-bold text-slate-500">Disponibilidades</div>
-          <div class="text-xl font-extrabold">Painel Admin</div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <div class="text-xl font-extrabold">Painel Admin</div>
+            <span id="lastSyncLabel" class="sync-chip" data-tip="Atualizado em — clique para atualizar agora" onclick="loadData()" role="button" tabindex="0">
+              <i class="fa-solid fa-clock-rotate-left text-[9px]"></i>
+              <span id="lastSyncText">—</span>
+            </span>
+          </div>
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <!-- Last sync -->
-        <span id="lastSyncLabel" class="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold mr-1" style="color:var(--muted)" data-tip="Atualizar agora" onclick="loadData()" role="button" tabindex="0">
-          <i class="fa-solid fa-clock-rotate-left text-[10px]"></i>
-          <span id="lastSyncText">—</span>
-        </span>
         <!-- Busca -->
         <div class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 min-w-[220px]" style="background:var(--card);border-color:var(--line)">
           <i class="fa-solid fa-magnifying-glass text-slate-400 text-sm"></i>
-          <input id="searchInput" class="bg-transparent text-sm outline-none w-full" style="color:var(--text)" placeholder="Buscar artigo, descrição ou cor..." oninput="applyFilters()">
-          <kbd class="hidden sm:inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold border" style="border-color:var(--line);background:var(--bg);color:var(--muted);min-width:18px;height:18px">/</kbd>
+          <input id="searchInput" class="bg-transparent text-sm outline-none w-full" style="color:var(--text)" placeholder="Buscar artigo, descrição ou cor..." oninput="applyFilters();updateSearchClear()">
+          <button id="searchClear" type="button" onclick="limparBusca()" aria-label="Limpar busca" data-tip="Limpar busca"
+            class="rounded-full"
+            style="width:20px;height:20px;flex:none;background:var(--line);color:var(--muted)">
+            <i class="fa-solid fa-xmark" style="font-size:10px"></i>
+          </button>
+          <kbd id="searchKbd" class="hidden sm:inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold border" style="border-color:var(--line);background:var(--bg);color:var(--muted);min-width:18px;height:18px">/</kbd>
         </div>
-        <!-- Colunas -->
-        <button onclick="togglePainelColunas()" data-tip="Ocultar/exibir colunas"
-          class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
-          <i class="fa-solid fa-table-columns text-xs"></i> Colunas
+        <!-- Ações principais: só ícone, com tooltip -->
+        <button onclick="abrirImportar()" data-tip="Importar planilha de disponibilidades (.xlsx)"
+          aria-label="Importar planilha" class="focus-ring btn-ic ic-lima">
+          <i class="fa-solid fa-file-arrow-up"></i>
         </button>
-        <!-- Importar -->
-        <button onclick="abrirImportar()" data-tip="Importar planilha"
-          class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors"
-          style="border-color:var(--accent-dark);background:rgba(204,255,0,.1);color:var(--accent-dark)">
-          <i class="fa-solid fa-upload text-xs"></i> Importar xlsx
-        </button>
-        <!-- Imagens em lote (novo fluxo simples) -->
         <button onclick="abrirImagensLoteSimples()" data-tip="Subir imagens em lote (.jpg/.png)"
-          class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors"
-          style="border-color:#fbbf24;background:#fef3c7;color:#92400e">
-          <i class="fa-solid fa-images text-xs"></i> Imagens em lote
+          aria-label="Imagens em lote" class="focus-ring btn-ic ic-ambar">
+          <i class="fa-solid fa-images"></i>
         </button>
-        <!-- Tabela Especial -->
-        <button onclick="abrirTabelaEspecial()" data-tip="Importar tabela especial"
-          class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors"
-          style="border-color:#c084fc;background:rgba(192,132,252,.1);color:#7c3aed">
-          <i class="fa-solid fa-tags text-xs"></i> Tabela especial
-        </button>
-        <!-- Pausar / Ativar vitrine -->
         <button id="btnPausarVitrine" onclick="togglePausarVitrine()" data-tip="Pausar vitrine durante atualização"
-          class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors"
-          style="border-color:#94a3b8;background:#f1f5f9;color:#475569">
-          <i id="btnPausarIcon" class="fa-solid fa-circle-pause text-xs"></i>
-          <span id="btnPausarTxt">Pausar vitrine</span>
+          aria-label="Pausar vitrine" class="focus-ring btn-ic ic-cinza">
+          <i id="btnPausarIcon" class="fa-solid fa-circle-pause"></i>
         </button>
+
+        <!-- Ações secundárias, recolhidas por padrão -->
+        <button id="btnMaisAcoes" onclick="toggleMaisAcoes()" data-tip="Mais ações — colunas e tabela especial"
+          aria-label="Mais ações" aria-expanded="false"
+          class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
+          <i id="iconMaisAcoes" class="fa-solid fa-ellipsis text-xs"></i>
+        </button>
+        <div id="acoesSecundarias">
+          <button onclick="togglePainelColunas()" data-tip="Escolher quais colunas aparecem na tabela"
+            class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
+            <i class="fa-solid fa-table-columns text-xs"></i> Colunas
+          </button>
+          <button onclick="abrirTabelaEspecial()" data-tip="Importar tabela especial de preços"
+            class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors"
+            style="border-color:#c084fc;background:rgba(192,132,252,.1);color:#7c3aed">
+            <i class="fa-solid fa-tags text-xs"></i> Tabela especial
+          </button>
+          <button onclick="verifyAllImages(true)" data-tip="Reverificar todas as imagens ignorando o cache de 12h"
+            class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
+            <i class="fa-solid fa-rotate text-xs"></i> Verificar imagens
+          </button>
+          <button onclick="abrirBuscaImagens()" data-tip="Buscar automaticamente as imagens que faltam, no Trade Squash"
+            class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors"
+            style="border-color:#38bdf8;background:rgba(56,189,248,.12);color:#0369a1">
+            <i class="fa-solid fa-wand-magic-sparkles text-xs"></i> Buscar imagens
+          </button>
+        </div>
+
         <!-- Voltar ao Portal -->
-        <a href="https://cms-representacoes.github.io/apps-oly/" data-tip="Voltar ao Portal"
+        <a href="https://cms-representacoes.github.io/apps-oly/" data-tip="Voltar ao Portal do Vendedor"
+          aria-label="Voltar ao Portal"
           class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors"
           style="border-color:#94a3b8;background:#f1f5f9;color:#475569">
           <i class="fa-solid fa-arrow-left text-xs"></i>
           <span>Portal</span>
         </a>
-        <!-- Tela cheia -->
-        <button onclick="toggleFullscreen()" data-tip="Tela cheia"
-          class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
-          <i id="iconFullscreen" class="fa-solid fa-expand text-xs"></i>
-        </button>
         <!-- Dark mode -->
-        <button onclick="toggleDark()" data-tip="Modo escuro"
+        <button onclick="toggleDark()" data-tip="Alternar modo claro / escuro"
+          aria-label="Alternar modo escuro"
           class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 transition-colors">
           <i id="darkIcon" class="fa-solid fa-moon text-slate-400 text-xs"></i>
-        </button>
-        <!-- Sair -->
-        <button onclick="doLogout()" data-tip="Sair"
-          class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
-          <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
         </button>
       </div>
     </div>
   </header>
 
-  <!-- FILTROS -->
-  <div class="flex flex-wrap items-center gap-2 mb-3">
-    <button class="filter-pill active" data-filter="todos" onclick="setFilter('todos')">Todos <span id="badgeTodos" class="text-[10px] font-extrabold bg-slate-900 text-white rounded-full px-1.5 py-0.5">0</span></button>
-    <button class="filter-pill" data-filter="ua" onclick="setFilter('ua')">Under Armour <span id="badgeUA" class="text-[10px] font-extrabold bg-slate-200 text-slate-700 rounded-full px-1.5 py-0.5">0</span></button>
-    <button class="filter-pill" data-filter="oly" onclick="setFilter('oly')">Olympikus <span id="badgeOLY" class="text-[10px] font-extrabold bg-slate-200 text-slate-700 rounded-full px-1.5 py-0.5">0</span></button>
-    <button class="filter-pill" data-filter="semimg" onclick="setFilter('semimg')">
-      <i class="fa-solid fa-image text-[10px]" style="color:#dc2626"></i> Sem imagem <span id="badgeSemImg" class="text-[10px] font-extrabold bg-rose-100 text-rose-700 rounded-full px-1.5 py-0.5 hidden">0</span>
+  <!-- FILTROS — tudo numa fileira: marcas, status (só ícone) e os selects -->
+  <div class="flex flex-wrap items-center gap-2 mb-4">
+    <button class="filter-pill active" data-filter="todos" onclick="setFilter('todos')" data-tip="Mostrar todos os itens">Todos <span id="badgeTodos" class="text-[10px] font-extrabold bg-slate-900 text-white rounded-full px-1.5 py-0.5">0</span></button>
+    <button class="filter-pill" data-filter="ua" onclick="setFilter('ua')" data-tip="Só itens Under Armour">UA <span id="badgeUA" class="text-[10px] font-extrabold bg-slate-200 text-slate-700 rounded-full px-1.5 py-0.5">0</span></button>
+    <button class="filter-pill" data-filter="oly" onclick="setFilter('oly')" data-tip="Só itens Olympikus">OLY <span id="badgeOLY" class="text-[10px] font-extrabold bg-slate-200 text-slate-700 rounded-full px-1.5 py-0.5">0</span></button>
+
+    <!-- Status: só ícone + contador, o rótulo vive no tooltip -->
+    <button class="filter-pill" data-filter="semimg" onclick="setFilter('semimg')" aria-label="Sem imagem" data-tip="Sem imagem — itens que precisam de upload">
+      <i class="fa-solid fa-image text-xs" style="color:#dc2626"></i> <span id="badgeSemImg" class="text-[10px] font-extrabold bg-rose-100 text-rose-700 rounded-full px-1.5 py-0.5 hidden">0</span>
     </button>
-    <button class="filter-pill" data-filter="aguardando" onclick="setFilter('aguardando')" style="background:#fef3c7;border-color:#fbbf24;color:#92400e">
-      <i class="fa-solid fa-hourglass-half text-[10px]"></i> Aguardando imagem <span id="badgeAguardando" class="text-[10px] font-extrabold bg-amber-200 text-amber-900 rounded-full px-1.5 py-0.5 hidden">0</span>
+    <button class="filter-pill" data-filter="aguardando" onclick="setFilter('aguardando')" aria-label="Aguardando imagem" data-tip="Aguardando imagem — já enviada, falta publicar no catálogo" style="background:#fef3c7;border-color:#fbbf24;color:#92400e">
+      <i class="fa-solid fa-hourglass-half text-xs"></i> <span id="badgeAguardando" class="text-[10px] font-extrabold bg-amber-200 text-amber-900 rounded-full px-1.5 py-0.5 hidden">0</span>
     </button>
-    <button class="filter-pill" data-filter="ocultos" onclick="setFilter('ocultos')">
-      <i class="fa-solid fa-eye-slash text-[10px]"></i> Ocultos <span id="badgeOcultos" class="text-[10px] font-extrabold bg-slate-200 text-slate-700 rounded-full px-1.5 py-0.5 hidden">0</span>
+    <button class="filter-pill" data-filter="ocultos" onclick="setFilter('ocultos')" aria-label="Ocultos" data-tip="Ocultos — itens que você escondeu da vitrine do vendedor">
+      <i class="fa-solid fa-eye-slash text-xs"></i> <span id="badgeOcultos" class="text-[10px] font-extrabold bg-slate-200 text-slate-700 rounded-full px-1.5 py-0.5 hidden">0</span>
     </button>
-    <button id="btnExportarAtual" onclick="exportarFiltradoXlsx()" class="filter-pill ml-auto" style="background:#fef3c7;border-color:#fbbf24;color:#92400e;font-weight:700" title="Exporta XLSX com todos os itens filtrados atualmente">
+
+    <span class="filtro-sep" aria-hidden="true"></span>
+
+    <select id="filterCategoria" class="filter-select" onchange="applyFilters()" data-tip="Filtrar por categoria de produto">
+      <option value="">Categoria: todas</option>
+    </select>
+    <select id="filterGenero" class="filter-select" onchange="applyFilters()" data-tip="Filtrar por gênero">
+      <option value="">Gênero: todos</option>
+    </select>
+    <select id="filterLinha" class="filter-select" onchange="applyFilters()" data-tip="Filtrar por linha do produto">
+      <option value="">Linha: todas</option>
+    </select>
+    <button id="btnLimparFiltros" class="filter-pill" onclick="limparFiltrosSec()" data-tip="Limpar categoria, gênero e linha" style="display:none">
+      <i class="fa-solid fa-xmark text-[10px]"></i> Limpar
+    </button>
+
+    <button id="btnExportarAtual" onclick="exportarFiltradoXlsx()" class="filter-pill ml-auto" style="background:#fef3c7;border-color:#fbbf24;color:#92400e;font-weight:700" data-tip="Baixar XLSX com os itens do filtro atual">
       <i class="fa-solid fa-file-arrow-down text-[10px]"></i> Exportar <span class="lbl-count">0</span>
     </button>
     <div class="text-xs font-semibold text-slate-400" id="countLabel">— itens</div>
   </div>
 
-  <!-- FILTROS SECUNDÁRIOS (categoria, gênero, linha) -->
-  <div class="flex flex-wrap items-center gap-2 mb-4">
-    <select id="filterCategoria" class="filter-select" onchange="applyFilters()">
-      <option value="">Categoria: todas</option>
-    </select>
-    <select id="filterGenero" class="filter-select" onchange="applyFilters()">
-      <option value="">Gênero: todos</option>
-    </select>
-    <select id="filterLinha" class="filter-select" onchange="applyFilters()">
-      <option value="">Linha: todas</option>
-    </select>
-    <button id="btnLimparFiltros" class="filter-pill" onclick="limparFiltrosSec()" style="display:none">
-      <i class="fa-solid fa-xmark text-[10px]"></i> Limpar
+  <!-- Bulk actions (linha própria, aparece só quando há seleção) -->
+  <div id="bulkBar" class="flex flex-wrap items-center gap-2 mb-4" style="display:none">
+    <span class="text-xs font-bold" style="color:var(--muted)"><span id="bulkCount">0</span> selecionado(s)</span>
+    <button id="bulkOcultarBtn" onclick="bulkOcultar()" data-tip="Ocultar os itens selecionados da vitrine" class="focus-ring rounded-full border px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors" style="border-color:var(--line);background:var(--card);color:var(--muted)">
+      <i class="fa-solid fa-eye-slash text-[10px]"></i> Ocultar
     </button>
+    <button id="bulkReexibirBtn" onclick="bulkReexibir()" data-tip="Voltar a exibir os itens selecionados" class="focus-ring rounded-full border px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors" style="display:none;border-color:#AFA9EC;background:#EEEDFE;color:#3C3489">
+      <i class="fa-solid fa-eye text-[10px]"></i> Reexibir
+    </button>
+    <button onclick="bulkExcluir()" data-tip="Excluir os itens selecionados — não dá para desfazer" class="focus-ring rounded-full border px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors" style="border-color:#fecaca;background:#fef2f2;color:#b91c1c">
+      <i class="fa-solid fa-trash-can text-[10px]"></i> Excluir
+    </button>
+    <button onclick="bulkLimpar()" class="focus-ring w-7 h-7 rounded-full border flex items-center justify-center" style="border-color:var(--line);background:var(--card);color:var(--muted)" data-tip="Limpar seleção (Esc)">
+      <i class="fa-solid fa-xmark text-[10px]"></i>
+    </button>
+  </div>
 
-    <!-- Bulk actions (aparece quando há seleção) -->
-    <div id="bulkBar" class="ml-auto flex items-center gap-2" style="display:none">
-      <span class="text-xs font-bold" style="color:var(--muted)"><span id="bulkCount">0</span> selecionado(s)</span>
-      <button id="bulkOcultarBtn" onclick="bulkOcultar()" class="focus-ring rounded-full border px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors" style="border-color:var(--line);background:var(--card);color:var(--muted)">
-        <i class="fa-solid fa-eye-slash text-[10px]"></i> Ocultar
-      </button>
-      <button id="bulkReexibirBtn" onclick="bulkReexibir()" class="focus-ring rounded-full border px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors" style="display:none;border-color:#AFA9EC;background:#EEEDFE;color:#3C3489">
-        <i class="fa-solid fa-eye text-[10px]"></i> Reexibir
-      </button>
-      <button onclick="bulkExcluir()" class="focus-ring rounded-full border px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-colors" style="border-color:#fecaca;background:#fef2f2;color:#b91c1c">
-        <i class="fa-solid fa-trash-can text-[10px]"></i> Excluir
-      </button>
-      <button onclick="bulkLimpar()" class="focus-ring w-7 h-7 rounded-full border flex items-center justify-center" style="border-color:var(--line);background:var(--card);color:var(--muted)" data-tip="Limpar seleção">
-        <i class="fa-solid fa-xmark text-[10px]"></i>
-      </button>
+  <!-- ═══ BUSCA AUTOMÁTICA DE IMAGENS (Trade Squash) ═══ -->
+  <div id="buscaImgModal" class="hidden fixed inset-0 z-[110]" onclick="fecharBuscaImagens(event)">
+    <div class="absolute inset-0" style="background:rgba(15,23,42,.55);backdrop-filter:blur(3px)"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4" onclick="event.stopPropagation()">
+      <div class="w-full max-w-lg rounded-[28px] border shadow-card overflow-hidden"
+           style="background:var(--card);border-color:var(--line)">
+
+        <div class="px-6 pt-6 pb-4 border-b" style="border-color:var(--line)">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="text-lg font-extrabold">Buscar imagens que faltam</div>
+              <div class="text-sm text-slate-500 mt-0.5">
+                Procura no Trade Squash e sobe direto para a pasta Catálogo.
+              </div>
+            </div>
+            <button onclick="fecharBuscaImagens()" data-tip="Fechar"
+              class="focus-ring h-9 w-9 rounded-full border flex items-center justify-center flex-none"
+              style="border-color:var(--line);background:var(--bg);color:var(--muted)">
+              <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Etapa 1: escolher a marca -->
+        <div id="biEscolha" class="px-6 py-5">
+          <div class="text-xs font-bold uppercase tracking-wide text-slate-400 mb-3">Marca</div>
+          <div class="space-y-2">
+            <label class="bi-opt" data-tip="Só os itens Olympikus sem imagem">
+              <input type="radio" name="biMarca" value="oly" checked>
+              <span class="bi-opt-nome">Olympikus</span>
+              <span class="bi-opt-cont" id="biContOly">0</span>
+            </label>
+            <label class="bi-opt" data-tip="Só os itens Under Armour sem imagem">
+              <input type="radio" name="biMarca" value="ua">
+              <span class="bi-opt-nome">Under Armour</span>
+              <span class="bi-opt-cont" id="biContUa">0</span>
+            </label>
+            <label class="bi-opt" data-tip="Roda Olympikus e depois Under Armour, em sequência">
+              <input type="radio" name="biMarca" value="ambas">
+              <span class="bi-opt-nome">Ambas</span>
+              <span class="bi-opt-cont" id="biContAmbas">0</span>
+            </label>
+          </div>
+          <div class="mt-4 text-[11.5px] leading-relaxed text-slate-500">
+            A busca roda oculta, no servidor. Quando encontra, a imagem já sobe com o
+            nome padrão <b>ARTIGO_COR.jpg</b> — não precisa subir nada à mão.
+          </div>
+          <button id="biBtnIniciar" onclick="iniciarBuscaImagens()"
+            class="focus-ring w-full mt-5 rounded-2xl py-3 text-sm font-extrabold text-slate-900 flex items-center justify-center gap-2"
+            style="background:var(--accent)">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Iniciar busca
+          </button>
+        </div>
+
+        <!-- Etapa 2: progresso -->
+        <div id="biProgresso" class="hidden px-6 py-5">
+          <div class="flex items-center justify-between text-sm font-bold mb-2">
+            <span id="biFase">Preparando...</span>
+            <span id="biContagem" class="text-slate-500">0 / 0</span>
+          </div>
+          <div class="h-2 rounded-full overflow-hidden" style="background:var(--line)">
+            <div id="biBarra" class="h-full transition-all" style="width:0%;background:var(--accent-dark)"></div>
+          </div>
+          <div class="grid grid-cols-4 gap-2 mt-4 text-center">
+            <div><div id="biOk"    class="text-xl font-extrabold" style="color:#15803d">0</div><div class="text-[10px] font-bold text-slate-400">ACHADAS</div></div>
+            <div><div id="biDup"   class="text-xl font-extrabold" style="color:#a16207">0</div><div class="text-[10px] font-bold text-slate-400">DUPLICADAS</div></div>
+            <div><div id="biNao"   class="text-xl font-extrabold" style="color:#b91c1c">0</div><div class="text-[10px] font-bold text-slate-400">SEM MATCH</div></div>
+            <div><div id="biErro"  class="text-xl font-extrabold" style="color:#64748b">0</div><div class="text-[10px] font-bold text-slate-400">ERRO</div></div>
+          </div>
+          <div id="biLog" class="mt-4 rounded-xl p-3 text-[11px] font-mono overflow-y-auto"
+               style="background:#0f172a;color:#e2e8f0;max-height:180px"></div>
+          <div class="flex gap-2 mt-4">
+            <button id="biBtnParar" onclick="pararBuscaImagens()"
+              class="focus-ring flex-1 rounded-2xl border py-2.5 text-sm font-extrabold"
+              style="border-color:var(--line);background:var(--card);color:var(--muted)">Parar</button>
+            <button id="biBtnFechar" onclick="fecharBuscaImagens()"
+              class="focus-ring hidden flex-1 rounded-2xl py-2.5 text-sm font-extrabold text-slate-900"
+              style="background:var(--accent)">Concluir</button>
+          </div>
+        </div>
+
+      </div>
     </div>
   </div>
 
@@ -998,7 +1200,15 @@ function getPortalSession(){
 }
 function isCmsLogado(){
   const s = getPortalSession();
-  return !!(s && s.nome === 'CMS');
+  if(s && s.nome === 'CMS') return true;
+  // Liberação apenas em desenvolvimento local: localStorage é isolado por
+  // origem, então a sessão feita no site publicado não chega aqui. Em
+  // produção (github.io) nada muda — a sessão CMS continua obrigatória.
+  return isAmbienteLocal();
+}
+function isAmbienteLocal(){
+  const h = location.hostname;
+  return location.protocol === 'file:' || h === 'localhost' || h === '127.0.0.1' || h === '[::1]';
 }
 // Base pública das imagens (mesma pasta usada pelo catálogo de Disponibilidades)
 const IMG_BASE = 'https://cms-representacoes.github.io/apps-oly/Catalogo/';
@@ -1253,15 +1463,186 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(localStorage.getItem('disp_dark')==='1') $('darkIcon').className = 'fa-solid fa-sun text-amber-400 text-xs';
 });
 
-// ── TELA CHEIA ────────────────────────────────────────────────────────────────
-function toggleFullscreen(){
-  if(!document.fullscreenElement){ document.documentElement.requestFullscreen().catch(()=>{}); }
-  else { document.exitFullscreen(); }
+// ── BUSCA AUTOMÁTICA DE IMAGENS (Trade Squash) ───────────────────────────────
+// O trabalho pesado roda no Worker; aqui a gente só monta os lotes, mostra o
+// progresso e recarrega no fim. Lotes existem por causa do limite de
+// subrequisições do Cloudflare — cada item custa ~5 chamadas externas.
+const BI = { rodando:false, parar:false, ok:0, dup:0, nao:0, erro:0, feitos:0, total:0 };
+const BI_LOTE = 8;
+
+// Itens sem imagem de uma marca ('oly' | 'ua'), na mesma regra do filtro "Sem imagem"
+function biItensSemImagem(marca){
+  return STATE.itens.filter(item => {
+    if(isOculto(item)) return false;
+    if(item.imagem) return false;
+    if(STATE.imgChecks.get(imgCheckKey(item)) === 'has') return false;
+    const m = String(item.marca || '').trim().toUpperCase();
+    return marca === 'ua' ? (m === 'UA') : (m === 'OLY');
+  }).map(i => ({ artigo:i.artigo, cor:i.cor, descricao:i.descricao || '' }));
 }
-document.addEventListener('fullscreenchange', ()=>{
-  const icon = $('iconFullscreen');
-  if(icon) icon.className = document.fullscreenElement ? 'fa-solid fa-compress text-xs' : 'fa-solid fa-expand text-xs';
-});
+
+function abrirBuscaImagens(){
+  const oly = biItensSemImagem('oly').length;
+  const ua  = biItensSemImagem('ua').length;
+  $('biContOly').textContent   = oly;
+  $('biContUa').textContent    = ua;
+  $('biContAmbas').textContent = oly + ua;
+  $('biEscolha').classList.remove('hidden');
+  $('biProgresso').classList.add('hidden');
+  $('biBtnFechar').classList.add('hidden');
+  $('biBtnParar').classList.remove('hidden');
+  $('buscaImgModal').classList.remove('hidden');
+}
+
+function fecharBuscaImagens(e){
+  if(e && e.target !== e.currentTarget) return;
+  if(BI.rodando){ showToast('A busca ainda está rodando — use Parar.', 'info'); return; }
+  $('buscaImgModal').classList.add('hidden');
+}
+
+function pararBuscaImagens(){
+  if(BI.rodando){ BI.parar = true; biLog('inf', 'Parando após o lote atual...'); }
+  else $('buscaImgModal').classList.add('hidden');
+}
+
+function biLog(classe, texto){
+  const el = $('biLog');
+  if(!el) return;
+  const linha = document.createElement('div');
+  linha.className = classe;
+  linha.textContent = texto;
+  el.appendChild(linha);
+  el.scrollTop = el.scrollHeight;
+}
+
+function biAtualizarUI(){
+  $('biOk').textContent   = BI.ok;
+  $('biDup').textContent  = BI.dup;
+  $('biNao').textContent  = BI.nao;
+  $('biErro').textContent = BI.erro;
+  $('biContagem').textContent = `${BI.feitos} / ${BI.total}`;
+  $('biBarra').style.width = BI.total ? `${(BI.feitos / BI.total) * 100}%` : '0%';
+}
+
+// Agrupa por artigo antes de fatiar: as cores de um mesmo artigo precisam cair
+// no MESMO lote, senão o Worker não consegue detectar as duplicatas entre elas.
+function biMontarLotes(itens){
+  const porArtigo = new Map();
+  for(const it of itens){
+    const k = String(it.artigo || '').toUpperCase();
+    if(!porArtigo.has(k)) porArtigo.set(k, []);
+    porArtigo.get(k).push(it);
+  }
+  const lotes = [];
+  let atual = [];
+  for(const grupo of porArtigo.values()){
+    // Artigo com mais cores que o lote inteiro vira um lote só dele
+    if(grupo.length >= BI_LOTE){
+      if(atual.length){ lotes.push(atual); atual = []; }
+      lotes.push(grupo);
+      continue;
+    }
+    if(atual.length + grupo.length > BI_LOTE){ lotes.push(atual); atual = []; }
+    atual.push(...grupo);
+  }
+  if(atual.length) lotes.push(atual);
+  return lotes;
+}
+
+async function biRodarMarca(marca, rotulo){
+  const itens = biItensSemImagem(marca);
+  if(!itens.length){ biLog('inf', `${rotulo}: nada a buscar.`); return; }
+  biLog('inf', `${rotulo}: ${itens.length} item(ns) sem imagem.`);
+
+  const lotes = biMontarLotes(itens);
+  for(const lote of lotes){
+    if(BI.parar) return;
+    $('biFase').textContent = `${rotulo} — buscando...`;
+    try{
+      const res = await workerFetch({
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ action:'tsBuscarImagens', marca, itens: lote })
+      });
+      const json = await res.json();
+
+      if(!json.success){
+        // Sessão caiu: o próximo lote refaz o login e seguimos
+        if(json.sessaoExpirada){ biLog('inf', 'Sessão expirou — refazendo login...'); continue; }
+        biLog('nao', `Falha: ${json.error || 'erro desconhecido'}`);
+        BI.erro += lote.length; BI.feitos += lote.length; biAtualizarUI();
+        continue;
+      }
+
+      for(const r of (json.resultados || [])){
+        if(r.status === 'ok'){
+          BI.ok++;  biLog('ok',  `✓ ${r.nome}`);
+          // Reflete na tela sem esperar o recarregamento
+          STATE.imgChecks.set(imgCheckKey(r), 'has');
+        }
+        else if(r.status === 'duplicada'){ BI.dup++; biLog('dup', `≡ ${r.artigo}_${r.cor} — ${r.motivo}`); }
+        else if(r.status === 'nao_encontrado'){ BI.nao++; biLog('nao', `✗ ${r.artigo}_${r.cor} — ${r.motivo}`); }
+        else { BI.erro++; biLog('nao', `! ${r.artigo}_${r.cor} — ${r.motivo}`); }
+        BI.feitos++;
+      }
+      biAtualizarUI();
+    }catch(err){
+      biLog('nao', `Erro de rede: ${err.message}`);
+      BI.erro += lote.length; BI.feitos += lote.length; biAtualizarUI();
+    }
+  }
+}
+
+async function iniciarBuscaImagens(){
+  const marca = document.querySelector('input[name="biMarca"]:checked')?.value || 'oly';
+  const oly = biItensSemImagem('oly');
+  const ua  = biItensSemImagem('ua');
+  const total = marca === 'ambas' ? (oly.length + ua.length)
+              : marca === 'ua'    ? ua.length : oly.length;
+  if(!total){ showToast('Nenhum item sem imagem para essa marca.', 'info'); return; }
+
+  Object.assign(BI, { rodando:true, parar:false, ok:0, dup:0, nao:0, erro:0, feitos:0, total });
+  $('biEscolha').classList.add('hidden');
+  $('biProgresso').classList.remove('hidden');
+  $('biLog').innerHTML = '';
+  biAtualizarUI();
+
+  try{
+    if(marca === 'ambas'){
+      await biRodarMarca('oly', 'Olympikus');
+      if(!BI.parar) await biRodarMarca('ua', 'Under Armour');
+    }else{
+      await biRodarMarca(marca, marca === 'ua' ? 'Under Armour' : 'Olympikus');
+    }
+  }finally{
+    BI.rodando = false;
+    $('biFase').textContent = BI.parar ? 'Interrompido' : 'Concluído';
+    $('biBtnParar').classList.add('hidden');
+    $('biBtnFechar').classList.remove('hidden');
+    biLog('inf', `Fim — ${BI.ok} achada(s), ${BI.dup} duplicada(s), ${BI.nao} sem match, ${BI.erro} erro(s).`);
+    if(BI.ok > 0){
+      // As imagens novas invalidam o cache de verificação
+      try{ localStorage.removeItem(IMGCHK_CACHE_KEY); }catch(_){}
+      applyFilters();
+    }
+  }
+}
+
+// ── AÇÕES SECUNDÁRIAS (colunas / tabela especial) ─────────────────────────────
+function toggleMaisAcoes(){
+  const box = $('acoesSecundarias');
+  const btn = $('btnMaisAcoes');
+  const ic  = $('iconMaisAcoes');
+  if(!box) return;
+  const abrir = !box.classList.contains('show');
+  box.classList.toggle('show', abrir);
+  if(ic) ic.className = 'fa-solid ' + (abrir ? 'fa-xmark' : 'fa-ellipsis') + ' text-xs';
+  if(btn){
+    btn.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+    btn.setAttribute('data-tip', abrir ? 'Ocultar ações extras' : 'Mais ações — colunas e tabela especial');
+  }
+  // recolher o grupo também fecha o painel de colunas, se estiver aberto
+  if(!abrir) $('painelColunas')?.classList.add('hidden');
+}
 
 // ── TOAST ─────────────────────────────────────────────────────────────────────
 function showToast(msg, type='info'){
@@ -1402,20 +1783,67 @@ async function checkImageExists(url){
   }catch(_){ return false; }
 }
 
-// Verifica todas as imagens em batches de 10 em paralelo
-async function verifyAllImages(){
+// ── CACHE DA VERIFICAÇÃO ──────────────────────────────────────────────────────
+// Guarda só resultados definitivos ('has'/'miss'). Vale 12h: a pasta Catalogo
+// muda pouco, e um upload feito aqui já atualiza imgChecks na hora.
+const IMGCHK_CACHE_KEY = 'disp_imgchecks_v1';
+const IMGCHK_TTL_MS = 12 * 60 * 60 * 1000;
+
+function lerCacheImgChecks(){
+  try{
+    const o = JSON.parse(localStorage.getItem(IMGCHK_CACHE_KEY) || 'null');
+    if(!o || !o.ts || Date.now() - o.ts > IMGCHK_TTL_MS) return null;
+    return (o.mapa && typeof o.mapa === 'object') ? o.mapa : null;
+  }catch(_){ return null; }
+}
+function gravarCacheImgChecks(){
+  try{
+    const mapa = {};
+    STATE.imgChecks.forEach((v, k) => { if(v === 'has' || v === 'miss') mapa[k] = v; });
+    localStorage.setItem(IMGCHK_CACHE_KEY, JSON.stringify({ ts: Date.now(), mapa }));
+  }catch(_){ /* cota cheia: segue sem cache */ }
+}
+
+// imgHist é gravado com artigo|cor CRU (linhas 1299/2146/4479), mas consultado
+// em maiúsculas em temImagemAtual. Aqui olho as duas formas, para não depender
+// de como o dado chegou.
+function temImagemNoHistorico(item){
+  const h = STATE.imgHist;
+  if(!h) return false;
+  return !!(h[`${item.artigo}|${item.cor}`] || h[imgCheckKey(item)]);
+}
+
+// Verifica as imagens indo à rede SÓ para o que ainda não se sabe.
+// forcar=true ignora o cache e revalida tudo (usado após importar planilha).
+async function verifyAllImages(forcar = false){
   const items = STATE.itens.filter(i => !isOculto(i));
   if(!items.length) return;
-  // Marca tudo como "checking" pra UI mostrar spinner
-  items.forEach(i => STATE.imgChecks.set(imgCheckKey(i), 'checking'));
+
+  const cache = forcar ? null : lerCacheImgChecks();
+  const pendentes = [];
+
+  for(const item of items){
+    const k = imgCheckKey(item);
+    // upload feito por este painel: o arquivo existe, não precisa de HEAD
+    if(temImagemNoHistorico(item)){ STATE.imgChecks.set(k, 'has'); continue; }
+    // resultado recente de uma verificação real
+    if(cache && cache[k]){ STATE.imgChecks.set(k, cache[k]); continue; }
+    STATE.imgChecks.set(k, 'checking');
+    pendentes.push(item);
+  }
+
   refreshImageBadges();
-  updateImportProgressUI(0, items.length);
+  applyFilters();
+
+  if(!pendentes.length){ showImportProgress(false); return; }
+
+  updateImportProgressUI(0, pendentes.length);
   showImportProgress(true);
 
-  const BATCH = 10;
+  const BATCH = 30; // era 10: são HEADs baratos, o gargalo é a ida e volta
   let done = 0, has = 0, miss = 0;
-  for(let i = 0; i < items.length; i += BATCH){
-    const slice = items.slice(i, i + BATCH);
+  for(let i = 0; i < pendentes.length; i += BATCH){
+    const slice = pendentes.slice(i, i + BATCH);
     await Promise.all(slice.map(async (item) => {
       const url = getProductImageUrl(item);
       const ok = url ? await checkImageExists(url) : false;
@@ -1423,10 +1851,11 @@ async function verifyAllImages(){
       if(ok) has++; else miss++;
       done++;
     }));
-    updateImportProgressUI(done, items.length, has, miss);
+    updateImportProgressUI(done, pendentes.length, has, miss);
     refreshImageBadges();
   }
   showImportProgress(false);
+  gravarCacheImgChecks();
   // Atualiza badge "sem imagem" agora que sabemos o status real
   applyFilters();
 }
@@ -1540,9 +1969,7 @@ document.addEventListener('keydown', (e) => {
     if(!$('modalImportar')?.classList.contains('hidden')){ fecharImportar(); return; }
     if(!$('painelColunas')?.classList.contains('hidden')){ $('painelColunas').classList.add('hidden'); return; }
     if($('searchInput') === document.activeElement && $('searchInput').value){
-      $('searchInput').value = '';
-      applyFilters();
-      $('searchInput').blur();
+      limparBusca(); // limpa e mantém o foco, para seguir digitando
       return;
     }
     if(STATE.selecionados.size){
@@ -1551,6 +1978,25 @@ document.addEventListener('keydown', (e) => {
     }
   }
 });
+
+// ── BUSCA: botão × e limpeza ──────────────────────────────────────────────────
+function updateSearchClear(){
+  const inp = $('searchInput'), btn = $('searchClear'), kbd = $('searchKbd');
+  if(!inp || !btn) return;
+  const tem = !!inp.value;
+  btn.classList.toggle('show', tem);
+  // o atalho "/" some enquanto há texto, para não disputar espaço com o ×
+  if(kbd) kbd.classList.toggle('sm:inline-flex', !tem);
+}
+function limparBusca(){
+  const inp = $('searchInput');
+  if(!inp) return;
+  inp.value = '';
+  applyFilters();
+  updateSearchClear();
+  inp.focus();
+}
+document.addEventListener('DOMContentLoaded', updateSearchClear);
 
 // ── FILTROS ───────────────────────────────────────────────────────────────────
 function ocultarKey(item){ return `${String(item.artigo||'').toUpperCase()}|${String(item.cor||'').toUpperCase()}`; }
@@ -2565,22 +3011,20 @@ async function carregarStatusVitrine(){
 function atualizarBotaoPausar(){
   const btn = $('btnPausarVitrine');
   const ic  = $('btnPausarIcon');
-  const tx  = $('btnPausarTxt');
   if(!btn) return;
+  // O botão virou só-ícone: a cor sai das classes .ic-*, não de style inline,
+  // senão o gradiente premium seria sobrescrito por uma cor chapada.
+  btn.classList.remove('ic-cinza','ic-vermelho');
   if(_vitrinePausada){
-    btn.style.borderColor = '#dc2626';
-    btn.style.background  = 'rgba(220,38,38,.1)';
-    btn.style.color       = '#dc2626';
-    ic.className = 'fa-solid fa-circle-play text-xs';
-    tx.textContent = 'Ativar vitrine';
+    btn.classList.add('ic-vermelho');
+    if(ic) ic.className = 'fa-solid fa-circle-play';
     btn.setAttribute('data-tip', 'Vitrine PAUSADA — clique para reativar');
+    btn.setAttribute('aria-label', 'Reativar vitrine');
   } else {
-    btn.style.borderColor = '#94a3b8';
-    btn.style.background  = '#f1f5f9';
-    btn.style.color       = '#475569';
-    ic.className = 'fa-solid fa-circle-pause text-xs';
-    tx.textContent = 'Pausar vitrine';
+    btn.classList.add('ic-cinza');
+    if(ic) ic.className = 'fa-solid fa-circle-pause';
     btn.setAttribute('data-tip', 'Pausar vitrine durante atualização');
+    btn.setAttribute('aria-label', 'Pausar vitrine');
   }
 }
 
@@ -4451,7 +4895,7 @@ async function confirmarImportar(){
 
     fecharImportar();
     applyFilters();
-    verifyAllImages(); // re-verifica tudo após importar
+    verifyAllImages(true); // após importar, ignora o cache e revalida tudo
   }catch(err){
     console.error(err);
     showToast('Erro ao salvar: ' + err.message,'error');
@@ -4462,6 +4906,15 @@ async function confirmarImportar(){
 if(isCmsLogado()){
   $('loginScreen').classList.add('hidden');
   $('adminApp').classList.remove('hidden');
+  // Entrou sem sessão CMS? Então foi pela liberação local. Deixa isso à vista,
+  // porque mesmo local esta página escreve no Worker de PRODUÇÃO.
+  const _s = getPortalSession();
+  if(!(_s && _s.nome === 'CMS') && isAmbienteLocal()){
+    const av = document.createElement('div');
+    av.id = 'avisoLocal';
+    av.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Modo local · sem sessão CMS · dados de <b>produção</b>';
+    document.body.appendChild(av);
+  }
   loadData();
 }
 </script>
