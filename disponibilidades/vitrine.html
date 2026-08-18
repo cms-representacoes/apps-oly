@@ -177,11 +177,52 @@
       padding:10px 16px;
     }
     @media(min-width:640px){ .filters-bar{ top:72px; margin:0 -24px; padding:10px 24px; } }
-    /* Desktop (≥1024px): visão + campanhas na MESMA linha. Mobile fica empilhado.
-       Seletor mais específico (.filters-bar .controles-secundarios) pra vencer o flex-col do Tailwind. */
-    @media(min-width:1024px){
-      .filters-bar .controles-secundarios{ flex-direction:row; align-items:flex-start; gap:20px; flex-wrap:wrap; }
+    /* Separador entre os grupos da barra (Filtros | visão | campanhas).
+       Fica dentro do bloco que ele separa, então some junto quando o bloco
+       está oculto — evita traço solto quando não há 2S26 ou campanha. */
+    .fb-sep{
+      width:1px; height:20px; flex:none;
+      background:var(--line); margin:0 4px;
     }
+    @media(max-width:640px){ .fb-sep{ display:none; } }
+
+    /* ── Alternador de visão: Pronta entrega x Meta produtiva ──
+       São duas realidades diferentes — estoque agora e produção futura — e o
+       vendedor precisa perceber que existem as duas. Por isso cada lado acende
+       na sua própria cor quando ativo, em vez do branco neutro de antes. */
+    .visao-switch{
+      display:inline-flex; gap:3px; padding:3px; flex:none;
+      border-radius:999px;
+      background:var(--bg-subtle,#f1f5f9);
+      border:1px solid var(--line);
+    }
+    .visao-btn{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:6px 14px; border-radius:999px;
+      font-size:12.5px; font-weight:800; white-space:nowrap;
+      color:var(--muted); background:transparent; border:none; cursor:pointer;
+      transition:background .18s, color .18s, box-shadow .18s, transform .12s;
+    }
+    .visao-btn:not(.ativo):hover{ color:var(--text); background:rgba(127,127,127,.14); }
+    .visao-btn:active{ transform:scale(.97); }
+    .visao-btn i{ font-size:11px; }
+    .visao-cnt{
+      font-size:10.5px; font-weight:900; line-height:1;
+      background:rgba(127,127,127,.20);
+      border-radius:999px; padding:3px 7px;
+    }
+    /* Ativo — verde de "tem agora, pode entregar" */
+    .visao-btn.ativo.visao-dispo{
+      background:linear-gradient(145deg,#10b981 0%,#059669 100%);
+      color:#fff; box-shadow:0 3px 10px rgba(5,150,105,.40), inset 0 1px 0 rgba(255,255,255,.22);
+    }
+    /* Ativo — roxo de "ainda vai ser produzido" */
+    .visao-btn.ativo.visao-meta{
+      background:linear-gradient(145deg,#a970ff 0%,#7c3aed 100%);
+      color:#fff; box-shadow:0 3px 10px rgba(124,58,237,.40), inset 0 1px 0 rgba(255,255,255,.22);
+    }
+    .visao-btn.ativo .visao-cnt{ background:rgba(255,255,255,.26); }
+    .visao-btn.ativo:hover{ filter:brightness(1.06); }
 
     /* Modal zoom */
     .modal-zoom{ position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.8); display:flex; align-items:center; justify-content:center; padding:24px; }
@@ -1554,54 +1595,56 @@ body.theme-dark .load-more-btn{ background:var(--card); }
 
 <main class="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
 
-  <!-- Barra de filtros (sticky) -->
-  <div class="filters-bar flex flex-col gap-2 mb-4">
-    <!-- Linha 1: botão Filtros + chips ativos + contador -->
-    <div class="flex flex-wrap items-center gap-2">
-      <button id="btnFiltros" onclick="abrirDrawerFiltros()" class="filtros-toggle">
-        <i class="fa-solid fa-sliders"></i> Filtros
-        <span id="filtrosBadge" class="filtros-badge hidden">0</span>
-      </button>
-      <button id="btnMeusPedidos" onclick="abrirMeusPedidos()" class="filtros-toggle meus-pedidos-btn">
-        <i class="fa-solid fa-clipboard-list"></i> Meus Pedidos
-        <span id="meusPedidosBadge" class="filtros-badge hidden">0</span>
-      </button>
-      <div id="chipsAtivos" class="flex flex-wrap gap-1.5"></div>
-      <div class="ml-auto flex items-center gap-3">
-        <div class="text-xs font-semibold" style="color:var(--muted)" id="countLabel">—</div>
-        <div class="sel-bar" id="selBar">
-          <label class="flex items-center gap-2 cursor-pointer text-xs font-bold" style="color:var(--muted)">
-            <input type="checkbox" id="chkTodos" onchange="toggleSelecionarTodos(this.checked)" style="accent-color:var(--accent);width:15px;height:15px">
-            Selecionar todos
-          </label>
-          <span class="text-xs font-semibold" style="color:var(--accent)" id="selCount"></span>
-        </div>
+  <!-- Barra de filtros (sticky) — tudo numa fileira só: Filtros, Meus Pedidos,
+       visão, campanhas e chips. Os separadores ficam DENTRO de cada bloco que
+       pode sumir, para não sobrar traço solto quando o bloco está oculto. -->
+  <div class="filters-bar flex flex-wrap items-center gap-2 mb-4">
+    <button id="btnFiltros" onclick="abrirDrawerFiltros()" class="filtros-toggle">
+      <i class="fa-solid fa-sliders"></i> Filtros
+      <span id="filtrosBadge" class="filtros-badge hidden">0</span>
+    </button>
+    <button id="btnMeusPedidos" onclick="abrirMeusPedidos()" class="filtros-toggle meus-pedidos-btn">
+      <i class="fa-solid fa-clipboard-list"></i> Meus Pedidos
+      <span id="meusPedidosBadge" class="filtros-badge hidden">0</span>
+    </button>
+
+    <!-- Alternador de visão: Pronta entrega x Meta produtiva.
+         Só aparece se houver itens da coleção futura. -->
+    <div id="visaoBar" class="hidden items-center gap-2">
+      <span class="fb-sep" aria-hidden="true"></span>
+      <div class="visao-switch" role="tablist" aria-label="O que exibir">
+        <button id="btnVisaoDispo" onclick="setVisao('disponivel')" role="tab"
+          class="visao-btn visao-dispo ativo" title="Estoque disponível para entrega imediata">
+          <i class="fa-solid fa-truck-fast"></i> Pronta entrega
+          <span id="badgeDispo" class="visao-cnt">0</span>
+        </button>
+        <button id="btnVisaoMeta" onclick="setVisao('meta')" role="tab"
+          class="visao-btn visao-meta" title="Produção programada da coleção 2S26">
+          <i class="fa-solid fa-industry"></i> Meta produtiva
+          <span id="badgeMeta" class="visao-cnt">0</span>
+        </button>
       </div>
     </div>
-    <!-- Controles secundários: visão (Disponíveis x 2S26) + campanhas.
-         No desktop vão pra mesma linha (ver .controles-secundarios na media query). -->
-    <div class="controles-secundarios flex flex-col gap-2">
-      <!-- toggle de visão (Disponíveis x Meta 2S26) — só aparece se houver 2S26 -->
-      <div id="visaoBar" class="hidden pt-2" style="border-top:1px dashed var(--line)">
-        <div class="flex items-center gap-2">
-          <div class="inline-flex rounded-full p-0.5" style="background:var(--bg-subtle, #f1f5f9); border:1px solid var(--line)">
-            <button id="btnVisaoDispo" onclick="setVisao('disponivel')" class="px-3 py-1 text-xs font-bold rounded-full transition-all" style="background:#fff; color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,.08)">
-              <i class="fa-solid fa-box text-[10px]"></i> Disponíveis
-              <span id="badgeDispo" class="ml-1 text-[10px] font-extrabold" style="opacity:.7">0</span>
-            </button>
-            <button id="btnVisaoMeta" onclick="setVisao('meta')" class="px-3 py-1 text-xs font-bold rounded-full transition-all" style="background:transparent; color:var(--muted)">
-              <i class="fa-solid fa-industry text-[10px]"></i> 2S26
-              <span id="badgeMeta" class="ml-1 text-[10px] font-extrabold" style="opacity:.7">0</span>
-            </button>
-          </div>
-        </div>
-      </div>
-      <!-- campanhas (pills) — oculta se não houver -->
-      <div id="campanhasBar" class="hidden items-center gap-1.5 flex-wrap pt-2" style="border-top:1px dashed var(--line)">
-        <span class="text-[11px] font-extrabold uppercase tracking-wide" style="color:var(--muted)">
-          <i class="fa-solid fa-tag text-[10px]"></i> Campanhas
-        </span>
-        <div id="campanhasPills" class="flex flex-wrap gap-1.5"></div>
+
+    <!-- campanhas (pills) — oculta se não houver -->
+    <div id="campanhasBar" class="hidden items-center gap-1.5 flex-wrap">
+      <span class="fb-sep" aria-hidden="true"></span>
+      <span class="text-[11px] font-extrabold uppercase tracking-wide" style="color:var(--muted)">
+        <i class="fa-solid fa-tag text-[10px]"></i> Campanhas
+      </span>
+      <div id="campanhasPills" class="flex flex-wrap gap-1.5"></div>
+    </div>
+
+    <div id="chipsAtivos" class="flex flex-wrap gap-1.5"></div>
+
+    <div class="ml-auto flex items-center gap-3">
+      <div class="text-xs font-semibold" style="color:var(--muted)" id="countLabel">—</div>
+      <div class="sel-bar" id="selBar">
+        <label class="flex items-center gap-2 cursor-pointer text-xs font-bold" style="color:var(--muted)">
+          <input type="checkbox" id="chkTodos" onchange="toggleSelecionarTodos(this.checked)" style="accent-color:var(--accent);width:15px;height:15px">
+          Selecionar todos
+        </label>
+        <span class="text-xs font-semibold" style="color:var(--accent)" id="selCount"></span>
       </div>
     </div>
   </div>
@@ -2497,14 +2540,13 @@ function renderVisaoBar(){
   $('badgeDispo').textContent = totalDispo;
   $('badgeMeta').textContent  = totalMeta;
 
+  // Só alterna a classe: a cor de cada visão vive no CSS (.visao-btn.ativo).
+  // Pintar por style inline aqui sobrescreveria o gradiente e a sombra.
   const dispo = STATE.filtroVisao === 'disponivel';
-  // Botão ativo: fundo branco + sombra
-  $('btnVisaoDispo').style.background = dispo ? '#fff' : 'transparent';
-  $('btnVisaoDispo').style.color      = dispo ? 'var(--text)' : 'var(--muted)';
-  $('btnVisaoDispo').style.boxShadow  = dispo ? '0 1px 3px rgba(0,0,0,.08)' : 'none';
-  $('btnVisaoMeta').style.background  = !dispo ? '#7c3aed' : 'transparent';
-  $('btnVisaoMeta').style.color       = !dispo ? '#fff' : 'var(--muted)';
-  $('btnVisaoMeta').style.boxShadow   = !dispo ? '0 1px 3px rgba(124,58,237,.4)' : 'none';
+  $('btnVisaoDispo').classList.toggle('ativo', dispo);
+  $('btnVisaoMeta').classList.toggle('ativo', !dispo);
+  $('btnVisaoDispo').setAttribute('aria-selected', dispo ? 'true' : 'false');
+  $('btnVisaoMeta').setAttribute('aria-selected', !dispo ? 'true' : 'false');
 }
 
 function setVisao(v){
