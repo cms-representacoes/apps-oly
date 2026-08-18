@@ -43,7 +43,8 @@ export default {
       "uploadMatrizImagem",
       "clearPedidosHistorico",
       "tsBuscarImagens",
-      "tsDiagnostico"
+      "tsDiagnostico",
+      "tsInspecionarLogin"
     ]);
 
     function requireAdmin(action) {
@@ -344,6 +345,69 @@ export default {
       return Object.entries(jar).map(([k, v]) => `${k}=${v}`).join("; ");
     }
 
+    // Lê um atributo de uma tag HTML solta (ex.: name="x" de um <input ...>)
+    function tsAttr(tag, attr) {
+      const m = String(tag).match(new RegExp(attr + '\\s*=\\s*"([^"]*)"', "i"));
+      return m ? m[1] : "";
+    }
+
+    // Encontra o <form> de login: é aquele que contém um input de senha.
+    // A página tem outros formulários (busca, newsletter), e pegar o primeiro
+    // levaria a postar no endereço errado.
+    function tsFormLogin(html) {
+      const forms = [...String(html).matchAll(/<form\b[^>]*>([\s\S]*?)<\/form>/gi)];
+      for (const f of forms) {
+        if (/type\s*=\s*"password"/i.test(f[1])) {
+          const abre = f[0].match(/<form\b[^>]*>/i);
+          return { tag: abre ? abre[0] : "", corpo: f[1] };
+        }
+      }
+      return null;
+    }
+
+    // Monta o corpo do POST lendo os campos REAIS do formulário.
+    // Não fixamos "user[email]" — o Trade Squash já renomeou esses campos antes
+    // (o scraper Python tinha comentário sobre isso), e o Selenium não se
+    // importava porque localizava por type. Aqui descobrimos os nomes na hora.
+    function tsMontarPayload(corpo, usuario, senha) {
+      const inputs = [...String(corpo).matchAll(/<input\b[^>]*>/gi)].map(m => m[0]);
+      const dados = new URLSearchParams();
+      const achados = { email: "", senha: "", termos: "", valorTermos: "1", ocultos: [] };
+
+      for (const tag of inputs) {
+        const name = tsAttr(tag, "name");
+        if (!name) continue;
+        const type = (tsAttr(tag, "type") || "text").toLowerCase();
+        const value = tsAttr(tag, "value");
+
+        if (type === "email" || (!achados.email && /e-?mail|login|user(name)?$/i.test(name))) {
+          achados.email = name; continue;
+        }
+        if (type === "password") { achados.senha = name; continue; }
+        if (type === "checkbox") {
+          // "Remember me" fica de fora de propósito
+          if (/term|accept|aceite|polic|privac/i.test(name)) {
+            achados.termos = name;
+            achados.valorTermos = value || "1";
+          }
+          continue;
+        }
+        // hidden (authenticity_token, utf8, _method...) e submit vão como estão
+        if (type === "hidden" || type === "submit") {
+          dados.set(name, value);
+          if (type === "hidden") achados.ocultos.push(name);
+        }
+      }
+
+      if (achados.email)  dados.set(achados.email, usuario);
+      if (achados.senha)  dados.set(achados.senha, senha);
+      // depois dos hidden: o Rails emite um hidden "0" com o mesmo nome do
+      // checkbox, e o valor marcado precisa sobrescrever aquele zero
+      if (achados.termos) dados.set(achados.termos, achados.valorTermos);
+
+      return { dados, achados };
+    }
+
     // Rails clássico: GET no formulário para pegar authenticity_token + cookie,
     // POST com as credenciais, e GET na showcase para o servidor contextualizar
     // o tenant (o Python fazia isso clicando no botão "Vitrine").
@@ -358,33 +422,37 @@ export default {
       const html = await r1.text();
       let cookie = tsColherCookies("", r1);
 
-      const token =
-        (html.match(/name="authenticity_token"[^>]*\svalue="([^"]+)"/i) || [])[1] ||
-        (html.match(/value="([^"]+)"[^>]*\sname="authenticity_token"/i) || [])[1] || "";
-      if (!token) throw new Error("authenticity_token não encontrado na tela de login.");
+      const formulario = tsFormLogin(html);
+      if (!formulario) {
+        throw new Error("Formulário de login não encontrado (nenhum <form> com campo de senha).");
+      }
 
-      const acao = (html.match(/<form[^>]+action="([^"]+)"[^>]*>/i) || [])[1] || "/session";
+      const acao = tsAttr(formulario.tag, "action") || "/session";
       const urlPost = acao.startsWith("http")
         ? acao
         : TS_BASE + (acao.startsWith("/") ? acao : "/" + acao);
 
-      const form = new URLSearchParams();
-      form.set("authenticity_token", token);
-      form.set("user[email]", env.TS_USERNAME);
-      form.set("user[password]", env.TS_PASSWORD);
-      // O site passou a exigir aceite dos termos — equivale ao clique no checkbox
-      const mTermos = html.match(/name="([^"]*(?:terms|aceite)[^"]*)"/i);
-      if (mTermos) form.set(mTermos[1], "1");
-      form.set("commit", "Entrar");
+      const { dados, achados } = tsMontarPayload(formulario.corpo, env.TS_USERNAME, env.TS_PASSWORD);
+      if (!achados.email || !achados.senha) {
+        throw new Error(`Campos de login não identificados (email="${achados.email}", senha="${achados.senha}").`);
+      }
 
       const r2 = await fetch(urlPost, {
         method: "POST",
-        headers: { ...cab, "Content-Type": "application/x-www-form-urlencoded", Cookie: cookie },
-        body: form.toString(),
+        headers: {
+          ...cab,
+          "Content-Type": "application/x-www-form-urlencoded",
+          Cookie: cookie,
+          Referer: `${TS_BASE}/session/new`,
+          Origin: TS_BASE
+        },
+        body: dados.toString(),
         redirect: "manual"
       });
       cookie = tsColherCookies(cookie, r2);
       if (r2.status >= 400) throw new Error(`POST de login falhou (${r2.status})`);
+      // Guarda o que foi detectado, para o diagnóstico conseguir mostrar
+      globalThis.__TS_ULTIMO_FORM = { urlPost, ...achados, statusPost: r2.status };
 
       const showcase = `${TS_BASE}/${tenant}/showcase`;
       const r3 = await fetch(showcase, { headers: { ...cab, Cookie: cookie }, redirect: "follow" });
@@ -1587,19 +1655,63 @@ export default {
         // navegador antes de disparar o lote inteiro.
         if (body.action === "tsDiagnostico") {
           const tenant = TS_TENANTS[String(body.marca || "oly")] || TS_TENANTS.oly;
+          globalThis.__TS_ULTIMO_FORM = null;
           try {
             const s = await tsSessao(tenant, true);
             const amostra = await tsBuscar(s, String(body.artigo || ""), String(body.cor || ""));
             return new Response(JSON.stringify({
               success: true,
               tenant,
+              formulario: globalThis.__TS_ULTIMO_FORM,
               cookies: s.cookie.split(";").length,
               amostraEncontrada: amostra.length,
               primeiroSku: amostra[0] ? amostra[0].sku : null
             }), { status: 200, headers: corsHeaders });
           } catch (e) {
+            // Devolve o que foi detectado no formulário mesmo quando falha —
+            // é isso que diz SE os campos foram achados e com quais nomes.
             return new Response(JSON.stringify({
-              success: false, tenant, error: String((e && e.message) || e)
+              success: false,
+              tenant,
+              error: String((e && e.message) || e),
+              formulario: globalThis.__TS_ULTIMO_FORM
+            }), { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // ── TRADE SQUASH: espelho cru da tela de login ────────────────────
+        // Só para depurar: mostra os campos que o site está renderizando hoje,
+        // sem tentar logar. Nenhuma credencial é enviada.
+        if (body.action === "tsInspecionarLogin") {
+          try {
+            const r = await fetch(`${TS_BASE}/session/new`, {
+              headers: { "User-Agent": TS_UA_HEADER, "Accept-Language": "pt-BR,pt;q=0.9" }
+            });
+            const html = await r.text();
+            const f = tsFormLogin(html);
+            if (!f) {
+              return new Response(JSON.stringify({
+                success: false, status: r.status, tamanhoHtml: html.length,
+                error: "Nenhum <form> com campo de senha na página."
+              }), { status: 200, headers: corsHeaders });
+            }
+            const campos = [...f.corpo.matchAll(/<input\b[^>]*>/gi)].map(m => ({
+              name: tsAttr(m[0], "name"),
+              type: (tsAttr(m[0], "type") || "text").toLowerCase(),
+              value: tsAttr(m[0], "type").toLowerCase() === "hidden"
+                ? (tsAttr(m[0], "value") ? "(preenchido)" : "(vazio)")
+                : tsAttr(m[0], "value")
+            })).filter(c => c.name);
+            return new Response(JSON.stringify({
+              success: true,
+              status: r.status,
+              action: tsAttr(f.tag, "action"),
+              method: tsAttr(f.tag, "method"),
+              campos
+            }), { status: 200, headers: corsHeaders });
+          } catch (e) {
+            return new Response(JSON.stringify({
+              success: false, error: String((e && e.message) || e)
             }), { status: 200, headers: corsHeaders });
           }
         }
