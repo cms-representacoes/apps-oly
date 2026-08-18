@@ -1482,14 +1482,20 @@ document.addEventListener('DOMContentLoaded', ()=>{
 //   • canal exclusivo (DTC/ML) — o próprio código diz "não vai pra vitrine"
 //   • PDV zerado — sem preço não há venda
 // Aparecem separados no resumo da confirmação, para você ver antes de aceitar.
-const LIMPEZA_GRUPOS = {
-  exclusivo:  'Canal exclusivo (DTC/ML)',
-  sem_preco:  'Sem preço (PDV zerado)',
-  acessorio:  `Acessórios/meias abaixo de ${ACESSORIO_MIN} un.`,
-  calcado:    'Calçados sem grade comercial',
-  confeccao:  'Confecções sem grade comercial',
-  outro:      'Grade não reconhecida'
-};
+// Função, e não const: ACESSORIO_MIN é declarada bem depois neste arquivo, e
+// um `const` aqui em cima leria o valor na hora do parse — antes de existir —
+// derrubando o script inteiro (temporal dead zone). Como função, o valor só é
+// lido quando alguém chama, e aí a constante já está definida.
+function limpezaGrupos(){
+  return {
+    exclusivo:  'Canal exclusivo (DTC/ML)',
+    sem_preco:  'Sem preço (PDV zerado)',
+    acessorio:  `Acessórios/meias abaixo de ${ACESSORIO_MIN} un.`,
+    calcado:    'Calçados sem grade comercial',
+    confeccao:  'Confecções sem grade comercial',
+    outro:      'Grade não reconhecida'
+  };
+}
 
 function grupoDaLimpeza(classif){
   if(classif.bucket === 'exclusivo') return 'exclusivo';
@@ -1518,11 +1524,12 @@ async function limparSaldoBaixo(){
   }
 
   // Resumo por motivo — é o que permite conferir antes de apagar
+  const grupos = limpezaGrupos();
   const porGrupo = {};
   for(const a of alvos) porGrupo[a.grupo] = (porGrupo[a.grupo] || 0) + 1;
-  const resumo = Object.keys(LIMPEZA_GRUPOS)
+  const resumo = Object.keys(grupos)
     .filter(g => porGrupo[g])
-    .map(g => `• ${porGrupo[g]} — ${LIMPEZA_GRUPOS[g]}`)
+    .map(g => `• ${porGrupo[g]} — ${grupos[g]}`)
     .join('\n');
 
   const restantes = STATE.itens.length - alvos.length;
