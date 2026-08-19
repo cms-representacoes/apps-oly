@@ -844,6 +844,14 @@
     }
     .meta-total .meta-mes{ color:#581c87; font-weight:900; font-size:9.5px; }
     .meta-total .meta-qtd{ font-size:13px; color:#5b21b6; }
+    /* Quando a meta se repete igual em todas as quinzenas, mostramos só a mais
+       próxima — esta nota avisa que o número vale para as demais também, senão
+       o vendedor pensaria que a coleção tem uma quinzena só. */
+    .meta-obs{
+      margin-top:4px; padding-top:4px;
+      border-top:1px dashed #c4b5fd;
+      font-size:9.5px; font-weight:700; color:#7c3aed; text-align:center;
+    }
 
     /* Spinner */
     @keyframes spin{ to{ transform:rotate(360deg); } }
@@ -3009,16 +3017,19 @@ function buildCardHtml(item){
   // GRADE (estoque) ou QUINZENAS (meta produtiva)
   let gradeHtml = '';
   if(ehMeta){
-    const quinzenas = item.quinzenas || {};
-    const linhas = metaQuinzValidas(item);
+    const linhas = metaLinhasExibir(item);
     const totalMeta = metaTotalValido(item);
+    const uniforme = metaUniforme(item);
+    const qtdQuinz = metaQuinzValidas(item).length;
     gradeHtml = linhas.length
       ? `<div class="meta-bloco">
            <div class="meta-titulo"><i class="fa-solid fa-industry"></i> Meta produtiva</div>
            ${linhas.map(([q, qtd]) =>
              `<div class="meta-linha"><span class="meta-mes">${safeHtml(labelQuinzena(q))}</span><span class="meta-qtd">${Number(qtd).toLocaleString('pt-BR')} pares</span></div>`
            ).join('')}
-           ${linhas.length > 1 ? `<div class="meta-total"><span class="meta-mes">TOTAL</span><span class="meta-qtd">${totalMeta.toLocaleString('pt-BR')}</span></div>` : ''}
+           ${uniforme
+             ? `<div class="meta-obs">Mesma meta nas ${qtdQuinz} quinzenas</div>`
+             : (linhas.length > 1 ? `<div class="meta-total"><span class="meta-mes">TOTAL</span><span class="meta-qtd">${totalMeta.toLocaleString('pt-BR')}</span></div>` : '')}
          </div>`
       : '<span style="font-size:11px;color:var(--muted)">Sem meta cadastrada</span>';
   } else {
@@ -3031,23 +3042,12 @@ function buildCardHtml(item){
       : '<span style="font-size:11px;color:var(--muted)">—</span>';
   }
 
-  const prevFatLimpo = (item.prevFat||'')
-    .replace(/Ã\u00aa/g,'ª').replace(/Ã\u00ba/g,'º')
-    .replace(/Ã§/g,'ç').replace(/Ã£/g,'ã').replace(/Ã¢/g,'â')
-    .replace(/Ã©/g,'é').replace(/Ã\u00a3/g,'ã')
-    .replace(/\u00c3\u00aa/g,'ª').replace(/\u00c3\u00ba/g,'º')
-    .trim();
-
-  // Chip marca
+  // Chip de marca removido: a vitrine já é de uma marca só (?marca=oly|ua),
+  // então todo card mostrava a mesma etiqueta — ruído sem informação.
   const isTabEsp = !!item.codigoTabela;
-  const chipMarca = item.marca === 'UA'
-    ? `<span class="chip chip-ua">UA</span>`
-    : `<span class="chip chip-oly">OLY</span>`;
 
-  // Tag 2S26 (substitui chip de campanha)
-  const chip2s26 = ehMeta
-    ? `<span class="chip" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;border:none;font-size:10px;font-weight:900;letter-spacing:.3px;box-shadow:0 1px 3px rgba(124,58,237,.4)"><i class="fa-solid fa-industry" style="font-size:9px"></i> 2S26</span>`
-    : '';
+  // Chip 2S26 removido: quem está na visão "Meta produtiva" já sabe onde está,
+  // e o bloco abaixo do card já é titulado "Meta produtiva".
 
   // Um artigo pode ter mais de 1 campanha vigente ao mesmo tempo (ex: agosto +
   // dezembro). Mostra uma etiqueta por campanha; clicando, troca qual delas
@@ -3062,13 +3062,12 @@ function buildCardHtml(item){
     ? campanhas.map(c => `<span class="chip chip-tabela${c.codigoTabela===codigoSelecionado?' ativa':''}" data-codigo="${safeHtml(c.codigoTabela)}"${campanhas.length>1?` onclick="event.stopPropagation();selecionarCampanha('${safeHtml(key)}','${safeHtml(c.codigoTabela)}')" style="cursor:pointer"`:''}><i class="fa-solid fa-tag" style="font-size:9px"></i> ${safeHtml(c.codigoTabela)}</span>`).join('')
     : '';
 
-  // Empresa e quinzena — só para não tabela especial e não meta
-  const chipEmpresa = !isTabEsp && !ehMeta && item.empresa
-    ? `<span class="chip" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;font-size:10px">${safeHtml(item.empresa)}</span>`
-    : '';
-  const chipQuinzena = !isTabEsp && !ehMeta && prevFatLimpo
-    ? `<span class="chip" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;font-size:10px"><i class="fa-regular fa-calendar" style="font-size:9px"></i> ${safeHtml(prevFatLimpo)}</span>`
-    : '';
+  // Chips de fábrica (VULSP/AZABA/VULTS) e de previsão de faturamento
+  // removidos do card: são informação interna, não ajudam o vendedor a
+  // escolher o produto. Os dados continuam no item — seguem indo para o
+  // PDF, o XLSX e o pedido.
+  const chipEmpresa = '';
+  const chipQuinzena = '';
 
   // Total: pra meta, soma quinzenas; pra estoque, totalGeral
   const totalExibir = ehMeta
@@ -3098,12 +3097,12 @@ function buildCardHtml(item){
     <div class="p-4">
       <div class="text-base font-extrabold leading-tight mb-1" style="color:var(--text)">${safeHtml(item.descricao||'—')}</div>
       <div class="text-xs font-semibold mb-3" style="color:var(--muted)">${safeHtml(item.artigo)} · ${safeHtml(item.cor)}</div>
-      <div class="flex flex-wrap gap-1.5 mb-3">
-        ${chip2s26}${chipMarca}${chipTabela}${chipEmpresa}${chipQuinzena}
-      </div>
+      ${(chipTabela || chipEmpresa || chipQuinzena)
+        ? `<div class="flex flex-wrap gap-1.5 mb-3">${chipTabela}${chipEmpresa}${chipQuinzena}</div>`
+        : ''}
       <div class="flex items-center justify-between mb-2">
         <div class="text-lg font-black" style="color:var(--accent)">R$ ${Number(item.pdv||0).toFixed(2)}</div>
-        <div class="text-xs font-semibold" style="color:var(--muted)">${ehMeta?'Total':'T.'} ${totalExibir.toLocaleString('pt-BR')} ${ehMeta?'pares':'un'}</div>
+        ${ehMeta ? '' : `<div class="text-xs font-semibold" style="color:var(--muted)">T. ${totalExibir.toLocaleString('pt-BR')} un</div>`}
       </div>
       <div class="tabesp-slot">${tabEspBoxHtml(campanhaAtiva, ehMeta)}</div>
       ${gradeHtml}
@@ -3167,8 +3166,29 @@ function metaQuinzValidas(item){
     Object.entries(item.quinzenas||{}).filter(([,v]) => (Number(v)||0) >= META_MIN_PARES)
   );
 }
+// Na maior parte da coleção a meta se repete igual em todas as quinzenas
+// (hoje: 770 de 944 produtos). Nesses casos, repetir a mesma linha quatro vezes
+// e somar tudo dá um número que não existe na prática — a meta é aquela, por
+// quinzena. Então tratamos os dois casos de forma diferente.
+function metaUniforme(item){
+  const ents = metaQuinzValidas(item);
+  if(ents.length < 2) return false;
+  const primeiro = Number(ents[0][1]) || 0;
+  return ents.every(([,v]) => (Number(v)||0) === primeiro);
+}
+
+// Quinzenas a exibir: se todas são iguais, só a mais próxima.
+function metaLinhasExibir(item){
+  const ents = metaQuinzValidas(item);
+  return metaUniforme(item) ? [ents[0]] : ents;
+}
+
+// Total: soma quando as quinzenas diferem; quando são iguais, é a própria qtde.
 function metaTotalValido(item){
-  return metaQuinzValidas(item).reduce((s, [,v]) => s + (Number(v)||0), 0);
+  const ents = metaQuinzValidas(item);
+  if(!ents.length) return 0;
+  if(metaUniforme(item)) return Number(ents[0][1]) || 0;
+  return ents.reduce((s, [,v]) => s + (Number(v)||0), 0);
 }
 
 // Mês mais próximo (cronológico) que tem meta produtiva — ex.: "AGOSTO 2026"
