@@ -3587,7 +3587,6 @@ function classificarCategoriaLinha(row){
 
 function rowToItem(row, quinzenaHint){
   const categoria = String(row['CATEGORIA']  || '').trim().toUpperCase();
-  const ehMeta = ehColecaoMeta(categoria);
 
   const grade = {};
   let prevFatRaw = String(row['PREV. FAT'] || '').trim();
@@ -3598,7 +3597,23 @@ function rowToItem(row, quinzenaHint){
     if(!isNaN(n) && n > 0) grade[col] = n;
   }
 
-  // Se for COLEÇÃO META: ignora grade (vai pelo T.GER) e detecta a quinzena
+  const totalGeral = Number(row['T. GER'] || 0);
+
+  // ── META PRODUTIVA x PRONTA ENTREGA ──────────────────────────────────────
+  // Decidido pelo DADO da linha, não pela coluna CATEGORIA:
+  //   só T.GERAL, sem quantidade nos tamanhos  → meta produtiva
+  //   T.GERAL + quantidade nos tamanhos        → pronta entrega
+  //
+  // Antes isso saía de ehColecaoMeta(categoria), ou seja, da categoria ser
+  // "2S26". Isso errava nos dois sentidos: linha de meta com categoria comum
+  // (CAMINHADA, por exemplo) entrava como pronta entrega de grade vazia, e uma
+  // planilha podia trazer os dois tipos misturados sem o código distinguir.
+  // A categoria segue valendo como reforço para quando a grade vier vazia e o
+  // T.GERAL zerado — aí não há dado que decida.
+  const temGrade = Object.keys(grade).length > 0;
+  const ehMeta = temGrade ? false : (totalGeral > 0 || ehColecaoMeta(categoria));
+
+  // Se for META: ignora grade (vai pelo T.GER) e detecta a quinzena
   let _meta = false;
   let quinzenaKey = '';
   if(ehMeta){
@@ -3622,8 +3637,6 @@ function rowToItem(row, quinzenaHint){
     .replace(/[\/\-]+/g, '_')
     .replace(/_+/g, '_')
     .replace(/^_+|_+$/g, '');
-
-  const totalGeral = Number(row['T. GER'] || 0);
 
   const item = {
     marca:        String(row['MARCA']      || '').trim().toUpperCase(),
