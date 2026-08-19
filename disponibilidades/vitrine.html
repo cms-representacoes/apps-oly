@@ -1713,6 +1713,12 @@ body.theme-dark .load-more-btn{ background:var(--card); }
         <div class="drawer-section-title">Categoria</div>
         <div id="filtroCategoriaBox" class="drawer-opts"></div>
       </div>
+      <!-- Subcategoria — só aparece quando há tipos a distinguir
+           (acessórios e vestuário). Some em tênis e chinelo. -->
+      <div class="drawer-section hidden" id="filtroSubcatSection">
+        <div class="drawer-section-title">Tipo de produto</div>
+        <div id="filtroSubcatBox" class="drawer-opts"></div>
+      </div>
     </div>
     <div class="drawer-foot">
       <button onclick="limparTodosFiltros()" class="drawer-btn-ghost">Limpar</button>
@@ -2025,6 +2031,7 @@ const STATE = {
   filtroCampanha:  '',
   filtroGenero:    new Set(),
   filtroCategoria: new Set(),
+  filtroSubcat:    new Set(),
   // Visão: 'disponivel' (padrão — produtos com grade) ou 'meta' (coleção 2S26)
   filtroVisao:     'disponivel',
   ordenacao:       'padrao',
@@ -2505,6 +2512,50 @@ function categoriaEfetiva(item){
 }
 
 // Ícone Font Awesome por categoria (casa por palavra-chave)
+// ── SUBCATEGORIAS ────────────────────────────────────────────────────────────
+// Os dados NÃO trazem subcategoria: `categoriaProduto` é sempre igual à
+// categoria, e `linha` é linha de produto (CONFORTO, TREINO), não tipo.
+// O tipo real está no começo da DESCRIÇÃO — "MOCHILA UA HUSTLE", "BERMUDA...".
+// A tabela abaixo foi montada a partir das descrições que existem hoje na base,
+// por isso cobre abreviações e truncamentos ("MOCHIL", "BERM", "CAM.MC").
+// Ordem importa: o primeiro padrão que casar vence.
+const SUBCATEGORIAS = [
+  { nome:'Meias',              icone:'fa-socks',        re:/^(MEIAS?|TRIPK|TRIPACK)/ },
+  { nome:'Mochilas',           icone:'fa-bag-shopping', re:/^MOCHIL/ },
+  { nome:'Bolsas e malas',     icone:'fa-suitcase',     re:/^(MALA|BOLSA|SACOLA|GYMSACK|GYM\b)/ },
+  { nome:'Bonés e viseiras',   icone:'fa-hat-cowboy',   re:/^(BONE|VISEIRA|BUCKET)/ },
+  { nome:'Camisetas',          icone:'fa-shirt',        re:/^(T-?SHIRT|CAMISETA|CAM\b|CAM\.)/ },
+  { nome:'Regatas',            icone:'fa-shirt',        re:/^(REGATA|REG[\s.])/ },
+  { nome:'Tops',               icone:'fa-shirt',        re:/^TOP\b/ },
+  { nome:'Bermudas e shorts',  icone:'fa-person-running', re:/^(BERMUDA|BERM\b|SHORTS?)/ },
+  { nome:'Calças e leggings',  icone:'fa-person',       re:/^(CALCA|LEGGING)/ },
+  // JAQ., MOL., CJ.AGASALLHO e MTL aparecem assim na base — inclusive com o
+  // erro de digitação "AGASALLHO", que precisa casar do jeito que está lá.
+  { nome:'Blusas e jaquetas',  icone:'fa-vest',
+    re:/^(BLUSA|JAQUETA|JAQ[\s.]|QUEBRA|CORTA|MOLETOM|MOL[\s.]|MTL\b|CJ[\s.]?AGASAL|AGASAL)/ },
+  { nome:'Luvas e acessórios', icone:'fa-mitten',       re:/^(LUVA|MANGUITO|FAIXA|POCHETE)/ },
+];
+
+// Só estas categorias ganham subcategoria. Em tênis e chinelo a descrição é o
+// nome do modelo ("CORRE VENTO"), então não há tipo a extrair.
+const CATS_COM_SUB = /^(ACESSORI|VESTUARIO|MEIA)/;
+
+function subcategoriaDe(item){
+  const cat = categoriaKey(categoriaEfetiva(item));
+  if(!CATS_COM_SUB.test(cat)) return '';
+  const desc = semAcento(String(item?.descricao || '').trim().toUpperCase());
+  if(!desc) return '';
+  for(const s of SUBCATEGORIAS){
+    if(s.re.test(desc)) return s.nome;
+  }
+  return 'Outros';   // dentro de acessórios/vestuário, o que não casou
+}
+
+function iconeSubcategoria(nome){
+  const s = SUBCATEGORIAS.find(x => x.nome === nome);
+  return s ? s.icone : 'fa-tag';
+}
+
 function iconeCategoria(catKey){
   const c = catKey || '';
   if(/TEN|CALCAD/.test(c))            return 'fa-shoe-prints';
@@ -2528,6 +2579,7 @@ function salvarFiltros(){
       campanha:  STATE.filtroCampanha,
       genero:    [...STATE.filtroGenero],
       categoria: [...STATE.filtroCategoria],
+      subcat:    [...STATE.filtroSubcat],
       ordenacao: STATE.ordenacao
     }));
   }catch(e){}
@@ -2540,6 +2592,7 @@ function carregarFiltros(){
     STATE.filtroCampanha  = f.campanha || '';
     STATE.filtroGenero    = new Set(Array.isArray(f.genero) ? f.genero : []);
     STATE.filtroCategoria = new Set(Array.isArray(f.categoria) ? f.categoria : []);
+    STATE.filtroSubcat    = new Set(Array.isArray(f.subcat) ? f.subcat : []);
     STATE.ordenacao       = f.ordenacao || 'padrao';
   }catch(e){}
 }
@@ -2578,6 +2631,7 @@ function setVisao(v){
   // ex: estava filtrado por TENIS na visão Disponíveis e vai pra 2S26
   STATE.filtroCategoria.clear();
   STATE.filtroGenero.clear();
+  STATE.filtroSubcat.clear();
   salvarFiltros();
   renderVisaoBar();
   renderChipsAtivos();
@@ -2665,6 +2719,37 @@ function renderDrawerOpcoes(){
       ${safeHtml(nomeCategoria(ck))} <span class="cnt">(${catCount[ck]})</span>
     </label>`).join('') : '<div class="text-xs" style="color:var(--muted)">Nenhuma categoria.</div>';
 
+  // Subcategoria (tipo de produto) — contextual: conta apenas os itens que já
+  // passam pelo filtro de categoria. Assim, ao marcar "Acessório", a lista de
+  // tipos vira mochila/boné/meia em vez de mostrar tudo que existe na base.
+  const baseSub = itensDaVisao.filter(it =>
+    !STATE.filtroCategoria.size || STATE.filtroCategoria.has(categoriaKey(categoriaEfetiva(it)))
+  );
+  const subCount = {};
+  for(const it of baseSub){
+    const s = subcategoriaDe(it);
+    if(s) subCount[s] = (subCount[s]||0) + 1;
+  }
+  // Mantém a ordem da tabela SUBCATEGORIAS e joga "Outros" pro fim
+  const ordem = SUBCATEGORIAS.map(s => s.nome).concat('Outros');
+  const subKeys = Object.keys(subCount).sort((a,b) => ordem.indexOf(a) - ordem.indexOf(b));
+  const secSub = $('filtroSubcatSection');
+  const boxS = $('filtroSubcatBox');
+  // Com menos de 2 tipos não há o que escolher — esconde a seção inteira
+  if(subKeys.length < 2){
+    secSub.classList.add('hidden');
+    boxS.innerHTML = '';
+    if(STATE.filtroSubcat.size){ STATE.filtroSubcat.clear(); }
+  }else{
+    secSub.classList.remove('hidden');
+    boxS.innerHTML = subKeys.map(s => `
+      <label class="drawer-opt">
+        <input type="checkbox" ${STATE.filtroSubcat.has(s)?'checked':''} onchange="toggleSubcat('${safeHtml(s)}',this.checked)">
+        <i class="fa-solid ${iconeSubcategoria(s)}" style="font-size:14px;width:18px;text-align:center;color:#64748b"></i>
+        ${safeHtml(s)} <span class="cnt">(${subCount[s]})</span>
+      </label>`).join('');
+  }
+
   // Ordenação
   $('ordenacaoSelect').value = STATE.ordenacao;
   atualizarBadgeFiltros();
@@ -2676,6 +2761,14 @@ function toggleGenero(g, on){
 }
 function toggleCategoria(c, on){
   if(on) STATE.filtroCategoria.add(c); else STATE.filtroCategoria.delete(c);
+  // Mudar a categoria muda quais tipos existem — redesenha o drawer para a
+  // lista de tipos acompanhar, e limpa seleções de tipo que ficaram órfãs.
+  salvarFiltros(); applyFilters(); atualizarBadgeFiltros(); renderChipsAtivos();
+  renderDrawerOpcoes();
+}
+
+function toggleSubcat(s, on){
+  if(on) STATE.filtroSubcat.add(s); else STATE.filtroSubcat.delete(s);
   salvarFiltros(); applyFilters(); atualizarBadgeFiltros(); renderChipsAtivos();
 }
 function setOrdenacao(v){
@@ -2687,6 +2780,7 @@ function limparTodosFiltros(){
   STATE.filtroCampanha = '';
   STATE.filtroGenero.clear();
   STATE.filtroCategoria.clear();
+  STATE.filtroSubcat.clear();
   STATE.ordenacao = 'padrao';
   if($('searchInput')) $('searchInput').value = '';
   STATE.search = '';
@@ -2699,7 +2793,7 @@ function limparTodosFiltros(){
 
 // Quantos filtros ativos (gênero + categoria; campanha tem pill própria)
 function contarFiltros(){
-  return STATE.filtroGenero.size + STATE.filtroCategoria.size;
+  return STATE.filtroGenero.size + STATE.filtroCategoria.size + STATE.filtroSubcat.size;
 }
 function atualizarBadgeFiltros(){
   const n = contarFiltros();
@@ -2722,6 +2816,9 @@ function renderChipsAtivos(){
   }
   for(const c of STATE.filtroCategoria){
     chips.push(`<span class="chip-ativo">${safeHtml(nomeCategoria(c))} <button onclick="toggleCategoria('${safeHtml(c)}',false)">×</button></span>`);
+  }
+  for(const s of STATE.filtroSubcat){
+    chips.push(`<span class="chip-ativo">${safeHtml(s)} <button onclick="toggleSubcat('${safeHtml(s)}',false)">×</button></span>`);
   }
   wrap.innerHTML = chips.join('');
 }
@@ -2758,6 +2855,7 @@ function applyFilters(){
     .filter(item => !STATE.filtroCampanha || temCampanha(item, STATE.filtroCampanha))
     .filter(item => STATE.filtroGenero.size === 0 || STATE.filtroGenero.has(String(item.genero||'').trim().toUpperCase()))
     .filter(item => STATE.filtroCategoria.size === 0 || STATE.filtroCategoria.has(categoriaKey(categoriaEfetiva(item))))
+    .filter(item => STATE.filtroSubcat.size === 0 || STATE.filtroSubcat.has(subcategoriaDe(item)))
     .filter(item => {
       if(!q) return true;
       return `${item.descricao} ${item.artigo} ${item.cor} ${item.linha} ${item.empresa} ${item.codigoTabela||''}`.toLowerCase().includes(q);
