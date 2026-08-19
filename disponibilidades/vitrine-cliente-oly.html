@@ -545,6 +545,24 @@ async function init(){
     }
     STATE.link = json.link;
     STATE.produtos = Array.isArray(json.link.produtos) ? json.link.produtos : [];
+
+    // Exclusivos de canal (DTC / ML): o link é uma foto do momento em que foi
+    // criado e vale 48h. Se um produto virou exclusivo nesse meio-tempo, ele
+    // não pode continuar sendo oferecido — senão o cliente pede algo que não
+    // temos como vender. Falha na consulta não bloqueia a página.
+    try{
+      const exclRes = await fetch(WORKER_URL, {
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ action:'getExclusivos' })
+      });
+      if(exclRes.ok){
+        const mapa = await exclRes.json();
+        if(mapa && typeof mapa === 'object'){
+          const bloqueados = new Set(Object.keys(mapa));
+          STATE.produtos = STATE.produtos.filter(p => !bloqueados.has(key(p)));
+        }
+      }
+    }catch(_){ /* segue com a lista original */ }
     STATE.marca = String(json.link.marca || 'oly').toLowerCase();
     document.body.setAttribute('data-marca', STATE.marca);
     document.querySelector('meta[name="theme-color"]').setAttribute('content', STATE.marca === 'ua' ? '#e52125' : '#0034d8');

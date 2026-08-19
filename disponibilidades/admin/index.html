@@ -389,6 +389,34 @@
     #biLog .nao { color:#f87171; }
     #biLog .inf { color:#94a3b8; }
 
+    /* ── Modal de exclusivos de canal ── */
+    .excl-tab{
+      padding:7px 14px; border-radius:999px; font-size:12.5px; font-weight:800;
+      border:1px solid var(--line); background:var(--bg); color:var(--muted); cursor:pointer;
+      display:inline-flex; align-items:center; gap:6px; transition:.15s;
+    }
+    .excl-tab:hover{ color:var(--text); }
+    .excl-tab.ativa{ background:var(--accent-dark); border-color:var(--accent-dark); color:#fff; }
+    .excl-cnt{ font-size:10.5px; font-weight:900; background:rgba(127,127,127,.22);
+      border-radius:999px; padding:1px 7px; }
+    .excl-tab.ativa .excl-cnt{ background:rgba(255,255,255,.28); }
+    .excl-row{
+      display:flex; align-items:center; gap:10px;
+      padding:9px 11px; border-radius:12px; cursor:pointer;
+      border:1px solid transparent; transition:background .12s, border-color .12s;
+    }
+    .excl-row:hover{ background:var(--bg); border-color:var(--line); }
+    .excl-row input{ accent-color:var(--accent-dark); width:16px; height:16px; flex:none; }
+    .excl-row-txt{ min-width:0; flex:1; }
+    .excl-row-desc{ font-size:13px; font-weight:700; color:var(--text);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .excl-row-meta{ font-size:11px; font-weight:600; color:var(--muted); }
+    .excl-canal{
+      font-size:10px; font-weight:900; border-radius:999px; padding:3px 8px; flex:none;
+      background:#ede9fe; color:#5b21b6; border:1px solid #ddd6fe;
+    }
+    .excl-vazio{ padding:34px 12px; text-align:center; font-size:13px; color:var(--muted); }
+
     /* Separa os filtros de marca/status dos selects, na mesma fileira */
     .filtro-sep{
       width:1px; height:22px; flex:none;
@@ -507,6 +535,11 @@
             class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
             <i class="fa-solid fa-rotate text-xs"></i> Verificar imagens
           </button>
+          <button onclick="abrirExclusivos()" data-tip="Produtos DTC e ML que não podem ir para a vitrine"
+            class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors"
+            style="border-color:#c4b5fd;background:#f5f3ff;color:#6d28d9">
+            <i class="fa-solid fa-lock text-xs"></i> Exclusivos
+          </button>
           <button onclick="limparSaldoBaixo()" data-tip="Excluir tudo que não é completo ou parcial (baixa planilha antes)"
             class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors"
             style="border-color:#fca5a5;background:#fef2f2;color:#b91c1c">
@@ -547,7 +580,7 @@
     <button class="filter-pill" data-filter="semimg" onclick="setFilter('semimg')" aria-label="Sem imagem" data-tip="Sem imagem — itens que precisam de upload">
       <i class="fa-solid fa-image text-xs" style="color:#dc2626"></i> <span id="badgeSemImg" class="text-[10px] font-extrabold bg-rose-100 text-rose-700 rounded-full px-1.5 py-0.5 hidden">0</span>
     </button>
-    <button class="filter-pill" data-filter="aguardando" onclick="setFilter('aguardando')" aria-label="Aguardando imagem" data-tip="Aguardando imagem — já enviada, falta publicar no catálogo" style="background:#fef3c7;border-color:#fbbf24;color:#92400e">
+    <button class="filter-pill" data-filter="aguardando" onclick="setFilter('aguardando')" aria-label="Aguardando imagem" data-tip="Aguardando imagem — importado sem foto, por isso não aparece na vitrine" style="background:#fef3c7;border-color:#fbbf24;color:#92400e">
       <i class="fa-solid fa-hourglass-half text-xs"></i> <span id="badgeAguardando" class="text-[10px] font-extrabold bg-amber-200 text-amber-900 rounded-full px-1.5 py-0.5 hidden">0</span>
     </button>
     <button class="filter-pill" data-filter="ocultos" onclick="setFilter('ocultos')" aria-label="Ocultos" data-tip="Ocultos — itens que você escondeu da vitrine do vendedor">
@@ -590,6 +623,79 @@
     <button onclick="bulkLimpar()" class="focus-ring w-7 h-7 rounded-full border flex items-center justify-center" style="border-color:var(--line);background:var(--card);color:var(--muted)" data-tip="Limpar seleção (Esc)">
       <i class="fa-solid fa-xmark text-[10px]"></i>
     </button>
+  </div>
+
+  <!-- ═══ EXCLUSIVOS DE CANAL (DTC / ML) ═══ -->
+  <div id="exclModal" class="hidden fixed inset-0 z-[110]" onclick="fecharExclusivos(event)">
+    <div class="absolute inset-0" style="background:rgba(15,23,42,.55);backdrop-filter:blur(3px)"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4" onclick="event.stopPropagation()">
+      <div class="w-full max-w-3xl rounded-[28px] border shadow-card overflow-hidden flex flex-col"
+           style="background:var(--card);border-color:var(--line);max-height:88vh">
+
+        <div class="px-6 pt-6 pb-4 border-b flex-none" style="border-color:var(--line)">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="text-lg font-extrabold">Exclusivos de canal</div>
+              <div class="text-sm text-slate-500 mt-0.5">
+                Produtos DTC e ML não aparecem na vitrine do vendedor.
+              </div>
+            </div>
+            <button onclick="fecharExclusivos()" data-tip="Fechar"
+              class="focus-ring h-9 w-9 rounded-full border flex items-center justify-center flex-none"
+              style="border-color:var(--line);background:var(--bg);color:var(--muted)">
+              <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+          </div>
+          <div class="flex gap-2 mt-4">
+            <button id="exclTabAtuais" onclick="exclSetAba('atuais')" class="excl-tab ativa">
+              Marcados <span id="exclCntAtuais" class="excl-cnt">0</span>
+            </button>
+            <button id="exclTabAdd" onclick="exclSetAba('add')" class="excl-tab">
+              Adicionar
+            </button>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 flex-none">
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="flex items-center gap-2 rounded-full border px-3 py-2 flex-1 min-w-[200px]"
+                 style="background:var(--card);border-color:var(--line)">
+              <i class="fa-solid fa-magnifying-glass text-slate-400 text-sm"></i>
+              <input id="exclBusca" class="bg-transparent text-sm outline-none w-full" style="color:var(--text)"
+                     placeholder="Buscar artigo, descrição ou cor..." oninput="exclRender()">
+            </div>
+            <div id="exclCanalWrap" class="hidden items-center gap-1.5">
+              <span class="text-[11px] font-extrabold uppercase" style="color:var(--muted)">Canal</span>
+              <select id="exclCanal" class="rounded-full border px-3 py-2 text-sm font-bold"
+                      style="background:var(--card);border-color:var(--line);color:var(--text)">
+                <option value="DTC">DTC</option>
+                <option value="ML">ML</option>
+                <option value="DTC+ML">DTC+ML</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div id="exclLista" class="px-6 pb-2 overflow-y-auto flex-1"></div>
+
+        <div class="px-6 py-4 border-t flex-none flex flex-wrap items-center gap-2" style="border-color:var(--line)">
+          <span id="exclSel" class="text-xs font-bold" style="color:var(--muted)">Nenhum selecionado</span>
+          <div class="ml-auto flex gap-2">
+            <button id="exclBtnRemover" onclick="exclRemoverSelecionados()"
+              class="focus-ring hidden rounded-2xl border px-4 py-2.5 text-sm font-extrabold"
+              style="border-color:#fecaca;background:#fef2f2;color:#b91c1c">
+              <i class="fa-solid fa-xmark mr-1"></i> Remover
+            </button>
+            <button id="exclBtnAdicionar" onclick="exclAdicionarSelecionados()"
+              class="focus-ring hidden rounded-2xl px-4 py-2.5 text-sm font-extrabold text-slate-900"
+              style="background:var(--accent)">
+              <i class="fa-solid fa-lock mr-1"></i> Marcar como exclusivo
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
   </div>
 
   <!-- ═══ BUSCA AUTOMÁTICA DE IMAGENS (Trade Squash) ═══ -->
@@ -1592,7 +1698,7 @@ async function limparSaldoBaixo(){
 // O trabalho pesado roda no Worker; aqui a gente só monta os lotes, mostra o
 // progresso e recarrega no fim. Lotes existem por causa do limite de
 // subrequisições do Cloudflare — cada item custa ~5 chamadas externas.
-const BI = { rodando:false, parar:false, ok:0, dup:0, nao:0, erro:0, feitos:0, total:0 };
+const BI = { rodando:false, parar:false, ok:0, dup:0, nao:0, erro:0, feitos:0, total:0, precisaSalvar:false };
 const BI_LOTE = 8;
 
 // Itens sem imagem de uma marca ('oly' | 'ua'), na mesma regra do filtro "Sem imagem"
@@ -1701,8 +1807,19 @@ async function biRodarMarca(marca, rotulo){
       for(const r of (json.resultados || [])){
         if(r.status === 'ok'){
           BI.ok++;  biLog('ok',  `✓ ${r.nome}`);
-          // Reflete na tela sem esperar o recarregamento
           STATE.imgChecks.set(imgCheckKey(r), 'has');
+          // Registra a imagem no item e tira da ampulheta — sem isto o produto
+          // fica com _aguardandoImagem para sempre e a vitrine não o mostra,
+          // mesmo com o arquivo já na pasta Catalogo.
+          const idx = STATE.itens.findIndex(i =>
+            String(i.artigo||'').toUpperCase() === String(r.artigo||'').toUpperCase() &&
+            String(i.cor||'').toUpperCase()    === String(r.cor||'').toUpperCase()
+          );
+          if(idx !== -1){
+            STATE.itens[idx].imagem = String(r.nome).replace(/\.jpg$/i, '');
+            delete STATE.itens[idx]._aguardandoImagem;
+            BI.precisaSalvar = true;
+          }
         }
         else if(r.status === 'duplicada'){ BI.dup++; biLog('dup', `≡ ${r.artigo}_${r.cor} — ${r.motivo}`); }
         else if(r.status === 'nao_encontrado'){ BI.nao++; biLog('nao', `✗ ${r.artigo}_${r.cor} — ${r.motivo}`); }
@@ -1725,7 +1842,7 @@ async function iniciarBuscaImagens(){
               : marca === 'ua'    ? ua.length : oly.length;
   if(!total){ showToast('Nenhum item sem imagem para essa marca.', 'info'); return; }
 
-  Object.assign(BI, { rodando:true, parar:false, ok:0, dup:0, nao:0, erro:0, feitos:0, total });
+  Object.assign(BI, { rodando:true, parar:false, ok:0, dup:0, nao:0, erro:0, feitos:0, total, precisaSalvar:false });
   $('biEscolha').classList.add('hidden');
   $('biProgresso').classList.remove('hidden');
   $('biLog').innerHTML = '';
@@ -1747,6 +1864,26 @@ async function iniciarBuscaImagens(){
     if(BI.ok > 0){
       // As imagens novas invalidam o cache de verificação
       try{ localStorage.removeItem(IMGCHK_CACHE_KEY); }catch(_){}
+      // Um único save no fim, com todos os itens atualizados de uma vez —
+      // salvar a cada lote geraria dezenas de commits no disponibilidades.json
+      if(BI.precisaSalvar){
+        $('biFase').textContent = 'Publicando na vitrine...';
+        try{
+          const res = await workerFetch({
+            method:'PATCH', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ action:'saveDisponibilidades', data: STATE.itens })
+          });
+          if(!res.ok) throw new Error(`HTTP ${res.status}`);
+          STATE.lastSync = Date.now();
+          updateLastSyncLabel();
+          biLog('ok', `✓ ${BI.ok} produto(s) publicado(s) na vitrine.`);
+          $('biFase').textContent = BI.parar ? 'Interrompido' : 'Concluído';
+        }catch(err){
+          biLog('nao', `As imagens subiram, mas falhou ao publicar: ${err.message}`);
+          biLog('inf', 'Recarregue o painel e rode de novo — as já baixadas serão puladas.');
+          $('biFase').textContent = 'Erro ao publicar';
+        }
+      }
       applyFilters();
     }
   }
@@ -2805,19 +2942,176 @@ function resgatarPdv(item){
 // ═══════════════════════════════════════════════════════════════════════════
 let _exclusivos = null;  // { "ARTIGO|COR": "DTC" | "ML" | "DTC+ML" }
 
-async function carregarExclusivos(){
-  if(_exclusivos !== null) return _exclusivos;
+// Lê pelo Worker, e não pelo arquivo estático: o GitHub Pages serve o JSON
+// com cache, então logo após gravar a lista o arquivo direto ainda viria velho.
+async function carregarExclusivos(forcar){
+  if(_exclusivos !== null && !forcar) return _exclusivos;
   try{
-    const url = `${location.origin}${location.pathname.replace(/disponibilidades\/admin\/?.*$/, '')}data/exclusivos.json?v=${Date.now()}`;
-    const res = await fetch(url, { cache:'no-store' });
-    if(!res.ok) throw new Error('not found');
-    _exclusivos = await res.json();
+    const res = await workerFetch({
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'getExclusivos' })
+    });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    _exclusivos = (json && typeof json === 'object' && !Array.isArray(json)) ? json : {};
     console.log(`[exclusivos] ${Object.keys(_exclusivos).length} produtos exclusivos carregados`);
   }catch(e){
-    console.warn('[exclusivos] não encontrado:', e.message);
-    _exclusivos = {};
+    console.warn('[exclusivos] falha ao carregar:', e.message);
+    if(_exclusivos === null) _exclusivos = {};
   }
   return _exclusivos;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TELA DE EXCLUSIVOS DE CANAL (DTC / ML)
+// ═══════════════════════════════════════════════════════════════════════════
+// Duas abas sobre a MESMA lista de produtos do painel:
+//   "Marcados"  → os que já estão no exclusivos.json (para conferir e remover)
+//   "Adicionar" → os que ainda não estão (para marcar)
+// A chave é ARTIGO|COR em maiúsculas, igual à do arquivo.
+const EXCL = { aba:'atuais', sel:new Set() };
+
+function exclChave(item){
+  return `${String(item.artigo||'').toUpperCase()}|${String(item.cor||'').toUpperCase()}`;
+}
+
+async function abrirExclusivos(){
+  EXCL.aba = 'atuais';
+  EXCL.sel.clear();
+  $('exclBusca').value = '';
+  $('exclModal').classList.remove('hidden');
+  $('exclLista').innerHTML = `<div class="excl-vazio">Carregando...</div>`;
+  await carregarExclusivos(true);   // sempre fresco ao abrir
+  exclSetAba('atuais');
+}
+
+function fecharExclusivos(e){
+  if(e && e.target !== e.currentTarget) return;
+  $('exclModal').classList.add('hidden');
+}
+
+function exclSetAba(aba){
+  EXCL.aba = aba;
+  EXCL.sel.clear();
+  $('exclTabAtuais').classList.toggle('ativa', aba === 'atuais');
+  $('exclTabAdd').classList.toggle('ativa', aba === 'add');
+  // O seletor de canal só faz sentido ao adicionar
+  $('exclCanalWrap').classList.toggle('hidden', aba !== 'add');
+  $('exclCanalWrap').classList.toggle('flex', aba === 'add');
+  exclRender();
+}
+
+// Itens que alimentam cada aba
+function exclItensDaAba(){
+  const mapa = _exclusivos || {};
+  const q = ($('exclBusca')?.value || '').toLowerCase().trim();
+  const casa = (i) => !q ||
+    `${i.artigo} ${i.descricao} ${i.cor}`.toLowerCase().includes(q);
+
+  if(EXCL.aba === 'atuais'){
+    // Parte do arquivo: mostra mesmo o que não está mais no banco de produtos
+    return Object.keys(mapa).map(chave => {
+      const [artigo, cor] = chave.split('|');
+      const item = STATE.itens.find(i => exclChave(i) === chave);
+      return {
+        chave, artigo, cor,
+        descricao: item ? (item.descricao || '') : '(não está mais na base)',
+        canal: mapa[chave]
+      };
+    }).filter(casa).sort((a,b) => a.artigo.localeCompare(b.artigo));
+  }
+
+  return STATE.itens
+    .filter(i => !mapa[exclChave(i)])
+    .map(i => ({ chave: exclChave(i), artigo: i.artigo, cor: i.cor,
+                 descricao: i.descricao || '', canal: null }))
+    .filter(casa)
+    .sort((a,b) => String(a.descricao).localeCompare(String(b.descricao)))
+    .slice(0, 300); // a base tem ~2 mil itens; a busca refina o resto
+}
+
+function exclRender(){
+  const lista = exclItensDaAba();
+  const el = $('exclLista');
+  $('exclCntAtuais').textContent = Object.keys(_exclusivos || {}).length;
+
+  if(!lista.length){
+    el.innerHTML = `<div class="excl-vazio">${
+      EXCL.aba === 'atuais'
+        ? 'Nenhum produto marcado como exclusivo.'
+        : 'Nada encontrado. Use a busca para localizar o produto.'
+    }</div>`;
+  }else{
+    el.innerHTML = lista.map(r => `
+      <label class="excl-row">
+        <input type="checkbox" value="${safeHtml(r.chave)}"
+          ${EXCL.sel.has(r.chave) ? 'checked' : ''} onchange="exclToggle(this)">
+        <span class="excl-row-txt">
+          <span class="excl-row-desc">${safeHtml(r.descricao)}</span>
+          <span class="excl-row-meta">${safeHtml(r.artigo)} · ${safeHtml(r.cor)}</span>
+        </span>
+        ${r.canal ? `<span class="excl-canal">${safeHtml(r.canal)}</span>` : ''}
+      </label>`).join('');
+  }
+  exclAtualizarRodape();
+}
+
+function exclToggle(input){
+  if(input.checked) EXCL.sel.add(input.value);
+  else EXCL.sel.delete(input.value);
+  exclAtualizarRodape();
+}
+
+function exclAtualizarRodape(){
+  const n = EXCL.sel.size;
+  $('exclSel').textContent = n ? `${n} selecionado(s)` : 'Nenhum selecionado';
+  $('exclBtnRemover').classList.toggle('hidden', !(n && EXCL.aba === 'atuais'));
+  $('exclBtnAdicionar').classList.toggle('hidden', !(n && EXCL.aba === 'add'));
+}
+
+async function exclSalvar(mapa, msg){
+  try{
+    const res = await workerFetch({
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'saveExclusivos', data: mapa })
+    });
+    const json = await res.json();
+    if(!res.ok || !json.success) throw new Error(json.error || `HTTP ${res.status}`);
+    _exclusivos = mapa;
+    EXCL.sel.clear();
+    exclRender();
+    showToast(msg, 'success');
+    // Reaplica as flags nos itens em memória e redesenha a tabela
+    for(const i of STATE.itens){
+      const canal = mapa[exclChave(i)];
+      if(canal) i._exclusivo = canal; else delete i._exclusivo;
+    }
+    applyFilters();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao salvar: ' + err.message, 'error');
+  }
+}
+
+async function exclAdicionarSelecionados(){
+  const canal = $('exclCanal').value || 'DTC';
+  const novo = { ...(_exclusivos || {}) };
+  for(const chave of EXCL.sel) novo[chave] = canal;
+  await exclSalvar(novo, `${EXCL.sel.size} produto(s) marcado(s) como ${canal}.`);
+}
+
+async function exclRemoverSelecionados(){
+  const n = EXCL.sel.size;
+  const ok = await confirmDialog({
+    title: 'Remover da lista de exclusivos',
+    message: `${n} produto(s) deixarão de ser exclusivos e voltarão a aparecer na vitrine na próxima importação.`,
+    confirmLabel: 'Remover',
+    type: 'warning'
+  });
+  if(!ok) return;
+  const novo = { ...(_exclusivos || {}) };
+  for(const chave of EXCL.sel) delete novo[chave];
+  await exclSalvar(novo, `${n} produto(s) removido(s) da lista.`);
 }
 
 // Marca o item como exclusivo se estiver na lista

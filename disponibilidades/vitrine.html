@@ -2396,8 +2396,8 @@ async function loadData(){
     }catch(e){ /* segue normal se falhar */ }
   }
   try{
-    // Carrega disponibilidades + lista de ocultos em paralelo
-    const [dispRes, ocultosRes] = await Promise.all([
+    // Carrega disponibilidades + ocultos + exclusivos de canal em paralelo
+    const [dispRes, ocultosRes, exclRes] = await Promise.all([
       fetch(WORKER_URL, {
         method:'PATCH', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ action:'getDisponibilidades' })
@@ -2405,6 +2405,10 @@ async function loadData(){
       fetch(WORKER_URL, {
         method:'PATCH', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ action:'getOcultosDisp' })
+      }),
+      fetch(WORKER_URL, {
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ action:'getExclusivos' })
       })
     ]);
     if(!dispRes.ok) throw new Error('Falha ao carregar');
@@ -2413,19 +2417,35 @@ async function loadData(){
     const ocultosSet = new Set(Array.isArray(ocultosArr) ? ocultosArr : []);
     const ocultarKey = (i) => `${String(i.artigo||'').toUpperCase()}|${String(i.cor||'').toUpperCase()}`;
 
+    // Exclusivos de canal (DTC / ML): produtos que não podem ser oferecidos.
+    // Antes isso só barrava na importação do admin; agora a vitrine filtra na
+    // hora, então marcar um produto no painel some com ele imediatamente.
+    // Se a chamada falhar, segue com lista vazia — melhor mostrar a vitrine
+    // completa do que deixar o vendedor sem catálogo.
+    let exclusivosSet = new Set();
+    try{
+      if(exclRes.ok){
+        const mapa = await exclRes.json();
+        if(mapa && typeof mapa === 'object') exclusivosSet = new Set(Object.keys(mapa));
+      }
+    }catch(_){ /* segue sem filtro de exclusivos */ }
+
     STATE.itens = itens
       .filter(i => !i._oculto)
       .filter(i => !i._aguardandoImagem)  // produtos aguardando imagem não aparecem
       .filter(i => !ocultosSet.has(ocultarKey(i)))
+      .filter(i => !exclusivosSet.has(ocultarKey(i)))  // DTC / ML não vão pra vitrine
       // 2S26: só aparece se tiver meta produtiva válida (quinzenas >= mínimo de pares)
       .filter(i => !i._meta || metaTotalValido(i) >= META_MIN_PARES)
       // Filtra pela marca ativa (vem da URL) — produtos de outras marcas não entram
       .filter(i => String(i.marca||'').trim().toLowerCase() === MARCA_ATIVA)
       .map(i => ({ ...i, prevFat: fixEncoding(i.prevFat) }));
-    // STATE.itensTodos: inclui TODOS os produtos da marca (usado na busca de Desejados)
+    // STATE.itensTodos: inclui TODOS os produtos da marca (usado na busca de Desejados).
+    // O exclusivo é barrado aqui também — senão apareceria na busca de desejos.
     STATE.itensTodos = itens
       .filter(i => !i._oculto)
       .filter(i => !ocultosSet.has(ocultarKey(i)))
+      .filter(i => !exclusivosSet.has(ocultarKey(i)))
       .filter(i => String(i.marca||'').trim().toLowerCase() === MARCA_ATIVA)
       .map(i => ({ ...i, prevFat: fixEncoding(i.prevFat) }));
 
@@ -2436,7 +2456,8 @@ async function loadData(){
     const metaNaVitrine = STATE.itens.filter(i => i._meta).length;
     const aguardandoImg = itens.filter(i => i._aguardandoImagem).length;
     const semMarca = itens.filter(i => !i.marca).length;
-    console.log(`[vitrine] Banco: ${totalBanco} · Marca ${MARCA_ATIVA}: ${totalMarca} · Vitrine: ${STATE.itens.length} (estoque: ${dispoNaVitrine}, 2S26: ${metaNaVitrine}) · Aguardando img: ${aguardandoImg} · Sem marca: ${semMarca}`);
+    const barradosExcl = itens.filter(i => exclusivosSet.has(ocultarKey(i))).length;
+    console.log(`[vitrine] Banco: ${totalBanco} · Marca ${MARCA_ATIVA}: ${totalMarca} · Vitrine: ${STATE.itens.length} (estoque: ${dispoNaVitrine}, 2S26: ${metaNaVitrine}) · Aguardando img: ${aguardandoImg} · Exclusivos barrados: ${barradosExcl} · Sem marca: ${semMarca}`);
     // Categorias visíveis
     const cats = new Map();
     for(const i of STATE.itens){

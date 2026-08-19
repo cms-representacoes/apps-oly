@@ -44,7 +44,8 @@ export default {
       "clearPedidosHistorico",
       "tsBuscarImagens",
       "tsDiagnostico",
-      "tsInspecionarLogin"
+      "tsInspecionarLogin",
+      "saveExclusivos"
     ]);
 
     function requireAdmin(action) {
@@ -89,6 +90,9 @@ export default {
     const GITHUB_DISPONIB      = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/disponibilidades.json`;
     const GITHUB_OCULTOS_DISP  = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/ocultos_disponibilidades.json`;
     const GITHUB_TABELA_ESP    = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/tabela_especial.json`;
+    // Produtos de canal exclusivo (DTC / ML) — NÃO vão para a vitrine.
+    // Mapa { "ARTIGO|COR": "DTC" | "ML" | "DTC+ML" }
+    const GITHUB_EXCLUSIVOS    = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/exclusivos.json`;
     const GITHUB_LINKS         = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/links_compartilhados.json`;
     const GITHUB_IMG_HIST      = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/disponibilidades_imagens.json`;
     const GITHUB_STATUS        = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/app_status.json`;
@@ -906,6 +910,36 @@ export default {
           const { sha } = await getFile(GITHUB_OCULTOS_DISP);
           await saveFile(GITHUB_OCULTOS_DISP, Array.isArray(body.data) ? body.data : [], sha, "update ocultos disponibilidades");
           return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // ── EXCLUSIVOS DE CANAL (DTC / ML) ────────────────────────────────
+        // getExclusivos → mapa { "ARTIGO|COR": "DTC"|"ML"|"DTC+ML" }. Público:
+        // a vitrine e o admin precisam ler para não exibir esses produtos.
+        if (body.action === "getExclusivos") {
+          const { content } = await getFile(GITHUB_EXCLUSIVOS);
+          const mapa = (content && typeof content === "object" && !Array.isArray(content)) ? content : {};
+          return new Response(JSON.stringify(mapa), { status: 200, headers: corsHeaders });
+        }
+
+        // saveExclusivos → grava o mapa COMPLETO (write, exige admin).
+        // Substitui em vez de mesclar: é assim que a remoção funciona — o admin
+        // manda a lista final, e o que não está nela deixa de ser exclusivo.
+        if (body.action === "saveExclusivos" && body.data !== undefined) {
+          const entrada = (body.data && typeof body.data === "object" && !Array.isArray(body.data)) ? body.data : {};
+          const canaisOk = new Set(["DTC", "ML", "DTC+ML"]);
+          const limpo = {};
+          for (const [chave, canal] of Object.entries(entrada)) {
+            // chave precisa ser "ARTIGO|COR" e o canal precisa ser conhecido,
+            // senão um erro no front viraria lixo permanente no arquivo
+            if (!/^[^|]+\|[^|]+$/.test(String(chave))) continue;
+            const c = String(canal || "").toUpperCase().trim();
+            if (!canaisOk.has(c)) continue;
+            limpo[String(chave).toUpperCase()] = c;
+          }
+          const { sha } = await getFile(GITHUB_EXCLUSIVOS);
+          await saveFile(GITHUB_EXCLUSIVOS, limpo, sha, `exclusivos de canal (${Object.keys(limpo).length})`);
+          return new Response(JSON.stringify({ success: true, total: Object.keys(limpo).length }),
+            { status: 200, headers: corsHeaders });
         }
 
         // PATCH com action:"getTabelaEspecial" → retorna tabela_especial.json
