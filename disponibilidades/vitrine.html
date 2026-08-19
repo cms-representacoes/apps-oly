@@ -829,7 +829,11 @@
     .meta-mes{
       color:#581c87; font-weight:700; font-size:10.5px;
       text-transform:uppercase; letter-spacing:.2px;
+      /* nowrap: o rótulo é curto ("Nov a Dez") e quebrar em duas linhas
+         desalinhava a quantidade do lado direito */
+      white-space:nowrap;
     }
+    .meta-qtd{ white-space:nowrap; }
     .meta-qtd{
       color:#7c3aed; font-weight:900;
       font-size:12px;
@@ -3019,9 +3023,11 @@ function buildCardHtml(item){
   if(ehMeta){
     const linhas = metaLinhasExibir(item);
     const totalMeta = metaTotalValido(item);
+    const q = quinzenaDoItem(item);
+    const sufQuinz = q ? ` · ${q === '1Q' ? '1ª' : '2ª'} quinzena` : '';
     gradeHtml = linhas.length
       ? `<div class="meta-bloco">
-           <div class="meta-titulo"><i class="fa-solid fa-industry"></i> Meta produtiva</div>
+           <div class="meta-titulo"><i class="fa-solid fa-industry"></i> Meta produtiva${sufQuinz}</div>
            ${linhas.map(g =>
              `<div class="meta-linha"><span class="meta-mes">${safeHtml(g.label)}</span><span class="meta-qtd">${g.qtd.toLocaleString('pt-BR')} pares</span></div>`
            ).join('')}
@@ -3188,21 +3194,31 @@ function metaLinhasExibir(item){
     if(ultimo && ultimo.qtd === v) ultimo.chaves.push(chave);
     else grupos.push({ qtd: v, chaves: [chave] });
   }
-  return grupos.map(g => ({ qtd: g.qtd, label: rotuloGrupoQuinzena(g.chaves) }));
+  // Sem quinzena única no produto, cada linha carrega o próprio prefixo
+  const misturado = !quinzenaDoItem(item);
+  return grupos.map(g => ({ qtd: g.qtd, label: rotuloGrupoQuinzena(g.chaves, misturado) }));
 }
 
-// "2Q_OUT","2Q_NOV","2Q_DEZ" → "2ª Quinz Out a Dez".
-// Se o grupo misturar 1ª e 2ª quinzena, usa os rótulos completos das pontas.
-function rotuloGrupoQuinzena(chaves){
-  if(chaves.length === 1) return labelQuinzena(chaves[0]);
-  const primeira = chaves[0], ultima = chaves[chaves.length - 1];
-  const mesmoQ = chaves.every(c => String(c).split('_')[0] === String(primeira).split('_')[0]);
-  if(mesmoQ){
-    const mesFim = String(ultima).split('_')[1] || '';
-    const bonito = mesFim.charAt(0).toUpperCase() + mesFim.slice(1).toLowerCase();
-    return `${labelQuinzena(primeira)} a ${bonito}`;
-  }
-  return `${labelQuinzena(primeira)} a ${labelQuinzena(ultima)}`;
+function mesBonito(chave){
+  const m = String(chave||'').split('_')[1] || '';
+  return m.charAt(0).toUpperCase() + m.slice(1).toLowerCase();
+}
+
+// Rótulo da linha: só os MESES ("Set" ou "Nov a Dez").
+// O "2ª quinzena" sai do cabeçalho do bloco — nenhum produto da base mistura
+// 1ª com 2ª, então repetir isso em cada linha só estourava a largura do card.
+// Se um dia aparecer produto misturado, o prefixo volta para a linha.
+function rotuloGrupoQuinzena(chaves, mostrarPrefixo){
+  const pref = c => mostrarPrefixo ? (String(c).split('_')[0] === '1Q' ? '1ª ' : '2ª ') : '';
+  if(chaves.length === 1) return pref(chaves[0]) + mesBonito(chaves[0]);
+  const a = chaves[0], b = chaves[chaves.length - 1];
+  return `${pref(a)}${mesBonito(a)} a ${pref(b)}${mesBonito(b)}`;
+}
+
+// Qual quinzena o produto usa: '1Q', '2Q' ou '' quando mistura as duas.
+function quinzenaDoItem(item){
+  const qs = new Set(metaQuinzValidas(item).map(([k]) => String(k).split('_')[0]));
+  return qs.size === 1 ? [...qs][0] : '';
 }
 
 // Total: soma quando as quinzenas diferem; quando são iguais, é a própria qtde.
