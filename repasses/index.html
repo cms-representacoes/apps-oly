@@ -126,6 +126,58 @@
       body.mobile-header-ready main{padding-top:calc(var(--mobile-header-offset) + 12px) !important}
       body.filters-open #filtersPanel{top:108px;max-height:calc(100dvh - 122px)}
     }
+    /* ══ MODO 2 COLUNAS (só smartphone) ══════════════════════════════════
+       Mesma marcação do card normal — a troca é só de CSS, então alternar
+       não re-renderiza os ~500 cards, é instantâneo.
+       Fora do modo compacto, os dois elementos extras ficam ocultos. */
+    .card-selo-saldo{ display:none; }
+    .card-meta-compacta{ display:none; }
+
+    @media(max-width:640px){
+      body.cards-duo #cardsWrap{
+        grid-template-columns:1fr 1fr !important;
+        gap:10px !important;
+      }
+      body.cards-duo #cardsWrap > article{ border-radius:18px; }
+
+      /* foto quadrada aproveita melhor a coluna estreita */
+      body.cards-duo .card-foto{ aspect-ratio:1/1; position:relative; }
+      body.cards-duo .card-selo-saldo{
+        display:block; position:absolute; top:6px; right:6px; z-index:2;
+        background:rgba(15,23,42,.82); color:#fff; border-radius:999px;
+        padding:2px 7px; font-size:9.5px; font-weight:900;
+        backdrop-filter:blur(3px); white-space:nowrap;
+      }
+
+      body.cards-duo .card-corpo{ padding:9px 10px 10px !important; }
+      body.cards-duo .card-nome{
+        font-size:12.5px !important; line-height:1.2;
+        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+        overflow:hidden; min-height:30px;
+      }
+      body.cards-duo .card-preco{ font-size:15px !important; margin-top:3px !important; }
+
+      /* chips saem; cor e data viram uma linha de texto */
+      body.cards-duo .card-chips{ display:none !important; }
+      body.cards-duo .card-meta-compacta{
+        display:block; margin-top:4px;
+        font-size:10px; font-weight:700; color:#64748b;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      }
+
+      body.cards-duo .btnOpenMultiGrade,
+      body.cards-duo .btnAdd{
+        font-size:11.5px !important; padding:8px 6px !important; border-radius:12px !important;
+      }
+      /* o texto longo do botão não cabe em 170px */
+      body.cards-duo .btnOpenMultiGrade .rot-longo{ display:none; }
+      body.cards-duo .qty-btn{ height:26px !important; width:26px !important; }
+    }
+
+    /* Botão de alternar layout — só faz sentido onde há dois modos */
+    #btnLayoutCards{ display:none; }
+    @media(max-width:640px){ #btnLayoutCards{ display:inline-flex; } }
+
     /* ── Autocomplete de cliente (checkout) ── */
     .cli-combo{position:relative}
     .cli-sug{
@@ -274,6 +326,12 @@
         </div>
 
         <div class="header-actions-scroll">
+          <button id="btnLayoutCards" onclick="toggleLayoutCards()" data-tip="Alternar visualização"
+            title="Alternar visualização" aria-label="Alternar visualização"
+            class="focus-ring items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600"
+            style="width:44px;height:44px;flex:0 0 auto">
+            <i id="icoLayoutCards" class="fa-solid fa-square text-sm"></i>
+          </button>
           <button id="btnToggleFilters" title="Filtros" class="focus-ring icon-btn-mobile inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">
             <i class="fa-solid fa-sliders"></i>
             <span class="hidden sm:inline">Filtros</span>
@@ -1043,6 +1101,42 @@ function closeDuplicateModal(){
 function saveCartStorage(){ localStorage.setItem(STORAGE_KEYS.cart, JSON.stringify(Array.from(STATE.cart.values()))); }
 function saveOrdersStorage(){ localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(STATE.orders)); }
 function saveViewMode(){ localStorage.setItem(STORAGE_KEYS.view, STATE.viewMode); }
+
+// ── LAYOUT DOS CARDS NO SMARTPHONE ───────────────────────────────────────────
+// Dois modos: 'duo' (2 colunas, compacto — padrão) e 'uno' (1 coluna, completo).
+// A troca é só uma classe no body, então não re-renderiza os cards.
+// O ícone do botão mostra para ONDE você vai, mesmo padrão do catálogo digital.
+const LAYOUT_CARDS_KEY = 'repasse_layout_cards_v1';
+
+function aplicarLayoutCards(modo){
+  const duo = modo !== 'uno';                 // padrão é 2 colunas
+  document.body.classList.toggle('cards-duo', duo);
+  const ico = document.getElementById('icoLayoutCards');
+  // no modo 2 colunas o botão oferece 1 coluna, e vice-versa
+  if(ico) ico.className = duo ? 'fa-solid fa-square text-sm' : 'fa-solid fa-table-cells-large text-sm';
+  const btn = document.getElementById('btnLayoutCards');
+  if(btn){
+    const alvo = duo ? 'Ver em 1 coluna' : 'Ver em 2 colunas';
+    btn.title = alvo;
+    btn.setAttribute('aria-label', alvo);
+    btn.setAttribute('data-tip', alvo);
+  }
+}
+
+function toggleLayoutCards(){
+  const duoAgora = document.body.classList.contains('cards-duo');
+  const novo = duoAgora ? 'uno' : 'duo';
+  try{ localStorage.setItem(LAYOUT_CARDS_KEY, novo); }catch(_){}
+  aplicarLayoutCards(novo);
+}
+
+// Aplica na carga: 2 colunas por padrão, ou o que o vendedor escolheu antes
+(function(){
+  let salvo = 'duo';
+  try{ salvo = localStorage.getItem(LAYOUT_CARDS_KEY) || 'duo'; }catch(_){}
+  if(document.body) aplicarLayoutCards(salvo);
+  else document.addEventListener('DOMContentLoaded', ()=> aplicarLayoutCards(salvo));
+})();
 function getLastPreposto(){ return localStorage.getItem(STORAGE_KEYS.lastPreposto) || ''; }
 function setLastPreposto(value){ localStorage.setItem(STORAGE_KEYS.lastPreposto, value || ''); }
 function getOrdersScope(){ return localStorage.getItem(STORAGE_KEYS.ordersScope) || 'Pendente'; }
@@ -1844,7 +1938,11 @@ function renderCatalog(){
     const card = document.createElement('article');
     card.className = 'rounded-[28px] border border-slate-200 bg-white shadow-soft overflow-hidden flex flex-col';
     card.innerHTML = `
-      <div class="aspect-[4/3] bg-slate-50 border-b border-slate-200 flex items-center justify-center overflow-hidden">
+      <div class="aspect-[4/3] bg-slate-50 border-b border-slate-200 flex items-center justify-center overflow-hidden card-foto">
+        <!-- Selo de saldo: só aparece no modo 2 colunas, onde os chips saem -->
+        <span class="card-selo-saldo">${isMulti
+          ? siblings.reduce((s,x)=>s+remainingUnits(x),0)
+          : remainingUnits(displayItem)} pares</span>
         ${img ? `<img src="${img}" data-srcs="${productImageCandidates(item).join('|')}" data-src-idx="0" alt="${safeHtml(item.produto)}" class="h-full w-full object-contain bg-white" onerror="(function(el){var srcs=el.dataset.srcs.split('|'),idx=parseInt(el.dataset.srcIdx||0)+1;if(idx<srcs.length){el.dataset.srcIdx=idx;el.src=srcs[idx];}else{el.style.display='none';el.parentElement.querySelector('.img-fallback').classList.remove('hidden');}})(this)">` : ''}
         <div class="img-fallback ${img ? 'hidden' : ''} flex flex-col items-center justify-center text-slate-400">
           <i class="fa-solid fa-image text-3xl"></i>
@@ -1852,72 +1950,36 @@ function renderCatalog(){
         </div>
       </div>
 
-      <div class="p-4 flex flex-col flex-1">
+      <div class="p-4 flex flex-col flex-1 card-corpo">
         <div class="min-w-0">
-          <div class="text-base font-extrabold leading-tight">${safeHtml(item.produto)}</div>
-          ${displayItem.pdv > 0 ? `<div class="mt-1 text-lg font-black" style="color:var(--brand)">R$ ${Number(displayItem.pdv).toFixed(2)}</div>` : ''}
-          <div class="mt-2 flex items-center gap-2 flex-wrap">
+          <div class="text-base font-extrabold leading-tight card-nome">${safeHtml(item.produto)}</div>
+          ${displayItem.pdv > 0 ? `<div class="mt-1 text-lg font-black card-preco" style="color:var(--brand)">R$ ${Number(displayItem.pdv).toFixed(2)}</div>` : ''}
+          <div class="mt-2 flex items-center gap-2 flex-wrap card-chips">
             ${displayItem.prevFaturamento ? `<span class="chip chip-blue flex-shrink-0"><i class="fa-regular fa-calendar"></i> ${safeHtml(formatDate(displayItem.prevFaturamento))}</span>` : ''}
             <span class="chip chip-blue flex-shrink-0"><i class="fa-solid fa-palette"></i> ${safeHtml(item.cor)}</span>
             <span class="flex-shrink-0">${isMulti ? availabilityChipsMulti(siblings) : availabilityChips(displayItem)}</span>
           </div>
+          <!-- Versão compacta de cor+data: uma linha de texto no lugar de dois
+               chips. Fica oculta e só aparece no modo 2 colunas (mobile). -->
+          <div class="card-meta-compacta">${safeHtml(item.cor)}${displayItem.prevFaturamento ? ' · ' + safeHtml(formatDate(displayItem.prevFaturamento)) : ''}</div>
         </div>
 
         ${displayItem.filial ? `<div class="mt-3"><span class="chip" style="background:#E1F5EE;color:#085041;border:0.5px solid #9FE1CB"><i class="fa-solid fa-industry"></i> ${safeHtml(displayItem.filial)}</span></div>` : ''}
 
-        ${!isMulti && displayItem.grade.length ? `
-        <div class="mt-3">
-          <div class="text-sm font-extrabold">Disponível</div>
-          <div class="mt-2 flex flex-wrap gap-2">${gradeHtml(displayItem.grade)}</div>
-        </div>` : ''}
-
+        <!-- A grade saiu do card: ocupava muito espaço e o vendedor a vê no
+             modal, junto do seletor de quantidade. Produto com 1 ou com várias
+             disponibilidades passa a se comportar igual. -->
         <div style="margin-top:auto;padding-top:16px">
-          ${isMulti ? `
-          <button class="btnOpenMultiGrade focus-ring w-full rounded-2xl border border-[var(--brand)] bg-[var(--brand-soft)] px-4 py-2.5 text-sm font-extrabold text-[var(--brand)]">
-            <i class="fa-solid fa-ruler-combined mr-2"></i>Ver grades e adicionar
-          </button>` : `
-          <div class="flex items-center gap-2">
-            <div class="flex items-center gap-1.5 rounded-full border border-slate-200 px-1.5 py-1 flex-shrink-0">
-              <button class="btnMinus qty-btn focus-ring h-7 w-7 rounded-full flex items-center justify-center" title="Diminuir"><i class="fa-solid fa-minus text-xs"></i></button>
-              <div class="qty min-w-[20px] text-center text-sm font-extrabold">1</div>
-              <button class="btnPlus qty-btn focus-ring h-7 w-7 rounded-full flex items-center justify-center" title="Aumentar"><i class="fa-solid fa-plus text-xs"></i></button>
-            </div>
-            <button class="btnAdd focus-ring flex-1 rounded-2xl bg-[var(--brand)] px-3 py-2.5 text-sm font-extrabold text-white flex items-center justify-center gap-2 ${freeAmount <= 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${freeAmount <= 0 ? 'disabled' : ''}>
-              ${freeAmount <= 0 ? 'Esgotado' : '<i class="fa-solid fa-cart-plus"></i> Adicionar'}
-            </button>
-          </div>`}
+          <button class="btnOpenMultiGrade focus-ring w-full rounded-2xl border border-[var(--brand)] bg-[var(--brand-soft)] px-4 py-2.5 text-sm font-extrabold text-[var(--brand)] ${totalFree <= 0 ? 'opacity-50' : ''}">
+            <i class="fa-solid fa-ruler-combined mr-2"></i>Ver grade${isMulti ? 's' : ''}<span class="rot-longo"> e adicionar</span>
+          </button>
         </div>
       </div>
     `;
 
-    if(isMulti){
-      card.querySelector('.btnOpenMultiGrade')?.addEventListener('click', ()=> openMultiGradeModal(siblings));
-    } else {
-      let amount = 1;
-      const qtyEl = card.querySelector('.qty');
-      card.querySelector('.btnMinus').addEventListener('click', ()=>{
-        amount = Math.max(1, amount - 1);
-        qtyEl.textContent = amount;
-      });
-      card.querySelector('.btnPlus').addEventListener('click', ()=>{
-        amount = Math.min(freeAmount, amount + 1);
-        qtyEl.textContent = amount;
-      });
-      card.querySelector('.btnAdd').addEventListener('click', ()=>{
-        const freeNow = displayItem.mode === 'boxed' ? remainingPacks(displayItem) : remainingUnits(displayItem);
-        if(amount > freeNow){ toast(freeNow <= 0 ? 'Produto esgotado no momento' : 'Quantidade acima do saldo disponível'); return; }
-        const existing = STATE.cart.get(key);
-        const nextAmount = Number(existing?.amount || 0) + amount;
-        const maxAmount = getMaxCartAmount(displayItem);
-        const reservedUnits = displayItem.mode === 'boxed' ? nextAmount * displayItem.packSize : nextAmount;
-        if(nextAmount > maxAmount){ toast(maxAmount <= 0 ? 'Produto esgotado no momento' : 'Saldo excedido'); return; }
-        STATE.cart.set(key, { ...displayItem, key, amount: nextAmount, totalUnits: reservedUnits });
-        saveCartStorage();
-        renderCart();
-        applyFilters();
-        toast('Item adicionado à sacola');
-      });
-    }
+    // Um botão único para os dois casos: o modal mostra a grade e permite
+    // escolher a quantidade, então produto simples e multi seguem o mesmo fluxo.
+    card.querySelector('.btnOpenMultiGrade')?.addEventListener('click', ()=> openMultiGradeModal(siblings));
     wrap.appendChild(card);
 
     const row = document.createElement('article');
@@ -2711,7 +2773,9 @@ function closeGradeSheet(){
 function openMultiGradeModal(siblings){
   const first = siblings[0];
   $('multiGradeTitle').textContent = `${first.produto} / ${first.cor}`;
-  $('multiGradeSubtitle').textContent = `${siblings.length} disponibilidade${siblings.length>1?'s':{}} — selecione as que deseja adicionar`;
+  // O plural saía como `{}` (objeto vazio) no singular. Nunca apareceu porque
+  // o modal só abria com 2+ itens; agora que abre com 1, o defeito ficaria à vista.
+  $('multiGradeSubtitle').textContent = `${siblings.length} disponibilidade${siblings.length>1?'s':''} — selecione as que deseja adicionar`;
 
   $('multiGradeList').innerHTML = siblings.map((item, i) => {
     const packs = remainingPacks(item);
