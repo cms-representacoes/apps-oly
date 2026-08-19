@@ -912,6 +912,30 @@ export default {
           return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
         }
 
+        // PATCH action:"getDispoInfo" → quando o catálogo foi atualizado.
+        // Não existe timestamp dentro do disponibilidades.json, então usamos a
+        // data do último commit do arquivo — que é exatamente quando o admin
+        // gravou. Público (a vitrine mostra no cabeçalho).
+        if (body.action === "getDispoInfo") {
+          try {
+            const url = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}` +
+                        `/commits?path=data/disponibilidades.json&per_page=1`;
+            const res = await fetch(url, { headers: githubHeaders });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const lista = await res.json();
+            const c = Array.isArray(lista) && lista[0] ? lista[0] : null;
+            return new Response(JSON.stringify({
+              success: true,
+              atualizadoEm: c ? (c.commit?.committer?.date || c.commit?.author?.date || null) : null,
+              mensagem: c ? (c.commit?.message || "") : ""
+            }), { status: 200, headers: corsHeaders });
+          } catch (e) {
+            // Sem data não é erro fatal: a vitrine só não mostra o selo
+            return new Response(JSON.stringify({ success: false, atualizadoEm: null }),
+              { status: 200, headers: corsHeaders });
+          }
+        }
+
         // ── EXCLUSIVOS DE CANAL (DTC / ML) ────────────────────────────────
         // getExclusivos → mapa { "ARTIGO|COR": "DTC"|"ML"|"DTC+ML" }. Público:
         // a vitrine e o admin precisam ler para não exibir esses produtos.

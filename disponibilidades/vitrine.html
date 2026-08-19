@@ -184,6 +184,52 @@
       width:1px; height:20px; flex:none;
       background:var(--line); margin:0 4px;
     }
+    /* ── Badge CMS (mesmo acabamento do portal e do admin) ── */
+    .cms-badge{
+      width:36px; height:36px; border-radius:11px; flex:none;
+      display:flex; align-items:center; justify-content:center;
+      background:linear-gradient(145deg,#a970ff 0%,#8b5cf6 48%,#7439e0 100%);
+      box-shadow:0 5px 14px rgba(124,58,237,.40), inset 0 1px 0 rgba(255,255,255,.24);
+      color:#fff; font-size:11px; font-weight:900; letter-spacing:.02em;
+    }
+
+    /* Selo de última atualização do catálogo */
+    .upd-chip{
+      display:inline-flex; align-items:center; gap:5px;
+      padding:2px 9px; border-radius:999px;
+      border:1px solid var(--line); background:var(--bg-subtle,#f1f5f9);
+      font-size:10.5px; font-weight:700; color:var(--muted); white-space:nowrap;
+    }
+    .upd-chip i{ font-size:9px; }
+
+    /* Voltar ao Portal — agora no canto superior direito */
+    .btn-portal{
+      display:inline-flex; align-items:center; gap:7px; flex:none;
+      padding:8px 14px; border-radius:999px;
+      border:1px solid var(--line); background:var(--card); color:var(--muted);
+      font-size:13px; font-weight:700; text-decoration:none;
+      transition:background .15s, color .15s, border-color .15s;
+    }
+    .btn-portal:hover{ color:var(--text); border-color:var(--muted); }
+
+    /* ── Mobile e tablet: a barra de filtros vira uma faixa rolável ──
+       Em vez de quebrar em várias linhas e comer altura de tela, os botões
+       ficam lado a lado e a faixa desliza na horizontal. */
+    @media(max-width:1023px){
+      .filters-bar{
+        flex-wrap:nowrap !important;
+        overflow-x:auto; overflow-y:hidden;
+        scrollbar-width:none; -ms-overflow-style:none;
+        -webkit-overflow-scrolling:touch;
+        scroll-padding-left:16px;
+      }
+      .filters-bar::-webkit-scrollbar{ display:none; }
+      /* Nada encolhe nem quebra: cada item mantém sua largura natural */
+      .filters-bar > *{ flex:0 0 auto; }
+      .filters-bar #chipsAtivos{ flex-wrap:nowrap; }
+      /* ml-auto empurraria tudo numa faixa rolável — vira espaçamento normal */
+      .filters-bar .ml-auto{ margin-left:8px; }
+    }
     @media(max-width:640px){ .fb-sep{ display:none; } }
 
     /* ── Alternador de visão: Pronta entrega x Meta produtiva ──
@@ -1553,9 +1599,7 @@ body.theme-dark .load-more-btn{ background:var(--card); }
 <header id="headerVendedor" class="main-header px-4 py-3 sm:px-6">
   <div class="max-w-[1400px] mx-auto flex items-center justify-between gap-4 flex-wrap">
     <div class="flex items-center gap-3">
-      <a href="https://cms-representacoes.github.io/apps-oly/" style="color:var(--muted);display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;text-decoration:none" class="hover:text-slate-900" title="Voltar ao Portal">
-        <i class="fa-solid fa-arrow-left text-xs"></i> Portal
-      </a>
+      <div class="cms-badge" role="img" aria-label="CMS Representações" title="CMS Representações">CMS</div>
       <div class="w-px h-5" style="background:var(--line)"></div>
       <a href="#" id="btnTrocarMarca" title="Trocar marca" style="width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);background:#fff">
         <img id="btnTrocarMarcaImg" src="" alt="" style="width:100%;height:100%;object-fit:contain">
@@ -1568,7 +1612,12 @@ body.theme-dark .load-more-btn{ background:var(--card); }
         </div>
         <div>
           <div class="text-xs font-bold" style="color:var(--muted)">Disponibilidades</div>
-          <div class="text-lg font-extrabold leading-tight" id="brandName">—</div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <div class="text-lg font-extrabold leading-tight" id="brandName">—</div>
+            <span id="updChip" class="upd-chip hidden" title="Quando o catálogo foi atualizado pela última vez">
+              <i class="fa-regular fa-clock"></i> <span id="updTxt">—</span>
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -1580,15 +1629,15 @@ body.theme-dark .load-more-btn{ background:var(--card); }
       <button id="btnClearSearch" class="hidden" onclick="limparBusca()" style="color:var(--muted);background:none;border:none;cursor:pointer;font-size:14px">✕</button>
     </div>
 
-    <!-- PDF -->
+    <!-- Ações — canto superior direito -->
     <div class="flex items-center gap-2">
-      <button id="btnThemeToggle" onclick="toggleTheme()" title="Alternar tema" style="width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">
-        <i class="fa-solid fa-moon text-sm" id="themeToggleIcon"></i>
-      </button>
       <button onclick="gerarPDF()" id="btnPDF" class="fab-pdf" style="position:static;transform:none;opacity:1;display:none;pointer-events:auto">
         <i class="fa-solid fa-file-pdf text-sm"></i>
         PDF <span id="pdfCount" class="bg-slate-900 text-[var(--accent)] text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
       </button>
+      <a href="https://cms-representacoes.github.io/apps-oly/" class="btn-portal" title="Voltar ao Portal do Vendedor">
+        <i class="fa-solid fa-arrow-left text-xs"></i> <span>Portal</span>
+      </a>
     </div>
   </div>
 </header>
@@ -2484,6 +2533,7 @@ async function loadData(){
     $('loadingState').classList.add('hidden');
     // Carrega vendedor + desejos em background (não bloqueia vitrine)
     carregarVendedorEDesejos();
+    carregarUltimaAtualizacao();  // selo de "atualizado há X" no cabeçalho
   }catch(err){
     console.error(err);
     $('loadingState').innerHTML = `<i class="fa-solid fa-triangle-exclamation text-3xl" style="color:#f87171"></i><div class="mt-4 text-sm font-semibold" style="color:#f87171">Erro ao carregar. Tente novamente.</div>`;
@@ -2512,6 +2562,41 @@ function categoriaEfetiva(item){
 }
 
 // Ícone Font Awesome por categoria (casa por palavra-chave)
+// ── ÚLTIMA ATUALIZAÇÃO DO CATÁLOGO ───────────────────────────────────────────
+// Não há timestamp dentro do disponibilidades.json; o Worker devolve a data do
+// último commit do arquivo, que é exatamente quando o admin gravou.
+// Roda em segundo plano: se falhar, o selo simplesmente não aparece.
+async function carregarUltimaAtualizacao(){
+  try{
+    const res = await fetch(WORKER_URL, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'getDispoInfo' })
+    });
+    if(!res.ok) return;
+    const j = await res.json();
+    if(!j || !j.atualizadoEm) return;
+    const chip = $('updChip'), txt = $('updTxt');
+    if(!chip || !txt) return;
+    txt.textContent = formatarQuando(new Date(j.atualizadoEm));
+    chip.title = 'Catálogo atualizado em ' +
+      new Date(j.atualizadoEm).toLocaleString('pt-BR', { dateStyle:'short', timeStyle:'short' });
+    chip.classList.remove('hidden');
+  }catch(_){ /* sem selo */ }
+}
+
+// "há 20 min" perto, data curta depois — o vendedor quer saber se está fresco
+function formatarQuando(d){
+  const min = Math.floor((Date.now() - d.getTime()) / 60000);
+  if(min < 1)   return 'agora mesmo';
+  if(min < 60)  return `há ${min} min`;
+  const h = Math.floor(min / 60);
+  if(h < 24)    return `há ${h}h`;
+  const dias = Math.floor(h / 24);
+  if(dias === 1) return 'ontem';
+  if(dias < 7)   return `há ${dias} dias`;
+  return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+}
+
 // ── SUBCATEGORIAS ────────────────────────────────────────────────────────────
 // Os dados NÃO trazem subcategoria: `categoriaProduto` é sempre igual à
 // categoria, e `linha` é linha de produto (CONFORTO, TREINO), não tipo.
