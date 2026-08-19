@@ -3019,17 +3019,15 @@ function buildCardHtml(item){
   if(ehMeta){
     const linhas = metaLinhasExibir(item);
     const totalMeta = metaTotalValido(item);
-    const uniforme = metaUniforme(item);
-    const qtdQuinz = metaQuinzValidas(item).length;
     gradeHtml = linhas.length
       ? `<div class="meta-bloco">
            <div class="meta-titulo"><i class="fa-solid fa-industry"></i> Meta produtiva</div>
-           ${linhas.map(([q, qtd]) =>
-             `<div class="meta-linha"><span class="meta-mes">${safeHtml(labelQuinzena(q))}</span><span class="meta-qtd">${Number(qtd).toLocaleString('pt-BR')} pares</span></div>`
+           ${linhas.map(g =>
+             `<div class="meta-linha"><span class="meta-mes">${safeHtml(g.label)}</span><span class="meta-qtd">${g.qtd.toLocaleString('pt-BR')} pares</span></div>`
            ).join('')}
-           ${uniforme
-             ? `<div class="meta-obs">Mesma meta nas ${qtdQuinz} quinzenas</div>`
-             : (linhas.length > 1 ? `<div class="meta-total"><span class="meta-mes">TOTAL</span><span class="meta-qtd">${totalMeta.toLocaleString('pt-BR')}</span></div>` : '')}
+           ${linhas.length > 1
+             ? `<div class="meta-total"><span class="meta-mes">TOTAL</span><span class="meta-qtd">${totalMeta.toLocaleString('pt-BR')}</span></div>`
+             : ''}
          </div>`
       : '<span style="font-size:11px;color:var(--muted)">Sem meta cadastrada</span>';
   } else {
@@ -3177,10 +3175,34 @@ function metaUniforme(item){
   return ents.every(([,v]) => (Number(v)||0) === primeiro);
 }
 
-// Quinzenas a exibir: se todas são iguais, só a mais próxima.
+// Agrupa quinzenas SEGUIDAS com a mesma quantidade numa linha só.
+// Ex.: SET 1.040 · OUT 1.084 · NOV 1.084 · DEZ 1.084
+//      vira → "2ª Quinz Set: 1.040" + "2ª Quinz Out a Dez: 1.084"
+// Resolve tanto o caso de todas iguais quanto o de repetição parcial.
 function metaLinhasExibir(item){
   const ents = metaQuinzValidas(item);
-  return metaUniforme(item) ? [ents[0]] : ents;
+  const grupos = [];
+  for(const [chave, valor] of ents){
+    const v = Number(valor) || 0;
+    const ultimo = grupos[grupos.length - 1];
+    if(ultimo && ultimo.qtd === v) ultimo.chaves.push(chave);
+    else grupos.push({ qtd: v, chaves: [chave] });
+  }
+  return grupos.map(g => ({ qtd: g.qtd, label: rotuloGrupoQuinzena(g.chaves) }));
+}
+
+// "2Q_OUT","2Q_NOV","2Q_DEZ" → "2ª Quinz Out a Dez".
+// Se o grupo misturar 1ª e 2ª quinzena, usa os rótulos completos das pontas.
+function rotuloGrupoQuinzena(chaves){
+  if(chaves.length === 1) return labelQuinzena(chaves[0]);
+  const primeira = chaves[0], ultima = chaves[chaves.length - 1];
+  const mesmoQ = chaves.every(c => String(c).split('_')[0] === String(primeira).split('_')[0]);
+  if(mesmoQ){
+    const mesFim = String(ultima).split('_')[1] || '';
+    const bonito = mesFim.charAt(0).toUpperCase() + mesFim.slice(1).toLowerCase();
+    return `${labelQuinzena(primeira)} a ${bonito}`;
+  }
+  return `${labelQuinzena(primeira)} a ${labelQuinzena(ultima)}`;
 }
 
 // Total: soma quando as quinzenas diferem; quando são iguais, é a própria qtde.
