@@ -1780,6 +1780,12 @@ body.theme-dark .load-more-btn{ background:var(--card); }
         <div class="drawer-section-title">Tipo de produto</div>
         <div id="filtroSubcatBox" class="drawer-opts"></div>
       </div>
+      <!-- Fábrica (campo `empresa`): VULSP, AZABA, VULTS. Some quando os itens
+           visíveis vêm todos da mesma — não há o que escolher. -->
+      <div class="drawer-section hidden" id="filtroFabricaSection">
+        <div class="drawer-section-title">Fábrica</div>
+        <div id="filtroFabricaBox" class="drawer-opts"></div>
+      </div>
     </div>
     <div class="drawer-foot">
       <button onclick="limparTodosFiltros()" class="drawer-btn-ghost">Limpar</button>
@@ -2093,6 +2099,7 @@ const STATE = {
   filtroGenero:    new Set(),
   filtroCategoria: new Set(),
   filtroSubcat:    new Set(),
+  filtroFabrica:   new Set(),
   // Visão: 'disponivel' (padrão — produtos com grade) ou 'meta' (coleção 2S26)
   filtroVisao:     'disponivel',
   ordenacao:       'padrao',
@@ -2677,6 +2684,7 @@ function salvarFiltros(){
       genero:    [...STATE.filtroGenero],
       categoria: [...STATE.filtroCategoria],
       subcat:    [...STATE.filtroSubcat],
+      fabrica:   [...STATE.filtroFabrica],
       ordenacao: STATE.ordenacao
     }));
   }catch(e){}
@@ -2690,6 +2698,7 @@ function carregarFiltros(){
     STATE.filtroGenero    = new Set(Array.isArray(f.genero) ? f.genero : []);
     STATE.filtroCategoria = new Set(Array.isArray(f.categoria) ? f.categoria : []);
     STATE.filtroSubcat    = new Set(Array.isArray(f.subcat) ? f.subcat : []);
+    STATE.filtroFabrica   = new Set(Array.isArray(f.fabrica) ? f.fabrica : []);
     STATE.ordenacao       = f.ordenacao || 'padrao';
   }catch(e){}
 }
@@ -2729,6 +2738,7 @@ function setVisao(v){
   STATE.filtroCategoria.clear();
   STATE.filtroGenero.clear();
   STATE.filtroSubcat.clear();
+  STATE.filtroFabrica.clear();
   salvarFiltros();
   renderVisaoBar();
   renderChipsAtivos();
@@ -2847,6 +2857,31 @@ function renderDrawerOpcoes(){
       </label>`).join('');
   }
 
+  // Fábrica — derivada do campo `empresa`, então acompanha qualquer grafia que
+  // venha da planilha, sem lista fixa no código.
+  const fabCount = {};
+  for(const it of itensDaVisao){
+    const f = String(it.empresa || '').trim().toUpperCase();
+    if(f) fabCount[f] = (fabCount[f] || 0) + 1;
+  }
+  const fabKeys = Object.keys(fabCount).sort();
+  const secFab = $('filtroFabricaSection');
+  const boxF = $('filtroFabricaBox');
+  // Com uma fábrica só não há escolha a fazer — esconde a seção
+  if(fabKeys.length < 2){
+    secFab.classList.add('hidden');
+    boxF.innerHTML = '';
+    if(STATE.filtroFabrica.size) STATE.filtroFabrica.clear();
+  }else{
+    secFab.classList.remove('hidden');
+    boxF.innerHTML = fabKeys.map(f => `
+      <label class="drawer-opt">
+        <input type="checkbox" ${STATE.filtroFabrica.has(f)?'checked':''} onchange="toggleFabrica('${safeHtml(f)}',this.checked)">
+        <i class="fa-solid fa-industry" style="font-size:14px;width:18px;text-align:center;color:#64748b"></i>
+        ${safeHtml(f)} <span class="cnt">(${fabCount[f]})</span>
+      </label>`).join('');
+  }
+
   // Ordenação
   $('ordenacaoSelect').value = STATE.ordenacao;
   atualizarBadgeFiltros();
@@ -2864,6 +2899,11 @@ function toggleCategoria(c, on){
   renderDrawerOpcoes();
 }
 
+function toggleFabrica(f, on){
+  if(on) STATE.filtroFabrica.add(f); else STATE.filtroFabrica.delete(f);
+  salvarFiltros(); applyFilters(); atualizarBadgeFiltros(); renderChipsAtivos();
+}
+
 function toggleSubcat(s, on){
   if(on) STATE.filtroSubcat.add(s); else STATE.filtroSubcat.delete(s);
   salvarFiltros(); applyFilters(); atualizarBadgeFiltros(); renderChipsAtivos();
@@ -2878,6 +2918,7 @@ function limparTodosFiltros(){
   STATE.filtroGenero.clear();
   STATE.filtroCategoria.clear();
   STATE.filtroSubcat.clear();
+  STATE.filtroFabrica.clear();
   STATE.ordenacao = 'padrao';
   if($('searchInput')) $('searchInput').value = '';
   STATE.search = '';
@@ -2890,7 +2931,7 @@ function limparTodosFiltros(){
 
 // Quantos filtros ativos (gênero + categoria; campanha tem pill própria)
 function contarFiltros(){
-  return STATE.filtroGenero.size + STATE.filtroCategoria.size + STATE.filtroSubcat.size;
+  return STATE.filtroGenero.size + STATE.filtroCategoria.size + STATE.filtroSubcat.size + STATE.filtroFabrica.size;
 }
 function atualizarBadgeFiltros(){
   const n = contarFiltros();
@@ -2916,6 +2957,9 @@ function renderChipsAtivos(){
   }
   for(const s of STATE.filtroSubcat){
     chips.push(`<span class="chip-ativo">${safeHtml(s)} <button onclick="toggleSubcat('${safeHtml(s)}',false)">×</button></span>`);
+  }
+  for(const f of STATE.filtroFabrica){
+    chips.push(`<span class="chip-ativo">${safeHtml(f)} <button onclick="toggleFabrica('${safeHtml(f)}',false)">×</button></span>`);
   }
   wrap.innerHTML = chips.join('');
 }
@@ -2953,6 +2997,7 @@ function applyFilters(){
     .filter(item => STATE.filtroGenero.size === 0 || STATE.filtroGenero.has(String(item.genero||'').trim().toUpperCase()))
     .filter(item => STATE.filtroCategoria.size === 0 || STATE.filtroCategoria.has(categoriaKey(categoriaEfetiva(item))))
     .filter(item => STATE.filtroSubcat.size === 0 || STATE.filtroSubcat.has(subcategoriaDe(item)))
+    .filter(item => STATE.filtroFabrica.size === 0 || STATE.filtroFabrica.has(String(item.empresa||'').trim().toUpperCase()))
     .filter(item => {
       if(!q) return true;
       return `${item.descricao} ${item.artigo} ${item.cor} ${item.linha} ${item.empresa} ${item.codigoTabela||''}`.toLowerCase().includes(q);
