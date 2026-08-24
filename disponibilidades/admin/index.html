@@ -4129,8 +4129,13 @@ const ACESSORIO_MIN = 12;
 // Detecta o "tipo" de produto pelo padrão da grade
 // Retorna: 'calcado_masc' | 'calcado_fem' | 'chinelo' | 'confeccao' | 'acessorio' | 'outro'
 function detectarTipoProduto(item){
-  // 0) META PRODUTIVA (coleção 2S26, 1S27...) — antes de tudo
-  if(item._meta || ehColecaoMeta(item.categoria)) return 'meta';
+  // 0) META PRODUTIVA — mesma regra do rowToItem: meta é o que NÃO tem grade.
+  //    Um arquivo de quinzena traz os dois tipos misturados, e a categoria dele
+  //    ("2S26") é aplicada a todas as linhas na importação. Sem checar a grade,
+  //    acessórios com saldo real (ex.: mala com U-110) caíam aqui e viravam
+  //    "crítico · sem meta produtiva informada".
+  const temGradeReal = Object.keys(item.grade || {}).length > 0;
+  if(!temGradeReal && (item._meta || ehColecaoMeta(item.categoria))) return 'meta';
 
   // 1) Detecta primeiro por CATEGORIA do XLSX (mais confiável que grade)
   //    Remove acentos pra pegar "ACESSORIOS" e "ACESSÓRIOS" igualmente.
