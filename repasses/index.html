@@ -212,6 +212,71 @@
       #ordersDrawer .ord-rodape button{ padding:10px 16px; font-size:13px; }
     }
 
+    /* ── Sacola ──────────────────────────────────────────────────────────
+       No desktop a grade fica sempre visível e o botão de expandir some.
+       No celular é o contrário: só o botão, e a grade abre ao toque. */
+    .cart-row .cart-grade-tog{ display:none; }   /* 0,2,0 vence .chip */
+
+    @media(max-width:640px){
+      #cartDrawer .cart-grade-tit{ display:none; }
+      #cartDrawer .cart-grade-tog{ display:inline-flex; }
+      #cartDrawer .cart-grade-box{ display:none; }
+      #cartDrawer .cart-grade.aberto .cart-grade-box{ display:flex; }
+      #cartDrawer .cart-grade.aberto .ord-caret{ transform:rotate(180deg); }
+      #cartDrawer .cart-grade-tog.aberto .ord-caret{ transform:rotate(180deg); }
+      /* recolhida, a grade nao deve deixar espaco sobrando */
+      #cartDrawer .cart-grade{ margin-top:0; }
+      #cartDrawer .cart-grade.aberto{ margin-top:10px; }
+
+      #cartDrawer .cart-hd{ padding:10px 14px 12px; }
+      #cartDrawer .cart-sub{ display:none; }
+      #cartDrawer .cart-title{ font-size:18px; }
+      #cartDrawer .cart-hd button[data-close-cart]{ height:36px; width:36px; font-size:15px; }
+
+      #cartDrawer .cart-body{ padding:10px 12px; }
+      #cartDrawer .cart-row{ padding:11px; border-radius:20px; }
+      #cartDrawer .cart-thumb{ height:60px; width:60px; border-radius:14px; }
+      #cartDrawer .cart-nome{ font-size:14px; line-height:1.2; }
+      #cartDrawer .cart-row .chip{ font-size:10.5px; padding:2px 7px; }
+      #cartDrawer .cart-lixo{ height:32px; width:32px; font-size:12px; }
+      #cartDrawer .cart-total{ font-size:11.5px; }
+      #cartDrawer .cart-qtd{ font-size:15px; min-width:22px; }
+      #cartDrawer .qty-btn{ height:30px; width:30px; font-size:12px; }
+
+      #cartDrawer .cart-ft{ padding:10px 12px; }
+      /* .grid-cols-2 e nao .grid: o container dos botoes tambem e .grid */
+      #cartDrawer .cart-ft .grid-cols-2{ display:flex; gap:16px; align-items:baseline; }
+      #cartDrawer .cart-ft div.rounded-2xl{
+        padding:0; border:0; background:transparent; border-radius:0;
+        display:flex; align-items:baseline; gap:5px;
+      }
+      #cartDrawer .cart-tot-lbl{ font-size:10.5px; }
+      #cartDrawer .cart-tot-num{ font-size:15px; margin-top:0; }
+      #cartDrawer .cart-ft button{ padding:11px 16px; font-size:13px; }
+
+      /* ── Modal de grades ─────────────────────────────────────────────
+         O modal passa a ocupar a altura da tela e a lista é quem rola,
+         em vez de um teto fixo de 65dvh que estourava a tela junto com
+         cabeçalho e rodapé. */
+      #multiGradeModalWrap .mg-wrap{ padding:10px; }
+      #multiGradeModalWrap .mg-box{
+        border-radius:20px; max-height:calc(100dvh - 20px);
+        display:flex; flex-direction:column;
+      }
+      #multiGradeModalWrap .mg-hd{ padding:10px 12px; }
+      #multiGradeModalWrap .mg-title{ font-size:15px; line-height:1.2; }
+      #multiGradeModalWrap .mg-sub{ font-size:11px; margin-top:2px; line-height:1.3; }
+      #multiGradeModalWrap .mg-hd button{ height:32px; width:32px; font-size:13px; }
+      #multiGradeModalWrap .mg-list{ padding:10px 12px; max-height:none; flex:1 1 auto; min-height:0; }
+      #multiGradeModalWrap .mg-list > * + *{ margin-top:8px; }
+      #multiGradeModalWrap .mg-card{ padding:10px; border-radius:16px; gap:9px; }
+      #multiGradeModalWrap .mg-prev{ font-size:10.5px; margin-top:2px; }
+      #multiGradeModalWrap .mg-grade{ margin-top:6px; }
+      #multiGradeModalWrap .grade-pill{ min-width:29px; padding:3px 4px; border-radius:8px; }
+      #multiGradeModalWrap .mg-ft{ padding:10px 12px; }
+      #multiGradeModalWrap .mg-ft button{ padding:11px 16px; font-size:13px; }
+    }
+
     .modal-zoom{
       position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.85);
       display:flex; align-items:center; justify-content:center; padding:24px;
@@ -561,17 +626,17 @@
   <div id="cartDrawerWrap" class="hidden fixed inset-0 z-50">
     <div class="backdrop absolute inset-0" data-close-cart="true"></div>
     <aside id="cartDrawer" class="drawer absolute right-0 top-0 bottom-0 w-full max-w-xl bg-[#f8f9fc] shadow-card flex flex-col">
-      <div class="safe-top border-b border-slate-200 bg-white px-5 py-4">
+      <div class="safe-top border-b border-slate-200 bg-white px-5 py-4 cart-hd">
         <div class="flex items-start justify-between gap-3">
           <div>
-            <div class="text-sm text-slate-500">Conferência</div>
-            <div class="text-[30px] leading-none font-extrabold">Minha Sacola</div>
+            <div class="text-sm text-slate-500 cart-sub">Conferência</div>
+            <div class="text-[22px] leading-none font-extrabold cart-title">Minha Sacola</div>
           </div>
           <button class="focus-ring h-11 w-11 rounded-full border border-slate-300 bg-slate-100 text-slate-700 text-lg" data-close-cart="true" title="Fechar"><i class="fa-solid fa-xmark"></i></button>
         </div>
       </div>
 
-      <div class="flex-1 overflow-y-auto px-4 py-4">
+      <div class="flex-1 overflow-y-auto px-4 py-4 cart-body">
         <div class="mb-4 flex items-center justify-end">
           <button id="btnClearCart" class="focus-ring text-sm font-extrabold text-[var(--brand)]">Limpar sacola</button>
         </div>
@@ -585,15 +650,15 @@
         <div id="cartItems" class="space-y-3"></div>
       </div>
 
-      <div class="safe-bottom border-t border-slate-200 bg-white px-5 py-4">
+      <div class="safe-bottom border-t border-slate-200 bg-white px-5 py-4 cart-ft">
         <div class="grid grid-cols-2 gap-3 text-sm">
           <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <div class="text-xs font-bold text-slate-500">Caixas / volumes</div>
-            <div id="cartTotalPacks" class="mt-1 text-2xl font-extrabold">0</div>
+            <div class="text-xs font-bold text-slate-500 cart-tot-lbl">Caixas / volumes</div>
+            <div id="cartTotalPacks" class="mt-1 text-2xl font-extrabold cart-tot-num">0</div>
           </div>
           <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <div class="text-xs font-bold text-slate-500">Itens no pedido</div>
-            <div id="cartTotalUnits" class="mt-1 text-2xl font-extrabold">0</div>
+            <div class="text-xs font-bold text-slate-500 cart-tot-lbl">Itens no pedido</div>
+            <div id="cartTotalUnits" class="mt-1 text-2xl font-extrabold cart-tot-num">0</div>
           </div>
         </div>
         <div class="mt-3 grid gap-3">
@@ -947,19 +1012,19 @@
 
   <div id="multiGradeModalWrap" class="hidden fixed inset-0 z-[88]">
     <div class="backdrop absolute inset-0" id="multiGradeBackdrop"></div>
-    <div class="absolute inset-0 flex items-center justify-center p-4">
-      <div class="w-full max-w-lg rounded-[28px] border border-slate-200 bg-white shadow-card overflow-hidden">
-        <div class="border-b border-slate-200 px-5 py-4">
+    <div class="absolute inset-0 flex items-center justify-center p-4 mg-wrap">
+      <div class="mg-box w-full max-w-lg rounded-[28px] border border-slate-200 bg-white shadow-card overflow-hidden">
+        <div class="border-b border-slate-200 px-5 py-4 mg-hd">
           <div class="flex items-start justify-between gap-3">
-            <div>
-              <div id="multiGradeTitle" class="text-xl font-extrabold"></div>
-              <div id="multiGradeSubtitle" class="mt-1 text-sm text-slate-500"></div>
+            <div class="min-w-0">
+              <div id="multiGradeTitle" class="text-xl font-extrabold mg-title"></div>
+              <div id="multiGradeSubtitle" class="mt-1 text-sm text-slate-500 mg-sub"></div>
             </div>
-            <button id="btnCloseMultiGrade" title="Fechar" class="focus-ring h-10 w-10 rounded-full border border-slate-200 bg-white"><i class="fa-solid fa-xmark"></i></button>
+            <button id="btnCloseMultiGrade" title="Fechar" class="focus-ring h-10 w-10 shrink-0 rounded-full border border-slate-200 bg-white"><i class="fa-solid fa-xmark"></i></button>
           </div>
         </div>
-        <div id="multiGradeList" class="px-5 py-4 space-y-3 max-h-[65dvh] overflow-y-auto"></div>
-        <div class="border-t border-slate-200 bg-slate-50 px-5 py-4">
+        <div id="multiGradeList" class="px-5 py-4 space-y-3 max-h-[65dvh] overflow-y-auto mg-list"></div>
+        <div class="border-t border-slate-200 bg-slate-50 px-5 py-4 mg-ft">
           <button id="btnMultiGradeConfirm" class="focus-ring w-full rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white disabled:opacity-50 disabled:cursor-not-allowed">
             Adicionar selecionados à sacola
           </button>
@@ -2221,48 +2286,60 @@ function renderCart(){
     const img = productImage(item, 'jpg');
     const totalUnitsItem = item.mode === 'boxed' ? item.amount * item.packSize : item.amount;
     const row = document.createElement('div');
-    row.className = 'rounded-[28px] border border-slate-200 bg-white p-4';
+    row.className = 'cart-row rounded-[28px] border border-slate-200 bg-white p-4';
     row.innerHTML = `
       <div class="flex gap-3">
-        <div class="h-20 w-20 shrink-0 rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center">
+        <div class="cart-thumb h-20 w-20 shrink-0 rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center">
           ${img ? `<img src="${img}" data-srcs="${productImageCandidates(item).join('|')}" data-src-idx="0" class="h-full w-full object-contain bg-white" onerror="(function(el){var srcs=el.dataset.srcs.split('|'),idx=parseInt(el.dataset.srcIdx||0)+1;if(idx<srcs.length){el.dataset.srcIdx=idx;el.src=srcs[idx];}else{el.style.display='none';}})(this)">` : `<i class="fa-solid fa-image text-slate-400"></i>`}
         </div>
 
         <div class="min-w-0 flex-1">
           <div class="flex items-start justify-between gap-2">
             <div>
-              <div class="text-2xl leading-none font-extrabold">${safeHtml(item.produto)}</div>
-              <div class="mt-2 flex flex-wrap gap-2">
+              <div class="cart-nome text-2xl leading-none font-extrabold">${safeHtml(item.produto)}</div>
+              <div class="mt-2 flex flex-wrap items-center gap-2">
                 <span class="chip chip-blue"><i class="fa-solid fa-palette"></i> ${safeHtml(item.cor)}</span>
                 ${item.mode === 'boxed'
                   ? `<span class="chip chip-gray"><i class="fa-solid fa-box"></i> ${item.amount} caixa${item.amount > 1 ? 's' : ''}</span>`
                   : `<span class="chip chip-gray"><i class="fa-solid fa-cubes-stacked"></i> ${item.amount} unidade${item.amount > 1 ? 's' : ''}</span>`}
+                ${item.grade.length ? `<button type="button" class="cart-grade-tog chip chip-gray"><i class="fa-solid fa-table-cells"></i> <span class="cart-grade-lbl">Ver ${item.mode === 'boxed' ? 'grade' : 'disponível'}</span> <i class="fa-solid fa-chevron-down ord-caret"></i></button>` : ''}
               </div>
             </div>
-            <button class="btnRemove focus-ring h-10 w-10 rounded-full border border-slate-200 bg-white text-[var(--brand)]" title="Remover da sacola"><i class="fa-solid fa-trash"></i></button>
+            <button class="btnRemove cart-lixo focus-ring h-10 w-10 rounded-full border border-slate-200 bg-white text-[var(--brand)]" title="Remover da sacola"><i class="fa-solid fa-trash"></i></button>
           </div>
 
           ${item.grade.length ? `
-          <div class="mt-3">
-            <div class="text-sm font-extrabold text-slate-600">${item.mode === 'boxed' ? 'Grade' : 'Disponível'}</div>
-            <div class="mt-2 flex flex-wrap gap-2">${gradeHtml(item.grade)}</div>
+          <div class="mt-3 cart-grade">
+            <div class="text-sm font-extrabold text-slate-600 cart-grade-tit">${item.mode === 'boxed' ? 'Grade' : 'Disponível'}</div>
+            <div class="mt-2 flex flex-wrap gap-2 cart-grade-box">${gradeHtml(item.grade)}</div>
           </div>` : ''}
 
           <div class="mt-3 flex items-center justify-between gap-3">
-            <div class="text-sm font-semibold text-slate-600">
+            <div class="cart-total text-sm font-semibold text-slate-600">
               ${item.mode === 'boxed'
                 ? `${totalUnitsItem} pares no total`
                 : `${totalUnitsItem} unidade${totalUnitsItem > 1 ? 's' : ''} no total`}
             </div>
             <div class="flex items-center gap-2">
               <button class="btnMinus qty-btn focus-ring" title="Diminuir"><i class="fa-solid fa-minus"></i></button>
-              <div class="min-w-[28px] text-center text-lg font-extrabold">${item.amount}</div>
+              <div class="cart-qtd min-w-[28px] text-center text-lg font-extrabold">${item.amount}</div>
               <button class="btnPlus qty-btn focus-ring" title="Aumentar"><i class="fa-solid fa-plus"></i></button>
             </div>
           </div>
         </div>
       </div>
     `;
+
+    // A grade so vem recolhida no celular; no desktop o CSS mantem sempre
+    // aberta e esconde o botao. O listener e inofensivo nos dois casos.
+    row.querySelector('.cart-grade-tog')?.addEventListener('click', ()=>{
+      const bloco = row.querySelector('.cart-grade');
+      const aberto = bloco.classList.toggle('aberto');
+      row.querySelector('.cart-grade-tog').classList.toggle('aberto', aberto);
+      const lbl = row.querySelector('.cart-grade-lbl');
+      const alvo = item.mode === 'boxed' ? 'grade' : 'disponível';
+      lbl.textContent = (aberto ? 'Ocultar ' : 'Ver ') + alvo;
+    });
 
     row.querySelector('.btnRemove').addEventListener('click', ()=>{
       STATE.cart.delete(item.key);
@@ -2970,7 +3047,7 @@ function openMultiGradeModal(siblings){
     const packs = remainingPacks(item);
     const soldout = packs <= 0;
     return `
-      <label class="flex items-start gap-3 rounded-[20px] border ${soldout?'border-slate-100 bg-slate-50 opacity-60':'border-slate-200 bg-white'} p-4 cursor-${soldout?'not-allowed':'pointer'} select-none">
+      <label class="mg-card flex items-start gap-3 rounded-[20px] border ${soldout?'border-slate-100 bg-slate-50 opacity-60':'border-slate-200 bg-white'} p-4 cursor-${soldout?'not-allowed':'pointer'} select-none">
         <input type="checkbox" class="mg-check mt-1 h-4 w-4 rounded accent-[var(--brand)]"
           data-key="${safeHtml(item.key)}" ${soldout?'disabled':''} />
         <div class="flex-1 min-w-0">
@@ -2978,8 +3055,8 @@ function openMultiGradeModal(siblings){
             <span class="text-xs font-extrabold text-slate-400">Nº ${safeHtml(item.num)}${item.gci ? ` · <span style="color:var(--brand);font-weight:800">GCI ${safeHtml(item.gci)}</span>` : ''}</span>
             <span class="text-xs font-bold ${soldout?'text-rose-500':'text-emerald-600'}">${soldout?'Esgotado':`${packs} caixa${packs!==1?'s':''} disponív${packs!==1?'eis':'el'}`}</span>
           </div>
-          <div class="mt-1 text-xs font-semibold text-slate-500">Prev. Fat. ${safeHtml(formatDate(item.prevFaturamento))}</div>
-          <div class="mt-2 flex flex-wrap gap-1">${gradeHtml(item.grade)}</div>
+          <div class="mt-1 text-xs font-semibold text-slate-500 mg-prev">Prev. Fat. ${safeHtml(formatDate(item.prevFaturamento))}</div>
+          <div class="mt-2 flex flex-wrap gap-1 mg-grade">${gradeHtml(item.grade)}</div>
         </div>
       </label>`;
   }).join('');
