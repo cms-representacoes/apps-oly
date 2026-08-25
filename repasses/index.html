@@ -46,6 +46,12 @@
     .grade-pill{min-width:34px;border:1px solid var(--line);border-radius:10px;padding:4px 5px;background:#fff;text-align:center}
     .grade-size{display:block;font-size:10px;line-height:1;color:#64748b;font-weight:700}
     .grade-qty{display:block;font-size:11px;line-height:1.15;color:var(--brand);font-weight:800;margin-top:3px}
+    /* Tres acoes numa fileira. O botao principal recebe mais espaco para
+       "Finalizar pedido" nao quebrar em duas linhas. */
+    .cart-acoes{ display:flex; gap:8px; }
+    .cart-acoes > button{ flex:1 1 0; white-space:nowrap; }
+    .cart-acoes > #btnProceedOrder{ flex:1.8 1 0; }
+
     /* no desktop os dois botoes seguem empilhados, como antes */
     .filtros-acoes{ display:grid; gap:12px; }
     .filters-collapsed #filtersPanel{display:none}
@@ -268,6 +274,7 @@
     #cartDrawer .cart-tot-lbl{ font-size:10.5px; }
     #cartDrawer .cart-tot-num{ font-size:15px; margin-top:0; }
     #cartDrawer .cart-ft button{ padding:11px 16px; font-size:13px; }
+    #cartDrawer .cart-acoes button{ padding:11px 10px; }
 
     @media(max-width:640px){
       /* ── Modal de grades ─────────────────────────────────────────────
@@ -641,7 +648,7 @@
     <span id="fabCartBadge" class="fab-cart-badge hidden">0</span>
   </button>
 
-  <div id="cartDrawerWrap" class="hidden fixed inset-0 z-50">
+  <div id="cartDrawerWrap" class="hidden fixed inset-0 z-[72]">
     <div class="backdrop absolute inset-0" data-close-cart="true"></div>
     <aside id="cartDrawer" class="drawer absolute right-0 top-0 bottom-0 w-full max-w-xl bg-[#f8f9fc] shadow-card flex flex-col">
       <div class="safe-top border-b border-slate-200 bg-white px-5 py-4 cart-hd">
@@ -655,10 +662,6 @@
       </div>
 
       <div class="flex-1 overflow-y-auto px-4 py-4 cart-body">
-        <div class="mb-4 flex items-center justify-end">
-          <button id="btnClearCart" class="focus-ring text-sm font-extrabold text-[var(--brand)]">Limpar sacola</button>
-        </div>
-
         <div id="cartEmptyState" class="hidden rounded-[28px] border border-slate-200 bg-white p-8 text-center">
           <div class="mx-auto h-14 w-14 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center text-2xl"><i class="fa-solid fa-bag-shopping"></i></div>
           <div class="mt-4 text-xl font-extrabold">Sua sacola está vazia</div>
@@ -679,18 +682,21 @@
             <div id="cartTotalUnits" class="mt-1 text-2xl font-extrabold cart-tot-num">0</div>
           </div>
         </div>
-        <div class="mt-3 grid gap-3">
-          <button id="btnProceedOrder" class="focus-ring rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white">Continuar para pedido</button>
-          <button data-close-cart="true"
-            class="focus-ring sm:hidden rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-extrabold text-slate-700">
-            <i class="fa-solid fa-xmark mr-2"></i>Fechar sacola
+        <div class="mt-3 cart-acoes">
+          <button id="btnClearCart" class="focus-ring rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-extrabold text-[var(--brand)]">
+            <i class="fa-solid fa-trash mr-1.5"></i>Limpar
           </button>
+          <button data-close-cart="true"
+            class="focus-ring rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-extrabold text-slate-700">
+            <i class="fa-solid fa-xmark mr-1.5"></i>Fechar
+          </button>
+          <button id="btnProceedOrder" class="focus-ring rounded-2xl bg-[var(--brand)] px-3 py-3 text-sm font-extrabold text-white">Finalizar pedido</button>
         </div>
       </div>
     </aside>
   </div>
 
-  <div id="checkoutDrawerWrap" class="hidden fixed inset-0 z-[60]">
+  <div id="checkoutDrawerWrap" class="hidden fixed inset-0 z-[76]">
     <div class="backdrop absolute inset-0" data-close-checkout="true"></div>
     <aside id="checkoutDrawer" class="drawer absolute right-0 top-0 bottom-0 w-full max-w-2xl bg-[#f8f9fc] shadow-card flex flex-col">
       <div class="safe-top border-b border-slate-200 bg-white px-5 py-4">
@@ -764,7 +770,7 @@
     </aside>
   </div>
 
-  <div id="ordersDrawerWrap" class="hidden fixed inset-0 z-50">
+  <div id="ordersDrawerWrap" class="hidden fixed inset-0 z-[72]">
     <div class="backdrop absolute inset-0" data-close-orders="true"></div>
     <aside id="ordersDrawer" class="drawer absolute right-0 top-0 bottom-0 w-full max-w-2xl bg-[#f8f9fc] shadow-card flex flex-col">
       <div class="safe-top border-b border-slate-200 bg-white px-5 py-4 ord-hd">
@@ -886,7 +892,7 @@
     </div>
   </div>
 
-  <div id="gradeSheetWrap" class="hidden fixed inset-0 z-[70] md:hidden">
+  <div id="gradeSheetWrap" class="hidden fixed inset-0 z-[74] md:hidden">
     <div class="backdrop absolute inset-0" data-close-grade="true"></div>
     <div id="gradeSheet" class="sheet absolute inset-x-0 bottom-0 rounded-t-[28px] bg-white p-4 shadow-card">
       <div class="mx-auto mb-3 h-1.5 w-16 rounded-full bg-slate-200"></div>
