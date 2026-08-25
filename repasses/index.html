@@ -1527,9 +1527,24 @@ async function refreshOrdersFromRemote(){
   saveOrdersStorage();
   return STATE.orders;
 }
+// Confere no servidor se um pedido já está gravado. Usado quando o POST
+// falha: a gravação pode ter passado e só a resposta ter se perdido, e
+// dizer "falhou" nesse caso faz o vendedor reenviar e duplicar.
+async function pedidoJaExisteNoServidor(id){
+  const remote = await workerRequest('GET');
+  return Array.isArray(remote) && remote.some(o => o && o.id === id);
+}
+
 async function createOrderRemote(order){
   if(!hasWorkerConfig()) return;
-  await workerRequest('POST', order);
+  try{
+    await workerRequest('POST', order);
+  }catch(err){
+    let chegou = false;
+    try{ chegou = await pedidoJaExisteNoServidor(order.id); }catch(_){ /* sem rede: mantém o erro */ }
+    if(!chegou) throw err;
+    console.warn('POST falhou, mas o pedido está no servidor:', order.id, err);
+  }
 }
 async function refreshStockFromSource(options = {}){
   const { silent=false, reason='manual', force=false } = options;
@@ -3220,7 +3235,14 @@ async function submitOrder(options = {}){
     STATE.orders.unshift(order);
     if(hasWorkerConfig()){
       await createOrderRemote(order);
-      await refreshOrdersFromRemote();
+      // Daqui em diante o pedido JÁ ESTÁ no servidor. Uma falha ao recarregar
+      // a lista é problema de exibição, não de gravação — tratar como erro
+      // faria o vendedor reenviar e duplicar o pedido.
+      try{
+        await refreshOrdersFromRemote();
+      }catch(e){
+        console.error('Pedido gravado, mas a lista não recarregou:', e);
+      }
     }else{
       saveOrdersStorage();
     }
@@ -3248,7 +3270,10 @@ async function submitOrder(options = {}){
     if(message && (normalizeText(message).includes('saldo') || normalizeText(message).includes('sacola'))){
       toast(message);
     }else{
-      toast('Não foi possível sincronizar o pedido');
+      // O código do erro vem junto: sem ele, todo problema virava a mesma
+      // frase e não dava para saber o que estava acontecendo.
+      const codigo = (String(message||'').match(/\((\d{3})\)/) || [])[1];
+      toast('Não foi possível sincronizar o pedido' + (codigo ? ` (erro ${codigo})` : '') + '. A sacola foi mantida.');
     }
   }finally{
     submitBtn.disabled = false;
