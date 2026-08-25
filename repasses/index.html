@@ -46,6 +46,45 @@
     .grade-pill{min-width:34px;border:1px solid var(--line);border-radius:10px;padding:4px 5px;background:#fff;text-align:center}
     .grade-size{display:block;font-size:10px;line-height:1;color:#64748b;font-weight:700}
     .grade-qty{display:block;font-size:11px;line-height:1.15;color:var(--brand);font-weight:800;margin-top:3px}
+    /* ── Finalizar pedido ────────────────────────────────────────────────
+       Mesmo tratamento em celular, tablet e PC. */
+    #checkoutDrawer .ck-sub{ display:none; }
+    #checkoutDrawer .ck-title{ font-size:18px; }
+    #checkoutDrawer .ck-hd{ padding:10px 14px 12px; }
+    #checkoutDrawer .ck-hd button[data-close-checkout]{ height:36px; width:36px; font-size:15px; }
+    #checkoutDrawer .ck-item{ padding:10px; }
+    #checkoutDrawer .ck-nome{ font-size:14px; }
+    #checkoutDrawer .ck-cod{ font-size:10.5px; }
+    #checkoutDrawer .ck-qtd{ font-size:12px; }
+    #checkoutDrawer .ck-item .chip{ font-size:10.5px; padding:2px 7px; }
+    #checkoutDrawer .ck-grade-box.aberta{ display:flex; }
+    #checkoutDrawer .ck-grade-tog.aberto .ord-caret{ transform:rotate(180deg); }
+
+    /* Finalizar pedido no celular: campos mais justos.
+       A FONTE dos campos continua 16px de proposito (regra de iOS mais
+       abaixo) -- todo o ganho vem de recheio, espacamento e cantos. */
+    @media(max-width:640px){
+      #checkoutDrawer > div.flex-1{ padding:10px 12px; }
+      #checkoutDrawer .grid{ gap:10px; }
+      #checkoutDrawer section{ padding:12px; border-radius:18px; }
+      #checkoutDrawer section > .text-lg{ font-size:14px; }
+      #checkoutDrawer .space-y-4{ margin-top:10px; }
+      #checkoutDrawer .space-y-4 > * + *{ margin-top:10px; }
+      #checkoutDrawer label{ font-size:11px; }
+      #checkoutDrawer input,
+      #checkoutDrawer select,
+      #checkoutDrawer textarea{
+        padding:8px 12px; border-radius:12px; margin-top:2px;
+      }
+      #checkoutDrawer textarea{ min-height:56px; }
+      #checkoutDrawer .safe-bottom{ padding:10px 12px; }
+      #checkoutDrawer .safe-bottom button{ padding:11px 16px; }
+      #checkoutDrawer .chip{ font-size:10.5px; padding:2px 7px; }
+      /* o zoom do iOS olha a fonte do CAMPO, nao a do placeholder */
+      #checkoutDrawer input::placeholder,
+      #checkoutDrawer textarea::placeholder{ font-size:13px; }
+    }
+
     /* Tres acoes numa fileira. O botao principal recebe mais espaco para
        "Finalizar pedido" nao quebrar em duas linhas. */
     .cart-acoes{ display:flex; gap:8px; }
@@ -420,6 +459,25 @@
        então quem estivesse por último venceria */
     @media (max-width: 767px){ .fab-cart{display:flex} }
 
+    /* ── Voltar ao topo ──────────────────────────────────────────────────
+       Canto direito: o da sacola fica no esquerdo. z-index abaixo das
+       gavetas, para nao aparecer por cima delas. */
+    .fab-top{
+      position:fixed; z-index:45;
+      right:calc(16px + env(safe-area-inset-right,0px));
+      bottom:calc(16px + env(safe-area-inset-bottom,0px));
+      width:46px; height:46px; border-radius:999px; padding:0;
+      border:1px solid var(--line); background:#fff; color:var(--brand);
+      font-size:16px; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:0 6px 20px rgba(15,23,42,.18);
+      opacity:0; visibility:hidden; transform:translateY(10px);
+      transition:opacity .18s ease, transform .18s ease, visibility .18s;
+    }
+    .fab-top.visivel{ opacity:1; visibility:visible; transform:none; }
+    /* depois da regra .visivel: empate de especificidade, vence a ultima */
+    .fab-top.visivel:active{ transform:scale(.92); }
+
     /* ── Botão limpar (×) dentro dos campos ── */
     .field-clear{position:relative; display:block}
     .field-clear > input, .field-clear > textarea{padding-right:40px}
@@ -640,6 +698,10 @@
     </div>
   </main>
 
+  <button id="fabTop" class="fab-top focus-ring" type="button" title="Voltar ao topo" aria-label="Voltar ao topo">
+    <i class="fa-solid fa-arrow-up"></i>
+  </button>
+
   <button id="fabCart" class="fab-cart focus-ring" type="button" title="Abrir sacola" aria-label="Abrir sacola">
     <i class="fa-solid fa-cart-shopping"></i>
     <span id="fabCartBadge" class="fab-cart-badge hidden">0</span>
@@ -696,11 +758,11 @@
   <div id="checkoutDrawerWrap" class="hidden fixed inset-0 z-[76]">
     <div class="backdrop absolute inset-0" data-close-checkout="true"></div>
     <aside id="checkoutDrawer" class="drawer absolute right-0 top-0 bottom-0 w-full max-w-2xl bg-[#f8f9fc] shadow-card flex flex-col">
-      <div class="safe-top border-b border-slate-200 bg-white px-5 py-4">
+      <div class="safe-top border-b border-slate-200 bg-white px-5 py-4 ck-hd">
         <div class="flex items-start justify-between gap-3">
           <div>
-            <div class="text-sm text-slate-500">Etapa final</div>
-            <div class="text-[30px] leading-none font-extrabold">Finalizar pedido</div>
+            <div class="text-sm text-slate-500 ck-sub">Etapa final</div>
+            <div class="text-[22px] leading-none font-extrabold ck-title">Finalizar pedido</div>
           </div>
           <button class="focus-ring h-11 w-11 rounded-full border border-slate-300 bg-slate-100 text-slate-700 text-lg" data-close-checkout="true" title="Fechar"><i class="fa-solid fa-xmark"></i></button>
         </div>
@@ -1477,10 +1539,21 @@ function getPortalSession(){
     return s;
   }catch(_){ return null; }
 }
+// Acesso local para desenvolvimento: rodando em localhost o app entra como
+// CMS sem passar pela tela de login. O endereco publicado (github.io) nunca
+// casa com esta checagem, entao isto NAO abre o app para ninguem de fora.
+function isAmbienteLocal(){
+  const h = location.hostname;
+  return h === 'localhost' || h === '127.0.0.1' || h === '';
+}
+
 function getVendedorSession(){
   var portal = getPortalSession();
   if(portal) return { codigo: portal.codigo, nome: portal.nome };
-  return readJsonSafe(STORAGE_KEYS.vendedorSession, null);
+  var local = readJsonSafe(STORAGE_KEYS.vendedorSession, null);
+  if(local) return local;
+  if(isAmbienteLocal()) return { codigo: '000000', nome: 'CMS' };
+  return null;
 }
 function setVendedorSession(s){ localStorage.setItem(STORAGE_KEYS.vendedorSession, JSON.stringify(s)); }
 function clearVendedorSession(){ localStorage.removeItem(STORAGE_KEYS.vendedorSession); localStorage.removeItem('cms_portal_session_v1'); }
@@ -2530,21 +2603,46 @@ function renderCart(){
 function renderCheckoutSummary(){
   const items = Array.from(STATE.cart.values());
   $('checkoutSummaryCount').textContent = items.length;
-  $('checkoutItems').innerHTML = items.map(item=>`
-    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+  // Mesmo formato da sacola: resumo em uma linha e grade recolhida atrás de
+  // um chip. Antes toda grade vinha aberta e a conferência do pedido virava
+  // uma rolagem longa, no celular e no desktop.
+  $('checkoutItems').innerHTML = items.map((item, i)=>{
+    const totalUnits = item.mode === 'boxed' ? item.amount * item.packSize : item.amount;
+    const qtd = item.mode === 'boxed'
+      ? `${item.amount} cx · ${totalUnits} pares`
+      : `${totalUnits} un`;
+    return `
+    <div class="ck-item rounded-2xl border border-slate-200 bg-slate-50 p-3" data-i="${i}">
       <div class="flex items-start justify-between gap-2">
-        <div>
-          <div class="font-extrabold">${safeHtml(item.produto)}</div>
-          <div class="mt-1 text-xs text-slate-500">${safeHtml(item.codigo)} · ${safeHtml(item.cor)}</div>
+        <div class="min-w-0">
+          <div class="ck-nome font-extrabold truncate">${safeHtml(item.produto)}</div>
+          <div class="mt-1.5 flex flex-wrap items-center gap-2">
+            <span class="chip chip-blue"><i class="fa-solid fa-palette"></i> ${safeHtml(item.cor)}</span>
+            ${item.grade?.length ? `<button type="button" class="ck-grade-tog chip chip-gray"><i class="fa-solid fa-table-cells"></i> <span class="ck-grade-lbl">Ver grade</span> <i class="fa-solid fa-chevron-down ord-caret"></i></button>` : ''}
+          </div>
+          <div class="ck-cod mt-1 text-[11px] text-slate-400">${safeHtml(item.codigo)}</div>
         </div>
-        <div class="text-right text-sm font-extrabold">
-          ${item.mode === 'boxed' ? `${item.amount} caixa${item.amount > 1 ? 's' : ''}` : `${item.amount} unidade${item.amount > 1 ? 's' : ''}`}
-        </div>
+        <div class="ck-qtd text-right text-sm font-extrabold shrink-0">${qtd}</div>
       </div>
-      ${item.grade?.length ? `<div class="mt-2 flex flex-wrap gap-2">${gradeHtml(item.grade)}</div>` : ''}
-    </div>
-  `).join('');
+      ${item.grade?.length ? `<div class="ck-grade-box hidden mt-2 flex-wrap gap-2">${gradeHtml(item.grade)}</div>` : ''}
+    </div>`;
+  }).join('');
 }
+// Delegação: o conteúdo é recriado a cada render, então o ouvinte fica no
+// container e não nos botões.
+document.addEventListener('click', (e)=>{
+  const tog = e.target.closest?.('.ck-grade-tog');
+  if(!tog) return;
+  const item = tog.closest('.ck-item');
+  const box = item?.querySelector('.ck-grade-box');
+  if(!box) return;
+  const aberta = box.classList.toggle('aberta');
+  box.classList.toggle('hidden', !aberta);
+  tog.classList.toggle('aberto', aberta);
+  const lbl = tog.querySelector('.ck-grade-lbl');
+  if(lbl) lbl.textContent = aberta ? 'Ocultar grade' : 'Ver grade';
+});
+
 function renderOrders(){
   const currentPreposto = getLastPreposto();
   const scope = getOrdersScope();
@@ -2906,11 +3004,11 @@ function aplicarListaClientes(lista, chave, falhas){
 function atualizarPlaceholderCliente(){
   const input = $('checkoutCliente');
   if(!input) return;
-  if(CLIENTES_STATE.loading){ input.placeholder = 'Carregando clientes...'; return; }
+  if(CLIENTES_STATE.loading){ input.placeholder = 'Carregando...'; return; }
   const n = CLIENTES_STATE.lista.length;
   input.placeholder = n
-    ? `Buscar entre ${n} clientes — código ou nome`
-    : 'Digite o código do cliente';
+    ? `${n} cliente${n > 1 ? 's' : ''}`
+    : 'Código do cliente';
 }
 
 async function carregarClientesDoPreposto(){
@@ -4233,13 +4331,26 @@ async function notifVendPoll(){
   }
 }
 
-if($('btnNotifVendedor')){
-  $('btnNotifVendedor').addEventListener('click', ()=>{
-    _notifVendCount = 0;
-    notifVendUpdateBadge();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
-}
+// ── Voltar ao topo ──────────────────────────────────────────────────────────
+(function(){
+  const fab = $('fabTop');
+  if(!fab) return;
+  const LIMITE = 400;      // so aparece depois de rolar de verdade
+  let agendado = false;
+  function avaliar(){
+    agendado = false;
+    fab.classList.toggle('visivel', window.scrollY > LIMITE);
+  }
+  // O evento de rolagem dispara muitas vezes por segundo; deixar o trabalho
+  // para o proximo quadro evita mexer no DOM a cada disparo.
+  window.addEventListener('scroll', ()=>{
+    if(agendado) return;
+    agendado = true;
+    requestAnimationFrame(avaliar);
+  }, { passive:true });
+  fab.addEventListener('click', ()=> window.scrollTo({ top: 0, behavior: 'smooth' }));
+  avaliar();
+})();
 
 // Consulta em segundo plano. Pausa quando a aba nao esta visivel: nao faz
 // sentido baixar a lista de pedidos com o app em outra aba ou no bolso.
