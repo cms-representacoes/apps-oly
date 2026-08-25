@@ -2158,23 +2158,26 @@ function textoBusca(item){
 function applyFilters(){
   const q = normalizeText(STATE.search);
 
-  // Um produto some da vitrine quando os pedidos JÁ APROVADOS (sozinhos, sem
-  // contar pendentes) já consomem todo o saldo daquele grupo (todas as
-  // entregas/grades do mesmo produto+cor). Pedido só pendente nunca esconde
-  // o card — ele continua visível (podendo mostrar "0 pares" pra reserva
-  // nova) até o admin aprovar e realmente zerar.
+  // Produto esgotado sai da vitrine e só volta quando aparecer saldo.
+  // Conta TODAS as reservas (pendentes e aprovadas) de todas as entregas do
+  // mesmo produto+cor. Antes só o pedido aprovado escondia o card, e o
+  // esgotado por pendentes continuava aparecendo com "0 pares".
+  //
+  // Usa o saldo SEM descontar a sacola local: item inteiramente na própria
+  // sacola do vendedor continua visível, senão sumiria da tela enquanto ele
+  // ainda o tem em mãos.
   //
   // A soma por grupo é feita UMA vez. Antes era refeita dentro do filtro para
   // cada item, varrendo STATE.raw inteiro e chamando normalizeText 4x por
   // comparação — com 500 itens dava ~1 milhão de normalizações por tecla.
-  const restanteAprovado = new Map();
+  const saldoDoGrupo = new Map();
   for(const x of STATE.raw){
     const k = grupoProdutoCor(x);
-    restanteAprovado.set(k, (restanteAprovado.get(k) || 0) + getApprovedOnlyRemaining(x));
+    saldoDoGrupo.set(k, (saldoDoGrupo.get(k) || 0) + getBaseAvailableUnits(x));
   }
 
   STATE.view = sortView(STATE.raw.filter(item=>{
-    if((restanteAprovado.get(grupoProdutoCor(item)) || 0) <= 0) return false;
+    if((saldoDoGrupo.get(grupoProdutoCor(item)) || 0) <= 0) return false;
     const _rc = getSellerRateioCap(item);
     if(_rc.limited && _rc.cap <= 0) return false; // sem cota -> some pro vendedor
     const categoryLabel = CATEGORY_LABELS[item.categoria] || item.categoria;
@@ -2780,6 +2783,8 @@ async function ordersExportPdf(){
 }
 
 async function openOrders(){
+  // Abre sempre em "Todos": o vendedor quer ver o que fez, nao so o pendente.
+  setOrdersScope('Todos');
   // Abre imediatamente com dados locais — sem delay
   renderOrders();
   $('ordersDrawerWrap').classList.remove('hidden');
