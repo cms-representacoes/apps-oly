@@ -444,30 +444,6 @@
     .welcome-chip svg{width:13px;height:13px;color:#64748b;flex:none}
     @media (hover:hover){ .welcome-chip:hover svg{color:#a5b4fc} }
     .admin-only[hidden]{display:none !important}
-  
-    /* Os botões flutuantes são fixos: sem esta reserva, o último card fica
-       escondido atrás deles no celular. */
-    @media(max-width:640px){
-      body{ padding-bottom:86px; }
-    }
-    /* Sem a etiqueta o título subiu, e a pílula "Resumo" ocupa o canto
-       superior direito do card de Repasses. */
-    .portal-card-title{ padding-right:96px; display:flex; align-items:center; gap:10px; }
-    /* O ícone herda a cor da própria etiqueta que existia antes, então cada
-       card mantém sua identidade. Seletor com 2 classes para vencer o
-       .tag-* sem depender da ordem das regras. */
-    .portal-card-title .pc-ico{
-      width:32px; height:32px; flex:none;
-      border-radius:11px; padding:0;
-      display:inline-flex; align-items:center; justify-content:center;
-      box-shadow:inset 0 1px 0 rgba(255,255,255,.12);
-    }
-    .portal-card-title .pc-nome{ min-width:0; }
-    @media (min-width:640px){
-      .portal-card-title .pc-ico{ width:36px; height:36px; border-radius:12px; }
-      .portal-card-title .pc-ico svg{ width:19px; height:19px; }
-    }
-    @media(min-width:640px){ .portal-card-title{ padding-right:0; } }
   </style>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
@@ -599,8 +575,12 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>
           Resumo
         </span>
-        <div class="portal-card-title"><span class="pc-ico tag-repasse"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg></span><span class="pc-nome">Repasses</span></div>
-        <div class="portal-card-desc text-blue-200">Faça pedidos do estoque em repasse.</div>
+        <div class="portal-card-tag tag-repasse">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+          Repasses
+        </div>
+        <div class="portal-card-title">Catálogo de<br>Repasses</div>
+        <div class="portal-card-desc text-blue-200">Produtos disponíveis para repasse. Faça seus pedidos diretamente pelo catálogo.</div>
         <div class="portal-card-cta text-blue-300">
           Acessar
           <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
@@ -608,8 +588,12 @@
       </a>
 
       <a id="btnDisponibilidades" href="https://cms-representacoes.github.io/apps-oly/disponibilidades/vitrine.html?marca=oly" class="portal-card card-disp focus-ring">
-        <div class="portal-card-title"><span class="pc-ico tag-disp"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></span><span class="pc-nome">Disponibilidades</span></div>
-        <div class="portal-card-desc" style="color:#a8d700">Consulte o estoque da fábrica, Oly e UA.</div>
+        <div class="portal-card-tag tag-disp">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+          Disponibilidades
+        </div>
+        <div class="portal-card-title">Catálogo de<br>Disponibilidades</div>
+        <div class="portal-card-desc" style="color:#a8d700">Estoque disponível na fábrica. Consulte produtos disponíveis para UA e Olympikus.</div>
         <div class="portal-card-cta" style="color:#ccff00">
           Acessar
           <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
@@ -617,8 +601,12 @@
       </a>
 
       <a id="btnCatalogo" href="https://cms-representacoes.github.io/apps-oly-v2/?marca=oly" class="portal-card card-catalogo focus-ring">
-        <div class="portal-card-title"><span class="pc-ico tag-catalogo"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="pc-nome">Catálogo</span></div>
-        <div class="portal-card-desc text-purple-200">Vitrine completa Oly e UA. Monte pedidos.</div>
+        <div class="portal-card-tag tag-catalogo">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Catálogo Digital
+        </div>
+        <div class="portal-card-title">Catálogo<br>Digital</div>
+        <div class="portal-card-desc text-purple-200">Vitrine completa de produtos Olympikus e Under Armour. Visualize, favorite e monte pedidos.</div>
         <div class="portal-card-cta text-purple-300">
           Acessar
           <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
@@ -626,8 +614,12 @@
       </a>
 
       <a href="https://cms-representacoes.github.io/apps-oly-v2/gerador-catalogo.html" class="portal-card card-gerador focus-ring">
-        <div class="portal-card-title"><span class="pc-ico tag-gerador"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></span><span class="pc-nome">Gerador</span></div>
-        <div class="portal-card-desc" style="color:#fed7aa">Da planilha da carteira ao PDF do cliente.</div>
+        <div class="portal-card-tag tag-gerador">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg>
+          Gerador
+        </div>
+        <div class="portal-card-title">Gerador de<br>Catálogo</div>
+        <div class="portal-card-desc" style="color:#fed7aa">Importe a planilha da carteira e gere um catálogo em PDF para enviar ao cliente.</div>
         <div class="portal-card-cta" style="color:#fdba74">
           Acessar
           <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
