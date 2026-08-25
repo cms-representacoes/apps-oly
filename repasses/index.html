@@ -46,6 +46,8 @@
     .grade-pill{min-width:34px;border:1px solid var(--line);border-radius:10px;padding:4px 5px;background:#fff;text-align:center}
     .grade-size{display:block;font-size:10px;line-height:1;color:#64748b;font-weight:700}
     .grade-qty{display:block;font-size:11px;line-height:1.15;color:var(--brand);font-weight:800;margin-top:3px}
+    /* no desktop os dois botoes seguem empilhados, como antes */
+    .filtros-acoes{ display:grid; gap:12px; }
     .filters-collapsed #filtersPanel{display:none}
     body.filters-open #filtersPanel{display:block !important}
     .filters-collapsed #catalogShell{grid-template-columns:minmax(0,1fr)}
@@ -125,6 +127,22 @@
       .top-actions > *{flex:0 0 auto}
       body.mobile-header-ready main{padding-top:calc(var(--mobile-header-offset) + 12px) !important}
       body.filters-open #filtersPanel{top:108px;max-height:calc(100dvh - 122px)}
+
+      /* ── Painel de filtros no celular ────────────────────────────────
+         A fonte dos selects NAO encolhe: ha uma regra proposital de 16px
+         ate 767px porque o iOS dá zoom em campo com fonte menor. O ganho
+         vem do recheio, dos espacos e do cabecalho. */
+      #filtersPanel{ padding:12px; border-radius:20px; }
+      #filtersPanel .filtros-sub{ display:none; }
+      #filtersPanel .filtros-tit{ font-size:15px; }
+      #filtersPanel #btnCloseFilters{ height:32px; width:32px; font-size:13px; }
+      #filtersPanel .filtros-campos{ margin-top:10px; }
+      #filtersPanel .filtros-campos > * + *{ margin-top:8px; }
+      #filtersPanel .filtros-lbl{ font-size:11px; }
+      #filtersPanel select{ padding:8px 12px; border-radius:12px; margin-top:2px; }
+      #filtersPanel .filtros-acoes{ display:flex; gap:8px; }
+      #filtersPanel .filtros-acoes button{ padding:10px 12px; font-size:13px; }
+      #filtersPanel .fl-longo{ display:none; }
     }
     /* ══ MODO 2 COLUNAS (só smartphone) ══════════════════════════════════
        Mesma marcação do card normal — a troca é só de CSS, então alternar
@@ -556,31 +574,31 @@
         <aside id="filtersPanel" class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-soft h-fit">
           <div class="flex items-center justify-between gap-3">
             <div>
-              <div class="text-xs font-bold text-slate-500">Busca refinada</div>
-              <div class="text-lg font-extrabold">Filtros</div>
+              <div class="text-xs font-bold text-slate-500 filtros-sub">Busca refinada</div>
+              <div class="text-lg font-extrabold filtros-tit">Filtros</div>
             </div>
             <button id="btnCloseFilters" title="Fechar" class="focus-ring h-10 w-10 rounded-full border border-slate-200 lg:hidden"><i class="fa-solid fa-xmark"></i></button>
           </div>
 
-          <div class="mt-4 space-y-3">
+          <div class="mt-4 space-y-3 filtros-campos">
             <div>
-              <label class="text-xs font-bold text-slate-500">Categoria</label>
+              <label class="text-xs font-bold text-slate-500 filtros-lbl">Categoria</label>
               <select id="filterCategoria" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold"></select>
             </div>
             <div>
-              <label class="text-xs font-bold text-slate-500">Segmento</label>
+              <label class="text-xs font-bold text-slate-500 filtros-lbl">Segmento</label>
               <select id="filterSegmento" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold"></select>
             </div>
             <div>
-              <label class="text-xs font-bold text-slate-500">Gênero</label>
+              <label class="text-xs font-bold text-slate-500 filtros-lbl">Gênero</label>
               <select id="filterGenero" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold"></select>
             </div>
             <div>
-              <label class="text-xs font-bold text-slate-500">Prev. Faturamento</label>
+              <label class="text-xs font-bold text-slate-500 filtros-lbl">Prev. Faturamento</label>
               <select id="filterPrevFat" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold"></select>
             </div>
             <div>
-              <label class="text-xs font-bold text-slate-500">Ordenação</label>
+              <label class="text-xs font-bold text-slate-500 filtros-lbl">Ordenação</label>
               <select id="sortBy" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold">
                 <option value="produto">Produto A-Z</option>
                 <option value="saldoDesc">Maior saldo</option>
@@ -588,10 +606,12 @@
                 <option value="entregaAsc">Prev. faturamento mais próxima</option>
               </select>
             </div>
-            <button id="btnClearFilters" class="focus-ring w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-extrabold text-[var(--brand)]">Limpar filtros</button>
-            <button id="btnGenerateCatalogPdf" class="focus-ring w-full rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white shadow-soft">
-              <i class="fa-solid fa-file-pdf mr-2"></i>Gerar catálogo PDF
-            </button>
+            <div class="filtros-acoes">
+              <button id="btnClearFilters" class="focus-ring w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-extrabold text-[var(--brand)]">Limpar<span class="fl-longo"> filtros</span></button>
+              <button id="btnGenerateCatalogPdf" class="focus-ring w-full rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-extrabold text-white shadow-soft">
+                <i class="fa-solid fa-file-pdf mr-2"></i><span class="fl-longo">Gerar catálogo </span>PDF
+              </button>
+            </div>
           </div>
         </aside>
 
@@ -1692,7 +1712,16 @@ function getItemUnits(item){
     ? amount * (Number(item?.packSize || 0) || 1)
     : amount;
 }
+// Reconstruir estes mapas varre TODOS os pedidos e todos os seus itens.
+// applyFilters chama uma vez por produto, entao o resultado fica guardado
+// enquanto durar a tarefa atual: STATE.orders nao muda no meio de uma
+// renderizacao, e o microtask apaga o cache logo depois.
+let _impactoCache = null;
+
 function getDispoImpactMap(onlyApproved){
+  const slot = onlyApproved ? 'aprovados' : 'reservados';
+  if(_impactoCache && _impactoCache[slot]) return _impactoCache[slot];
+
   // byNum: reserva por Nº (pedidos novos). byGci: pedidos antigos sem Nº (legado).
   const byNum = new Map();
   const byGci = new Map();
@@ -1713,7 +1742,13 @@ function getDispoImpactMap(onlyApproved){
       }
     }
   }
-  return { byNum, byGci };
+  const maps = { byNum, byGci };
+  if(!_impactoCache){
+    _impactoCache = {};
+    queueMicrotask(()=>{ _impactoCache = null; });
+  }
+  _impactoCache[slot] = maps;
+  return maps;
 }
 // Nº da 1ª linha (menor Nº) de um GCI — carrega as reservas legadas sem Nº
 function legacyCarrierNumForGci(gci){
@@ -2101,6 +2136,23 @@ function sortView(items){
   }
   return arr;
 }
+// Valores normalizados ficam guardados no proprio item. STATE.raw e
+// reconstruido a cada carga, entao o cache morre junto e nao envelhece.
+function grupoProdutoCor(item){
+  if(item._grp === undefined){
+    item._grp = normalizeText(item.produto) + '|' + normalizeText(item.cor);
+  }
+  return item._grp;
+}
+function textoBusca(item){
+  if(item._hay === undefined){
+    const categoryLabel = CATEGORY_LABELS[item.categoria] || item.categoria;
+    item._hay = normalizeText([item.codigo, item.produto, item.cor,
+                               item.segmento, item.genero, categoryLabel].join(' '));
+  }
+  return item._hay;
+}
+
 function applyFilters(){
   const q = normalizeText(STATE.search);
 
@@ -2109,22 +2161,22 @@ function applyFilters(){
   // entregas/grades do mesmo produto+cor). Pedido só pendente nunca esconde
   // o card — ele continua visível (podendo mostrar "0 pares" pra reserva
   // nova) até o admin aprovar e realmente zerar.
-  function zeradoPorAprovacao(item){
-    const siblings = STATE.raw.filter(x =>
-      normalizeText(x.produto) === normalizeText(item.produto) &&
-      normalizeText(x.cor) === normalizeText(item.cor)
-    );
-    const remainingAprovado = siblings.reduce((s,x) => s + getApprovedOnlyRemaining(x), 0);
-    return remainingAprovado <= 0;
+  //
+  // A soma por grupo é feita UMA vez. Antes era refeita dentro do filtro para
+  // cada item, varrendo STATE.raw inteiro e chamando normalizeText 4x por
+  // comparação — com 500 itens dava ~1 milhão de normalizações por tecla.
+  const restanteAprovado = new Map();
+  for(const x of STATE.raw){
+    const k = grupoProdutoCor(x);
+    restanteAprovado.set(k, (restanteAprovado.get(k) || 0) + getApprovedOnlyRemaining(x));
   }
 
   STATE.view = sortView(STATE.raw.filter(item=>{
-    if(zeradoPorAprovacao(item)) return false;
+    if((restanteAprovado.get(grupoProdutoCor(item)) || 0) <= 0) return false;
     const _rc = getSellerRateioCap(item);
     if(_rc.limited && _rc.cap <= 0) return false; // sem cota -> some pro vendedor
     const categoryLabel = CATEGORY_LABELS[item.categoria] || item.categoria;
-    const hay = normalizeText([item.codigo, item.produto, item.cor, item.segmento, item.genero, categoryLabel].join(' '));
-    const hitQ = !q || hay.includes(q);
+    const hitQ = !q || textoBusca(item).includes(q);
     const hitCat = !STATE.filters.categoria || categoryLabel === STATE.filters.categoria;
     const hitSeg = !STATE.filters.segmento || item.segmento === STATE.filters.segmento;
     const hitGen = !STATE.filters.genero || item.genero === STATE.filters.genero;
@@ -3918,10 +3970,23 @@ function bindEvents(){
     toast('Sacola limpa');
   });
 
+  // Digitar rapido nao precisa redesenhar a vitrine a cada tecla: so a
+  // ultima vale. Limpar (Esc ou x) NAO passa por aqui -- responde na hora.
+  let _buscaTimer = null;
+  function agendarBusca(){
+    clearTimeout(_buscaTimer);
+    _buscaTimer = setTimeout(applyFilters, 120);
+  }
+  function buscarJa(){
+    clearTimeout(_buscaTimer);
+    applyFilters();
+  }
+  window._buscarJa = buscarJa;
+
   $('searchInputTop').addEventListener('input', e=>{
     STATE.search = e.target.value;
     $('btnClearSearchTop').classList.toggle('hidden', !e.target.value);
-    applyFilters();
+    agendarBusca();
   });
 
   // ── Busca colapsável: só a lupa por padrão, expande ao clicar ──────────────
@@ -3939,7 +4004,8 @@ function bindEvents(){
       input.value = '';
       STATE.search = '';
       clearBtn.classList.add('hidden');
-      applyFilters();
+      // sem espera: limpar tem que responder no ato
+      (window._buscarJa || applyFilters)();
     }
     toggleBtn.addEventListener('click', ()=>{
       if(shell.classList.contains('expanded') && !input.value){
