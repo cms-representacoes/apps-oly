@@ -1715,6 +1715,69 @@ async function workerUpdateOrder(order){
   return res.json();
 }
 
+// Grava N pedidos num commit so, em vez de um commit por pedido.
+// Envia SO os campos que mudam: uma copia velha na tela nao pode sobrescrever
+// no servidor um campo que ela desconhece.
+// Devolve null se o worker ainda nao tiver a acao em lote -- assim publicar o
+// site antes do deploy do worker nao quebra a exportacao.
+async function workerUpdateOrders(updates){
+  const res = await fetch(WORKER_URL, {
+    method:'PUT',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ action:'updateOrders', updates })
+  });
+  if(res.status === 400) return null;   // worker antigo: exige body.id
+  if(!res.ok){
+    const txt = await res.text();
+    throw new Error(`Worker lote falhou (${res.status}): ${txt.slice(0,180)}`);
+  }
+  return res.json();
+}
+
+// Modo antigo, um commit por pedido. So roda como reserva.
+async function _gravarUmPorUm(alvos){
+  const falhas = [];
+  for(const t of alvos){
+    try{ await workerUpdateOrder(STATE.orders[t.idx]); }
+    catch(e){
+      console.error('Falha ao salvar pedido ' + t.anterior.id, e);
+      STATE.orders[t.idx] = t.anterior;
+      falhas.push(t.anterior.id);
+    }
+  }
+  return falhas;
+}
+
+// Grava o lote e devolve os ids que NAO salvaram. A tela ja foi atualizada
+// pelo chamador; o que falhar e revertido, porque a tela nao pode mostrar
+// exportado aquilo que o servidor nao gravou.
+async function _gravarLote(alvos){
+  const falhas = [];
+  try{
+    const resp = await workerUpdateOrders(alvos.map(t => {
+      const u = { id: t.anterior.id, campos: t.campos };
+      if(t.historyAppend) u.historyAppend = t.historyAppend;
+      return u;
+    }));
+    if(resp === null) return await _gravarUmPorUm(alvos);
+    const okIds = new Set(resp.aplicados || []);
+    for(const t of alvos){
+      if(!okIds.has(t.anterior.id)){
+        STATE.orders[t.idx] = t.anterior;
+        falhas.push(t.anterior.id);
+      }
+    }
+  }catch(e){
+    console.error('Falha na gravacao em lote', e);
+    // O lote e um commit unico. Se estourou, provavelmente nada foi gravado.
+    // Desfaz na tela: e melhor mostrar pendente algo que ja salvou (o proximo
+    // carregamento corrige) do que mostrar exportado algo que nao salvou.
+    for(const t of alvos) STATE.orders[t.idx] = t.anterior;
+    return alvos.map(t => t.anterior.id);
+  }
+  return falhas;
+}
+
 async function workerDeleteOrder(id){
   const res = await fetch(WORKER_URL, {
     method:'DELETE',
@@ -3987,20 +4050,15 @@ async function marcarComoExportado(orders){
   const aprovados = orders.filter(o => canonicalStatus(o.status) === 'Aprovado' && !o.exportedAt);
   if(!aprovados.length) return;
   const now = new Date().toISOString();
-  const falhas = [];
+  const alvos = [];
   for(const order of aprovados){
     const idx = STATE.orders.findIndex(o => o.id === order.id);
     if(idx === -1) continue;
-    const anteriorExport = STATE.orders[idx].exportedAt;
-    STATE.orders[idx].exportedAt = now;
-    try{
-      await workerUpdateOrder(STATE.orders[idx]);
-    }catch(e){
-      console.error('Falha ao marcar como exportado: ' + order.id, e);
-      STATE.orders[idx].exportedAt = anteriorExport;  // desfaz o local
-      falhas.push(order.id);
-    }
+    alvos.push({ idx, anterior: STATE.orders[idx], campos: { exportedAt: now }, historyAppend: null });
   }
+  if(!alvos.length) return;
+  for(const t of alvos) STATE.orders[t.idx] = { ...t.anterior, ...t.campos, updatedAt: now };
+  const falhas = await _gravarLote(alvos);
   atualizarBadgeGlobal();
   if(falhas.length){
     showToast(`${falhas.length} pedido(s) não foram marcados como exportados no servidor.`, 'error');
@@ -4335,29 +4393,29 @@ async function exportarSelecionados(){
     // engolido: a tela mostrava "Aprovado · exportado", mas o servidor seguia
     // com "Pendente" — e no recarregamento seguinte o pedido "voltava" sozinho.
     const now2 = new Date().toISOString();
-    const falhas = [];
+    const alvos = [];
     for(const order of orders){
       const idx = STATE.orders.findIndex(o => o.id === order.id);
       if(idx === -1) continue;
       const anterior = STATE.orders[idx];
       const isPendente = canonicalStatus(order.status) === 'Pendente';
-      const updates = { exportedAt: now2 };
+      const campos = { exportedAt: now2 };
+      let historyAppend = null;
       if(isPendente){
-        updates.status = 'Aprovado';
-        updates.history = [
-          ...(anterior.history || []),
-          { action:'Aprovado e exportado em lote', at: now2 }
-        ];
+        campos.status = 'Aprovado';
+        // id proprio: se a resposta se perder e o admin reexportar, o mesmo
+        // evento nao entra duas vezes no historico.
+        historyAppend = { id: `exp-${order.id}-${now2}`, action:'Aprovado e exportado em lote', at: now2 };
       }
-      STATE.orders[idx] = { ...anterior, ...updates, updatedAt: now2 };
-      try{
-        await workerUpdateOrder(STATE.orders[idx]);
-      }catch(e){
-        console.error('Falha ao salvar pedido ' + order.id, e);
-        STATE.orders[idx] = anterior;   // desfaz: a tela não pode mentir
-        falhas.push(order.id);
-      }
+      alvos.push({ idx, anterior, campos, historyAppend });
     }
+    // Atualiza a tela e grava tudo num commit so.
+    for(const t of alvos){
+      const novo = { ...t.anterior, ...t.campos, updatedAt: now2 };
+      if(t.historyAppend) novo.history = [ ...(t.anterior.history || []), t.historyAppend ];
+      STATE.orders[t.idx] = novo;
+    }
+    const falhas = await _gravarLote(alvos);
 
     atualizarBadgeGlobal();
     if(falhas.length){

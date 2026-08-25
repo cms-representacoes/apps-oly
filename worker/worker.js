@@ -298,6 +298,34 @@ export default {
       return saveFile(GITHUB_PEDIDOS, list, sha, msg);
     }
 
+    // ── Retry para colisao de gravacao ────────────────────────────────────
+    // O GitHub recusa o PATCH da branch quando outra gravacao entrou entre a
+    // leitura e o commit (nao-fast-forward). Repetir SO o commit seria pior
+    // que o erro: o conteudo veio de uma leitura velha e apagaria o pedido do
+    // outro vendedor. Por isso o retry recebe a operacao INTEIRA -- cada
+    // tentativa rele o arquivo e refaz a alteracao sobre o estado mais novo.
+    function ehConflitoDeGravacao(e) {
+      const msg = String((e && e.message) || e);
+      if (/Git ref \(update\) falhou/.test(msg)) return true;   // nao-fast-forward
+      if (/falhou \((?:409|422)\)/.test(msg)) return true;      // conflito
+      if (/falhou \(5\d\d\)/.test(msg)) return true;           // instabilidade
+      if (/falhou \((?:403|429)\)/.test(msg) && /rate limit|secondary|abuse/i.test(msg)) return true;
+      return false;
+    }
+
+    async function comRetry(operacao, tentativas = 4) {
+      for (let i = 0; i < tentativas; i++) {
+        try { return await operacao(); }
+        catch (e) {
+          if (!ehConflitoDeGravacao(e) || i === tentativas - 1) throw e;
+          // Espera crescente com variacao, para que duas gravacoes que
+          // colidiram nao voltem a tentar no mesmo instante.
+          const espera = 300 * Math.pow(2, i) + Math.floor(Math.random() * 250);
+          await new Promise(r => setTimeout(r, espera));
+        }
+      }
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // TRADE SQUASH — busca automática de imagens de produto
     // ═══════════════════════════════════════════════════════════════════════
@@ -613,23 +641,77 @@ export default {
           return new Response(JSON.stringify({ success: false, error: "Payload nao e um pedido valido." }), { status: 400, headers: corsHeaders });
         }
 
-        const { content, sha } = await getPedidos();
-        const list = content || [];
-        list.push({ ...body, createdAt: body.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() });
-        await savePedidos(list, sha, "novo pedido");
+        const novo = { ...body, createdAt: body.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
+        await comRetry(async () => {
+          const { content, sha } = await getPedidos();
+          const list = content || [];
+          // Se uma tentativa anterior chegou a gravar antes de falhar, o
+          // pedido ja esta na lista -- reenviar nao pode duplicar.
+          if (list.some(p => p && p.id === novo.id)) return;
+          list.push(novo);
+          await savePedidos(list, sha, "novo pedido");
+        });
         return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
       }
 
       // PUT — atualiza pedido existente (público — vendedor edita seus próprios pedidos)
       if (request.method === "PUT") {
         const body = await request.json();
+
+        // Atualizacao em LOTE: um unico commit para N pedidos.
+        // Existe porque a exportacao do admin gravava um pedido por vez --
+        // dezenas de commits seguidos no mesmo arquivo, o que derrubava os
+        // vendedores que tentassem enviar pedido durante a exportacao.
+        //
+        // Recebe SO os campos que mudam, nunca o pedido inteiro: assim uma
+        // copia velha na tela do admin nao pode sobrescrever nada que ele
+        // desconheca. O merge acontece sempre sobre o que esta no servidor.
+        if (body.action === "updateOrders" && Array.isArray(body.updates)) {
+          if (body.updates.length > 1000) {
+            return new Response(JSON.stringify({ success: false, error: "Lote grande demais (max 1000)." }), { status: 413, headers: corsHeaders });
+          }
+          let aplicados = [], naoEncontrados = [];
+          await comRetry(async () => {
+            // Zera a cada tentativa: o relatorio tem que refletir a gravacao
+            // que realmente passou, nao a soma das tentativas.
+            aplicados = []; naoEncontrados = [];
+            const { content, sha } = await getPedidos();
+            const list = content || [];
+            const agora = new Date().toISOString();
+            for (const u of body.updates) {
+              if (!u || !u.id) continue;
+              const idx = list.findIndex(p => p && p.id === u.id);
+              if (idx === -1) { naoEncontrados.push(u.id); continue; }
+              const atual = list[idx];
+              const campos = (u.campos && typeof u.campos === "object") ? u.campos : {};
+              const merged = { ...atual, ...campos, id: atual.id, updatedAt: agora };
+              if (u.historyAppend) {
+                const hist = Array.isArray(atual.history) ? atual.history : [];
+                // Se a resposta se perdeu e o admin reenviou, o mesmo evento
+                // nao pode entrar duas vezes no historico.
+                const jaTem = u.historyAppend.id && hist.some(h => h && h.id === u.historyAppend.id);
+                merged.history = jaTem ? hist : [...hist, u.historyAppend];
+              }
+              list[idx] = merged;
+            }
+            aplicados = body.updates.map(u => u && u.id).filter(id => id && !naoEncontrados.includes(id));
+            if (aplicados.length) await savePedidos(list, sha, `update ${aplicados.length} pedido(s) em lote`);
+          });
+          return new Response(JSON.stringify({ success: true, aplicados, naoEncontrados }), { status: 200, headers: corsHeaders });
+        }
+
         if (!body?.id) return new Response(JSON.stringify({ success: false, error: "ID não informado." }), { status: 400, headers: corsHeaders });
-        const { content, sha } = await getPedidos();
-        const list = content || [];
-        const idx = list.findIndex(p => p.id === body.id);
-        if (idx === -1) return new Response(JSON.stringify({ success: false, error: "Pedido não encontrado." }), { status: 404, headers: corsHeaders });
-        list[idx] = { ...list[idx], ...body, updatedAt: new Date().toISOString() };
-        await savePedidos(list, sha, "update pedido");
+        let achou = false;
+        await comRetry(async () => {
+          const { content, sha } = await getPedidos();
+          const list = content || [];
+          const idx = list.findIndex(p => p && p.id === body.id);
+          if (idx === -1) { achou = false; return; }
+          achou = true;
+          list[idx] = { ...list[idx], ...body, updatedAt: new Date().toISOString() };
+          await savePedidos(list, sha, "update pedido");
+        });
+        if (!achou) return new Response(JSON.stringify({ success: false, error: "Pedido não encontrado." }), { status: 404, headers: corsHeaders });
         return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
       }
 
@@ -639,10 +721,22 @@ export default {
         if (!body?.id) return new Response(JSON.stringify({ success: false, error: "ID não informado." }), { status: 400, headers: corsHeaders });
 
         // Remove o pedido
-        const { content, sha } = await getPedidos();
-        const list = (content || []).filter(p => p.id !== body.id);
-        if (list.length === (content||[]).length) return new Response(JSON.stringify({ success: false, error: "Pedido não encontrado." }), { status: 404, headers: corsHeaders });
-        await savePedidos(list, sha, "delete pedido");
+        let tentativa = 0, removido = false;
+        await comRetry(async () => {
+          tentativa++;
+          const { content, sha } = await getPedidos();
+          const atual = content || [];
+          const list = atual.filter(p => p && p.id !== body.id);
+          if (list.length === atual.length) {
+            // Sumiu entre tentativas: a gravacao anterior passou. So e
+            // "nao encontrado" de verdade se ja faltava na 1a leitura.
+            removido = tentativa > 1;
+            return;
+          }
+          await savePedidos(list, sha, "delete pedido");
+          removido = true;
+        });
+        if (!removido) return new Response(JSON.stringify({ success: false, error: "Pedido não encontrado." }), { status: 404, headers: corsHeaders });
 
         // Limpa entradas do desmembramentos que referenciam este pedido
         // Chave do desmembramento: "codigo|cor|prevFat" → { "orderId||gci||cor": status }
