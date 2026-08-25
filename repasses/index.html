@@ -1184,8 +1184,25 @@ function productImage(item, ext){
   const e = ext || 'jpg';
   return `${DEFAULTS.imagesBasePath}${encodeURIComponent(base + '.' + e)}`;
 }
+// Segunda fonte: a pasta do catálogo digital (apps-oly-v2). Mesmo padrão de
+// nome — referencia_COR.ext — e servida pelo GitHub Pages com CORS liberado,
+// então serve tanto para exibir quanto para o PDF.
+const IMAGENS_V2 = 'https://cms-representacoes.github.io/apps-oly-v2/imagens_olympikus/';
+
+function productImageV2(item, ext){
+  const local = productImage(item, ext);
+  if(!local) return '';
+  return IMAGENS_V2 + local.split('/').pop();
+}
+
+// Ordem: para cada extensão, primeiro a pasta local, depois a v2. Como jpg
+// responde por quase tudo, o acerto costuma sair nas duas primeiras.
 function productImageCandidates(item){
-  return ['jpg','png','jpeg','webp'].map(ext => productImage(item, ext));
+  const urls = [];
+  for(const ext of ['jpg','png','jpeg','webp']){
+    urls.push(productImage(item, ext), productImageV2(item, ext));
+  }
+  return urls.filter(Boolean);
 }
 function excelSerialToDate(serial){
   // Converte serial do Excel para Date usando UTC para evitar shift de fuso horário
@@ -1898,13 +1915,22 @@ function mergeData(prodRows, dispoRows){
     if(!byKey.has(key)) byKey.set(key, r); // mantém a 1ª ocorrência daquele código
   }
 
+  // Algumas planilhas chegam com Código e Produto invertidos. Sem desfazer,
+  // a chave do cruzamento vira o NOME, o produtos.json nao acha nada, e o
+  // card perde nome, categoria, genero e PDV de uma vez.
+  const _ehRef = (v) => /^\d+$/.test(String(v).replace(/\s+/g, ''));
+
   return dispoRows.map((r, idx)=>{
-    const codigo = String(r['Código'] ?? r['Codigo'] ?? r['CODIGO'] ?? '').trim();
+    let codigo = String(r['Código'] ?? r['Codigo'] ?? r['CODIGO'] ?? '').trim();
+    let nomeProduto = String(r['Produto'] ?? r['PRODUTO'] ?? '').trim();
+    if(codigo && nomeProduto && !_ehRef(codigo) && _ehRef(nomeProduto)){
+      [codigo, nomeProduto] = [nomeProduto, codigo];
+    }
     const cor = String(r['COR'] ?? r['Cor'] ?? '').trim().toUpperCase();
     const ref = byKey.get(codigo) || {};
     const grade = gradeEntriesFromRow(r);
     const categoria = String(ref['Categoria'] ?? ref['CATEGORIA'] ?? '').trim();
-    const produto = String(r['Produto'] ?? r['PRODUTO'] ?? ref['Produto'] ?? '').trim();
+    const produto = nomeProduto || String(ref['Produto'] ?? ref['PRODUTO'] ?? '').trim();
     const mode = inferMode(grade, categoria, produto);
     const gradeTotal = sumGrade(grade);
     const saldoRaw = toNumber(r['SALDO'] ?? 0);
@@ -2216,7 +2242,7 @@ function renderCatalog(){
     row.innerHTML = `
       <div class="list-row-desktop">
         <div class="h-[116px] w-[116px] rounded-[26px] border border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center${img ? ' thumb-zoom' : ''}">
-          ${img ? `<img src="${img}" alt="${safeHtml(displayItem.produto)}" class="h-full w-full object-contain bg-white">` : `<i class="fa-solid fa-image text-slate-400"></i>`}
+          ${img ? `<img src="${img}" data-srcs="${productImageCandidates(item).join('|')}" data-src-idx="0" alt="${safeHtml(displayItem.produto)}" class="h-full w-full object-contain bg-white" onerror="(function(el){var srcs=el.dataset.srcs.split('|'),idx=parseInt(el.dataset.srcIdx||0)+1;if(idx<srcs.length){el.dataset.srcIdx=idx;el.src=srcs[idx];}else{el.style.display='none';}})(this)">` : `<i class="fa-solid fa-image text-slate-400"></i>`}
         </div>
         <div class="min-w-0">
           <div class="text-[17px] font-extrabold leading-tight">${safeHtml(displayItem.produto)}</div>
@@ -2240,7 +2266,7 @@ function renderCatalog(){
 
       <div class="list-row-mobile">
         <div class="h-[82px] w-[82px] rounded-[22px] border border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center${img ? ' thumb-zoom' : ''}">
-          ${img ? `<img src="${img}" alt="${safeHtml(displayItem.produto)}" class="h-full w-full object-contain bg-white">` : `<i class="fa-solid fa-image text-slate-400"></i>`}
+          ${img ? `<img src="${img}" data-srcs="${productImageCandidates(item).join('|')}" data-src-idx="0" alt="${safeHtml(displayItem.produto)}" class="h-full w-full object-contain bg-white" onerror="(function(el){var srcs=el.dataset.srcs.split('|'),idx=parseInt(el.dataset.srcIdx||0)+1;if(idx<srcs.length){el.dataset.srcIdx=idx;el.src=srcs[idx];}else{el.style.display='none';}})(this)">` : `<i class="fa-solid fa-image text-slate-400"></i>`}
         </div>
         <div class="min-w-0">
           <div class="text-[13px] font-extrabold leading-tight line-clamp-2">${safeHtml(displayItem.produto)}</div>

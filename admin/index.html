@@ -2704,13 +2704,26 @@ async function processarDispoXlsx(file){
       grade[col] = (v === null || v === undefined || v === '') ? null : Number(v) || null;
     }
     const _g = (col) => col ? row[col] : undefined;
+
+    // Algumas planilhas chegam com Código e Produto invertidos. A imagem do
+    // produto e montada como {codigo}_{COR}.jpg, entao um nome no lugar da
+    // referencia produz "BRUMA_MARITM.jpg" e o card fica sem imagem.
+    // A referencia e sempre numerica e o nome nunca e -- so desfaz quando
+    // esse sinal e inequivoco.
+    let _codigo  = String(_g(colCodigo) || '').trim();
+    let _produto = String(_g(colProd) || '').trim();
+    const _ehRef = (v) => /^\d+$/.test(String(v).replace(/\s+/g, ''));
+    if(_codigo && _produto && !_ehRef(_codigo) && _ehRef(_produto)){
+      [_codigo, _produto] = [_produto, _codigo];
+    }
+
     return {
       num: String(_g(colNum) ?? '').trim(),
       ebm: String(_g(colEbm) || '').trim(),
       gci: String(_g(colGci) || '').trim(),
       filial: String(_g(colFilial) || '').trim(),
-      codigo: String(_g(colCodigo) || '').trim(),
-      produto: String(_g(colProd) || '').trim(),
+      codigo: _codigo,
+      produto: _produto,
       cor: String(_g(colCor) || '').trim(),
       dataEntrega: _g(colData) ? (()=>{
         const v = _g(colData);
