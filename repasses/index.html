@@ -213,47 +213,45 @@
     }
 
     /* ── Sacola ──────────────────────────────────────────────────────────
-       No desktop a grade fica sempre visível e o botão de expandir some.
-       No celular é o contrário: só o botão, e a grade abre ao toque. */
-    .cart-row .cart-grade-tog{ display:none; }   /* 0,2,0 vence .chip */
+       Mesmo tratamento em celular, tablet e PC: a grade vem recolhida e o
+       chip "Ver grade" abre. Antes isso valia só até 640px. */
+    #cartDrawer .cart-grade-tit{ display:none; }
+    #cartDrawer .cart-grade-tog{ display:inline-flex; }
+    #cartDrawer .cart-grade-box{ display:none; }
+    #cartDrawer .cart-grade.aberto .cart-grade-box{ display:flex; }
+    #cartDrawer .cart-grade.aberto .ord-caret{ transform:rotate(180deg); }
+    #cartDrawer .cart-grade-tog.aberto .ord-caret{ transform:rotate(180deg); }
+    /* recolhida, a grade não deve deixar espaço sobrando */
+    #cartDrawer .cart-grade{ margin-top:0; }
+    #cartDrawer .cart-grade.aberto{ margin-top:10px; }
+
+    #cartDrawer .cart-hd{ padding:10px 14px 12px; }
+    #cartDrawer .cart-sub{ display:none; }
+    #cartDrawer .cart-title{ font-size:18px; }
+    #cartDrawer .cart-hd button[data-close-cart]{ height:36px; width:36px; font-size:15px; }
+
+    #cartDrawer .cart-body{ padding:10px 12px; }
+    #cartDrawer .cart-row{ padding:11px; border-radius:20px; }
+    #cartDrawer .cart-thumb{ height:60px; width:60px; border-radius:14px; }
+    #cartDrawer .cart-nome{ font-size:14px; line-height:1.2; }
+    #cartDrawer .cart-row .chip{ font-size:10.5px; padding:2px 7px; }
+    #cartDrawer .cart-lixo{ height:32px; width:32px; font-size:12px; }
+    #cartDrawer .cart-total{ font-size:11.5px; }
+    #cartDrawer .cart-qtd{ font-size:15px; min-width:22px; }
+    #cartDrawer .qty-btn{ height:30px; width:30px; font-size:12px; }
+
+    #cartDrawer .cart-ft{ padding:10px 12px; }
+    /* .grid-cols-2 e não .grid: o container dos botões também é .grid */
+    #cartDrawer .cart-ft .grid-cols-2{ display:flex; gap:16px; align-items:baseline; }
+    #cartDrawer .cart-ft div.rounded-2xl{
+      padding:0; border:0; background:transparent; border-radius:0;
+      display:flex; align-items:baseline; gap:5px;
+    }
+    #cartDrawer .cart-tot-lbl{ font-size:10.5px; }
+    #cartDrawer .cart-tot-num{ font-size:15px; margin-top:0; }
+    #cartDrawer .cart-ft button{ padding:11px 16px; font-size:13px; }
 
     @media(max-width:640px){
-      #cartDrawer .cart-grade-tit{ display:none; }
-      #cartDrawer .cart-grade-tog{ display:inline-flex; }
-      #cartDrawer .cart-grade-box{ display:none; }
-      #cartDrawer .cart-grade.aberto .cart-grade-box{ display:flex; }
-      #cartDrawer .cart-grade.aberto .ord-caret{ transform:rotate(180deg); }
-      #cartDrawer .cart-grade-tog.aberto .ord-caret{ transform:rotate(180deg); }
-      /* recolhida, a grade nao deve deixar espaco sobrando */
-      #cartDrawer .cart-grade{ margin-top:0; }
-      #cartDrawer .cart-grade.aberto{ margin-top:10px; }
-
-      #cartDrawer .cart-hd{ padding:10px 14px 12px; }
-      #cartDrawer .cart-sub{ display:none; }
-      #cartDrawer .cart-title{ font-size:18px; }
-      #cartDrawer .cart-hd button[data-close-cart]{ height:36px; width:36px; font-size:15px; }
-
-      #cartDrawer .cart-body{ padding:10px 12px; }
-      #cartDrawer .cart-row{ padding:11px; border-radius:20px; }
-      #cartDrawer .cart-thumb{ height:60px; width:60px; border-radius:14px; }
-      #cartDrawer .cart-nome{ font-size:14px; line-height:1.2; }
-      #cartDrawer .cart-row .chip{ font-size:10.5px; padding:2px 7px; }
-      #cartDrawer .cart-lixo{ height:32px; width:32px; font-size:12px; }
-      #cartDrawer .cart-total{ font-size:11.5px; }
-      #cartDrawer .cart-qtd{ font-size:15px; min-width:22px; }
-      #cartDrawer .qty-btn{ height:30px; width:30px; font-size:12px; }
-
-      #cartDrawer .cart-ft{ padding:10px 12px; }
-      /* .grid-cols-2 e nao .grid: o container dos botoes tambem e .grid */
-      #cartDrawer .cart-ft .grid-cols-2{ display:flex; gap:16px; align-items:baseline; }
-      #cartDrawer .cart-ft div.rounded-2xl{
-        padding:0; border:0; background:transparent; border-radius:0;
-        display:flex; align-items:baseline; gap:5px;
-      }
-      #cartDrawer .cart-tot-lbl{ font-size:10.5px; }
-      #cartDrawer .cart-tot-num{ font-size:15px; margin-top:0; }
-      #cartDrawer .cart-ft button{ padding:11px 16px; font-size:13px; }
-
       /* ── Modal de grades ─────────────────────────────────────────────
          O modal passa a ocupar a altura da tela e a lista é quem rola,
          em vez de um teto fixo de 65dvh que estourava a tela junto com
@@ -599,9 +597,9 @@
 
         <section>
           <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-slate-200 bg-white px-4 py-2.5 shadow-soft">
-            <div class="text-sm font-bold text-slate-500"><span id="visibleCount">0</span> itens na vitrine</div>
+            <div class="text-sm font-bold text-slate-500 flex items-center gap-1.5" title="Itens na vitrine"><i class="fa-solid fa-table-cells-large text-slate-400"></i><span id="visibleCount">0</span></div>
             <div class="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-bold">
-              <span class="chip chip-blue"><i class="fa-solid fa-cubes-stacked"></i> <span id="kpiUnits">0</span> disponível</span>
+              <span class="chip chip-blue" title="Pares disponíveis"><i class="fa-solid fa-shoe-prints"></i> <span id="kpiUnits">0</span></span>
             </div>
           </div>
 
@@ -1197,6 +1195,73 @@ function productImageV2(item, ext){
 
 // Ordem: para cada extensão, primeiro a pasta local, depois a v2. Como jpg
 // responde por quase tudo, o acerto costuma sair nas duas primeiras.
+// ── PRODUTO SEM IMAGEM NAO VAI PARA A VITRINE ───────────────────────────────
+// A conferencia fica em cache: sem isso seriam dezenas de requisicoes a cada
+// abertura. Quem TEM imagem e lembrado por 12h; quem NAO tem, por 20 min, para
+// que uma foto recem-enviada pelo admin apareca logo.
+// Em caso de duvida o produto FICA: sumir com produto que tem saldo e pior
+// do que mostrar um card sem foto.
+const IMG_CHECK_KEY = 'repasse_img_checks_v1';
+const IMG_TTL_OK    = 12 * 60 * 60 * 1000;
+const IMG_TTL_FALTA = 20 * 60 * 1000;
+
+function lerCacheImagens(){
+  try{
+    const c = JSON.parse(localStorage.getItem(IMG_CHECK_KEY) || '{}');
+    return (c && typeof c === 'object') ? c : {};
+  }catch(_){ return {}; }
+}
+function gravarCacheImagens(c){
+  try{ localStorage.setItem(IMG_CHECK_KEY, JSON.stringify(c)); }catch(_){ /* cota cheia */ }
+}
+function cacheValido(reg){
+  if(!reg || typeof reg.at !== 'number') return false;
+  return (Date.now() - reg.at) < (reg.ok ? IMG_TTL_OK : IMG_TTL_FALTA);
+}
+
+// HEAD basta: o GitHub Pages devolve 404 de verdade para arquivo inexistente.
+async function urlExiste(url){
+  try{
+    const res = await fetch(url, { method:'HEAD', cache:'no-store' });
+    return res.ok;
+  }catch(_){ return null; }   // null = nao deu para saber
+}
+
+async function itemTemImagem(item){
+  let indefinido = false;
+  for(const url of productImageCandidates(item)){
+    const r = await urlExiste(url);
+    if(r === true) return true;
+    if(r === null) indefinido = true;
+  }
+  return indefinido ? null : false;   // sem rede -> nao decide
+}
+
+async function removerSemImagem(itens){
+  const cache = lerCacheImagens();
+  const porBase = new Map();
+  for(const it of itens){
+    const base = (productImage(it, 'jpg').split('/').pop() || '').replace(/\.jpg$/, '');
+    if(base && !porBase.has(base)) porBase.set(base, it);
+  }
+  // So consulta o que nao esta em cache valido.
+  const aVerificar = [...porBase.entries()].filter(([b]) => !cacheValido(cache[b]));
+  const LOTE = 8;
+  for(let i = 0; i < aVerificar.length; i += LOTE){
+    await Promise.all(aVerificar.slice(i, i + LOTE).map(async ([base, item]) => {
+      const tem = await itemTemImagem(item);
+      if(tem !== null) cache[base] = { ok: tem, at: Date.now() };
+    }));
+  }
+  gravarCacheImagens(cache);
+
+  return itens.filter(it => {
+    const base = (productImage(it, 'jpg').split('/').pop() || '').replace(/\.jpg$/, '');
+    const reg = cache[base];
+    return reg ? reg.ok : true;      // sem informacao: mantem
+  });
+}
+
 function productImageCandidates(item){
   const urls = [];
   for(const ext of ['jpg','png','jpeg','webp']){
@@ -3389,6 +3454,14 @@ async function loadCatalog(){
         return !STATE.ocultos.has(key);
       });
     }catch(_){ /* ignora erro de ocultos */ }
+
+    // Produto sem imagem não entra na vitrine.
+    try{
+      const antes = STATE.raw.length;
+      STATE.raw = await removerSemImagem(STATE.raw);
+      const fora = antes - STATE.raw.length;
+      if(fora) console.info(`${fora} produto(s) ocultos por falta de imagem.`);
+    }catch(e){ console.error('Falha ao conferir imagens; nada foi ocultado.', e); }
 
     buildFilters();
     renderCart();

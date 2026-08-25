@@ -959,30 +959,6 @@
           </div>
         </div>
 
-        <!-- Sem imagem -->
-        <div id="dispoSemImgBlock" class="hidden mb-4">
-          <div class="flex items-center gap-2 mb-2">
-            <span class="text-xs font-bold text-slate-700">Sem imagem</span>
-            <span id="dispoSemImgCount" class="text-[11px] font-bold bg-rose-100 text-rose-700 rounded-full px-2 py-0.5">0</span>
-            <span class="text-[11px] text-slate-400">— envie agora ou depois; não bloqueia a importação</span>
-          </div>
-          <div class="rounded-2xl border border-rose-200 bg-rose-50 overflow-hidden">
-            <div class="overflow-auto max-h-56">
-              <table class="w-full text-xs">
-                <thead><tr class="bg-rose-100 text-rose-800">
-                  <th class="text-left px-3 py-2">Código</th>
-                  <th class="text-left px-3 py-2">Produto</th>
-                  <th class="text-left px-3 py-2">COR</th>
-                  <th class="text-left px-3 py-2">Arquivo esperado</th>
-                  <th class="text-right px-3 py-2">Imagem</th>
-                </tr></thead>
-                <tbody id="dispoSemImgBody"></tbody>
-              </table>
-            </div>
-          </div>
-          <input type="file" id="dispoImgInput" accept="image/*" class="hidden">
-        </div>
-
         <!-- Conflitos -->
         <div id="dispoConflitosBlock" class="hidden mb-4">
           <div class="flex items-center gap-2 mb-2">
@@ -2655,8 +2631,7 @@ function fecharModalDispo(){
   $('dispoPreviewArea').classList.add('hidden');
   $('dispoUploadArea').classList.remove('hidden');
   $('inputDispoXlsx').value = '';
-  _dispoNovos = []; _dispoConflitos = []; _dispoSemImg = [];
-  $('dispoSemImgBlock')?.classList.add('hidden');
+  _dispoNovos = []; _dispoConflitos = [];
 }
 
 async function processarDispoXlsx(file){
@@ -2782,149 +2757,6 @@ async function processarDispoXlsx(file){
   renderPreviewDispo(file.name, rows.length);
 }
 
-// ── PRODUTOS SEM IMAGEM ──────────────────────────────────────────────────────
-// A imagem e localizada pelo nome do arquivo: {codigo}_{COR}.jpg na pasta
-// Catalogo. Aqui listamos os que faltam e deixamos enviar sem sair da tela.
-let _dispoSemImg = [];
-
-const IMG_BASE_ADMIN = '../Catalogo/';
-const IMG_EXTS = ['jpg','png','jpeg','webp'];
-
-function nomeBaseImagem(codigo, cor){
-  const c = String(cor || '').trim()
-    .replace(/[\/\u005C]+/g, '_').replace(/\s+/g, '_')
-    .replace(/[^A-Za-z0-9_\-]+/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
-  const cod = String(codigo || '').trim();
-  if(!cod) return '';
-  return c ? `${cod}_${c}` : cod;
-}
-
-// HEAD basta: o GitHub Pages devolve 404 de verdade para arquivo inexistente.
-// Mais leve que carregar a imagem, e as extensoes podem ir em paralelo.
-async function imagemExiste(url){
-  try{
-    const res = await fetch(url, { method:'HEAD', cache:'no-store' });
-    return res.ok;
-  }catch(_){ return false; }
-}
-
-async function temAlgumaImagem(base){
-  const res = await Promise.all(IMG_EXTS.map(ext =>
-    imagemExiste(IMG_BASE_ADMIN + encodeURIComponent(base + '.' + ext))));
-  return res.some(Boolean);
-}
-
-// Roda depois de desenhar o preview, para nao segurar a tela.
-async function verificarImagensDosNovos(){
-  const bloco = $('dispoSemImgBlock');
-  _dispoSemImg = [];
-  bloco.classList.add('hidden');
-  if(!_dispoNovos.length) return;
-
-  // Um produto pode vir em varias linhas (Nºs diferentes) com a mesma
-  // combinacao codigo+cor -- a imagem e uma so.
-  const vistos = new Set();
-  const combos = [];
-  for(const r of _dispoNovos){
-    const base = nomeBaseImagem(r.codigo, r.cor);
-    if(!base || vistos.has(base)) continue;
-    vistos.add(base);
-    combos.push({ base, codigo: r.codigo, produto: r.produto, cor: r.cor });
-  }
-
-  for(const c of combos){
-    if(!(await temAlgumaImagem(c.base))) _dispoSemImg.push({ ...c, enviada: false });
-  }
-  renderSemImagem();
-}
-
-function renderSemImagem(){
-  const bloco = $('dispoSemImgBlock');
-  const pendentes = _dispoSemImg.filter(x => !x.enviada).length;
-  if(!_dispoSemImg.length){ bloco.classList.add('hidden'); return; }
-  bloco.classList.remove('hidden');
-  $('dispoSemImgCount').textContent = pendentes;
-  $('dispoSemImgBody').innerHTML = _dispoSemImg.map((x, i) => `
-    <tr class="border-t border-rose-100 ${x.enviada ? 'opacity-60' : ''}">
-      <td class="px-3 py-2 font-semibold">${safeHtml(x.codigo)}</td>
-      <td class="px-3 py-2 font-bold">${safeHtml(x.produto)}</td>
-      <td class="px-3 py-2">${safeHtml(x.cor)}</td>
-      <td class="px-3 py-2 text-slate-500 font-mono text-[11px]">${safeHtml(x.base)}.jpg</td>
-      <td class="px-3 py-2 text-right">
-        ${x.enviada
-          ? `<span class="text-[11px] font-bold text-emerald-700"><i class="fa-solid fa-check"></i> enviada</span>`
-          : `<button type="button" onclick="escolherImagemDispo(${i})"
-               class="focus-ring rounded-full border border-rose-300 bg-white px-3 py-1 text-[11px] font-bold text-rose-600 hover:bg-rose-100">
-               <i class="fa-solid fa-upload"></i> Enviar
-             </button>`}
-      </td>
-    </tr>`).join('');
-}
-
-let _dispoImgIdx = -1;
-function escolherImagemDispo(i){
-  _dispoImgIdx = i;
-  const input = $('dispoImgInput');
-  input.value = '';          // permite reescolher o mesmo arquivo
-  input.click();
-}
-
-// Reduz antes de enviar: as fotos originais passam de 1 MB e o commit no
-// GitHub carrega o arquivo inteiro.
-function comprimirImagem(file, maxLado = 1000, qualidade = 0.82){
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = reject;
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onerror = reject;
-      img.onload = () => {
-        let w = img.width, h = img.height;
-        if(w > maxLado || h > maxLado){
-          if(w > h){ h = Math.round(h * maxLado / w); w = maxLado; }
-          else     { w = Math.round(w * maxLado / h); h = maxLado; }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#fff';               // PNG transparente vira fundo branco
-        ctx.fillRect(0, 0, w, h);
-        ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', qualidade).split(',')[1]);
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-async function enviarImagemDispo(file){
-  const alvo = _dispoSemImg[_dispoImgIdx];
-  if(!alvo || !file) return;
-  const linha = $('dispoSemImgBody').querySelectorAll('tr')[_dispoImgIdx];
-  const cel = linha ? linha.lastElementChild : null;
-  const antes = cel ? cel.innerHTML : '';
-  if(cel) cel.innerHTML = '<span class="text-[11px] font-bold text-slate-500"><i class="fa-solid fa-spinner fa-spin"></i> enviando...</span>';
-  try{
-    const base64 = await comprimirImagem(file);
-    const nomeArquivo = `${alvo.base}.jpg`;   // sempre jpg apos a compressao
-    const res = await fetch(WORKER_URL, {
-      method:'PATCH', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'uploadImagem', nome:nomeArquivo, nomeArquivo, base64 })
-    });
-    if(!res.ok) throw new Error(`Upload falhou (${res.status})`);
-    const result = await res.json();
-    if(!result.success) throw new Error(result.error || 'Falha no upload');
-    alvo.enviada = true;
-    renderSemImagem();
-    showToast(`Imagem enviada: ${nomeArquivo}`, 'success');
-  }catch(err){
-    console.error(err);
-    if(cel) cel.innerHTML = antes;
-    showToast('Não foi possível enviar a imagem.', 'error');
-  }
-}
-
 function renderPreviewDispo(fileName, totalLinhas){
   $('dispoUploadArea').classList.add('hidden');
   $('dispoPreviewArea').classList.remove('hidden');
@@ -2947,10 +2779,6 @@ function renderPreviewDispo(fileName, totalLinhas){
   } else {
     novosBlock.classList.add('hidden');
   }
-
-  // A verificação é assíncrona (uma requisição por produto). Roda solta para
-  // o preview aparecer na hora; o bloco surge quando termina.
-  verificarImagensDosNovos();
 
   // Conflitos
   const conflitosBlock = $('dispoConflitosBlock');
@@ -3038,12 +2866,6 @@ function atualizarResumoImportDispo(){
   const totalFinal = _dispoJsonAtual.length + _dispoNovos.length + incl;
   $('dispoResumoImport').textContent = `${_dispoNovos.length} novo(s) · ${subs} substituído(s) · ${incl} incluído(s) · ${ign} ignorado(s). Total a salvar: ${totalFinal} produto(s).`;
 }
-
-document.addEventListener('change', (e)=>{
-  if(e.target && e.target.id === 'dispoImgInput' && e.target.files?.[0]){
-    enviarImagemDispo(e.target.files[0]);
-  }
-});
 
 async function confirmarImportarDispo(){
   const btn = $('btnConfirmarDispo');
