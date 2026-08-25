@@ -867,6 +867,12 @@
             <input type="checkbox" id="chkSelecionarTodos" class="card-chk" title="Selecionar todos">
             <label for="chkSelecionarTodos" class="chk-select-all-lbl">Selecionar todos</label>
             <span id="selecaoCount" class="text-xs font-bold text-slate-400 ml-2"></span>
+            <select id="ordemLista" onchange="setOrdemLista(this.value)" title="Ordem da lista"
+              class="focus-ring ml-3 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-600">
+              <option value="chegada">Mais recentes (chegada)</option>
+              <option value="antigos">Mais antigos (chegada)</option>
+              <option value="alterados">Alterados por último</option>
+            </select>
             <button id="btnExportarSelecionados" onclick="exportarSelecionados()"
               class="hidden focus-ring ml-auto rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 flex items-center gap-1.5 hover:bg-emerald-100 transition-colors">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -1223,6 +1229,25 @@ function isCmsLogado(){
 // Mesma senha do usuário CMS no Portal — usada só pra confirmar exclusão de
 // pedido aqui dentro (o acesso ao painel inteiro já é via SSO, não por senha).
 const ADMIN_PASSWORD = '300269';
+// Ordem da lista: 'chegada' (createdAt desc, padrão) | 'antigos' | 'alterados'.
+// Fica em localStorage para o operador não reconfigurar a cada visita.
+let _ordemLista = 'chegada';
+try{ _ordemLista = localStorage.getItem('admin_ordem_lista_v1') || 'chegada'; }catch(_){}
+
+function setOrdemLista(valor){
+  _ordemLista = valor || 'chegada';
+  try{ localStorage.setItem('admin_ordem_lista_v1', _ordemLista); }catch(_){}
+  _currentPage = 1;          // trocar a ordem invalida a página atual
+  applyFilters();
+}
+
+// O <select> precisa mostrar a preferência salva, senão exibe "chegada" mesmo
+// quando a lista está ordenada de outro jeito.
+document.addEventListener('DOMContentLoaded', ()=>{
+  const sel = document.getElementById('ordemLista');
+  if(sel) sel.value = _ordemLista;
+});
+
 // Seleção de pedidos para exportar. Declarada aqui em cima porque o template
 // do card a consulta ao renderizar — const não é içada, e ficar depois do uso
 // derrubaria o script inteiro se algum render acontecesse antes.
@@ -1810,6 +1835,17 @@ function applyFilters(){
     return matchQ && matchStatus && matchScope;
   });
 
+  // Ordena AQUI, e não na carga: assim trocar a ordem não exige recarregar.
+  // O padrão é por data de CHEGADA (createdAt) — a ordem antiga usava
+  // updatedAt, então qualquer alteração jogava o pedido para o topo e a lista
+  // se remexia embaixo de quem estava trabalhando nela.
+  const _ts = (o, campo) => parseDate(campo === 'alterados'
+    ? (o.updatedAt || o.createdAt || o.data)
+    : (o.createdAt || o.data || o.updatedAt))?.getTime() || 0;
+  STATE.filtered.sort((a, b) =>
+    _ordemLista === 'antigos' ? _ts(a) - _ts(b)
+                              : _ts(b, _ordemLista) - _ts(a, _ordemLista));
+
   $('ordersCountBadge').textContent = `${STATE.filtered.length} pedido${STATE.filtered.length === 1 ? '' : 's'}`;
 
   renderList();
@@ -1968,7 +2004,16 @@ function renderList(){
       pages.innerHTML = '';
       for(let p = 1; p <= totalPages; p++){
         if(totalPages > 7 && p > 3 && p < totalPages - 1 && Math.abs(p - _currentPage) > 1){
-          if(p === 4 || p === totalPages - 2){ pages.innerHTML += `<span style="color:var(--muted);font-size:12px">…</span>`; }
+          if(p === 4 || p === totalPages - 2){
+            // appendChild, NÃO innerHTML +=. Atribuir innerHTML recria todos os
+            // filhos do container, e os botões já inseridos perdem o onclick
+            // (que é propriedade JS, não atributo). Era isso que deixava as
+            // páginas 1, 2 e 3 sem resposta quando havia mais de 7 páginas.
+            const reticencias = document.createElement('span');
+            reticencias.textContent = '…';
+            reticencias.style.cssText = 'color:var(--muted);font-size:12px';
+            pages.appendChild(reticencias);
+          }
           continue;
         }
         const btn = document.createElement('button');
