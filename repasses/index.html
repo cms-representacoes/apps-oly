@@ -90,7 +90,8 @@
       font-weight:800;font-size:12px;letter-spacing:.02em;
       box-shadow:0 4px 12px rgba(40,54,212,.28);
     }
-    .header-brand-title{min-width:0}
+    /* dentro da faixa que rola: nao encolhe, acompanha o arrasto */
+    .header-brand-title{min-width:0;margin-right:2px}
     .header-secondary-actions{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
     .search-shell{display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:0;width:40px;height:40px;overflow:hidden;flex:0 0 auto;transition:all .2s ease}
     .search-shell.expanded{flex:1 1 200px;width:auto;min-width:160px;max-width:380px;height:auto;padding:10px 14px;justify-content:flex-start}
@@ -127,7 +128,7 @@
         padding-right:calc(1rem + env(safe-area-inset-right,0px)) !important;
       }
       .header-brand-logo,.cms-badge{height:34px;width:34px;border-radius:14px}
-      #btnToggleFilters,#btnOrders,#btnRefreshStock,#btnNotifVendedor{width:44px;height:44px;padding:0;border-radius:999px}
+      #btnToggleFilters,#btnOrders,#btnRefreshStock{width:44px;height:44px;padding:0;border-radius:999px}
       #btnOpenCart{width:44px;height:44px}
       .header-handle{display:block;width:56px;height:5px;border-radius:999px;background:#dbe1ea;margin:8px auto 0;box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
       .top-actions > *{flex:0 0 auto}
@@ -500,24 +501,13 @@
       <div class="header-row-single">
         <div class="header-brand">
           <span class="cms-badge">CMS</span>
-          <div class="header-brand-title min-w-0">
-            <div class="truncate text-sm sm:text-base font-extrabold">Repasses</div>
-            <div class="truncate text-[11px] font-bold text-slate-400">Oly - UA</div>
-          </div>
         </div>
 
         <div class="header-actions-scroll">
-          <button id="btnLayoutCards" onclick="toggleLayoutCards()" data-tip="Alternar visualização"
-            title="Alternar visualização" aria-label="Alternar visualização"
-            class="focus-ring items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600"
-            style="width:44px;height:44px;flex:0 0 auto">
-            <i id="icoLayoutCards" class="fa-solid fa-square text-sm"></i>
-          </button>
-          <button id="btnToggleFilters" title="Filtros" class="focus-ring icon-btn-mobile inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">
-            <i class="fa-solid fa-sliders"></i>
-            <span class="hidden sm:inline">Filtros</span>
-          </button>
-
+          <div class="header-brand-title">
+            <div class="text-sm sm:text-base font-extrabold leading-tight">Repasses</div>
+            <div class="text-[11px] font-bold text-slate-400 leading-tight">Oly - UA</div>
+          </div>
           <div class="search-shell" id="searchShell">
             <button id="btnSearchToggle" title="Buscar" aria-label="Buscar" class="focus-ring flex-shrink-0 flex items-center justify-center text-slate-400" style="width:20px">
               <i class="fa-solid fa-magnifying-glass"></i>
@@ -528,16 +518,21 @@
             </button>
           </div>
 
+          <button id="btnOrders" class="focus-ring icon-btn-mobile inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700" aria-label="Meus pedidos" title="Meus pedidos">
+            <i class="fa-regular fa-rectangle-list text-sm"></i>
+            <span class="hidden sm:inline">Meus pedidos</span>
+          </button>
+
+          <button id="btnToggleFilters" title="Filtros" class="focus-ring icon-btn-mobile inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">
+            <i class="fa-solid fa-sliders"></i>
+            <span class="hidden sm:inline">Filtros</span>
+          </button>
+
           <button id="btnOpenCart" title="Sacola" aria-label="Sacola"
             class="focus-ring relative inline-flex h-11 w-11 items-center justify-center rounded-full text-white"
             style="background:linear-gradient(135deg,#5B69E8,#2836D4);box-shadow:0 4px 14px rgba(40,54,212,.35)">
             <i class="fa-solid fa-cart-shopping"></i>
             <span id="cartCountBadge" class="hidden absolute -top-1.5 -right-1.5 min-w-[20px] h-[20px] px-1 rounded-full bg-white text-[var(--brand)] text-[11px] font-extrabold flex items-center justify-center border-2 border-white shadow">0</span>
-          </button>
-
-          <button id="btnOrders" class="focus-ring icon-btn-mobile inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700" aria-label="Meus pedidos" title="Meus pedidos">
-            <i class="fa-regular fa-rectangle-list text-sm"></i>
-            <span class="hidden sm:inline">Meus pedidos</span>
           </button>
 
           <button id="btnRefreshStock" class="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-700" aria-label="Atualizar saldo" title="Atualizar saldo">
@@ -556,9 +551,11 @@
             <i class="fa-solid fa-arrow-left text-sm"></i>
           </a>
 
-          <button id="btnNotifVendedor" class="focus-ring relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700" title="Novidades" aria-label="Novidades">
-            <i class="fa-solid fa-bell text-sm"></i>
-            <span id="badgeNotifVendedor" class="hidden absolute -top-2 -right-2 min-w-[20px] h-[20px] px-1 bg-emerald-600 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white" style="animation:pulse-badge 1s infinite">0</span>
+          <button id="btnLayoutCards" onclick="toggleLayoutCards()" data-tip="Alternar visualização"
+            title="Alternar visualização" aria-label="Alternar visualização"
+            class="focus-ring items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600"
+            style="width:44px;height:44px;flex:0 0 auto">
+            <i id="icoLayoutCards" class="fa-solid fa-square text-sm"></i>
           </button>
         </div>
       </div>
@@ -1662,7 +1659,7 @@ async function refreshStockFromSource(options = {}){
   }
   const now = Date.now();
   if(STATE.stockRefreshInFlight) return false;
-  if(!force && reason === 'poll' && (now - STATE.lastStockRefreshAt) < 25000) return false;
+  if(!force && reason === 'poll' && (now - STATE.lastStockRefreshAt) < 45000) return false;
 
   STATE.stockRefreshInFlight = true;
   const btn = $('btnRefreshStock');
@@ -1694,11 +1691,10 @@ async function refreshStockFromSource(options = {}){
     }
   }
 }
+// O outro temporizador (30s, mais abaixo) ja faz esta mesma consulta.
+// Manter os dois so dobrava a leitura do arquivo de pedidos sem ganho.
 function startStockAutoRefresh(){
   stopStockAutoRefresh();
-  STATE.stockRefreshTimer = window.setInterval(()=>{
-    refreshStockFromSource({ silent:true, reason:'poll' });
-  }, 45000);
 }
 function stopStockAutoRefresh(){
   if(STATE.stockRefreshTimer){
@@ -2463,9 +2459,6 @@ function renderCart(){
               <div class="cart-nome text-2xl leading-none font-extrabold">${safeHtml(item.produto)}</div>
               <div class="mt-2 flex flex-wrap items-center gap-2">
                 <span class="chip chip-blue"><i class="fa-solid fa-palette"></i> ${safeHtml(item.cor)}</span>
-                ${item.mode === 'boxed'
-                  ? `<span class="chip chip-gray"><i class="fa-solid fa-box"></i> ${item.amount} caixa${item.amount > 1 ? 's' : ''}</span>`
-                  : `<span class="chip chip-gray"><i class="fa-solid fa-cubes-stacked"></i> ${item.amount} unidade${item.amount > 1 ? 's' : ''}</span>`}
                 ${item.grade.length ? `<button type="button" class="cart-grade-tog chip chip-gray"><i class="fa-solid fa-table-cells"></i> <span class="cart-grade-lbl">Ver ${item.mode === 'boxed' ? 'grade' : 'disponível'}</span> <i class="fa-solid fa-chevron-down ord-caret"></i></button>` : ''}
               </div>
             </div>
@@ -4243,10 +4236,13 @@ if($('btnNotifVendedor')){
   });
 }
 
+// Consulta em segundo plano. Pausa quando a aba nao esta visivel: nao faz
+// sentido baixar a lista de pedidos com o app em outra aba ou no bolso.
 setInterval(async ()=>{
+  if(document.hidden) return;
   await refreshStockFromSource({ silent:true, reason:'poll' });
   notifVendPoll();
-}, 30000);
+}, 60000);
 async function checkAppStatus(){
   try{
     const res = await fetch(WORKER_CONFIG.endpoint, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'getStatus' }) });

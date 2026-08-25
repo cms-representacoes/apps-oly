@@ -189,6 +189,29 @@ export default {
       return { content: parsed, sha, raw: rawText };
     }
 
+    // Repassa o arquivo CRU, sem JSON.parse e sem re-serializar.
+    // Ler os ~550 KB de pedidos.json, decodificar de base64, parsear e
+    // stringificar de volta estourava o limite de CPU do worker: a Cloudflare
+    // matava a requisicao com erro 1102 e derrubava vendedor e admin em
+    // horario de movimento. O media type "raw" entrega o arquivo direto,
+    // entao o corpo so atravessa — custo de CPU praticamente zero.
+    async function streamFile(url, vazio = "[]") {
+      const { owner, repo, path } = parseRepoUrl(url);
+      const branch = env.GITHUB_BRANCH || "main";
+      const rawUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${encodeURIComponent(branch)}`;
+      const res = await fetch(rawUrl, {
+        headers: { ...githubHeaders, Accept: "application/vnd.github.raw" }
+      });
+      if (res.status === 404) {
+        return new Response(vazio, { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      if (!res.ok) throw new Error(`GET raw falhou (${res.status}): ${await res.text()}`);
+      return new Response(res.body, {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
     // ── Git Data API: cria/atualiza um arquivo via blob+tree+commit ─────────
     // Substitui a Contents API simples (PUT /contents/{path}), que falha com
     // 404/erro em arquivos que passam de ~1MB depois de codificados em Base64.
@@ -612,10 +635,11 @@ export default {
 
     try {
 
-      // GET — retorna pedidos (array, mantém retrocompatibilidade)
+      // GET — retorna pedidos (array, mantém retrocompatibilidade).
+      // É de longe a chamada mais frequente: cada vendedor consulta a cada
+      // 30s. Por isso vai por repasse direto, sem parsear nada.
       if (request.method === "GET") {
-        const { content } = await getPedidos();
-        return new Response(JSON.stringify(content || []), { status: 200, headers: corsHeaders });
+        return await streamFile(GITHUB_PEDIDOS, "[]");
       }
 
       // POST — novo pedido (público — vendedor cria pedidos sem login)
