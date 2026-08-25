@@ -123,11 +123,6 @@ export default {
     const GITHUB_RFV = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/rfv.json`;
     // Estoque Virtual — Matriz Esportes (lojas + itens reportados por cada loja + pendentes de cadastro)
     const GITHUB_MATRIZ = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/matriz_estoque.json`;
-    // Detalhada por preposto — base publicada pelo script diário (CMS_DETALHADA_GERAL)
-    // e pela tela de admin do app. O resumo fica num arquivo à parte: assim o app
-    // pergunta "mudou?" gastando alguns bytes, em vez de baixar 3 MB a cada abertura.
-    const GITHUB_DETALHADA      = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/detalhada.json`;
-    const GITHUB_DETALHADA_INFO = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/detalhada-info.json`;
     // Repositório onde ficam as imagens de produto (pode ser diferente do repo de dados)
     const GITHUB_IMG_REPO = env.GITHUB_IMG_REPO || "apps-oly-v2";
 
@@ -855,71 +850,6 @@ export default {
           await saveFile(GITHUB_FATURADOS, payload, sha, `faturados (${Object.keys(body.faturados).length} clientes) por ${payload.por || "?"}`);
           return new Response(JSON.stringify({ success: true, clientes: Object.keys(body.faturados).length }), { status: 200, headers: corsHeaders });
         }
-        // ── DETALHADA POR PREPOSTO ────────────────────────────────────────
-        // Base que o app dos vendedores lê. Publicada pelo script diário e
-        // pela tela de admin — nenhum dos dois passa por commit manual, e por
-        // isso não esperam o GitHub Pages reconstruir o site inteiro.
-
-        // getDetalhadaInfo → só o resumo (alguns bytes). O app consulta isto a
-        // cada abertura e só baixa a base inteira quando `gerado` mudou.
-        if (body.action === "getDetalhadaInfo") {
-          try {
-            const { content } = await getFile(GITHUB_DETALHADA_INFO);
-            return new Response(JSON.stringify(content || { gerado: null }),
-              { status: 200, headers: corsHeaders });
-          } catch (_) {
-            // Sem resumo o app apenas baixa a base; não é motivo de erro.
-            return new Response(JSON.stringify({ gerado: null }),
-              { status: 200, headers: corsHeaders });
-          }
-        }
-
-        // getDetalhada → a base inteira. Pública, como o resto das leituras.
-        if (body.action === "getDetalhada") {
-          const { content } = await getFile(GITHUB_DETALHADA);
-          return new Response(JSON.stringify(content || null),
-            { status: 200, headers: corsHeaders });
-        }
-
-        // saveDetalhada → publica a base.
-        // Fora de WRITE_ACTIONS pelo mesmo motivo de savePerformance e saveRfv:
-        // quem publica é um script na máquina da CMS e uma tela de navegador, e
-        // nenhum dos dois consegue guardar o ADMIN_TOKEN sem expô-lo. A proteção
-        // aqui é a validação do payload — recusar lixo é o que importa, porque
-        // uma base quebrada apagaria a de todos os vendedores e o erro só
-        // apareceria no dia seguinte.
-        if (body.action === "saveDetalhada" && body.data && typeof body.data === "object") {
-          const base = body.data;
-          if (!Array.isArray(base.l) || !base.l.length || !base.dic) {
-            return new Response(JSON.stringify({
-              success: false,
-              error: "Base inválida: esperado { dic, l:[...] } com pelo menos uma linha."
-            }), { status: 400, headers: corsHeaders });
-          }
-
-          const { sha } = await getFile(GITHUB_DETALHADA);
-          const payload = { ...base, publicadoEm: new Date().toISOString(), por: String(body.por || "") };
-          await saveFile(GITHUB_DETALHADA, payload, sha,
-            `detalhada: base por ${payload.por || "?"} (${base.l.length} linhas)`);
-
-          // O resumo vai depois da base: se a base falhar, ninguém fica achando
-          // que publicou. Resumo velho incomoda menos que base velha.
-          const info = {
-            gerado: base.gerado || payload.publicadoEm,
-            publicadoEm: payload.publicadoEm,
-            origem: base.origem || "",
-            linhas: base.l.length,
-            por: payload.por
-          };
-          try {
-            const { sha: shaInfo } = await getFile(GITHUB_DETALHADA_INFO);
-            await saveFile(GITHUB_DETALHADA_INFO, info, shaInfo, "detalhada: resumo");
-          } catch (_) { /* o resumo é conveniência, não bloqueia a publicação */ }
-
-          return new Response(JSON.stringify({ success: true, ...info }),
-            { status: 200, headers: corsHeaders });
-        }
-
         if (body.action === "uploadImagem" && body.nome && body.base64) {
           const nome = body.nomeArquivo || body.nome; // nome final do arquivo ex: "43242437_PTO_PT.jpg"
           // Disponibilidades sempre guardou imagem no MESMO repositório dos dados

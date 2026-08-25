@@ -1223,6 +1223,11 @@ function isCmsLogado(){
 // Mesma senha do usuário CMS no Portal — usada só pra confirmar exclusão de
 // pedido aqui dentro (o acesso ao painel inteiro já é via SSO, não por senha).
 const ADMIN_PASSWORD = '300269';
+// Seleção de pedidos para exportar. Declarada aqui em cima porque o template
+// do card a consulta ao renderizar — const não é içada, e ficar depois do uso
+// derrubaria o script inteiro se algum render acontecesse antes.
+const _pedidosSelecionados = new Set();
+
 const STATUS_OPTIONS = ['Pendente','Aprovado','Cancelado'];
 
 const STATE = {
@@ -1918,6 +1923,7 @@ function renderList(){
       <div class="order-card-compact" data-order-id="${safeHtml(order.id)}">
         <div class="card-compact-top" onclick="if(!event.target.closest('[data-action],.card-chk,.btn-expand-compact'))toggleCardExpand('${safeHtml(order.id)}')">
           <input type="checkbox" class="card-chk chk-pedido" data-id="${safeHtml(order.id)}"
+            ${_pedidosSelecionados.has(order.id) ? 'checked' : ''}
             onclick="event.stopPropagation()" onchange="onCheckPedido(this)"
             title="Selecionar pedido">
           <div style="flex:1;min-width:0">
@@ -3936,14 +3942,24 @@ async function marcarComoExportado(orders){
   const aprovados = orders.filter(o => canonicalStatus(o.status) === 'Aprovado' && !o.exportedAt);
   if(!aprovados.length) return;
   const now = new Date().toISOString();
+  const falhas = [];
   for(const order of aprovados){
     const idx = STATE.orders.findIndex(o => o.id === order.id);
-    if(idx !== -1){
-      STATE.orders[idx].exportedAt = now;
-      try{ await workerUpdateOrder(STATE.orders[idx]); }catch(e){ console.error(e); }
+    if(idx === -1) continue;
+    const anteriorExport = STATE.orders[idx].exportedAt;
+    STATE.orders[idx].exportedAt = now;
+    try{
+      await workerUpdateOrder(STATE.orders[idx]);
+    }catch(e){
+      console.error('Falha ao marcar como exportado: ' + order.id, e);
+      STATE.orders[idx].exportedAt = anteriorExport;  // desfaz o local
+      falhas.push(order.id);
     }
   }
   atualizarBadgeGlobal();
+  if(falhas.length){
+    showToast(`${falhas.length} pedido(s) não foram marcados como exportados no servidor.`, 'error');
+  }
 }
 
 // ── DISPO GCI→NÚM MAP ────────────────────────────────────────────────────────
@@ -4172,23 +4188,30 @@ document.addEventListener('fullscreenchange', ()=>{
 });
 
 // ── SELEÇÃO DE PEDIDOS ────────────────────────────────────────────────────────
-const _pedidosSelecionados = new Set();
 
 function atualizarSelecaoUI(){
   const n = _pedidosSelecionados.size;
-  const total = document.querySelectorAll('.chk-pedido').length;
+  // O total é o do FILTRO INTEIRO, não o da página. Antes vinha de
+  // querySelectorAll('.chk-pedido'), que só enxerga os 20 itens renderizados —
+  // por isso "selecionar todos" parecia completo com a lista toda por marcar.
+  const total = STATE.filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const contEl = $('selecaoCount');
   const btnExp = $('btnExportarSelecionados');
   const badge  = $('badgeSelecionados');
   const chkAll = $('chkSelecionarTodos');
-  if(contEl) contEl.textContent = n > 0 ? `${n} selecionado${n>1?'s':''}` : '';
+  if(contEl){
+    contEl.textContent = n > 0
+      ? `${n} de ${total} selecionado${n>1?'s':''} · ${totalPages} página${totalPages>1?'s':''}`
+      : `${total} pedido${total!==1?'s':''} · ${totalPages} página${totalPages>1?'s':''}`;
+  }
   if(badge)  badge.textContent = n;
   if(btnExp) btnExp.classList.toggle('hidden', n === 0);
   const btnDel = $('btnExcluirSelecionados');
   const badgeDel = $('badgeExcluir');
   if(badgeDel) badgeDel.textContent = n;
   if(btnDel) btnDel.classList.toggle('hidden', n === 0);
-  if(chkAll){ chkAll.checked=total>0&&n===total; chkAll.indeterminate=n>0&&n<total; }
+  if(chkAll){ chkAll.checked = total>0 && n===total; chkAll.indeterminate = n>0 && n<total; }
 }
 
 function onCheckPedido(chk){
@@ -4200,10 +4223,14 @@ function onCheckPedido(chk){
 document.addEventListener('change', e => {
   if(e.target.id !== 'chkSelecionarTodos') return;
   const checked = e.target.checked;
-  document.querySelectorAll('.chk-pedido').forEach(chk => {
-    chk.checked = checked;
-    if(checked){ _pedidosSelecionados.add(chk.dataset.id); } else { _pedidosSelecionados.delete(chk.dataset.id); }
-  });
+  // Marca/desmarca TODO o resultado do filtro, não só a página aberta.
+  for(const o of STATE.filtered){
+    if(checked) _pedidosSelecionados.add(o.id);
+    else _pedidosSelecionados.delete(o.id);
+  }
+  // Sincroniza os checkboxes visíveis; os das outras páginas já nascem
+  // marcados no render, porque o template consulta _pedidosSelecionados.
+  document.querySelectorAll('.chk-pedido').forEach(chk => { chk.checked = checked; });
   atualizarSelecaoUI();
 });
 
@@ -4259,25 +4286,45 @@ async function exportarSelecionados(){
     XLSX.writeFile(wb, `pedidos_selecionados_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.xlsx`);
 
     // Ponto 3 — Aprovar pendentes ao exportar + marcar exportedAt
+    // Se o salvamento falhar, o estado local é REVERTIDO. Antes o erro era
+    // engolido: a tela mostrava "Aprovado · exportado", mas o servidor seguia
+    // com "Pendente" — e no recarregamento seguinte o pedido "voltava" sozinho.
     const now2 = new Date().toISOString();
+    const falhas = [];
     for(const order of orders){
       const idx = STATE.orders.findIndex(o => o.id === order.id);
       if(idx === -1) continue;
+      const anterior = STATE.orders[idx];
       const isPendente = canonicalStatus(order.status) === 'Pendente';
       const updates = { exportedAt: now2 };
       if(isPendente){
         updates.status = 'Aprovado';
         updates.history = [
-          ...(STATE.orders[idx].history || []),
+          ...(anterior.history || []),
           { action:'Aprovado e exportado em lote', at: now2 }
         ];
       }
-      STATE.orders[idx] = { ...STATE.orders[idx], ...updates, updatedAt: now2 };
-      try{ await workerUpdateOrder(STATE.orders[idx]); }catch(e){ console.error(e); }
+      STATE.orders[idx] = { ...anterior, ...updates, updatedAt: now2 };
+      try{
+        await workerUpdateOrder(STATE.orders[idx]);
+      }catch(e){
+        console.error('Falha ao salvar pedido ' + order.id, e);
+        STATE.orders[idx] = anterior;   // desfaz: a tela não pode mentir
+        falhas.push(order.id);
+      }
     }
 
     atualizarBadgeGlobal();
-    showToast(`${orders.length} pedido(s) exportado(s)!`, 'success');
+    if(falhas.length){
+      const ok = orders.length - falhas.length;
+      showToast(
+        `Planilha gerada, mas ${falhas.length} pedido(s) NÃO salvaram no servidor` +
+        (ok ? ` (${ok} salvos)` : '') + '. Eles seguem pendentes — exporte de novo.',
+        'error'
+      );
+    }else{
+      showToast(`${orders.length} pedido(s) exportado(s)!`, 'success');
+    }
     renderList();
   }catch(err){ console.error(err); showToast('Erro ao exportar.','error');
   }finally{ btn.disabled=false; btn.innerHTML=prev; }
