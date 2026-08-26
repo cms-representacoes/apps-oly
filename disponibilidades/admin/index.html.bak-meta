@@ -3585,7 +3585,7 @@ function classificarCategoriaLinha(row){
   return 'ACESSORIO';
 }
 
-function rowToItem(row, quinzenaHint, arquivoEhMeta){
+function rowToItem(row, quinzenaHint){
   const categoria = String(row['CATEGORIA']  || '').trim().toUpperCase();
 
   const grade = {};
@@ -3600,27 +3600,18 @@ function rowToItem(row, quinzenaHint, arquivoEhMeta){
   const totalGeral = Number(row['T. GER'] || 0);
 
   // ── META PRODUTIVA x PRONTA ENTREGA ──────────────────────────────────────
-  // Quem decide, em primeiro lugar, é a ORIGEM DO ARQUIVO: um "2_QUINZ_*" é
-  // meta produtiva, ponto. O detectarDoNome já identifica isso e o valor
-  // chega aqui em arquivoEhMeta.
-  //
-  // Isso precisou vir na frente porque a regra abaixo, sozinha, errava: o
-  // relatório de quinzena traz as colunas de tamanho preenchidas (o tênis nos
-  // números, o acessório no "U"), e "tem grade" era tratado como sinal certo
-  // de pronta entrega. Resultado: 1850 das 1853 linhas de um arquivo de meta
-  // entravam como pronta entrega, e a aba de meta produtiva ficava vazia.
-  //
-  // Sem essa informação — arquivo solto, sem nome reconhecível — vale a
-  // heurística do dado da linha:
+  // Decidido pelo DADO da linha, não pela coluna CATEGORIA:
   //   só T.GERAL, sem quantidade nos tamanhos  → meta produtiva
   //   T.GERAL + quantidade nos tamanhos        → pronta entrega
-  // e a categoria como último reforço, quando não há dado que decida.
+  //
+  // Antes isso saía de ehColecaoMeta(categoria), ou seja, da categoria ser
+  // "2S26". Isso errava nos dois sentidos: linha de meta com categoria comum
+  // (CAMINHADA, por exemplo) entrava como pronta entrega de grade vazia, e uma
+  // planilha podia trazer os dois tipos misturados sem o código distinguir.
+  // A categoria segue valendo como reforço para quando a grade vier vazia e o
+  // T.GERAL zerado — aí não há dado que decida.
   const temGrade = Object.keys(grade).length > 0;
-  const ehMeta = arquivoEhMeta === true
-    ? true
-    : (arquivoEhMeta === false
-        ? false
-        : (temGrade ? false : (totalGeral > 0 || ehColecaoMeta(categoria))));
+  const ehMeta = temGrade ? false : (totalGeral > 0 || ehColecaoMeta(categoria));
 
   // Se for META: ignora grade (vai pelo T.GER) e detecta a quinzena
   let _meta = false;
@@ -4717,12 +4708,7 @@ async function processarXlsxMulti(fileList){
         if(prevFat && !String(row['PREV. FAT']||'').trim()){
           row['PREV. FAT'] = prevFat;
         }
-        // O arquivo se identifica pelo nome: "2_QUINZ_*" é meta produtiva,
-        // "PRONTA_ENTREGA" não é. undefined = arquivo não reconhecido, e aí
-        // a decisão volta a ser pelo dado da linha.
-        const origemMeta = cfgArq.ehMeta ? true
-                         : (cfgArq.ehProntaEntrega ? false : undefined);
-        const item = rowToItem(row, cfgArq.quinzena, origemMeta);
+        const item = rowToItem(row, cfgArq.quinzena);
         if(!item.artigo) continue;
         item.categoriaOriginal = categoriaOriginal;
         item.categoriaProduto  = bucket || '';  // TENIS/CHINELO/VESTUARIO/MEIA/ACESSORIO — usado pra segmentar 2S26 na vitrine
