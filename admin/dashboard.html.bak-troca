@@ -337,32 +337,6 @@ function ordersInPeriod(){
 }
 
 // ── LOAD ──────────────────────────────────────────────────────────────────────
-// Algumas planilhas de origem chegam com Código e Produto invertidos: o
-// código traz o nome ("AMBAR") e o produto traz a referência ("43244493").
-// O dashboard usa o campo `produto` como nome na lista de saldo e como chave
-// no cruzamento com os pedidos — sem desfazer, aparecia número no lugar do
-// nome e o cruzamento errava nesses produtos.
-//
-// A referência é sempre numérica e o nome nunca é: só desfaz quando o sinal
-// é inequívoco.
-function _ehRef(v){ return /^\d+$/.test(String(v == null ? '' : v).replace(/\s+/g, '')); }
-
-function desinverterCodProd(obj){
-  if(!obj) return obj;
-  const cod = String(obj.codigo == null ? '' : obj.codigo).trim();
-  const prod = String(obj.produto == null ? '' : obj.produto).trim();
-  if(cod && prod && !_ehRef(cod) && _ehRef(prod)){
-    return { ...obj, codigo: prod, produto: cod };
-  }
-  return obj;
-}
-
-// Pedido: a inversão está em cada item, não no pedido em si.
-function desinverterPedido(pedido){
-  if(!pedido || !Array.isArray(pedido.items)) return pedido;
-  return { ...pedido, items: pedido.items.map(desinverterCodProd) };
-}
-
 async function loadAll(){
   const icon=document.getElementById('refreshIcon');
   icon.className='fa-solid fa-rotate refresh-spin';
@@ -371,12 +345,10 @@ async function loadAll(){
       fetch(`${WORKER_URL}?t=${Date.now()}`,{cache:'no-store'}),
       fetch(WORKER_URL,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'getDispo'}),cache:'no-store'})
     ]);
-    if(ordRes.ok){ const d=await ordRes.json();
-      const lista = Array.isArray(d) ? d : (d.orders||[]);
-      STATE.orders = lista.map(desinverterPedido); }
+    if(ordRes.ok){ const d=await ordRes.json(); STATE.orders=Array.isArray(d)?d:(d.orders||[]); }
     if(dispoRes.ok){
       const d=await dispoRes.json();
-      STATE.dispoRows=(Array.isArray(d)?d:[]).map(desinverterCodProd);
+      STATE.dispoRows=Array.isArray(d)?d:[];
     }
   }catch(e){ console.error(e); }
   icon.className='fa-solid fa-rotate';
