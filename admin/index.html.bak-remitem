@@ -319,19 +319,6 @@
     .btn-expand-compact{ display:inline-flex; align-items:center; gap:4px; border:0.5px solid var(--line); border-radius:999px; padding:4px 11px; font-size:11px; font-weight:700; cursor:pointer; background:none; color:var(--muted); white-space:nowrap; flex-shrink:0; }
     .btn-expand-compact:hover{ background:var(--muted-soft); }
     .btn-expand-compact.open{ border-color:var(--brand); color:var(--brand); background:var(--brand-soft); }
-    /* Remover um produto do pedido: discreto, aparece no hover do bloco.
-       Só existe quando o pedido tem mais de um produto — remover o último
-       deixaria um pedido vazio, e para isso existe o "Excluir". */
-    .btn-rem-item{
-      width:26px; height:26px; border-radius:8px; flex-shrink:0;
-      border:0.5px solid var(--line); background:transparent;
-      color:var(--muted); font-size:11px; cursor:pointer;
-      display:flex; align-items:center; justify-content:center;
-      opacity:.45; transition:opacity .12s, color .12s, border-color .12s, background .12s;
-    }
-    .item-block-expand:hover .btn-rem-item{ opacity:1; }
-    .btn-rem-item:hover{ color:var(--danger,#dc2626); border-color:var(--danger,#dc2626); background:var(--danger-soft,#fee2e2); }
-
     .item-block-expand{ padding:8px 0; border-bottom:0.5px solid var(--line); }
     .item-block-expand:last-child{ border-bottom:none; padding-bottom:0; }
     .item-block-expand:first-child{ padding-top:0; }
@@ -2017,8 +2004,7 @@ function renderList(){
       return icons;
     })();
 
-    const podeRemoverItem = (order.items||[]).length > 1;
-    const itensHtml = (order.items||[]).map((item, itemIdx) => {
+    const itensHtml = (order.items||[]).map(item => {
       const grade = (item.grade||[]).filter(g=>Number(g.qty||0)>0);
       return `
         <div class="item-block-expand">
@@ -2034,14 +2020,7 @@ function renderList(){
                 ${grade.map(g=>`<div class="grade-pill-compact"><span class="grade-sz-compact">${safeHtml(String(g.size||g.s||''))}</span>${g.qty||g.q||0}</div>`).join('')}
               </div>` : ''}
             </div>
-            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-              <span style="font-size:11px;color:var(--muted);white-space:nowrap">${formatInt(getItemUnits(item))} pares</span>
-              ${podeRemoverItem ? `<button class="btn-rem-item" data-action="remover-item"
-                data-id="${safeHtml(order.id)}" data-idx="${itemIdx}"
-                title="Remover só este produto do pedido" aria-label="Remover este produto">
-                <i class="fa-solid fa-trash"></i>
-              </button>` : ''}
-            </div>
+            <div style="font-size:11px;color:var(--muted);flex-shrink:0;white-space:nowrap">${formatInt(getItemUnits(item))} pares</div>
           </div>
         </div>`;
     }).join('');
@@ -2182,9 +2161,6 @@ document.addEventListener('click', e => {
   }
   if(action === 'excluir'){
     deleteOrder(id);
-  }
-  if(action === 'remover-item'){
-    removerItemDoPedido(id, Number(btn.dataset.idx));
   }
   if(action === 'xlsx'){
     STATE.selectedId = id;
@@ -2365,58 +2341,6 @@ async function updateStatus(id, status, options = {}){
   }catch(err){
     console.error(err);
     showToast('Não foi possível salvar o novo status.', 'error');
-  }
-}
-
-// Remove UM produto do pedido, mantendo os demais. Pedido sem nenhum produto
-// não faz sentido — continuaria contando como pendente na lista — então o
-// último item não pode sair por aqui: para isso existe "Excluir".
-async function removerItemDoPedido(id, idx){
-  const pos = STATE.orders.findIndex(o => o.id === id);
-  if(pos === -1) return;
-
-  const atual = normalizeOrder(STATE.orders[pos]);
-  const itens = Array.isArray(atual.items) ? atual.items : [];
-  const item  = itens[idx];
-  if(!item){ showToast('Produto não encontrado no pedido.', 'error'); return; }
-  if(itens.length <= 1){
-    showToast('Este é o único produto do pedido. Use "Excluir" para remover o pedido inteiro.', 'error');
-    return;
-  }
-
-  const nome  = `${item.produto || '—'} · ${item.cor || '—'}`;
-  const pares = formatInt(getItemUnits(item));
-  // Pedido já exportado foi para o sistema com este produto dentro: quem
-  // remove agora precisa saber que a planilha enviada não bate mais.
-  const avisoExport = atual.exportedAt
-    ? `
-
-ATENÇÃO: este pedido já foi exportado em ${formatDateTime(atual.exportedAt)}. A planilha enviada não terá mais este produto.`
-    : '';
-  if(!confirm(`Remover "${nome}" (${pares} pares) deste pedido?
-
-Os outros ${itens.length - 1} produto(s) continuam.${avisoExport}`)) return;
-
-  const restantes = itens.filter((_, i) => i !== idx);
-  // Os totais são recalculados, senão o card seguiria mostrando os pares do
-  // produto removido.
-  const totals = {
-    packs: restantes.reduce((soma, it) => soma + Number(it.amount || 0), 0),
-    units: restantes.reduce((soma, it) => soma + getItemUnits(it), 0)
-  };
-
-  const evento = createHistoryEvent(atual, 'item_removed', 'Produto removido', {
-    notes: `${nome} — ${pares} pares`
-  });
-  const atualizado = appendOrderHistory({ ...atual, items: restantes, totals }, evento);
-
-  try{
-    await workerUpdateOrder(atualizado);
-    showToast(`"${nome}" removido. ${restantes.length} produto(s) no pedido.`, 'success');
-    await loadAdmin();
-  }catch(err){
-    console.error(err);
-    showToast('Não foi possível remover o produto.', 'error');
   }
 }
 
