@@ -2775,10 +2775,6 @@ function renderCampanhas(){
 }
 function toggleCampanha(cod){
   STATE.filtroCampanha = (STATE.filtroCampanha === cod) ? '' : cod;
-  // Trocar o filtro reinicia as escolhas feitas card a card: senão um card
-  // que o vendedor clicou antes ficaria preso na campanha antiga, mostrando
-  // um MKP diferente do que ele acabou de filtrar.
-  STATE.campanhaSelecionada.clear();
   renderCampanhas();
   salvarFiltros();
   applyFilters();
@@ -3047,22 +3043,8 @@ function getCampanhaAtiva(item){
     ? item.tabelasEspeciais
     : (item.codigoTabela ? [{ codigoTabela:item.codigoTabela, mkp:item.mkp, custo:item.custo }] : []);
   if(!campanhas.length) return null;
-
-  // 1) Escolha feita no próprio card (clique na etiqueta) — é a mais específica.
   const codigoSel = STATE.campanhaSelecionada.get(prodKey(item));
-  const escolhida = campanhas.find(c => c.codigoTabela === codigoSel);
-  if(escolhida) return escolhida;
-
-  // 2) Campanha filtrada na barra de cima. Se o produto participa dela, é ela
-  //    que o vendedor quer ver. Antes o card ignorava esse filtro e mostrava
-  //    sempre a primeira campanha — com o filtro em E4822, o produto exibia a
-  //    etiqueta e o MKP/custo do E4687.
-  if(STATE.filtroCampanha){
-    const doFiltro = campanhas.find(c => c.codigoTabela === STATE.filtroCampanha);
-    if(doFiltro) return doFiltro;
-  }
-
-  return campanhas[0];
+  return campanhas.find(c => c.codigoTabela === codigoSel) || campanhas[0];
 }
 
 // Item está nos Desejados do vendedor? (robusto a maiúsc/minúsc)
