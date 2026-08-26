@@ -2752,8 +2752,12 @@ function renderCampanhas(){
   const bar  = $('campanhasBar');
   const wrap = $('campanhasPills');
   if(!bar || !wrap) return;
+  // Só as campanhas da visão aberta: uma campanha que existe apenas na
+  // pronta entrega esvaziaria a meta produtiva se ficasse listada nas duas.
+  const querMeta = STATE.filtroVisao === 'meta';
   const codigosSet = new Set();
   for(const i of STATE.itens){
+    if(!!i._meta !== querMeta) continue;
     if(i.tabelasEspeciais && i.tabelasEspeciais.length){
       for(const c of i.tabelasEspeciais) if(c.codigoTabela) codigosSet.add(c.codigoTabela);
     } else if(i.codigoTabela){
@@ -3125,7 +3129,10 @@ function buildCardHtml(item){
   const campanhaAtiva = getCampanhaAtiva(item);
   const codigoSelecionado = campanhaAtiva ? campanhaAtiva.codigoTabela : '';
 
-  const chipTabela = !ehMeta && campanhas.length
+  // A etiqueta aparece nas DUAS visões. Na meta produtiva ela é só marcação
+  // de campanha — o box de MKP/custo abaixo continua fora (tabEspBoxHtml
+  // devolve vazio para meta), porque ali não há preço a exibir.
+  const chipTabela = campanhas.length
     ? campanhas.map(c => `<span class="chip chip-tabela${c.codigoTabela===codigoSelecionado?' ativa':''}" data-codigo="${safeHtml(c.codigoTabela)}"${campanhas.length>1?` onclick="event.stopPropagation();selecionarCampanha('${safeHtml(key)}','${safeHtml(c.codigoTabela)}')" style="cursor:pointer"`:''}><i class="fa-solid fa-tag" style="font-size:9px"></i> ${safeHtml(c.codigoTabela)}</span>`).join('')
     : '';
 
@@ -4552,28 +4559,40 @@ async function gerarPDFComOrdem(modo){
         doc.text(`R$ ${custoPor.toFixed(2)}`, bx+7+deW+5, boxY+24);
       };
 
-      if(ehMetaPdf){
-        // 2S26: PREV. FATURAMENTO (mês mais próximo c/ meta) + PDV · sem T. GERAL e sem grade
+      const camp = getCampanhaAtiva(item);
+      const temTab = camp && (camp.mkp || camp.custo);
+
+      if(ehMetaPdf && !temTab){
+        // 2S26 SEM campanha: PREV. FATURAMENTO + PDV · sem T. GERAL e sem grade
         const boxW2 = (txW - boxGap) / 2;
         drawBox(tx, boxW2, 'PREV. FATURAMENTO', mesMaisProximoMeta(item), C.text, 9);
         drawBox(tx + boxW2 + boxGap, boxW2, 'PDV', `R$ ${Number(item.pdv||0).toFixed(2)}`, C.accent, 12);
       } else {
-        const boxW   = (txW - boxGap*2) / 3;
-        const camp = getCampanhaAtiva(item);
-        const temTab = camp && (camp.mkp || camp.custo);
-        // Box 1 — MKP ou PREV. FATURAMENTO
+        // Produto em campanha usa o MESMO formato nas duas visões: MKP · PDV ·
+        // CUSTO De/Por. Antes a meta produtiva nunca chegava aqui, e um item
+        // com campanha até dezembro saía no PDF sem MKP nem custo.
+        const boxW = (txW - boxGap*2) / 3;
+        // O que ocupa as caixas quando não há dado de campanha muda por visão:
+        // meta produtiva não tem estoque, tem plano — então mostra a previsão.
+        const semCampLabel = 'PREV. FATURAMENTO';
+        const semCampValor = ehMetaPdf ? mesMaisProximoMeta(item)
+                                       : String(fixEncoding(item.prevFat||'—'));
+        // Box 1 — MKP ou a previsão
         if(temTab && camp.mkp && opcoes.mkp !== false) drawBox(tx, boxW, 'MKP', String(camp.mkp), C.text, 11);
-        else                   drawBox(tx, boxW, 'PREV. FATURAMENTO', String(fixEncoding(item.prevFat||'—')), C.text, 9);
+        else                   drawBox(tx, boxW, semCampLabel, semCampValor, C.text, 9);
         // Box 2 — PDV
         const b2 = tx + boxW + boxGap;
         drawBox(b2, boxW, 'PDV', `R$ ${Number(item.pdv||0).toFixed(2)}`, C.accent, 12);
-        // Box 3 — CUSTO (De/Por ou normal) ou T. GERAL
+        // Box 3 — CUSTO (De/Por ou normal); sem custo, T. GERAL na pronta
+        // entrega e a previsão na meta produtiva.
         const b3 = b2 + boxW + boxGap;
         const temCustoTab = temTab && camp.custo && opcoes.custo !== false;
         if(temCustoTab && opcoes.economia !== false){
           drawBoxDePor(b3, boxW, 'CUSTO', Number(item.pdv||0)/2, Number(camp.custo), C.text);
         } else if(temCustoTab){
           drawBox(b3, boxW, 'CUSTO', `R$ ${Number(camp.custo).toFixed(2)}`, C.text, 11);
+        } else if(ehMetaPdf){
+          drawBox(b3, boxW, semCampLabel, semCampValor, C.text, 9);
         } else {
           drawBox(b3, boxW, 'T. GERAL', Number(item.totalGeral||0).toLocaleString('pt-BR'), C.text, 11);
         }

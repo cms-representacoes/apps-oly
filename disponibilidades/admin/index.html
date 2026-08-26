@@ -3570,7 +3570,24 @@ function classificarCategoriaLinha(row){
     const n = Number(val);
     if(!isNaN(n) && n > 0) chaves.push(String(col).trim().toUpperCase());
   }
-  if(!chaves.length) return '';
+  // Sem grade não há o que consultar: as linhas de meta produtiva que vêm só
+  // com T. GERAL caíam aqui e voltavam vazias. Sem categoriaProduto, a vitrine
+  // usava item.categoria — literalmente "2S26" — e isso virava uma categoria
+  // fantasma no filtro, com 27 tênis dentro.
+  if(!chaves.length){
+    // A DESCRIÇÃO vem primeiro, e de propósito: CASUAL e TREINO valem tanto
+    // para tênis quanto para acessório (MOCHILA SPORTSTYLE é CASUAL). Decidir
+    // só pela categoria transformaria mochila em tênis.
+    const desc = String(row['DESCRIÇÃO'] || row['DESCRICAO'] || '')
+      .toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    if(/MOCHIL|BOLSA|\bBONE\b|GARRAFA|NECESSAIRE|POCHETE|\bMALA\b/.test(desc)) return 'ACESSORIO';
+    if(/\bMEIA/.test(desc))                                                       return 'MEIA';
+    if(/CHINEL|SANDAL/.test(desc))                                                 return 'CHINELO';
+    // Categorias de calçado da Olympikus — não constam na lista lá de cima,
+    // que só conhece os nomes genéricos (TENIS, CALCAD, FOOTWEAR).
+    if(/CAMINHADA|CORRIDA|CASUAL|TREINO|SPORTSTYLE|BASQUETE|BASKET|FUTEBOL|RUNNING|TRAINING|GOLF|CLASSICO/.test(catTxt)) return 'TENIS';
+    return '';
+  }
 
   const faixasChinelo = ['33/34','35/36','37/38','39/40','41/42','43/44','45/46'];
   if(chaves.some(k => faixasChinelo.includes(k))) return 'CHINELO';
