@@ -1203,6 +1203,37 @@
   </div>
 
   <!-- MODAL EXCLUSÃO COM SENHA -->
+  <!-- Remover UM produto do pedido -->
+  <div id="removeItemModal" class="hidden fixed inset-0 z-[140] bg-slate-950/45 p-4">
+    <div class="flex min-h-full items-center justify-center">
+      <div class="w-full max-w-sm rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,.24)]">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center flex-shrink-0">
+            <i class="fa-solid fa-trash text-rose-500"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="text-base font-extrabold">Remover produto</div>
+            <div class="text-xs font-semibold text-slate-500">O restante do pedido continua</div>
+          </div>
+        </div>
+
+        <div class="rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-3">
+          <div id="removeItemNome" class="text-sm font-extrabold text-slate-800 break-words"></div>
+          <div id="removeItemInfo" class="mt-1 text-xs font-semibold text-slate-500"></div>
+        </div>
+
+        <div id="removeItemRestante" class="mt-3 text-sm text-slate-600 leading-relaxed"></div>
+
+        <div id="removeItemAvisoExport" class="hidden mt-3 rounded-[18px] border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800 leading-relaxed"></div>
+
+        <div class="mt-5 flex justify-end gap-2">
+          <button onclick="fecharModalRemoverItem()" class="focus-ring rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700">Cancelar</button>
+          <button id="btnConfirmRemoveItem" onclick="confirmarRemoverItem()" class="focus-ring rounded-2xl bg-rose-600 px-5 py-3 text-sm font-extrabold text-white">Remover produto</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="deleteOrderModal" class="hidden fixed inset-0 z-[140] bg-slate-950/45 p-4">
     <div class="flex min-h-full items-center justify-center">
       <div class="w-full max-w-sm rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,.24)]">
@@ -2373,7 +2404,13 @@ async function updateStatus(id, status, options = {}){
 // Remove UM produto do pedido, mantendo os demais. Pedido sem nenhum produto
 // não faz sentido — continuaria contando como pendente na lista — então o
 // último item não pode sair por aqui: para isso existe "Excluir".
-async function removerItemDoPedido(id, idx){
+//
+// A confirmação é um modal do app, e não o confirm() do navegador: cabe o nome
+// do produto, a quantidade e o aviso de pedido já exportado, que numa caixa
+// nativa virariam um bloco de texto corrido.
+let _removeItemPendente = null;   // { id, idx }
+
+function removerItemDoPedido(id, idx){
   const pos = STATE.orders.findIndex(o => o.id === id);
   if(pos === -1) return;
 
@@ -2386,20 +2423,56 @@ async function removerItemDoPedido(id, idx){
     return;
   }
 
-  const nome  = `${item.produto || '—'} · ${item.cor || '—'}`;
-  const pares = formatInt(getItemUnits(item));
+  _removeItemPendente = { id, idx };
+
+  $('removeItemNome').textContent = String(item.produto || '—');
+  const partes = [item.cor || '—', `${formatInt(getItemUnits(item))} pares`];
+  if(item.gci) partes.push(`GCI ${item.gci}`);
+  $('removeItemInfo').textContent = partes.join('  ·  ');
+
+  const restantes = itens.length - 1;
+  $('removeItemRestante').innerHTML =
+    `Os outros <span class="font-bold text-slate-800">${restantes} produto${restantes > 1 ? 's' : ''}</span> continuam no pedido.`;
+
   // Pedido já exportado foi para o sistema com este produto dentro: quem
   // remove agora precisa saber que a planilha enviada não bate mais.
-  const avisoExport = atual.exportedAt
-    ? `
+  const aviso = $('removeItemAvisoExport');
+  if(atual.exportedAt){
+    aviso.textContent = `Este pedido já foi exportado em ${formatDateTime(atual.exportedAt)}. A planilha enviada não terá mais este produto.`;
+    aviso.classList.remove('hidden');
+  }else{
+    aviso.classList.add('hidden');
+  }
 
-ATENÇÃO: este pedido já foi exportado em ${formatDateTime(atual.exportedAt)}. A planilha enviada não terá mais este produto.`
-    : '';
-  if(!confirm(`Remover "${nome}" (${pares} pares) deste pedido?
+  $('removeItemModal').classList.remove('hidden');
+}
 
-Os outros ${itens.length - 1} produto(s) continuam.${avisoExport}`)) return;
+function fecharModalRemoverItem(){
+  $('removeItemModal').classList.add('hidden');
+  _removeItemPendente = null;
+}
 
-  const restantes = itens.filter((_, i) => i !== idx);
+async function confirmarRemoverItem(){
+  const alvo = _removeItemPendente;
+  if(!alvo) return;
+
+  const pos = STATE.orders.findIndex(o => o.id === alvo.id);
+  if(pos === -1){ fecharModalRemoverItem(); return; }
+
+  const atual = normalizeOrder(STATE.orders[pos]);
+  const itens = Array.isArray(atual.items) ? atual.items : [];
+  const item  = itens[alvo.idx];
+  // Relê antes de gravar: entre abrir o modal e confirmar, um recarregamento
+  // pode ter mudado o pedido.
+  if(!item || itens.length <= 1){
+    showToast('O pedido mudou. Feche e tente de novo.', 'error');
+    fecharModalRemoverItem();
+    return;
+  }
+
+  const nome  = `${item.produto || '—'} · ${item.cor || '—'}`;
+  const pares = formatInt(getItemUnits(item));
+  const restantes = itens.filter((_, i) => i !== alvo.idx);
   // Os totais são recalculados, senão o card seguiria mostrando os pares do
   // produto removido.
   const totals = {
@@ -2412,13 +2485,21 @@ Os outros ${itens.length - 1} produto(s) continuam.${avisoExport}`)) return;
   });
   const atualizado = appendOrderHistory({ ...atual, items: restantes, totals }, evento);
 
+  const btn = $('btnConfirmRemoveItem');
+  const prev = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Removendo...';
   try{
     await workerUpdateOrder(atualizado);
+    fecharModalRemoverItem();
     showToast(`"${nome}" removido. ${restantes.length} produto(s) no pedido.`, 'success');
     await loadAdmin();
   }catch(err){
     console.error(err);
     showToast('Não foi possível remover o produto.', 'error');
+  }finally{
+    btn.disabled = false;
+    btn.innerHTML = prev;
   }
 }
 
