@@ -2253,30 +2253,10 @@ function mesAnoFromPrevFat(item){
   return { key:`${aaaa}-${mm}`, label:`${MESES_PT[idx]}/${aaaa}` };
 }
 function buildFilters(){
-  const uniq = (arr)=>Array.from(new Set(arr.filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b), 'pt-BR', { sensitivity:'base' }));
-  const fill = (id, values, label)=>{
-    $(id).innerHTML = `<option value="">${label}</option>` + values.map(v=>`<option value="${safeHtml(v)}">${safeHtml(v)}</option>`).join('');
-  };
-  fill('filterCategoria', uniq(STATE.raw.map(x=>CATEGORY_LABELS[x.categoria] || x.categoria)), 'Todas as categorias');
-  fill('filterSegmento', uniq(STATE.raw.map(x=>x.segmento)), 'Todos os segmentos');
-  fill('filterGenero', uniq(STATE.raw.map(x=>x.genero)), 'Todos os gêneros');
-
-  // Só os meses que realmente têm produto na vitrine: o esgotado não conta,
-  // e mês já passado nunca entra — a lista vinha com meses vazios e antigos.
-  const saldo = saldoPorGrupo();
-  const hoje = new Date();
-  const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
-  const mesesMap = new Map();
-  STATE.raw.forEach(x=>{
-    if((saldo.get(grupoProdutoCor(x)) || 0) <= 0) return;
-    const m = mesAnoFromPrevFat(x);
-    if(!m || m.key < mesAtual) return;
-    if(!mesesMap.has(m.key)) mesesMap.set(m.key, m.label);
-  });
-  const mesesOrdenados = [...mesesMap.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
-  $('filterPrevFat').innerHTML = `<option value="">Todos os meses</option>` +
-    mesesOrdenados.map(([key,label])=>`<option value="${safeHtml(key)}">${safeHtml(label)}</option>`).join('');
-
+  // As listas de categoria, segmento, gênero e mês são montadas por
+  // atualizarOpcoesFiltros(), que roda a cada filtragem e leva em conta o que
+  // os OUTROS filtros deixaram. Aqui ficam só os selects do checkout, que são
+  // listas fixas e não dependem da vitrine.
   $('checkoutPreposto').innerHTML += PREPOSTOS.map(v=>`<option value="${safeHtml(v)}">${safeHtml(v)}</option>`).join('');
   $('checkoutPrazo').innerHTML += PRAZOS.map(v=>`<option value="${safeHtml(v)}">${safeHtml(v)}</option>`).join('');
   $('checkoutCampanha').innerHTML += CAMPANHAS.map(v=>`<option value="${safeHtml(v)}">${safeHtml(v)}</option>`).join('');
@@ -2331,6 +2311,78 @@ function saldoPorGrupo(){
   return mapa;
 }
 
+// Opções dos filtros calculadas a partir do que SOBRA depois dos OUTROS
+// filtros. Antes cada select era montado uma vez, com a base inteira: marcar
+// "Masculino" não tirava da lista as categorias que só existem em feminino, e
+// escolher uma delas deixava a vitrine vazia — parecia que o filtro não
+// obedecia.
+//
+// O próprio campo fica de fora do seu cálculo (facetas): senão, ao escolher
+// uma categoria, a lista de categorias passaria a ter só ela.
+function itensParaOpcoes(campoIgnorado){
+  const saldo = saldoPorGrupo();
+  const q = normalizeText(STATE.search);
+  return STATE.raw.filter(item => {
+    if((saldo.get(grupoProdutoCor(item)) || 0) <= 0) return false;
+    const rc = getSellerRateioCap(item);
+    if(rc.limited && rc.cap <= 0) return false;
+    if(q && !textoBusca(item).includes(q)) return false;
+    const categoryLabel = CATEGORY_LABELS[item.categoria] || item.categoria;
+    if(campoIgnorado !== 'categoria' && STATE.filters.categoria && categoryLabel !== STATE.filters.categoria) return false;
+    if(campoIgnorado !== 'segmento' && STATE.filters.segmento && item.segmento !== STATE.filters.segmento) return false;
+    if(campoIgnorado !== 'genero'    && STATE.filters.genero    && item.genero    !== STATE.filters.genero) return false;
+    if(campoIgnorado !== 'prevFat'   && STATE.filters.prevFat   && mesAnoFromPrevFat(item)?.key !== STATE.filters.prevFat) return false;
+    return true;
+  });
+}
+
+function atualizarOpcoesFiltros(){
+  const ordena = (a, b) => String(a).localeCompare(String(b), 'pt-BR', { sensitivity:'base' });
+
+  const encher = (id, valores, rotulo, selecionado) => {
+    const el = $(id);
+    if(!el) return;
+    const lista = [...new Set(valores.filter(Boolean))].sort(ordena);
+    // Mantém o valor escolhido na lista mesmo que ele não sobre em nenhum
+    // item: some-lo do select faria o filtro se desfazer sozinho.
+    if(selecionado && !lista.includes(selecionado)) lista.push(selecionado);
+    el.innerHTML = `<option value="">${rotulo}</option>` +
+      lista.map(v => `<option value="${safeHtml(v)}"${v === selecionado ? ' selected' : ''}>${safeHtml(v)}</option>`).join('');
+    el.value = selecionado || '';
+  };
+
+  encher('filterCategoria',
+    itensParaOpcoes('categoria').map(x => CATEGORY_LABELS[x.categoria] || x.categoria),
+    'Todas as categorias', STATE.filters.categoria);
+
+  encher('filterSegmento',
+    itensParaOpcoes('segmento').map(x => x.segmento),
+    'Todos os segmentos', STATE.filters.segmento);
+
+  encher('filterGenero',
+    itensParaOpcoes('genero').map(x => x.genero),
+    'Todos os gêneros', STATE.filters.genero);
+
+  // Meses: só os que ainda têm produto e nunca os que já passaram.
+  const hoje = new Date();
+  const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
+  const meses = new Map();
+  for(const x of itensParaOpcoes('prevFat')){
+    const m = mesAnoFromPrevFat(x);
+    if(!m || m.key < mesAtual) continue;
+    if(!meses.has(m.key)) meses.set(m.key, m.label);
+  }
+  const sel = $('filterPrevFat');
+  if(sel){
+    const atual = STATE.filters.prevFat;
+    const ordenados = [...meses.entries()].sort((a,b) => a[0].localeCompare(b[0]));
+    if(atual && !meses.has(atual)) ordenados.push([atual, atual]);
+    sel.innerHTML = `<option value="">Todos os meses</option>` +
+      ordenados.map(([k,l]) => `<option value="${safeHtml(k)}"${k === atual ? ' selected' : ''}>${safeHtml(l)}</option>`).join('');
+    sel.value = atual || '';
+  }
+}
+
 function applyFilters(){
   const q = normalizeText(STATE.search);
 
@@ -2360,6 +2412,7 @@ function applyFilters(){
     const hitMes = !STATE.filters.prevFat || (mesAnoFromPrevFat(item)?.key === STATE.filters.prevFat);
     return hitQ && hitCat && hitSeg && hitGen && hitMes;
   }));
+  atualizarOpcoesFiltros();   // as listas acompanham o que sobrou
   renderCatalog();
   renderKpis();
 }

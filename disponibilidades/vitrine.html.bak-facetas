@@ -2785,7 +2785,7 @@ function toggleCampanha(cod){
   STATE.campanhaSelecionada.clear();
   renderCampanhas();
   salvarFiltros();
-  applyFilters();  renderDrawerOpcoes();
+  applyFilters();
 }
 
 // ── DRAWER DE FILTROS ────────────────────────────────────────────────────────
@@ -2796,34 +2796,16 @@ function abrirDrawerFiltros(){
 function fecharDrawerFiltros(){ $('drawerFiltrosBg').classList.add('hidden'); }
 
 // Monta as opções de Gênero e Categoria dentro do drawer (com contagem)
-// Base para CONTAR as opções de um filtro: aplica visão, campanha, busca e
-// todos os outros filtros — menos o próprio campo. Antes cada lista contava
-// sobre a visão inteira, então marcar "Masculino" não tirava da lista as
-// categorias que só existem em feminino, e escolher uma delas esvaziava a
-// vitrine. O campo fica de fora do próprio cálculo: senão, ao marcar uma
-// categoria, a lista de categorias passaria a ter só ela.
-function baseParaOpcoes(campo){
-  const q = String(STATE.search || '').toLowerCase().trim();
-  const querMeta = STATE.filtroVisao === 'meta';
-  return STATE.itens.filter(item => {
-    if(!!item._meta !== querMeta) return false;
-    if(STATE.filtroCampanha && !temCampanha(item, STATE.filtroCampanha)) return false;
-    if(q){
-      const hay = `${item.descricao} ${item.artigo} ${item.cor} ${item.linha} ${item.empresa} ${item.codigoTabela||''}`.toLowerCase();
-      if(!hay.includes(q)) return false;
-    }
-    if(campo !== 'genero'    && STATE.filtroGenero.size    && !STATE.filtroGenero.has(String(item.genero||'').trim().toUpperCase())) return false;
-    if(campo !== 'categoria' && STATE.filtroCategoria.size && !STATE.filtroCategoria.has(categoriaKey(categoriaEfetiva(item)))) return false;
-    if(campo !== 'subcat'    && STATE.filtroSubcat.size    && !STATE.filtroSubcat.has(subcategoriaDe(item))) return false;
-    if(campo !== 'fabrica'   && STATE.filtroFabrica.size   && !STATE.filtroFabrica.has(String(item.empresa||'').trim().toUpperCase())) return false;
-    return true;
-  });
-}
-
 function renderDrawerOpcoes(){
+  // Quais itens contam pro filtro: respeita a VISÃO atual (disponivel vs meta)
+  // Isso evita mostrar "2S26" como opção quando estamos vendo "Disponíveis" e vice-versa
+  const itensDaVisao = STATE.itens.filter(i =>
+    STATE.filtroVisao === 'meta' ? !!i._meta : !i._meta
+  );
+
   // Gênero — valores distintos dos produtos
   const generos = {};
-  for(const it of baseParaOpcoes('genero')){
+  for(const it of itensDaVisao){
     const g = String(it.genero||'').trim().toUpperCase();
     if(!g) continue;
     generos[g] = (generos[g]||0) + 1;
@@ -2839,7 +2821,7 @@ function renderDrawerOpcoes(){
 
   // Categoria — valores REAIS da coluna (sem agrupar)
   const catCount = {};
-  for(const it of baseParaOpcoes('categoria')){
+  for(const it of itensDaVisao){
     const ck = categoriaKey(categoriaEfetiva(it));
     if(ck) catCount[ck] = (catCount[ck]||0) + 1;
   }
@@ -2855,9 +2837,9 @@ function renderDrawerOpcoes(){
   // Subcategoria (tipo de produto) — contextual: conta apenas os itens que já
   // passam pelo filtro de categoria. Assim, ao marcar "Acessório", a lista de
   // tipos vira mochila/boné/meia em vez de mostrar tudo que existe na base.
-  // baseParaOpcoes já aplica categoria (e também gênero, fábrica e busca),
-  // que o recorte anterior ignorava.
-  const baseSub = baseParaOpcoes('subcat');
+  const baseSub = itensDaVisao.filter(it =>
+    !STATE.filtroCategoria.size || STATE.filtroCategoria.has(categoriaKey(categoriaEfetiva(it)))
+  );
   const subCount = {};
   for(const it of baseSub){
     const s = subcategoriaDe(it);
@@ -2869,7 +2851,7 @@ function renderDrawerOpcoes(){
   const secSub = $('filtroSubcatSection');
   const boxS = $('filtroSubcatBox');
   // Com menos de 2 tipos não há o que escolher — esconde a seção inteira
-  if(subKeys.length < 2 && !STATE.filtroSubcat.size){
+  if(subKeys.length < 2){
     secSub.classList.add('hidden');
     boxS.innerHTML = '';
     if(STATE.filtroSubcat.size){ STATE.filtroSubcat.clear(); }
@@ -2886,7 +2868,7 @@ function renderDrawerOpcoes(){
   // Fábrica — derivada do campo `empresa`, então acompanha qualquer grafia que
   // venha da planilha, sem lista fixa no código.
   const fabCount = {};
-  for(const it of baseParaOpcoes('fabrica')){
+  for(const it of itensDaVisao){
     const f = String(it.empresa || '').trim().toUpperCase();
     if(f) fabCount[f] = (fabCount[f] || 0) + 1;
   }
@@ -2894,7 +2876,7 @@ function renderDrawerOpcoes(){
   const secFab = $('filtroFabricaSection');
   const boxF = $('filtroFabricaBox');
   // Com uma fábrica só não há escolha a fazer — esconde a seção
-  if(fabKeys.length < 2 && !STATE.filtroFabrica.size){
+  if(fabKeys.length < 2){
     secFab.classList.add('hidden');
     boxF.innerHTML = '';
     if(STATE.filtroFabrica.size) STATE.filtroFabrica.clear();
@@ -2915,7 +2897,7 @@ function renderDrawerOpcoes(){
 
 function toggleGenero(g, on){
   if(on) STATE.filtroGenero.add(g); else STATE.filtroGenero.delete(g);
-  salvarFiltros(); applyFilters(); atualizarBadgeFiltros(); renderChipsAtivos();  renderDrawerOpcoes();
+  salvarFiltros(); applyFilters(); atualizarBadgeFiltros(); renderChipsAtivos();
 }
 function toggleCategoria(c, on){
   if(on) STATE.filtroCategoria.add(c); else STATE.filtroCategoria.delete(c);
@@ -2927,12 +2909,12 @@ function toggleCategoria(c, on){
 
 function toggleFabrica(f, on){
   if(on) STATE.filtroFabrica.add(f); else STATE.filtroFabrica.delete(f);
-  salvarFiltros(); applyFilters(); atualizarBadgeFiltros(); renderChipsAtivos();  renderDrawerOpcoes();
+  salvarFiltros(); applyFilters(); atualizarBadgeFiltros(); renderChipsAtivos();
 }
 
 function toggleSubcat(s, on){
   if(on) STATE.filtroSubcat.add(s); else STATE.filtroSubcat.delete(s);
-  salvarFiltros(); applyFilters(); atualizarBadgeFiltros(); renderChipsAtivos();  renderDrawerOpcoes();
+  salvarFiltros(); applyFilters(); atualizarBadgeFiltros(); renderChipsAtivos();
 }
 function setOrdenacao(v){
   STATE.ordenacao = v;
