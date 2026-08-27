@@ -31,8 +31,9 @@
   .cms-logo{width:42px;height:42px;border-radius:13px;flex:none;display:grid;place-items:center;
     background:linear-gradient(135deg,#5B69E8,#2836D4);color:#fff;font-family:"Space Grotesk",sans-serif;
     font-weight:700;font-size:14px;letter-spacing:.02em;box-shadow:0 4px 12px rgba(40,54,212,.25)}
-  .brand-txt{display:flex;flex-direction:column;justify-content:center;line-height:1.2;min-width:0}
+  .brand-txt{display:flex;flex-direction:column;line-height:1.2;min-width:0}
   .brand-name{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:15px;color:var(--ink);letter-spacing:-.01em}
+  .brand-sub{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);font-weight:600}
   .topbar .spacer{flex:1}
   .btn{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:12.5px;cursor:pointer;
     border:1px solid var(--line);background:var(--card);color:var(--navy);border-radius:8px;padding:7px 12px;
@@ -146,7 +147,8 @@
     <div class="brand">
       <span class="cms-logo">CMS</span>
       <div class="brand-txt">
-        <span class="brand-name">Repasses</span>
+        <span class="brand-name">Dashboard de Repasses</span>
+        <span class="brand-sub">Olympikus</span>
       </div>
     </div>
     <span class="spacer"></span>
@@ -154,8 +156,7 @@
       <i class="fa-solid fa-arrow-left"></i> Voltar ao Portal
     </a>
     <div class="periodo-bar">
-      <button class="periodo-btn active" onclick="setPeriod('hoje',this)">Hoje</button>
-      <button class="periodo-btn" onclick="setPeriod('ontem',this)">Ontem</button>
+      <button class="periodo-btn active" onclick="setPeriod('24h',this)">24h</button>
       <button class="periodo-btn" onclick="setPeriod('7d',this)">7 dias</button>
       <button class="periodo-btn" onclick="setPeriod('15d',this)">15 dias</button>
       <button class="periodo-btn" onclick="setPeriod('30d',this)">30 dias</button>
@@ -167,7 +168,7 @@
   </div>
 
   <div class="hero">
-    <h1>Resumo operacional</h1>
+    <h1>Resumo de repasses</h1>
     <span class="updated" id="headerSub">Carregando...</span>
   </div>
 
@@ -261,7 +262,7 @@ const WORKER_URL = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
 const HOJE = new Date();
 const TOP_N = 8;
 
-let STATE = { orders:[], dispoRows:[], period:'hoje' };
+let STATE = { orders:[], dispoRows:[], period:'24h' };
 let produtosExpandido = false, prazoExpandido = false;
 let ultimoProdutosRanking = [], ultimoPrazoLista = [];
 
@@ -319,27 +320,19 @@ function iniciais(nome){
 }
 
 // ── PERÍODO ───────────────────────────────────────────────────────────────────
-const UM_DIA = 24*60*60*1000;
-function inicioDoDia(ts){ const d=new Date(ts); d.setHours(0,0,0,0); return d.getTime(); }
-
-// "Hoje" e "Ontem" são dias do CALENDÁRIO, não janelas de 24h: quem abre o
-// painel às 9h quer o movimento do dia, e não o das últimas 24 horas — que
-// misturaria a tarde de ontem. Os demais seguem sendo janelas móveis.
-function janelaPeriodo(p){
-  const agora = Date.now();
-  const hoje0 = inicioDoDia(agora);
-  if(p === 'hoje')  return { de: hoje0,          ate: Infinity };
-  if(p === 'ontem') return { de: hoje0 - UM_DIA, ate: hoje0 };
-  const dias = { '7d':7, '15d':15, '30d':30 }[p];
-  if(!dias) return { de: hoje0, ate: Infinity };   // valor desconhecido: hoje
-  return { de: agora - dias*UM_DIA, ate: Infinity };
+function periodMs(p){
+  return{
+    '24h': 24*60*60*1000,
+    '7d':  7*24*60*60*1000,
+    '15d': 15*24*60*60*1000,
+    '30d': 30*24*60*60*1000,
+  }[p]||24*60*60*1000;
 }
-
 function ordersInPeriod(){
-  const j = janelaPeriodo(STATE.period);
+  const cutoff=Date.now()-periodMs(STATE.period);
   return STATE.orders.filter(o=>{
     const t=new Date(o.createdAt||o.updatedAt||0).getTime();
-    return t >= j.de && t < j.ate;
+    return t>=cutoff;
   });
 }
 
