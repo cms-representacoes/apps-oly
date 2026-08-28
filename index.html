@@ -1034,7 +1034,15 @@
     if(!chip || !dados || !Array.isArray(dados.vendedores) || !session) return;
 
     var alvo = null;
-    for(var i = 0; i < dados.vendedores.length; i++){
+
+    // O usuário CMS representa a empresa toda, e não um vendedor: o painel
+    // publica esse total no campo `empresa`. O vendedor que antes se chamava
+    // CMS virou "Núcleo" e continua na lista comum.
+    if(normalizarNome(session.nome) === 'CMS' && dados.empresa){
+      alvo = dados.empresa;
+    }
+
+    for(var i = 0; !alvo && i < dados.vendedores.length; i++){
       if(normalizarNome(dados.vendedores[i].nome) === normalizarNome(session.nome)){
         alvo = dados.vendedores[i];
         break;
