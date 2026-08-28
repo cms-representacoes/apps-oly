@@ -222,26 +222,11 @@ export default {
       return { owner: m[1].trim(), repo: m[2].trim(), path: m[3].trim() };
     }
 
-    // Converte texto -> base64 sem criar copias gigantes da string.
-    // O caminho antigo, btoa(unescape(encodeURIComponent(s))), fazia TRES
-    // copias do conteudo inteiro antes de codificar. Numa base de 3 MB isso
-    // estourava o limite de memoria do worker: a Cloudflare matava a
-    // requisicao com um erro DELA, que nao carrega os cabecalhos de CORS -
-    // e o navegador reportava "Failed to fetch", escondendo a causa real.
-    function textoParaBase64(texto) {
-      const bytes = new TextEncoder().encode(texto);
-      let bin = "";
-      for (let i = 0; i < bytes.length; i += 0x8000) {
-        bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
-      }
-      return btoa(bin);
-    }
-
     async function gitCreateBlob(owner, repo, contentStr) {
       const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/blobs`, {
         method: "POST",
         headers: { ...githubHeaders, "Content-Type": "application/json" },
-        body: JSON.stringify({ content: textoParaBase64(contentStr), encoding: "base64" })
+        body: JSON.stringify({ content: btoa(unescape(encodeURIComponent(contentStr))), encoding: "base64" })
       });
       if (!res.ok) throw new Error(`Git blob falhou (${res.status}): ${await res.text()}`);
       const data = await res.json();
@@ -303,7 +288,7 @@ export default {
       return gitCommitBlob(owner, repo, branch, path, blobSha, message);
     }
 
-    async function saveFile(url, content, sha, message, compacto = false) {
+    async function saveFile(url, content, sha, message) {
       const { owner, repo, path } = parseRepoUrl(url);
       const branch = env.GITHUB_BRANCH || "main";
 
@@ -325,10 +310,7 @@ export default {
         } catch (_) { /* não bloqueia a escrita principal se backup falhar */ }
       }
 
-      // compacto = sem indentacao. Só a detalhada usa: são 3 MB que a
-      // indentacao de 2 espacos transformava em 9 MB antes do base64.
-      // Os demais arquivos continuam legiveis no diff do GitHub.
-      const jsonStr = compacto ? JSON.stringify(content) : JSON.stringify(content, null, 2);
+      const jsonStr = JSON.stringify(content, null, 2);
       await gitCommitFile(owner, repo, branch, path, jsonStr, message);
       return { success: true };
     }
@@ -1036,7 +1018,7 @@ export default {
           const { sha } = await getFile(GITHUB_DETALHADA);
           const payload = { ...base, publicadoEm: new Date().toISOString(), por: String(body.por || "") };
           await saveFile(GITHUB_DETALHADA, payload, sha,
-            `detalhada: base por ${payload.por || "?"} (${base.l.length} linhas)`, true);
+            `detalhada: base por ${payload.por || "?"} (${base.l.length} linhas)`);
 
           // O resumo vai depois da base: se a base falhar, ninguém fica achando
           // que publicou. Resumo velho incomoda menos que base velha.
