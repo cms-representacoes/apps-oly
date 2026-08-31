@@ -128,6 +128,14 @@ export default {
     // pergunta "mudou?" gastando alguns bytes, em vez de baixar 3 MB a cada abertura.
     const GITHUB_DETALHADA      = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/detalhada.json`;
     const GITHUB_DETALHADA_INFO = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/detalhada-info.json`;
+    // Grade da carteira CORRE — planilha importada pela tela de admin da
+    // Detalhada. Não é diária: entra quando a CMS resolve atualizar. Guarda a
+    // planilha inteira (todas as colunas), porque o envio à fábrica vai
+    // precisar de endereço, campanha e condição de pagamento — hoje a tela
+    // do vendedor usa só a grade. Mesmo par de arquivos da detalhada: o
+    // resumo à parte evita baixar 1 MB só para perguntar "mudou?".
+    const GITHUB_GRADE_CORRE      = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/grade-corre.json`;
+    const GITHUB_GRADE_CORRE_INFO = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/grade-corre-info.json`;
     // Repositório onde ficam as imagens de produto (pode ser diferente do repo de dados)
     const GITHUB_IMG_REPO = env.GITHUB_IMG_REPO || "apps-oly-v2";
 
@@ -1050,6 +1058,83 @@ export default {
           try {
             const { sha: shaInfo } = await getFile(GITHUB_DETALHADA_INFO);
             await saveFile(GITHUB_DETALHADA_INFO, info, shaInfo, "detalhada: resumo");
+          } catch (_) { /* o resumo é conveniência, não bloqueia a publicação */ }
+
+          return new Response(JSON.stringify({ success: true, ...info }),
+            { status: 200, headers: corsHeaders });
+        }
+
+        // ── GRADE DA CARTEIRA CORRE ───────────────────────────────────────
+        // getGradeCorreInfo — só o resumo. O app pergunta a cada abertura e
+        // só baixa a planilha quando `gerado` mudou.
+        if (body.action === "getGradeCorreInfo") {
+          try {
+            const { content } = await getFile(GITHUB_GRADE_CORRE_INFO);
+            return new Response(JSON.stringify(content || { gerado: null }),
+              { status: 200, headers: corsHeaders });
+          } catch (_) {
+            // Sem resumo o app apenas baixa; não é motivo de erro.
+            return new Response(JSON.stringify({ gerado: null }),
+              { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // getGradeCorre — a planilha inteira. Pública, como as demais leituras.
+        if (body.action === "getGradeCorre") {
+          try {
+            const { content } = await getFile(GITHUB_GRADE_CORRE);
+            return new Response(JSON.stringify(content || null),
+              { status: 200, headers: corsHeaders });
+          } catch (_) {
+            // Ainda não importaram nenhuma: o app trata `null` como "sem grade".
+            return new Response(JSON.stringify(null),
+              { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // saveGradeCorre — publica a planilha importada.
+        // Fora de WRITE_ACTIONS pelo mesmo motivo de saveDetalhada: quem
+        // publica é uma tela de navegador, que não consegue guardar o
+        // ADMIN_TOKEN sem expô-lo. A proteção aqui é a validação do payload —
+        // recusar lixo é o que importa, porque uma planilha quebrada apagaria
+        // a grade de todo mundo e o erro só apareceria depois.
+        if (body.action === "saveGradeCorre" && body.data && typeof body.data === "object") {
+          const g = body.data;
+          if (!Array.isArray(g.cab) || !g.cab.length || !Array.isArray(g.l) || !g.l.length) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: "Grade inválida: esperado { cab:[...], l:[[...]] } com pelo menos uma linha."
+            }), { status: 400, headers: corsHeaders });
+          }
+          // Toda linha tem de ter a largura do cabeçalho. Sem isto, uma
+          // planilha com coluna a mais ou a menos entraria e a leitura por
+          // índice traria o campo errado, silenciosamente.
+          const largura = g.cab.length;
+          const torta = g.l.findIndex(l => !Array.isArray(l) || l.length !== largura);
+          if (torta !== -1) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: `Grade inválida: a linha ${torta + 1} tem largura diferente do cabeçalho (${largura}).`
+            }), { status: 400, headers: corsHeaders });
+          }
+
+          const { sha } = await getFile(GITHUB_GRADE_CORRE);
+          const payload = { ...g, publicadoEm: new Date().toISOString(), por: String(body.por || "") };
+          await saveFile(GITHUB_GRADE_CORRE, payload, sha,
+            `grade corre: ${g.l.length} linhas por ${payload.por || "?"}`, true);
+
+          // O resumo vai depois: se a planilha falhar, ninguém fica achando
+          // que publicou.
+          const info = {
+            gerado: g.gerado || payload.publicadoEm,
+            publicadoEm: payload.publicadoEm,
+            origem: g.origem || "",
+            linhas: g.l.length,
+            por: payload.por
+          };
+          try {
+            const { sha: shaInfo } = await getFile(GITHUB_GRADE_CORRE_INFO);
+            await saveFile(GITHUB_GRADE_CORRE_INFO, info, shaInfo, "grade corre: resumo");
           } catch (_) { /* o resumo é conveniência, não bloqueia a publicação */ }
 
           return new Response(JSON.stringify({ success: true, ...info }),
