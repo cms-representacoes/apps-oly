@@ -138,6 +138,13 @@ export default {
     const GITHUB_GRADE_CORRE_INFO = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/grade-corre-info.json`;
     // Repositório onde ficam as imagens de produto (pode ser diferente do repo de dados)
     const GITHUB_IMG_REPO = env.GITHUB_IMG_REPO || "apps-oly-v2";
+    // Painel de TV — os dois arquivos vivem no repo do painel (apps-oly-v2),
+    // porque a TV os lê pelo GitHub Pages, com caminho relativo.
+    //   tv_data.json          o que a TV mostra (alguns KB)
+    //   tv_gci_registry.json  as encomendas já conhecidas, para saber quais são novas
+    const GITHUB_TV_REPO = env.GITHUB_TV_REPO || GITHUB_IMG_REPO;
+    const GITHUB_TV_DATA = `https://api.github.com/repos/${env.GITHUB_OWNER}/${GITHUB_TV_REPO}/contents/data/tv_data.json`;
+    const GITHUB_TV_REG  = `https://api.github.com/repos/${env.GITHUB_OWNER}/${GITHUB_TV_REPO}/contents/data/tv_gci_registry.json`;
 
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders });
@@ -1139,6 +1146,74 @@ export default {
 
           return new Response(JSON.stringify({ success: true, ...info }),
             { status: 200, headers: corsHeaders });
+        }
+
+        // ── PAINEL DE TV ──────────────────────────────────────────────────
+        // getTvRegistry — o registro de encomendas conhecidas. Quem publica
+        // precisa dele para saber o que é novidade desde a última vez.
+        if (body.action === "getTvRegistry") {
+          try {
+            const { content } = await getFile(GITHUB_TV_REG);
+            const reg = (content && Array.isArray(content.seen))
+              ? { seen: content.seen, log: Array.isArray(content.log) ? content.log : [] }
+              : { seen: [], log: [] };
+            return new Response(JSON.stringify(reg), { status: 200, headers: corsHeaders });
+          } catch (_) {
+            // Sem registro ainda: quem publica trata como primeiro dia.
+            return new Response(JSON.stringify({ seen: [], log: [] }),
+              { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // saveTv — grava os dois arquivos numa chamada só.
+        // Fora de WRITE_ACTIONS pelo mesmo motivo do saveDetalhada: quem
+        // publica é o script diário, que não guarda o ADMIN_TOKEN. A defesa
+        // aqui é a validação do payload.
+        if (body.action === "saveTv" && body.data && typeof body.data === "object") {
+          const d = body.data;
+          if (!d.generatedAt || !d.carteira || !d.mes) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: "tv_data inválido: esperado { generatedAt, carteira, mes, ... }."
+            }), { status: 400, headers: corsHeaders });
+          }
+          const reg = body.registro;
+          if (reg !== undefined && !(reg && Array.isArray(reg.seen))) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: "registro inválido: esperado { seen: [...], log: [...] }."
+            }), { status: 400, headers: corsHeaders });
+          }
+
+          // A ORDEM importa. Os dados vão primeiro; o registro depois.
+          //
+          // Se o registro subisse antes e os dados falhassem, as encomendas
+          // já ficariam marcadas como conhecidas e a novidade nunca seria
+          // mostrada — perdida em silêncio. Na ordem inversa, uma falha faz
+          // a mesma novidade aparecer de novo amanhã. Repetir incomoda;
+          // perder, não dá para recuperar.
+          const { sha } = await getFile(GITHUB_TV_DATA);
+          const payload = { ...d, publicadoEm: new Date().toISOString(), por: String(body.por || "") };
+          await saveFile(GITHUB_TV_DATA, payload, sha,
+            `tv: dados por ${payload.por || "?"}`);
+
+          let registroOk = true;
+          if (reg) {
+            try {
+              const { sha: shaReg } = await getFile(GITHUB_TV_REG);
+              await saveFile(GITHUB_TV_REG, reg, shaReg,
+                `tv: registro (${reg.seen.length} encomendas) por ${payload.por || "?"}`, true);
+            } catch (e) {
+              registroOk = false;
+            }
+          }
+
+          return new Response(JSON.stringify({
+            success: true,
+            publicadoEm: payload.publicadoEm,
+            registro: registroOk ? "gravado" : "falhou — a novidade repete amanhã",
+            conhecidas: reg ? reg.seen.length : null,
+          }), { status: 200, headers: corsHeaders });
         }
 
         if (body.action === "uploadImagem" && body.nome && body.base64) {
