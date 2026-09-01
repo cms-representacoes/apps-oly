@@ -464,6 +464,12 @@
     /* precisa vir DEPOIS da regra base: media query não soma especificidade,
        então quem estivesse por último venceria */
     @media (max-width: 767px){ .fab-cart{display:flex} }
+    /* A sacola divide o rodapé com a barra de seleção e ficava por baixo dela.
+       Enquanto houver produto marcado, sai de cena. Fora de qualquer media
+       query: a sacola aparece até 767px, e a regra precisa valer em toda essa
+       faixa. Dois seletores de classe vencem o .fab-cart acima sem depender
+       da ordem. */
+    body.tem-selecao .fab-cart{ display:none; }
 
     /* ── Seleção de produtos ─────────────────────────────────────────────
        Marcador no canto da foto; a barra de ações só aparece com algo
@@ -527,7 +533,12 @@
       padding:1px 7px; font-size:11px; font-weight:900;
     }
     @media(max-width:640px){
-      .fabs-sel button{ padding:10px 14px; font-size:12px; }
+      /* Só o ícone do tipo de arquivo: com a contagem ao lado, "PDF" e
+         "XLSX" por extenso só ocupavam largura. O "Todos" mantém o texto,
+         porque ele alterna para "Nenhum". */
+      .fabs-sel .fab-lbl{ display:none; }
+      .fabs-sel button{ padding:10px 12px; font-size:12px; gap:6px; }
+      .fabs-sel .fab-sel-pdf, .fabs-sel .fab-sel-xls{ padding:10px 13px; }
       /* o botão de voltar ao topo sobe para não brigar com a barra */
       body.tem-selecao .fab-top{ bottom:calc(78px + env(safe-area-inset-bottom,0px)); }
     }
@@ -776,10 +787,10 @@
       <i class="fa-regular fa-heart"></i> <span id="lblSelTodos">Todos</span>
     </button>
     <button type="button" class="fab-sel-pdf focus-ring" onclick="gerarPdfSelecionados()" title="Gerar PDF dos selecionados">
-      <i class="fa-solid fa-file-pdf"></i> PDF <span class="cont" id="selCountPdf">0</span>
+      <i class="fa-solid fa-file-pdf"></i><span class="fab-lbl">PDF</span><span class="cont" id="selCountPdf">0</span>
     </button>
     <button type="button" class="fab-sel-xls focus-ring" onclick="gerarXlsxSelecionados()" title="Gerar XLSX dos selecionados">
-      <i class="fa-solid fa-file-excel"></i> XLSX <span class="cont" id="selCountXls">0</span>
+      <i class="fa-solid fa-file-excel"></i><span class="fab-lbl">XLSX</span><span class="cont" id="selCountXls">0</span>
     </button>
     <button type="button" class="fab-sel-limpar focus-ring" onclick="limparSelecao()" title="Limpar seleção" aria-label="Limpar seleção">
       <i class="fa-solid fa-xmark"></i>
