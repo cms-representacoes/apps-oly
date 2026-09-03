@@ -314,6 +314,13 @@ button{font:inherit}
   box-shadow:0 4px 12px rgba(18,138,79,.35), inset 0 1px 0 rgba(255,255,255,.26)}
 .sel-btn.pdf{background:linear-gradient(145deg,#F2557A 0%,#D6294B 55%,#96122E 100%);
   box-shadow:0 4px 12px rgba(214,41,75,.35), inset 0 1px 0 rgba(255,255,255,.26)}
+/* Contornado, nao preenchido: quem manda na barra sao o PDF e a planilha. */
+.sel-todos{display:inline-flex;align-items:center;gap:5px;flex:none;cursor:pointer;
+  border:1px solid var(--linha-forte);background:var(--carta);color:var(--tinta);
+  border-radius:999px;padding:7px 11px 7px 9px;font:inherit;font-size:11.5px;font-weight:800}
+.sel-todos:hover{border-color:var(--marca);color:var(--marca)}
+.sel-todos:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+.sel-todos[hidden]{display:none}
 .sel-x{width:28px;height:28px;flex:none;border:0;border-radius:999px;background:none;
   color:var(--tenue);font-size:14px;cursor:pointer}
 .sel-x:hover{background:var(--linha);color:var(--tinta)}
@@ -321,6 +328,19 @@ button{font:inherit}
   body.com-selecao .grade{padding-bottom:88px}
   .sel-barra{left:14px;right:14px;justify-content:center}
   .sel-barra .cont{margin-right:auto}
+}
+/* Com o "Todos" na fila sao quatro controles: escritos, eles nao cabem no
+   celular. O verde e o vermelho ja dizem qual e a planilha e qual e o PDF. */
+@media(max-width:420px){
+  .sel-btn{padding:8px 11px;gap:0}
+  .sel-btn span{display:none}
+  /* Enquanto gera, o contador reaparece: botao mudo por um minuto parece travado. */
+  .sel-btn.ocupado{gap:6px}
+  .sel-btn.ocupado span{display:inline}
+}
+@media(max-width:340px){
+  .sel-todos{padding:7px 9px}
+  .sel-todos span{display:none}
 }
 
 .fab-sacola{position:fixed;right:14px;z-index:55;
@@ -744,6 +764,12 @@ button{font:inherit}
 
 <div class="sel-barra" id="selBarra" hidden>
   <span class="cont"><span id="selN">0</span> marcados</span>
+  <button class="sel-todos" id="btnSelTodos">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="m3 8 2.5 2.5L10 6"/><path d="m3 17 2.5 2.5L10 15"/>
+      <path d="M14 8h7M14 17h7"/></svg>
+    <span>Todos</span></button>
   <button class="sel-btn xls" id="btnSelXlsx" title="Gerar planilha dos marcados">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
          stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1771,11 +1797,14 @@ function fotoDataUrl(o){
 
 function ocupado(btn, texto){
   btn.disabled = true;
+  btn.classList.add('ocupado');
   btn._txt = btn.querySelector('span').textContent;
   btn.querySelector('span').textContent = texto;
 }
+function passo(btn, texto){ btn.querySelector('span').textContent = texto; }
 function liberado(btn){
   btn.disabled = false;
+  btn.classList.remove('ocupado');
   if(btn._txt) btn.querySelector('span').textContent = btn._txt;
 }
 
@@ -1963,13 +1992,17 @@ async function gerarCatalogoPdf(){
       faixaOrigem(o, tx, ty, tw);
     }
 
-    let pag = 0;
+    let pag = 0, feitos = 0;
     for(let i = 0; i < itens.length; i += POR_PAG){
       if(pag) doc.addPage();
       pag++; cabecalho();
       const bloco = itens.slice(i, i + POR_PAG);
       for(let j = 0; j < bloco.length; j++){
         await card(bloco[j], topo + j*(altCard + vaoCard));
+        feitos++;
+        // Com a vitrine inteira marcada isso passa de um minuto. Sem contador,
+        // o vendedor acha que travou e sai da tela no meio.
+        if(itens.length > 12) passo(btn, `${nf(feitos)}/${nf(itens.length)}`);
       }
       rodape(pag);
     }
@@ -2017,6 +2050,7 @@ function gerarCatalogoXlsx(){
 
 $('btnSelPdf').onclick = gerarCatalogoPdf;
 $('btnSelXlsx').onclick = gerarCatalogoXlsx;
+$('btnSelTodos').onclick = marcarTodosVisiveis;
 $('btnSelLimpar').onclick = limparMarcados;
 
 /* ── planilha do estoque ────────────────────────────────────────── */
@@ -2637,6 +2671,19 @@ function alternarMarcado(k){
   }
   pintarSelecao();
 }
+// "Todos" é o que está na tela: a aba de origem, a categoria, a busca e os
+// filtros já disseram o que o vendedor quer. Marcar o catálogo inteiro por
+// baixo do filtro seria uma surpresa na hora de gerar o PDF.
+function marcarTodosVisiveis(){
+  const vis = STATE.filtrados;
+  if(!vis.length) return;
+  const todosJa = vis.every(o => STATE.marcados.has(o.k));
+  for(const o of vis){
+    if(todosJa) STATE.marcados.delete(o.k); else STATE.marcados.add(o.k);
+  }
+  pintarGrade();     // repinta os corações de uma vez
+  pintarSelecao();
+}
 function limparMarcados(){
   STATE.marcados.clear();
   for(const b of $('grade').querySelectorAll('.cf.on')){
@@ -2655,6 +2702,13 @@ function pintarSelecao(){
   const n = marcadosVisiveis().length;
   $('selBarra').hidden = n === 0;
   $('selN').textContent = nf(n);
+  // O botão diz quantos vai pegar, porque "todos" muda conforme o filtro.
+  const vis = STATE.filtrados, btn = $('btnSelTodos');
+  const todosJa = vis.length > 0 && vis.every(o => STATE.marcados.has(o.k));
+  btn.hidden = !vis.length;
+  btn.querySelector('span').textContent = todosJa ? 'Nenhum' : 'Todos';
+  btn.title = `${todosJa ? 'Desmarcar' : 'Marcar'} os ${nf(vis.length)} produtos da tela`;
+  btn.setAttribute('aria-label', btn.title);
   document.body.classList.toggle('com-selecao', n > 0);
   // A sacola sai de cena enquanto há seleção: são dois fluxos diferentes e
   // eles disputariam o mesmo canto.
