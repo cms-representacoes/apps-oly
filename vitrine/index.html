@@ -121,6 +121,10 @@ button{font:inherit}
 @media(min-width:768px) and (max-width:1099px){
   .topo-l1:has(.busca.aberta) .linha2{display:none}
 }
+@media(max-width:767px){
+  .topo-l1:has(.busca.aberta) .btn-filtro,
+  .topo-l1:has(.busca.aberta) #linkPortal{display:none}
+}
 @media(max-width:520px){ .topo-l1:has(.busca.aberta) .selo-cms{display:none} }
 
 .linha2{display:flex;align-items:center;gap:10px;flex:0 1 auto;min-width:0;
@@ -157,6 +161,36 @@ button{font:inherit}
 .cat button:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
 .cat button.on{border-style:solid;border-color:var(--marca);color:var(--marca);font-weight:600;
   background:color-mix(in srgb,var(--marca) 8%,transparent)}
+
+/* Laranja porque não é nem marca nem origem: é desfazer. A textura segue a
+   mesma receita do resto — gradiente, brilho no topo, sombra da própria cor. */
+.limpa-tudo{flex:none;display:inline-flex;align-items:center;gap:6px;border:0;
+  border-radius:999px;padding:5px 11px 5px 9px;cursor:pointer;
+  font-size:11.5px;font-weight:800;color:#fff;white-space:nowrap;
+  background:linear-gradient(145deg,#FDBA74 0%,#F97316 48%,#C2410C 100%);
+  box-shadow:0 4px 12px rgba(249,115,22,.40), inset 0 1px 0 rgba(255,255,255,.30)}
+.limpa-tudo:hover{filter:brightness(1.06)}
+.limpa-tudo:focus-visible{outline:2px solid #C2410C;outline-offset:2px}
+.limpa-tudo[hidden]{display:none}
+.limpa-tudo .n{background:rgba(255,255,255,.26);border-radius:999px;padding:0 6px;
+  font-size:10.5px;font-variant-numeric:tabular-nums}
+
+@media(min-width:768px) and (max-width:1099px){
+  .limpa-tudo{padding:5px 9px}
+  .limpa-tudo > span:not(.n){display:none}
+}
+
+/* No celular ele sai da linha e vira flutuante — no canto oposto à sacola,
+   para os dois nunca disputarem o mesmo lugar. */
+@media(max-width:767px){
+  .limpa-tudo{position:fixed;z-index:56;left:14px;
+    bottom:calc(14px + env(safe-area-inset-bottom,0px));
+    padding:11px 15px 11px 13px;font-size:12.5px;border-radius:32px;
+    box-shadow:0 8px 24px rgba(249,115,22,.45), inset 0 1px 0 rgba(255,255,255,.30)}
+  .limpa-tudo svg{width:16px;height:16px}
+  /* Fixo, ele cobriria o último card; a folga só existe quando ele aparece. */
+  body.com-limpar .grade{padding-bottom:88px}
+}
 
 .contagem{display:flex;align-items:center;justify-content:space-between;gap:10px;
   padding:11px 13px 0;font-size:12px;color:var(--fraco);max-width:1180px;margin:0 auto}
@@ -562,6 +596,14 @@ button{font:inherit}
       <span class="risco" id="riscoCat" hidden></span>
       <span class="cat" id="catFiltros"></span>
     </div>
+      <button class="limpa-tudo" id="btnLimparTudo" hidden
+              aria-label="Limpar todos os filtros">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 5h18l-7 8v6l-4-2v-4z"/><path d="m16.5 4.5 5 5m0-5-5 5"/>
+        </svg>
+        <span>Limpar filtros</span><span class="n" id="btnLimparN"></span>
+      </button>
     <button class="icone btn-filtro" id="btnFiltros" aria-label="Filtros" aria-expanded="false">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
            stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
@@ -1131,6 +1173,7 @@ function aplicar(){
   STATE.filtrados = STATE.produtos.filter(o => passa(o, null));
   pintarFiltros();
   pintarPainel();
+  pintarLimparTudo();
   pintarGrade();
 }
 
@@ -1242,6 +1285,35 @@ ligarCliques($('pnAtivos'));
 function limparFiltros(){
   for(const g of GRUPOS) STATE.sel[g.id].clear();
   aplicar();
+}
+
+// Tudo que restringe a lista, inclusive a busca: quem clica aqui quer voltar
+// a ver a vitrine inteira, não descobrir que ainda sobrou um filtro.
+function contarFiltros(){
+  return (STATE.origem !== 'tudo' ? 1 : 0)
+       + (STATE.categoria ? 1 : 0)
+       + (STATE.busca.trim() ? 1 : 0)
+       + nSelecionados();
+}
+function limparTudo(){
+  STATE.origem = 'tudo';
+  STATE.categoria = '';
+  for(const g of GRUPOS) STATE.sel[g.id].clear();
+  STATE.busca = '';
+  _campo.value = '';
+  _x.hidden = true;
+  clearTimeout(tBusca);
+  fecharBusca();
+  aplicar();
+}
+$('btnLimparTudo').onclick = limparTudo;
+
+function pintarLimparTudo(){
+  const n = contarFiltros();
+  $('btnLimparTudo').hidden = n === 0;
+  $('btnLimparN').textContent = n || '';
+  // Nada de botão permanente: sem filtro ativo, ele não existe.
+  document.body.classList.toggle('com-limpar', n > 0);
 }
 function abrirPainel(){ $('painel').hidden = false; pintarPainel(); }
 function fecharPainel(){ $('painel').hidden = true; pintarPainel(); }
