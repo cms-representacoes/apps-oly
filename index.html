@@ -353,14 +353,26 @@
     }
     body.modal-open{ overflow:hidden; }
     /* FABs flutuantes (Performance + Clientes) */
+    /* A faixa atravessa a tela toda so para poder rolar quando a fila nao
+       couber. Quem recebe o toque sao os botoes; a faixa e transparente ao
+       clique, senao ela taparia o rodape do portal inteiro. */
     .fab-stack{
-      position:fixed;
-      bottom:14px; right:14px;
-      bottom: calc(14px + env(safe-area-inset-bottom,0px));
-      right: calc(14px + env(safe-area-inset-right,0px));
-      display:flex; align-items:center; gap:10px;
-      z-index:100;
+      position:fixed; z-index:100;
+      left:0; right:0;
+      bottom: env(safe-area-inset-bottom,0px);
+      display:flex; align-items:center; justify-content:flex-end; gap:10px;
+      padding:22px calc(14px + env(safe-area-inset-right,0px))
+              14px calc(14px + env(safe-area-inset-left,0px));
+      pointer-events:none;
+      overflow-x:auto; overflow-y:hidden;
+      -webkit-overflow-scrolling:touch;
+      scrollbar-width:none;
     }
+    .fab-stack::-webkit-scrollbar{ display:none }
+    .fab-stack > *{ pointer-events:auto; flex:none }
+    /* Nao coube: a faixa passa a receber o arrasto para rolar, e a fila comeca
+       pela esquerda — com flex-end os primeiros botoes ficariam inalcancaveis. */
+    .fab-stack.rola{ pointer-events:auto; justify-content:flex-start }
     .fab-rfv, .fab-clientes, .fab-perf{
       color:#fff;
       border:none;
@@ -405,7 +417,7 @@
     /* display:inline-flex numa classe empata com o [hidden] do navegador e
        vence pela ordem — sem esta linha o botão apareceria para todo mundo. */
     .fab-vitrine[hidden]{ display:none; }
-    @media(max-width:380px){
+    @media(max-width:640px){
       .fab-stack{ gap:10px; }
       .fab-rfv, .fab-clientes, .fab-perf, .fab-vitrine{
         padding:13px;
@@ -1156,7 +1168,30 @@
 
     var isCms = session.nome === 'CMS';
     Array.prototype.forEach.call(adminEls, function(el){ el.hidden = !isCms; });
+    medirFabs();   // o botao da vitrine entra e sai da fila
   }
+
+  // A fila so vira rolavel quando de fato transborda: em tela larga ela
+  // continua um grupo de botoes comum, sem area de arrasto por cima do rodape.
+  //
+  // A medida e somada na mao porque com justify-content:flex-end o excesso
+  // escapa pela esquerda sem entrar no scrollWidth — ele fica igual ao
+  // clientWidth mesmo com botao nenhum cabendo, e o teste nunca dispararia.
+  var fabStack = document.querySelector('.fab-stack');
+  function medirFabs(){
+    if(!fabStack) return;
+    fabStack.classList.remove('rola');
+    var cs = getComputedStyle(fabStack), n = 0, largura = 0;
+    Array.prototype.forEach.call(fabStack.children, function(el){
+      if(el.hidden) return;
+      n++; largura += el.getBoundingClientRect().width;
+    });
+    largura += (n > 1 ? (n - 1) * (parseFloat(cs.columnGap) || 0) : 0)
+             + (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+    fabStack.classList.toggle('rola', largura > fabStack.clientWidth + 1);
+  }
+  window.addEventListener('resize', medirFabs);
+  window.addEventListener('orientationchange', medirFabs);
 
   document.getElementById('btnTrocarUsuario').addEventListener('click', function(){
     clearSession();
