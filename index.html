@@ -475,6 +475,9 @@
     .cc-chip[hidden]{display:none !important}
     .cc-ok{background:rgba(34,197,94,.15);border-color:rgba(34,197,94,.38);color:#4ade80}
     .cc-no{background:rgba(148,163,184,.12);border-color:rgba(148,163,184,.3);color:#94a3b8}
+    /* Dado que não é de hoje leva a data ao lado e uma borda tracejada: o
+       número continua legível, mas para de se passar por atual. */
+    .cc-chip.cc-velho{border-style:dashed}
   
     /* ── Painéis de gestão no celular ────────────────────────────────────
        Era uma folha colada no rodapé (align-items:flex-end + cantos retos
@@ -1086,8 +1089,14 @@
 
     var pct = Number(alvo.ratio || 0).toFixed(1).replace('.', ',') + '%';
     var eleg = !!alvo.elegivel;
-    chip.className = 'cc-chip ' + (eleg ? 'cc-ok' : 'cc-no');
-    chip.querySelector('.cc-txt').textContent = 'C. Campanha · ' + pct + ' ' + (eleg ? '✓' : '✗');
+    // "atualizado" vem como DD/MM. Se não for hoje, o número na tela é de
+    // outro dia — e sem dizer isso o vendedor decide em cima de dado velho.
+    var hoje = new Date();
+    var hojeDDMM = ('0' + hoje.getDate()).slice(-2) + '/' + ('0' + (hoje.getMonth() + 1)).slice(-2);
+    var doDia = String(dados.atualizado || '').indexOf(hojeDDMM) === 0;
+    chip.className = 'cc-chip ' + (eleg ? 'cc-ok' : 'cc-no') + (doDia ? '' : ' cc-velho');
+    chip.querySelector('.cc-txt').textContent = 'C. Campanha · ' + pct + ' ' + (eleg ? '✓' : '✗') +
+      (doDia ? '' : ' · ' + String(dados.atualizado || '').split(' ')[0]);
     chip.title = 'Carta campanha: ' + (eleg ? 'elegível' : 'não elegível') +
                  ' · ' + pct + ' de participação FTW · meta ' + dados.meta + '%' +
                  (dados.trimestre ? ' · ' + dados.trimestre : '') +
@@ -1095,17 +1104,36 @@
     chip.hidden = false;
   }
 
-  function carregarCartaCampanha(session){
+  var _cartaEm = 0;          // quando a última leitura chegou
+  var _cartaSessao = null;   // de quem era, para o refresh saber a quem pintar
+
+  function carregarCartaCampanha(session, manterNaTela){
     var chip = document.getElementById('cartaChip');
-    if(chip) chip.hidden = true;
+    if(chip && !manterNaTela) chip.hidden = true;
+    _cartaSessao = session;
     if(!session) return;
-    // Falha de rede não pode atrapalhar o portal: sem dado, a pílula
-    // simplesmente não aparece.
-    fetch(CARTA_URL, { cache: 'no-store' })
+    // O CDN do Pages ignora a query string, então isso não é para ele: serve
+    // para proxies e para o cache do próprio WebKit, que nem sempre respeita
+    // o no-store.
+    fetch(CARTA_URL + '?t=' + Date.now(), { cache: 'no-store' })
       .then(function(r){ return r.ok ? r.json() : null; })
-      .then(function(d){ if(d) pintarCartaCampanha(d, session); })
+      .then(function(d){
+        if(!d) return;
+        _cartaEm = Date.now();
+        pintarCartaCampanha(d, session);
+      })
+      // Falha de rede não pode atrapalhar o portal: sem dado, a pílula
+      // simplesmente não aparece.
       .catch(function(){ /* segue sem a pílula */ });
   }
+
+  // O app na tela inicial do celular volta do segundo plano sem recarregar a
+  // página. Sem isto, o percentual fica parado no valor da última abertura.
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState !== 'visible' || !_cartaSessao) return;
+    if(Date.now() - _cartaEm < 60000) return;   // evita refazer a cada troca de aba
+    carregarCartaCampanha(_cartaSessao, true);  // sem piscar: só troca o número
+  });
 
   function aplicarSessao(){
     var session = getSession();
