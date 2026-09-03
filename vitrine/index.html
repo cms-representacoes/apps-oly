@@ -18,7 +18,11 @@
    Cromo com textura, dado chapado. É o que separa "enfeite" de "informação".
    ═══════════════════════════════════════════════════════════════════ */
 :root{
-  --papel:#F5F6F4;
+  /* Quatro degraus, do mais escuro ao mais claro: barra do navegador, cabecalho,
+     fundo da vitrine, card. Antes o cabecalho era branco igual ao card e
+     encostava na barra do Chrome — as duas pontas se perdiam de uma vez. */
+  --barra:#F1F2EF;
+  --papel:#E9EBE7;
   --carta:#FFFFFF;
   --tinta:#16181A;
   --texto:#3A3F45;
@@ -57,8 +61,8 @@ button{font:inherit}
 
 /* ── cabeçalho ───────────────────────────────────────────────────── */
 .topo{
-  position:sticky; top:0; z-index:20; background:var(--carta);
-  border-bottom:1px solid var(--linha);
+  position:sticky; top:0; z-index:20; background:var(--barra);
+  border-bottom:1px solid var(--linha-forte);
   padding:calc(10px + env(safe-area-inset-top)) 13px 10px;
 }
 /* Do tablet pra cima e uma linha so: o que nao couber rola dentro da propria
@@ -101,7 +105,7 @@ button{font:inherit}
 /* Colapsada a busca e so a lupa, do tamanho dos outros botoes da linha.
    Aberta ela toma o espaco livre e o titulo sai da frente. */
 .busca{display:flex;align-items:center;flex:none;width:32px;height:32px;
-  border:1px solid var(--linha);border-radius:999px;background:var(--carta);
+  border:1px solid var(--linha-forte);border-radius:999px;background:var(--carta);
   overflow:hidden;transition:width .18s ease, background .18s ease}
 .busca.aberta{flex:1 1 280px;width:auto;min-width:0;background:var(--papel);padding-right:3px}
 .busca .lupa{flex:none;width:30px;height:30px;display:flex;align-items:center;justify-content:center;
@@ -161,6 +165,9 @@ button{font:inherit}
 .cat button:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
 .cat button.on{border-style:solid;border-color:var(--marca);color:var(--marca);font-weight:600;
   background:color-mix(in srgb,var(--marca) 8%,transparent)}
+/* Fica no lugar, apagada: sumir faria a lista dancar a cada troca de origem. */
+.cat button.vazia{opacity:.32;cursor:not-allowed}
+.cat button.vazia:hover{border-style:dashed;color:var(--fraco)}
 
 /* Laranja porque não é nem marca nem origem: é desfazer. A textura segue a
    mesma receita do resto — gradiente, brilho no topo, sombra da própria cor. */
@@ -1198,12 +1205,17 @@ function pintarFiltros(){
       aria-pressed="${ativo}">${rot}${ativo?`<span class="n">${nf(n)}</span>`:''}</button>`;
   }).join('');
 
-  const comCat = CATEGORIAS.filter(([id]) => paraCategoria.some(o => o.categoria === id));
-  const temCat = comCat.length > 1;
-  $('riscoCat').hidden = !temCat;
-  $('catFiltros').innerHTML = !temCat ? '' : comCat.map(([id, rot]) =>
-    `<button class="${STATE.categoria===id?'on':''}" onclick="setCategoria('${id}')"
-      aria-pressed="${STATE.categoria===id}">${rot}</button>`).join('');
+  // A marca define quais categorias existem; a origem define quais tem produto
+  // agora. A primeira lista manda no que aparece, a segunda no que e clicavel.
+  const catsDaMarca = CATEGORIAS.filter(([id]) => daMarcaAtual.some(o => o.categoria === id));
+  $('riscoCat').hidden = catsDaMarca.length === 0;
+  $('catFiltros').innerHTML = catsDaMarca.map(([id, rot]) => {
+    const ativo = STATE.categoria === id;
+    const vazia = !ativo && !paraCategoria.some(o => o.categoria === id);
+    return `<button class="${ativo ? 'on' : ''}${vazia ? ' vazia' : ''}"
+      onclick="setCategoria('${id}')" aria-pressed="${ativo}"
+      ${vazia ? 'disabled title="Nada aqui com os filtros atuais"' : ''}>${rot}</button>`;
+  }).join('');
 }
 
 // Rótulos: nas telas o vendedor lê "Feminino", não "FEMININO"; já VULSP e
