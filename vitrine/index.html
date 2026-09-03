@@ -301,8 +301,10 @@ button{font:inherit}
   background:var(--carta);border:1px solid var(--linha-forte);
   box-shadow:0 10px 30px rgba(22,24,26,.16)}
 .sel-barra[hidden]{display:none}
-.sel-barra .cont{font-size:11.5px;font-weight:700;color:var(--fraco);padding:0 3px;
+.sel-barra .cont{display:inline-flex;align-items:center;gap:5px;
+  font-size:11.5px;font-weight:700;color:var(--fraco);padding:0 3px;
   font-variant-numeric:tabular-nums;white-space:nowrap}
+.sel-barra .cont .ic{display:none;flex:none;color:#E0245E}
 .sel-btn{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:999px;
   padding:8px 13px 8px 11px;color:#fff;font-size:12px;font-weight:800;cursor:pointer}
 .sel-btn:hover{filter:brightness(1.06)}
@@ -329,14 +331,17 @@ button{font:inherit}
   .sel-barra{left:14px;right:14px;justify-content:center}
   .sel-barra .cont{margin-right:auto}
 }
-/* Com o "Todos" na fila sao quatro controles: escritos, eles nao cabem no
-   celular. O verde e o vermelho ja dizem qual e a planilha e qual e o PDF. */
-@media(max-width:420px){
+/* No celular a barra vira icone: o verde e o vermelho ja dizem qual e a
+   planilha e qual e o PDF, e o coracao e o mesmo que se toca para marcar —
+   entao a contagem dispensa a palavra. */
+@media(max-width:640px){
   .sel-btn{padding:8px 11px;gap:0}
   .sel-btn span{display:none}
   /* Enquanto gera, o contador reaparece: botao mudo por um minuto parece travado. */
   .sel-btn.ocupado{gap:6px}
   .sel-btn.ocupado span{display:inline}
+  .sel-barra .cont .ic{display:block}
+  .sel-barra .cont .pal{display:none}
 }
 @media(max-width:340px){
   .sel-todos{padding:7px 9px}
@@ -763,7 +768,11 @@ button{font:inherit}
 <div id="estado"></div>
 
 <div class="sel-barra" id="selBarra" hidden>
-  <span class="cont"><span id="selN">0</span> marcados</span>
+  <span class="cont">
+    <svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"
+         aria-hidden="true"><path d="M20.8 5.6a5.2 5.2 0 0 0-7.4 0L12 7l-1.4-1.4a5.2 5.2 0 1 0-7.4 7.4
+      L12 21.4l8.8-8.4a5.2 5.2 0 0 0 0-7.4z"/></svg>
+    <span id="selN">0</span><span class="pal"> marcados</span></span>
   <button class="sel-todos" id="btnSelTodos">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
          stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
