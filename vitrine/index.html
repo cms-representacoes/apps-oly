@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Vitrine · CMS Representações</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
 <style>
 /* ═══════════════════════════════════════════════════════════════════
@@ -225,7 +226,7 @@ button{font:inherit}
 .canto:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
 .cz{left:8px}
 .cf{right:8px}
-.cf.on{color:#E0245E;border-color:#F3B9C8}
+.cf.on{color:#E0245E;border-color:#F3B9C8;background:#fff}
 .cf.on svg{fill:#E0245E}
 .foto{position:relative;aspect-ratio:1/1;background:#fff;border-bottom:1px solid var(--linha);
   display:flex;align-items:center;justify-content:center;overflow:hidden}
@@ -290,6 +291,35 @@ button{font:inherit}
 #zoom{background:rgba(10,12,14,.86);cursor:zoom-out}
 
 /* ── sacola ──────────────────────────────────────────────────────── */
+/* Mesmo canto da sacola: os dois nunca aparecem juntos. */
+.sel-barra{position:fixed;right:14px;z-index:56;
+  bottom:calc(14px + env(safe-area-inset-bottom,0px));
+  display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:34px;
+  background:var(--carta);border:1px solid var(--linha-forte);
+  box-shadow:0 10px 30px rgba(22,24,26,.16)}
+.sel-barra[hidden]{display:none}
+.sel-barra .cont{font-size:11.5px;font-weight:700;color:var(--fraco);padding:0 3px;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.sel-btn{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:999px;
+  padding:8px 13px 8px 11px;color:#fff;font-size:12px;font-weight:800;cursor:pointer}
+.sel-btn:hover{filter:brightness(1.06)}
+.sel-btn:focus-visible{outline:2px solid var(--tinta);outline-offset:2px}
+.sel-btn:disabled{opacity:.6;cursor:progress}
+/* Verde de planilha e vermelho de PDF: as cores que essas duas coisas tem em
+   qualquer lugar, entao dispensam leitura. */
+.sel-btn.xls{background:linear-gradient(145deg,#34C77B 0%,#128A4F 55%,#0A5C35 100%);
+  box-shadow:0 4px 12px rgba(18,138,79,.35), inset 0 1px 0 rgba(255,255,255,.26)}
+.sel-btn.pdf{background:linear-gradient(145deg,#F2557A 0%,#D6294B 55%,#96122E 100%);
+  box-shadow:0 4px 12px rgba(214,41,75,.35), inset 0 1px 0 rgba(255,255,255,.26)}
+.sel-x{width:28px;height:28px;flex:none;border:0;border-radius:999px;background:none;
+  color:var(--tenue);font-size:14px;cursor:pointer}
+.sel-x:hover{background:var(--linha);color:var(--tinta)}
+@media(max-width:640px){
+  body.com-selecao .grade{padding-bottom:88px}
+  .sel-barra{left:14px;right:14px;justify-content:center}
+  .sel-barra .cont{margin-right:auto}
+}
+
 .fab-sacola{position:fixed;right:14px;z-index:55;
   bottom:calc(14px + env(safe-area-inset-bottom,0px));
   display:inline-flex;align-items:center;gap:8px;border:0;border-radius:32px;
@@ -689,6 +719,25 @@ button{font:inherit}
 <main class="grade" id="grade" aria-live="polite"></main>
 <div id="estado"></div>
 
+<div class="sel-barra" id="selBarra" hidden>
+  <span class="cont"><span id="selN">0</span> marcados</span>
+  <button class="sel-btn xls" id="btnSelXlsx" title="Gerar planilha dos marcados">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <path d="M14 2v6h6"/><path d="m9 13 6 6M15 13l-6 6"/></svg>
+    <span>XLSX</span></button>
+  <button class="sel-btn pdf" id="btnSelPdf" title="Gerar catálogo em PDF">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <path d="M14 2v6h6"/><path d="M8 13h2.5a1.5 1.5 0 0 1 0 3H8v-3zM8 16v3"/>
+      <path d="M14 13h3M14 16h2M14 13v6"/></svg>
+    <span>PDF</span></button>
+  <button class="sel-x" id="btnSelLimpar" title="Desmarcar todos"
+          aria-label="Desmarcar todos">✕</button>
+</div>
+
 <button class="fab-sacola" id="fabSacola" hidden onclick="abrirSacola()">
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
        stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -849,7 +898,7 @@ const STATE = { produtos:[], filtrados:[], origem:'tudo', categoria:'', busca:''
                 termos:[], termosIgnorados:0,
                 sel:{ chega:new Set(), genero:new Set(), sub:new Set(),
                       fabrica:new Set(), camp:new Set() },
-                sacola:new Map(), aba:'estoque' };
+                sacola:new Map(), aba:'estoque', marcados:new Set() };
 
 const FORM_HTML = `<p class="sc-form-tit">Dados do pedido</p>
       <div class="sc-campos">
@@ -1279,6 +1328,7 @@ function aplicar(){
   pintarPainel();
   pintarLimparTudo();
   pintarGrade();
+  pintarSelecao();
 }
 
 function pintarFiltros(){
@@ -1450,8 +1500,10 @@ function cardHtml(o, i){
            onerror="this.style.visibility='hidden'">
       <button class="canto cz" onclick="abrirZoom(${i})" title="Ampliar foto"
               aria-label="Ampliar foto de ${quem}">${SVG_ZOOM}</button>
-      <button class="canto cf" onclick="alternarFavorito(this)" title="Favoritos"
-              aria-label="Favoritar ${quem}" aria-pressed="false">${SVG_CORACAO}</button>
+      <button class="canto cf${STATE.marcados.has(o.k) ? ' on' : ''}"
+              onclick="alternarMarcado('${esc(o.k)}')" title="Marcar para PDF e planilha"
+              aria-label="Marcar ${quem} para o catálogo"
+              aria-pressed="${STATE.marcados.has(o.k)}">${SVG_CORACAO}</button>
     </div>
     <div class="corpo">
       <span>
@@ -1650,6 +1702,211 @@ $f('scCliSug').addEventListener('mousedown', e => {
   if(b){ e.preventDefault(); escolherCliente(Number(b.dataset.i)); }
 });
 $f('scCliente').addEventListener('blur', () => setTimeout(fecharSugestoes, 120));
+
+/* ── catálogo dos marcados ──────────────────────────────────────── */
+// A foto vem do mesmo domínio, então o canvas não fica manchado e o PDF
+// consegue lê-la de volta.
+function fotoDataUrl(o){
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      try{
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        c.getContext('2d').drawImage(img, 0, 0);
+        resolve({ url:c.toDataURL('image/jpeg', 0.82), w:img.naturalWidth, h:img.naturalHeight });
+      }catch(_){ resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = foto(o);
+  });
+}
+
+function ocupado(btn, texto){
+  btn.disabled = true;
+  btn._txt = btn.querySelector('span').textContent;
+  btn.querySelector('span').textContent = texto;
+}
+function liberado(btn){
+  btn.disabled = false;
+  if(btn._txt) btn.querySelector('span').textContent = btn._txt;
+}
+
+async function gerarCatalogoPdf(){
+  const itens = marcadosVisiveis();
+  if(!itens.length) return;
+  const btn = $('btnSelPdf');
+  ocupado(btn, 'Gerando…');
+  try{
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation:'portrait', unit:'pt', format:'a4', compress:true });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const hex = h => (String(h).replace('#','').match(/.{2}/g) || ['0','0','0'])
+      .map(x => parseInt(x, 16));
+    const M = MARCAS[MARCA];
+    const C = { marca:hex(M.marca), texto:[15,23,42], fraco:[100,116,139],
+                linha:[226,232,240], fundo:[248,250,252], branco:[255,255,255],
+                est:hex('#0E6B47'), rep:hex(M.marca), pro:hex('#7A2FBF') };
+    const cor = (c, t='text') => t === 'fill' ? doc.setFillColor(c[0],c[1],c[2])
+      : t === 'draw' ? doc.setDrawColor(c[0],c[1],c[2]) : doc.setTextColor(c[0],c[1],c[2]);
+
+    const d = new Date(), p2 = n => String(n).padStart(2,'0');
+    const dataStr = `${p2(d.getDate())}/${p2(d.getMonth()+1)}/${d.getFullYear()}`;
+    const margem = 32, larg = pageW - margem*2, alturaCab = 58;
+
+    function cabecalho(){
+      cor(C.marca,'fill'); doc.rect(0, 0, pageW, alturaCab, 'F');
+      doc.setTextColor(255,255,255);
+      doc.setFont('helvetica','bold'); doc.setFontSize(14);
+      doc.text('Catálogo ' + M.nome, margem, 26);
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+      doc.setTextColor(215, 220, 255);
+      doc.text('CMS Representações', margem, 42);
+      doc.setFontSize(9);
+      doc.text(dataStr, pageW - margem, 26, { align:'right' });
+    }
+    function rodape(n){
+      cor(C.linha,'draw'); doc.setLineWidth(0.4);
+      doc.line(margem, pageH-28, pageW-margem, pageH-28);
+      cor(C.fraco); doc.setFont('helvetica','normal'); doc.setFontSize(7);
+      doc.text('CMS Representações · ' + M.nome, margem, pageH-16);
+      doc.text('pág. ' + n, pageW-margem, pageH-16, { align:'right' });
+    }
+
+    // Quatro por página: mesmo com as três origens o conteúdo mede cerca de
+    // 90pt, e em três sobrava metade do card vazio.
+    const POR_PAG = 4, topo = alturaCab + 18, base = pageH - 40, vaoCard = 12;
+    const altCard = (base - topo - vaoCard*(POR_PAG-1)) / POR_PAG;
+    const FOTO = 88, PADX = 14, PADY = 12;
+
+    // Uma faixa por origem, com o dado que só ela tem.
+    function faixaOrigem(o, x, y, w){
+      const linhas = [];
+      if(o.pronta) linhas.push({ c:C.est, rot:'ESTOQUE',
+        val:nf(o.pronta.total) + ' un',
+        det:Object.entries(o.pronta.grade).map(([t,q]) => t + ':' + q).join('  ') });
+      if(o.repasse) for(const l of o.repasse.lotes) linhas.push({ c:C.rep, rot:'REPASSE',
+        val:nf(l.saldo) + ' un',
+        det:`Nº ${l.num}${l.gci ? ' · GCI ' + l.gci : ''} · fat. ${l.data || '—'}` });
+      if(o.meta) linhas.push({ c:C.pro, rot:'PRODUÇÃO',
+        val:nf(o.meta.quinzenas[0].v) + ' un',
+        det:o.meta.quinzenas.map(q => q.rot + ' ' + nf(q.v)).join('  ·  ') });
+
+      let ly = y;
+      for(const l of linhas.slice(0, 3)){
+        cor(l.c,'fill'); doc.roundedRect(x, ly-6, 3, 12, 1.5, 1.5, 'F');
+        cor(l.c); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+        doc.text(l.rot, x+8, ly);
+        const wr = doc.getTextWidth(l.rot);
+        cor(C.texto); doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
+        doc.text(l.val, x+8+wr+8, ly);
+        cor(C.fraco); doc.setFont('helvetica','normal'); doc.setFontSize(7);
+        const wv = doc.getTextWidth(l.val);
+        doc.text(doc.splitTextToSize(l.det, w - (8+wr+8+wv+8)).slice(0,1),
+                 x+8+wr+8+wv+8, ly);
+        ly += 15;
+      }
+      return ly;
+    }
+
+    async function card(o, y){
+      cor(C.linha,'draw'); doc.setLineWidth(0.5); cor(C.branco,'fill');
+      doc.roundedRect(margem, y, larg, altCard, 7, 7, 'FD');
+      // Alinhada ao topo: centralizada, ela descia enquanto o texto ficava em
+      // cima, e as duas metades do card pareciam de produtos diferentes.
+      const ix = margem + PADX, iy = y + PADY;
+      cor(C.branco,'fill'); cor(C.linha,'draw');
+      doc.roundedRect(ix, iy, FOTO, FOTO, 5, 5, 'FD');
+      const im = await fotoDataUrl(o);
+      if(im){
+        const pad = 4, box = FOTO - pad*2;
+        let w = box, h = box;
+        if(im.w && im.h){ const r = im.w/im.h; if(r > 1) h = box/r; else w = box*r; }
+        doc.addImage(im.url, 'JPEG', ix+pad+(box-w)/2, iy+pad+(box-h)/2, w, h, undefined, 'FAST');
+      }else{
+        cor(C.linha); doc.setFont('helvetica','normal'); doc.setFontSize(7);
+        doc.text('sem imagem', ix+FOTO/2, iy+FOTO/2, { align:'center' });
+      }
+
+      const tx = ix + FOTO + 16, tw = margem + larg - PADX - tx;
+      let ty = y + PADY + 6;
+      cor(C.texto); doc.setFont('helvetica','bold'); doc.setFontSize(12);
+      doc.text(doc.splitTextToSize(String(o.nome || o.artigo), tw).slice(0,1), tx, ty);
+      ty += 13;
+      cor(C.fraco); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      doc.text(`${o.artigo}  ·  ${o.cor}`, tx, ty);
+      ty += 14;
+
+      cor(C.marca); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+      doc.text(o.pdv ? brl(o.pdv) : '—', tx, ty);
+      const wp = doc.getTextWidth(o.pdv ? brl(o.pdv) : '—');
+      // A campanha muda o custo: ao lado do preço é onde ela é lida.
+      if(o.campanhas.length){
+        const c = o.campanhas[0];
+        cor(C.fraco); doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+        doc.text(`${c.codigoTabela || ''}${c.mkp ? ' · MKP ' + c.mkp : ''}` +
+                 `${c.custo ? ' · custo ' + brl(c.custo) : ''}`, tx + wp + 10, ty);
+      }
+      ty += 15;
+      faixaOrigem(o, tx, ty, tw);
+    }
+
+    let pag = 0;
+    for(let i = 0; i < itens.length; i += POR_PAG){
+      if(pag) doc.addPage();
+      pag++; cabecalho();
+      const bloco = itens.slice(i, i + POR_PAG);
+      for(let j = 0; j < bloco.length; j++){
+        await card(bloco[j], topo + j*(altCard + vaoCard));
+      }
+      rodape(pag);
+    }
+    doc.save(`catalogo_${MARCA}_${d.getFullYear()}${p2(d.getMonth()+1)}${p2(d.getDate())}` +
+      `_${p2(d.getHours())}${p2(d.getMinutes())}.pdf`);
+  }catch(e){
+    console.error(e);
+    alert('Não foi possível gerar o PDF. Tente de novo.');
+  }finally{ liberado(btn); }
+}
+
+// A planilha do catálogo é lista, não pedido: uma linha por origem, para o
+// mesmo produto poder aparecer três vezes com dados diferentes.
+function gerarCatalogoXlsx(){
+  const itens = marcadosVisiveis();
+  if(!itens.length) return;
+  const cab = ['Marca','Artigo','Descrição','Cor','Categoria','Gênero','PDV',
+               'Campanha','MKP','Custo','Origem','Quando','Quantidade',
+               'Nº','GCI','Grade'];
+  const linhas = [cab];
+  const base = o => {
+    const c = o.campanhas[0] || {};
+    return [MARCAS[o.marca].nome, o.artigo, o.nome, String(o.cor).replace(/_/g,'/'),
+            o.categoria, o.genero, o.pdv || '',
+            c.codigoTabela || '', c.mkp || '', c.custo || ''];
+  };
+  const gradeTxt = g => Object.entries(g || {}).map(([t,q]) => t + ':' + q).join(' ');
+  for(const o of itens){
+    if(o.pronta) linhas.push([...base(o), 'Estoque', 'Agora', o.pronta.total,
+                              '', '', gradeTxt(o.pronta.grade)]);
+    if(o.repasse) for(const l of o.repasse.lotes)
+      linhas.push([...base(o), 'Repasse', l.data || '', l.saldo, l.num, l.gci,
+                   gradeTxt(l.grade)]);
+    if(o.meta) for(const q of o.meta.quinzenas)
+      linhas.push([...base(o), 'Produção', q.rot, q.v, '', '', '']);
+  }
+  const ws = XLSX.utils.aoa_to_sheet(linhas);
+  ws['!cols'] = cab.map((c, i) => ({ wch: i === 2 ? 28 : i === 15 ? 30 : 12 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Catálogo');
+  const d = new Date(), p2 = n => String(n).padStart(2,'0');
+  XLSX.writeFile(wb, `catalogo_${MARCA}_${d.getFullYear()}${p2(d.getMonth()+1)}${p2(d.getDate())}` +
+    `_${p2(d.getHours())}${p2(d.getMinutes())}.xlsx`);
+}
+
+$('btnSelPdf').onclick = gerarCatalogoPdf;
+$('btnSelXlsx').onclick = gerarCatalogoXlsx;
+$('btnSelLimpar').onclick = limparMarcados;
 
 /* ── planilha do estoque ────────────────────────────────────────── */
 // Mesmas colunas e mesma ordem do export do Disponibilidades — é o formato
@@ -2137,7 +2394,7 @@ function pintarSacola(){
   const itens = [...STATE.sacola.values()];
   const est = itens.filter(i => i.origem !== 'repasse');
   const rep = itens.filter(i => i.origem === 'repasse');
-  $('fabSacola').hidden = !itens.length || !$('sacola').hidden;
+  $('fabSacola').hidden = !itens.length || !$('sacola').hidden || STATE.marcados.size > 0;
   document.body.classList.toggle('com-sacola', itens.length > 0);
   $('fabSacolaN').textContent = nf(itens.length);
   $('scLimpar').hidden = !itens.length;
@@ -2209,11 +2466,40 @@ function abrirZoom(i){
 function fecharZoom(){ $('zoom').hidden = true; }
 $('zoom').onclick = fecharZoom;
 
-// Ainda sem destino definido: por ora o coração só marca e desmarca na tela,
-// não guarda nada nem dispara ação nenhuma.
-function alternarFavorito(btn){
-  const on = btn.classList.toggle('on');
-  btn.setAttribute('aria-pressed', String(on));
+// Marcar não filtra a vitrine: o vendedor vai juntando produtos enquanto
+// navega e só depois decide o que fazer com eles.
+function alternarMarcado(k){
+  STATE.marcados.has(k) ? STATE.marcados.delete(k) : STATE.marcados.add(k);
+  const b = $('grade').querySelector(`.cf[onclick*="${k}"]`);
+  if(b){
+    b.classList.toggle('on', STATE.marcados.has(k));
+    b.setAttribute('aria-pressed', String(STATE.marcados.has(k)));
+  }
+  pintarSelecao();
+}
+function limparMarcados(){
+  STATE.marcados.clear();
+  for(const b of $('grade').querySelectorAll('.cf.on')){
+    b.classList.remove('on'); b.setAttribute('aria-pressed','false');
+  }
+  pintarSelecao();
+}
+
+// Produtos marcados que ainda estão na lista: o vendedor pode ter marcado e
+// depois trocado de marca ou de filtro, e exportar o que sumiu da tela seria
+// uma surpresa.
+function marcadosVisiveis(){
+  return STATE.filtrados.filter(o => STATE.marcados.has(o.k));
+}
+
+function pintarSelecao(){
+  const n = STATE.marcados.size;
+  $('selBarra').hidden = n === 0;
+  $('selN').textContent = nf(n);
+  document.body.classList.toggle('com-selecao', n > 0);
+  // A sacola sai de cena enquanto há seleção: são dois fluxos diferentes e
+  // eles disputariam o mesmo canto.
+  pintarSacola();
 }
 $('modal').onclick = e => { if(e.target.id === 'modal') fecharModal(); };
 document.addEventListener('keydown', e => {
