@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prévia — cabeçalho da vitrine</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   Vitrine única — repasse, pronta entrega e meta produtiva numa tela.
+
+   Duas regras de cor sustentam o layout:
+   1. As três ORIGENS são as únicas cores de dado, e são sempre chapadas.
+      Elas significam a mesma coisa nas duas marcas.
+   2. A MARCA ativa pinta o cromo — logo, pílula ligada, botão principal —
+      com textura: gradiente, brilho interno no topo e sombra colorida.
+   Cromo com textura, dado chapado. É o que separa "enfeite" de "informação".
+   ═══════════════════════════════════════════════════════════════════ */
+:root{
+  --papel:#F5F6F4;
+  --carta:#FFFFFF;
+  --tinta:#16181A;
+  --texto:#3A3F45;
+  --fraco:#6D737A;
+  --tenue:#9AA0A6;
+  --linha:#E2E4E0;
+  --linha-forte:#CDD0CA;
+
+  --pronta:#0E6B47;   --pronta-fundo:#DEEFE7;
+  --repasse:#2C39E2;  --repasse-fundo:#E6E8FC;
+  --plano:#7A2FBF;    --plano-fundo:#F1E7FB;
+
+  /* marca ativa — trocada em tempo de execução */
+  --marca:#2c39e2;
+  --marca-claro:#5B69E8;
+  --marca-escuro:#1B27B0;
+
+  --sombra:0 1px 2px rgba(22,24,26,.06), 0 10px 30px rgba(22,24,26,.06);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --papel:#111315; --carta:#1A1D20; --tinta:#F0F1EE; --texto:#C6CACE;
+    --fraco:#8D9298; --tenue:#666B71; --linha:#292D31; --linha-forte:#3A3F45;
+    --pronta:#5CC195;  --pronta-fundo:#12291F;
+    --repasse:#8E99F0; --repasse-fundo:#181C33;
+    --plano:#C79BEE;   --plano-fundo:#2A1A3D;
+    --sombra:0 1px 2px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --papel:#111315; --carta:#1A1D20; --tinta:#F0F1EE; --texto:#C6CACE;
+  --fraco:#8D9298; --tenue:#666B71; --linha:#292D31; --linha-forte:#3A3F45;
+  --pronta:#5CC195;  --pronta-fundo:#12291F;
+  --repasse:#8E99F0; --repasse-fundo:#181C33;
+  --plano:#C79BEE;   --plano-fundo:#2A1A3D;
+  --sombra:0 1px 2px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.35);
+}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--papel); color:var(--texto);
+  font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.mono,.qtd,.chip,.cod,.preco,.n,.cel,.lote,.mes{font-variant-numeric:tabular-nums}
+button{font:inherit}
+
+/* ── cabeçalho ───────────────────────────────────────────────────── */
+.topo{
+  position:sticky; top:0; z-index:20; background:var(--carta);
+  border-bottom:1px solid var(--linha);
+  padding:calc(10px + env(safe-area-inset-top)) 13px 0;
+}
+.topo-l1{display:flex;align-items:center;gap:9px;max-width:1180px;margin:0 auto}
+/* textura premium: gradiente + brilho no topo + sombra da própria cor */
+.selo-cms{
+  width:34px;height:34px;border-radius:11px;flex:none;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;color:#fff;letter-spacing:.02em;
+  background:linear-gradient(145deg,#a970ff 0%,#8b5cf6 48%,#7439e0 100%);
+  box-shadow:0 5px 14px rgba(124,58,237,.38), inset 0 1px 0 rgba(255,255,255,.28);
+}
+.seletor-marca{display:flex;gap:3px;background:var(--papel);border:1px solid var(--linha);
+  border-radius:12px;padding:3px;flex:none}
+.seletor-marca .op{
+  width:46px;height:30px;border:0;border-radius:9px;padding:0 7px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  background:#6B7076;
+  transition:background .15s, box-shadow .15s
+}
+.seletor-marca .op:hover{background:#565B61}
+:root[data-theme="dark"] .seletor-marca .op{background:#42474D}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .seletor-marca .op{background:#42474D}
+}
+.seletor-marca .op.on{
+  opacity:1;
+  background:linear-gradient(145deg, var(--marca-claro), var(--marca) 55%, var(--marca-escuro));
+  box-shadow:0 4px 12px color-mix(in srgb,var(--marca) 38%,transparent), inset 0 1px 0 rgba(255,255,255,.3)
+}
+.seletor-marca .op img{max-width:100%;max-height:15px;object-fit:contain}
+.seletor-marca .op:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+
+.tit{min-width:0;flex:1}
+.tit b{display:block;font-size:14.5px;font-weight:600;color:var(--tinta);line-height:1.15;letter-spacing:-.01em}
+.tit span{display:block;font-size:11.5px;color:var(--tenue)}
+.icone{width:32px;height:32px;border-radius:999px;border:1px solid var(--linha);background:var(--carta);
+  color:var(--fraco);display:flex;align-items:center;justify-content:center;flex:none;cursor:pointer;
+  font-size:13px;text-decoration:none}
+.icone:hover{border-color:var(--linha-forte);color:var(--tinta)}
+.icone:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+
+/* Colapsada a busca e so a lupa, do tamanho dos outros botoes da linha.
+   Aberta ela toma o espaco livre e o titulo sai da frente. */
+.busca{display:flex;align-items:center;flex:none;width:32px;height:32px;
+  border:1px solid var(--linha);border-radius:999px;background:var(--carta);
+  overflow:hidden;transition:width .18s ease, background .18s ease}
+.busca.aberta{flex:1;width:auto;min-width:0;background:var(--papel);padding-right:3px}
+.busca .lupa{flex:none;width:30px;height:30px;display:flex;align-items:center;justify-content:center;
+  border:0;background:none;color:var(--fraco);cursor:pointer;padding:0}
+.busca .lupa:hover{color:var(--tinta)}
+.busca input{flex:1;width:0;min-width:0;border:0;background:none;outline:none;padding:0;
+  color:var(--tinta);font:inherit;font-size:16px;opacity:0;transition:opacity .18s ease}
+.busca.aberta input{opacity:1}
+.busca input::placeholder{color:var(--tenue);font-size:13px}
+.busca .x{flex:none;width:26px;height:26px;border:0;border-radius:999px;background:none;
+  color:var(--tenue);cursor:pointer;padding:0;font-size:13px;display:flex;align-items:center;justify-content:center}
+.busca .x:hover{color:var(--tinta);background:var(--linha)}
+.busca .x[hidden]{display:none}
+.busca .lupa:focus-visible,.busca .x:focus-visible{outline:2px solid var(--marca);outline-offset:-2px;border-radius:999px}
+/* Aberta, a busca precisa da largura que o titulo ocupa. */
+.topo-l1:has(.busca.aberta) .tit{display:none}
+@media(max-width:520px){ .topo-l1:has(.busca.aberta) .selo-cms{display:none} }
+
+.faixa{display:flex;gap:5px;overflow-x:auto;padding:9px 0 10px;scrollbar-width:none;
+  max-width:1180px;margin:0 auto}
+.faixa::-webkit-scrollbar{display:none}
+.pilula{flex:none;border:1px solid var(--linha);background:var(--carta);color:var(--fraco);
+  border-radius:999px;padding:5px 10px;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+.pilula:hover{border-color:var(--linha-forte);color:var(--tinta)}
+.pilula:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+.pilula.on{
+  color:#fff;border-color:transparent;
+  background:linear-gradient(145deg, var(--marca-claro), var(--marca) 55%, var(--marca-escuro));
+  box-shadow:0 3px 10px color-mix(in srgb,var(--marca) 34%,transparent), inset 0 1px 0 rgba(255,255,255,.26)
+}
+.pilula .n{font-size:10.5px;opacity:.62;margin-left:3px}
+.divisor{width:1px;background:var(--linha);flex:none;margin:3px 3px}
+
+.contagem{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:11px 13px 0;font-size:12px;color:var(--fraco);max-width:1180px;margin:0 auto}
+.contagem b{color:var(--tinta);font-weight:600}
+
+/* ── grade ───────────────────────────────────────────────────────── */
+.grade{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:11px 13px 30px;
+  max-width:1180px;margin:0 auto}
+@media(min-width:700px){ .grade{grid-template-columns:repeat(3,1fr);gap:14px;padding:14px 18px 40px} }
+@media(min-width:1000px){ .grade{grid-template-columns:repeat(4,1fr)} }
+
+.card{background:var(--carta);border:1px solid var(--linha);border-radius:14px;overflow:hidden;
+  display:flex;flex-direction:column;cursor:pointer;text-align:left;padding:0;
+  transition:border-color .14s,box-shadow .14s,transform .14s}
+.card:hover{border-color:var(--linha-forte);box-shadow:var(--sombra);transform:translateY(-1px)}
+.card:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+.foto{position:relative;aspect-ratio:4/3;background:#fff;border-bottom:1px solid var(--linha);
+  display:flex;align-items:center;justify-content:center;overflow:hidden}
+.foto img{width:100%;height:100%;object-fit:contain}
+.corpo{padding:10px 11px 11px;display:flex;flex-direction:column;gap:7px;flex:1}
+.nome{display:block;font-size:13.5px;font-weight:800;color:var(--tinta);line-height:1.15;letter-spacing:-.015em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cod{display:block;font-size:10.5px;font-weight:600;color:var(--tenue);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.preco{display:block;font-size:16.5px;font-weight:900;color:var(--marca);letter-spacing:-.025em}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .preco{color:var(--marca-claro)} }
+:root[data-theme="dark"] .preco{color:var(--marca-claro)}
+.campanha{display:block;font-size:10.5px;font-weight:600;color:var(--fraco)}
+.campanha b{color:var(--tinta);font-weight:600}
+
+/* faixas de disponibilidade — dado, sempre chapado */
+.quando{display:flex;flex-wrap:wrap;gap:4px;margin-top:auto;padding-top:3px}
+/* Pilula com icone, como os chips do Repasses: o icone da a leitura rapida
+   e a borda da mesma familia de cor sustenta o chip no fundo claro. */
+.chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;
+  border:1px solid;padding:3px 8px;font-size:11px;font-weight:700;line-height:1.35}
+.chip svg{flex:none;opacity:.9}
+.chip .qual{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip .quando,.chip .qtd{flex:none}
+.chip .quando{font-size:10.5px;font-weight:600;opacity:.88}
+.chip .qtd{font-size:11.5px;font-weight:600;padding-left:2px}
+.c-pronta {background:var(--pronta-fundo); color:var(--pronta);
+           border-color:color-mix(in srgb,var(--pronta) 28%,transparent)}
+.c-repasse{background:var(--repasse-fundo);color:var(--repasse);
+           border-color:color-mix(in srgb,var(--repasse) 28%,transparent)}
+.c-plano  {background:var(--plano-fundo);  color:var(--plano);
+           border-color:color-mix(in srgb,var(--plano) 30%,transparent)}
+
+.acao{margin-top:8px;width:100%;border:1px solid var(--linha-forte);background:var(--carta);
+  color:var(--tinta);border-radius:9px;padding:8px;font-size:12px;font-weight:600;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none}
+.acao:hover{background:var(--papel)}
+.acao:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+.acao.forte{
+  border-color:transparent;color:#fff;
+  background:linear-gradient(145deg, var(--marca-claro), var(--marca) 55%, var(--marca-escuro));
+  box-shadow:0 4px 12px color-mix(in srgb,var(--marca) 32%,transparent), inset 0 1px 0 rgba(255,255,255,.26)
+}
+.acao.forte:hover{filter:brightness(1.06)}
+
+/* ── estados ─────────────────────────────────────────────────────── */
+.aviso{max-width:640px;margin:60px auto;padding:26px 22px;text-align:center;background:var(--carta);
+  border:1px solid var(--linha);border-radius:14px}
+.aviso h2{margin:0 0 6px;font-size:19px;font-weight:600;color:var(--tinta)}
+.aviso p{margin:0;font-size:14px;color:var(--fraco)}
+.girando{display:inline-block;width:22px;height:22px;border-radius:50%;border:2.5px solid var(--linha);
+  border-top-color:var(--marca);animation:gira .7s linear infinite;margin-bottom:12px}
+@keyframes gira{to{transform:rotate(360deg)}}
+
+/* ── modal ───────────────────────────────────────────────────────── */
+.fundo{position:fixed;inset:0;background:rgba(16,18,20,.55);backdrop-filter:blur(2px);
+  display:flex;align-items:center;justify-content:center;padding:16px;z-index:60}
+.fundo[hidden]{display:none}
+.folha{background:var(--carta);border:1px solid var(--linha);border-radius:16px;width:100%;
+  max-width:470px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--sombra)}
+.folha-topo{padding:15px 17px;border-bottom:1px solid var(--linha);display:flex;gap:12px;align-items:flex-start}
+.folha-topo .min{width:54px;height:54px;border-radius:9px;border:1px solid var(--linha);flex:none;overflow:hidden;background:#fff}
+.folha-topo .min img{width:100%;height:100%;object-fit:contain}
+.folha-topo h3{margin:0;font-size:16px;font-weight:600;color:var(--tinta);letter-spacing:-.015em}
+.folha-topo p{margin:2px 0 0;font-size:11.5px;color:var(--tenue);}
+.folha-corpo{padding:15px 17px;overflow-y:auto;display:flex;flex-direction:column;gap:16px}
+.bloco .rot{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--fraco);margin:0 0 8px;display:flex;align-items:center;gap:7px}
+.bloco .rot svg{flex:none}
+.bloco .rot.r-pronta{color:var(--pronta)}
+.bloco .rot.r-repasse{color:var(--repasse)}
+.bloco .rot.r-plano{color:var(--plano)}
+.celulas{display:flex;flex-wrap:wrap;gap:5px}
+.cel{border:1px solid var(--linha);border-radius:6px;padding:4px 0;width:40px;text-align:center;background:var(--carta)}
+.cel .t{display:block;font-size:9.5px;color:var(--tenue);line-height:1}
+.cel .q{display:block;font-size:12.5px;font-weight:600;color:var(--tinta);margin-top:2px;line-height:1}
+.lotes{display:flex;flex-direction:column;gap:6px}
+.lote{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;
+  border:1px solid var(--linha);border-radius:8px;padding:8px 10px;font-size:12px}
+.lote .n{font-size:11px;color:var(--repasse);font-weight:600}
+.lote .d{color:var(--fraco);font-size:11.5px}
+.lote .s{font-weight:600;color:var(--tinta)}
+.meses{display:flex;flex-direction:column;gap:5px}
+.mes{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;font-size:12px}
+.mes .m{font-size:11px;color:var(--fraco);letter-spacing:.04em}
+.mes .barra{height:15px;background:var(--plano-fundo);border-radius:3px;overflow:hidden}
+.mes .barra i{display:block;height:100%;background:var(--plano);border-radius:3px}
+.mes .v{font-weight:600;color:var(--tinta);font-size:12px}
+.folha-pe{padding:13px 17px;border-top:1px solid var(--linha);display:flex;gap:8px}
+.folha-pe > *{flex:1;margin-top:0}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ── comum às três propostas ─────────────────────────────────────── */
+/* O CMS deixa de ser um bloco do mesmo peso que as marcas: ele é a
+   empresa, não uma opção de escolha. */
+.selo-cms.discreto{
+  width:26px;height:26px;border-radius:8px;font-size:8.5px;
+  box-shadow:0 3px 8px rgba(124,58,237,.28), inset 0 1px 0 rgba(255,255,255,.24);
+}
+.tit b{white-space:nowrap}
+.tit b .cnt{display:inline;font-weight:600;color:var(--tenue);font-size:12.5px}
+
+/* ── A · origem como controle segmentado ─────────────────────────── */
+/* Um trilho só, encostado: diz "escolha uma" sem precisar de legenda. */
+.seg{display:inline-flex;flex:none;background:var(--papel);border:1px solid var(--linha);
+  border-radius:10px;padding:2px}
+.seg button{border:0;background:none;padding:5px 11px;font-size:11.5px;font-weight:600;
+  color:var(--fraco);border-radius:8px;cursor:pointer;white-space:nowrap}
+.seg button .n{font-size:10.5px;opacity:.6;margin-left:3px}
+.seg button.on{color:#fff}
+.seg button.on .n{opacity:.75}
+.seg .on.o-tudo{background:linear-gradient(145deg,var(--marca-claro),var(--marca) 55%,var(--marca-escuro))}
+.seg .on.o-est {background:linear-gradient(145deg,#159C68,var(--pronta) 60%,#0A4F35)}
+.seg .on.o-rep {background:linear-gradient(145deg,var(--marca-claro),var(--repasse) 55%,#1B27B0)}
+.seg .on.o-pro {background:linear-gradient(145deg,#A05FD8,var(--plano) 55%,#5B1F92)}
+
+/* Categoria em outro peso: contorno leve, sem contagem, sem preenchimento. */
+.cat{display:flex;gap:5px;flex-wrap:nowrap}
+.cat button{border:1px dashed var(--linha-forte);background:none;color:var(--fraco);
+  border-radius:999px;padding:4px 10px;font-size:11px;font-weight:500;cursor:pointer;white-space:nowrap}
+.cat button:hover{border-style:solid;color:var(--tinta)}
+.linha2{display:flex;align-items:center;gap:10px;overflow-x:auto;padding:9px 0 10px;
+  scrollbar-width:none;max-width:1180px;margin:0 auto}
+.linha2::-webkit-scrollbar{display:none}
+.risco{width:1px;align-self:stretch;background:var(--linha);flex:none;margin:2px 1px}
+
+/* ── B · origem como aba ─────────────────────────────────────────── */
+/* Aba não é pílula: some a competição visual com os chips dos cards. */
+.abas{display:flex;gap:18px;max-width:1180px;margin:0 auto;overflow-x:auto;scrollbar-width:none}
+.abas::-webkit-scrollbar{display:none}
+.abas button{border:0;background:none;padding:7px 0 9px;font-size:12.5px;font-weight:700;
+  color:var(--tenue);border-bottom:2.5px solid transparent;cursor:pointer;white-space:nowrap}
+.abas button:hover{color:var(--texto)}
+.abas button .n{font-weight:600;font-size:11px;opacity:.65;margin-left:3px}
+.abas button.on{color:var(--tinta)}
+.abas .on.o-tudo{border-bottom-color:var(--marca)}
+.abas .on.o-est {border-bottom-color:var(--pronta)}
+.abas .on.o-rep {border-bottom-color:var(--repasse)}
+.abas .on.o-pro {border-bottom-color:var(--plano)}
+
+.btn-filtro{position:relative}
+.btn-filtro .badge{position:absolute;top:-3px;right:-3px;min-width:15px;height:15px;
+  border-radius:999px;background:var(--marca);color:#fff;font-size:9.5px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;padding:0 4px;
+  border:1.5px solid var(--carta)}
+
+/* ── palco da prévia ─────────────────────────────────────────────── */
+body.palco{background:#0E1013;padding:22px 16px 46px;color:#cfd3d8}
+.grade-op{display:flex;flex-direction:column;gap:26px;max-width:1000px;margin:0 auto}
+.op-bloco{background:#16191D;border:1px solid #24282D;border-radius:16px;padding:18px}
+.op-bloco h2{margin:0 0 3px;font-size:15px;font-weight:800;color:#F0F1EE;letter-spacing:-.01em}
+.op-bloco h2 em{font-style:normal;color:#8b5cf6;margin-right:7px}
+.op-bloco p{margin:0 0 14px;font-size:12.5px;line-height:1.5;color:#8D9298;max-width:70ch}
+.duo{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.moldura{border:1px solid #2c3037;border-radius:12px;overflow:hidden;background:#fff}
+.moldura .rot{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:#6D737A;padding:5px 9px;background:#1A1D21;border-bottom:1px solid #2c3037}
+.m-cel{width:390px}
+.m-desk{flex:1;min-width:420px}
+.falso-card{height:74px;background:linear-gradient(#F5F6F4,#F5F6F4);border-top:1px solid #E2E4E0;
+  display:flex;align-items:center;justify-content:center;font-size:10.5px;color:#9AA0A6;font-weight:600}
+.ganho{margin-top:12px;font-size:11.5px;color:#7bb;display:flex;gap:7px;align-items:flex-start}
+.ganho b{color:#9fd8c4;font-weight:700}
+.perda b{color:#e0a878}
+</style></head>
+<body class="palco">
+<div class="grade-op">
+  <div style="text-align:center;margin-bottom:2px">
+    <div style="font-size:19px;font-weight:800;color:#F0F1EE;letter-spacing:-.02em">Cabeçalho da vitrine</div>
+    <div style="font-size:12px;color:#8D9298;margin-top:3px">
+      CSS, logos e números reais do app · Olympikus, 495 produtos
+    </div>
+  </div>
+  
+    <section class="op-bloco">
+      <h2><em>A</em>Origem segmentada + categoria leve</h2>
+      <p>A origem vira um trilho único e encostado — a forma já diz "escolha uma". Ela acende na cor da própria origem, a mesma dos chips do card: o filtro que você marca é a cor que você vai ver. A categoria muda de peso (contorno tracejado, sem contagem), então os dois eixos param de parecer a mesma coisa. Não exige componente novo.</p>
+      <div class="duo">
+        <div class="moldura m-cel">
+          <div class="rot">Celular · 390px</div>
+          <header class="topo"><div class="topo-l1"><span class="selo-cms discreto">CMS</span><span class="seletor-marca"><button class="op on"><img src="../logo-oly-simbolo.png" alt="Olympikus"></button><button class="op"><img src="../logo-ua-simbolo.png" alt="Under Armour"></button></span><span class="tit"><b>Vitrine<span class="cnt"> · 495</span></b></span><span class="busca"><button class="lupa"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg></button></span><a class="icone" href="#">←</a></div><div class="linha2"><span class="seg"><button class="o-tudo on">Tudo<span class='n'>495</span></button><button class="o-est">Estoque</button><button class="o-rep">Repasse</button><button class="o-pro">Produção</button></span><span class="risco"></span><span class="cat"><button>Tênis</button><button>Chinelos</button><button>Vestuário</button><button>Acessórios</button></span></div></header>
+          <div class="falso-card">primeiro produto começa aqui</div>
+        </div>
+        <div class="moldura m-desk">
+          <div class="rot">Computador</div>
+          <header class="topo"><div class="topo-l1"><span class="selo-cms discreto">CMS</span><span class="seletor-marca"><button class="op on"><img src="../logo-oly-simbolo.png" alt="Olympikus"></button><button class="op"><img src="../logo-ua-simbolo.png" alt="Under Armour"></button></span><span class="tit"><b>Vitrine<span class="cnt"> · 495</span></b></span><span class="busca"><button class="lupa"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg></button></span><a class="icone" href="#">←</a></div><div class="linha2"><span class="seg"><button class="o-tudo on">Tudo<span class='n'>495</span></button><button class="o-est">Estoque</button><button class="o-rep">Repasse</button><button class="o-pro">Produção</button></span><span class="risco"></span><span class="cat"><button>Tênis</button><button>Chinelos</button><button>Vestuário</button><button>Acessórios</button></span></div></header>
+          <div class="falso-card">primeiro produto começa aqui</div>
+        </div>
+      </div>
+      <div class="ganho ganho"><b>Ganho:</b> Some a linha "495 de 495 produtos" e o subtítulo repetido. De 3 faixas para 2.</div>
+    </section>
+    <section class="op-bloco">
+      <h2><em>B</em>Origem em aba + categoria no painel</h2>
+      <p>A aba não compete com as pílulas do card, então a tela inteira fica mais calma. A categoria sai da linha e vai para o botão de filtros, com contador do que está ativo — ali cabem também gênero e outros filtros que hoje não existem na vitrine única.</p>
+      <div class="duo">
+        <div class="moldura m-cel">
+          <div class="rot">Celular · 390px</div>
+          <header class="topo"><div class="topo-l1"><span class="selo-cms discreto">CMS</span><span class="seletor-marca"><button class="op on"><img src="../logo-oly-simbolo.png" alt="Olympikus"></button><button class="op"><img src="../logo-ua-simbolo.png" alt="Under Armour"></button></span><span class="tit"><b>Vitrine<span class="cnt"> · 495</span></b></span><span class="busca"><button class="lupa"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg></button></span><button class="icone btn-filtro"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M7 12h10M11 18h2"/></svg><span class="badge">1</span></button><a class="icone" href="#">←</a></div><div class="abas"><button class="o-tudo on">Tudo<span class='n'>495</span></button><button class="o-est">Estoque</button><button class="o-rep">Repasse</button><button class="o-pro">Produção</button></div></header>
+          <div class="falso-card">primeiro produto começa aqui</div>
+        </div>
+        <div class="moldura m-desk">
+          <div class="rot">Computador</div>
+          <header class="topo"><div class="topo-l1"><span class="selo-cms discreto">CMS</span><span class="seletor-marca"><button class="op on"><img src="../logo-oly-simbolo.png" alt="Olympikus"></button><button class="op"><img src="../logo-ua-simbolo.png" alt="Under Armour"></button></span><span class="tit"><b>Vitrine<span class="cnt"> · 495</span></b></span><span class="busca"><button class="lupa"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg></button></span><button class="icone btn-filtro"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M7 12h10M11 18h2"/></svg><span class="badge">1</span></button><a class="icone" href="#">←</a></div><div class="abas"><button class="o-tudo on">Tudo<span class='n'>495</span></button><button class="o-est">Estoque</button><button class="o-rep">Repasse</button><button class="o-pro">Produção</button></div></header>
+          <div class="falso-card">primeiro produto começa aqui</div>
+        </div>
+      </div>
+      <div class="ganho perda"><b>Custo:</b> Exige montar o painel de filtros, que ainda não existe aqui.</div>
+    </section>
+    <section class="op-bloco">
+      <h2><em>C</em>Uma linha só</h2>
+      <p>Origem e categoria vão inteiras para o painel. O primeiro produto sobe cerca de 90px, o que no celular é quase meia foto a mais na primeira tela.</p>
+      <div class="duo">
+        <div class="moldura m-cel">
+          <div class="rot">Celular · 390px</div>
+          <header class="topo" style="padding-bottom:9px"><div class="topo-l1"><span class="selo-cms discreto">CMS</span><span class="seletor-marca"><button class="op on"><img src="../logo-oly-simbolo.png" alt="Olympikus"></button><button class="op"><img src="../logo-ua-simbolo.png" alt="Under Armour"></button></span><span class="tit"><b>Vitrine<span class="cnt"> · 495</span></b></span><span class="busca"><button class="lupa"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg></button></span><button class="icone btn-filtro"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M7 12h10M11 18h2"/></svg><span class="badge">2</span></button><a class="icone" href="#">←</a></div></header>
+          <div class="falso-card">primeiro produto começa aqui</div>
+        </div>
+        <div class="moldura m-desk">
+          <div class="rot">Computador</div>
+          <header class="topo" style="padding-bottom:9px"><div class="topo-l1"><span class="selo-cms discreto">CMS</span><span class="seletor-marca"><button class="op on"><img src="../logo-oly-simbolo.png" alt="Olympikus"></button><button class="op"><img src="../logo-ua-simbolo.png" alt="Under Armour"></button></span><span class="tit"><b>Vitrine<span class="cnt"> · 495</span></b></span><span class="busca"><button class="lupa"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg></button></span><button class="icone btn-filtro"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M7 12h10M11 18h2"/></svg><span class="badge">2</span></button><a class="icone" href="#">←</a></div></header>
+          <div class="falso-card">primeiro produto começa aqui</div>
+        </div>
+      </div>
+      <div class="ganho perda"><b>Custo:</b> A origem é a novidade desta vitrine. Escondida, o vendedor pode nunca descobrir que existe Repasse e Produção ali dentro.</div>
+    </section>
+  <p style="font-size:11.5px;color:#5c6167;text-align:center;line-height:1.6;margin:0">
+    As três propostas removem o subtítulo "Olympikus" (o seletor já mostra aceso)<br>
+    e a linha "495 de 495 produtos" (a contagem passa para o título).
+  </p>
+</div>
+</body></html>
