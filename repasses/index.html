@@ -3812,6 +3812,19 @@ async function loadCatalog(){
 
     buildFilters();
     renderCart();
+    // ?busca=ARTIGO — a vitrine unica manda o vendedor direto no produto que
+    // ele estava vendo. Sem isso o link cairia na vitrine inteira.
+    (function(){
+      const q = new URLSearchParams(location.search).get('busca');
+      if(!q) return;
+      STATE.search = q;
+      const inp = $('searchInputTop');
+      if(inp){
+        inp.value = q;
+        $('searchShell').classList.add('expanded');
+        $('btnClearSearchTop').classList.remove('hidden');
+      }
+    })();
     applyFilters();
 
     $('loadingBlock').classList.add('hidden');

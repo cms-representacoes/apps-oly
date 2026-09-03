@@ -2544,6 +2544,15 @@ async function loadData(){
     // exibe todos os produtos do banco normalmente. Quem está sem estoque
     // simplesmente tem grade vazia / totalGeral=0 e será visto pela qtde.)
     carregarFiltros();      // restaura filtros da sessão
+    // ?busca=ARTIGO — vem da vitrine unica, apontando um produto especifico.
+    // Entra depois de carregarFiltros() pra vencer o filtro salvo na sessão.
+    (function(){
+      if(_params.get('visao') === 'meta') STATE.filtroVisao = 'meta';
+      const q = _params.get('busca');
+      if(!q) return;
+      const inp = $('searchInput');
+      if(inp) inp.value = q;   // applyFilters() le o campo, nao STATE.search
+    })();
     renderVisaoBar();       // toggle Disponíveis x 2S26
     renderCampanhas();      // pills de campanha no topo
     renderChipsAtivos();    // chips dos filtros ativos

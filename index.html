@@ -382,16 +382,39 @@
     .fab-clientes:hover{ transform:translateY(-2px); box-shadow:0 10px 28px rgba(8,145,178,.55), 0 4px 10px rgba(0,0,0,.18); }
     .fab-perf{ color:#2a1d00; background:linear-gradient(135deg,#F2B705 0%,#C77F0A 100%); box-shadow:0 6px 22px rgba(200,127,10,.45), 0 2px 6px rgba(0,0,0,.12); }
     .fab-perf:hover{ transform:translateY(-2px); box-shadow:0 10px 28px rgba(200,127,10,.55), 0 4px 10px rgba(0,0,0,.18); }
-    .fab-rfv svg, .fab-clientes svg, .fab-perf svg{ width:18px; height:18px; }
+    .fab-rfv svg, .fab-clientes svg, .fab-perf svg, .fab-vitrine svg{ width:18px; height:18px; }
+    /* Provisório: só o CMS enxerga, enquanto a vitrine única está em obra.
+       O degradê percorre as três origens na ordem em que elas chegam ao
+       cliente — estoque, repasse, produção. */
+    .fab-vitrine{
+      color:#fff; border:none; border-radius:32px; padding:10px 14px 10px 12px;
+      font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+      font-size:13px; font-weight:800; cursor:pointer; text-decoration:none;
+      display:inline-flex; align-items:center; gap:8px;
+      background:linear-gradient(135deg,#0E6B47 0%,#2C39E2 55%,#7A2FBF 100%);
+      box-shadow:0 6px 22px rgba(44,57,226,.42), 0 2px 6px rgba(0,0,0,.12);
+      transition:transform .15s, box-shadow .15s;
+    }
+    .fab-vitrine:hover{ transform:translateY(-2px);
+      box-shadow:0 10px 28px rgba(44,57,226,.55), 0 4px 10px rgba(0,0,0,.18); }
+    .fab-vitrine i{
+      font-style:normal; font-size:9.5px; font-weight:800; letter-spacing:.06em;
+      text-transform:uppercase; background:rgba(255,255,255,.22);
+      border-radius:999px; padding:2px 6px;
+    }
+    /* display:inline-flex numa classe empata com o [hidden] do navegador e
+       vence pela ordem — sem esta linha o botão apareceria para todo mundo. */
+    .fab-vitrine[hidden]{ display:none; }
     @media(max-width:380px){
       .fab-stack{ gap:10px; }
-      .fab-rfv, .fab-clientes, .fab-perf{
+      .fab-rfv, .fab-clientes, .fab-perf, .fab-vitrine{
         padding:13px;
         border-radius:50%;
         width:54px; height:54px;
         justify-content:center;
       }
-      .fab-rfv span, .fab-clientes span, .fab-perf span{ display:none; }
+      .fab-rfv span, .fab-clientes span, .fab-perf span,
+      .fab-vitrine span, .fab-vitrine i{ display:none; }
     }
 
     /* ── Login do Portal (sessão compartilhada) ── */
@@ -852,6 +875,15 @@
     })();
   </script>
 <div class="fab-stack">
+  <!-- Provisório: entrada da vitrine única, visível só para o CMS. -->
+  <a href="vitrine/" class="fab-vitrine admin-only" hidden
+     title="Vitrine única — em desenvolvimento" aria-label="Abrir a vitrine única (prévia)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/>
+    </svg>
+    <span>Vitrine</span><i>prévia</i>
+  </a>
   <a href="https://cms-representacoes.github.io/apps-oly-v2/analise-rfv/" class="fab-rfv" title="Análise RFV · Clientes">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="9"/>

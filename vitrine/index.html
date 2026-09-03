@@ -1,0 +1,2064 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Vitrine · CMS Representações</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   Vitrine única — repasse, pronta entrega e meta produtiva numa tela.
+
+   Duas regras de cor sustentam o layout:
+   1. As três ORIGENS são as únicas cores de dado, e são sempre chapadas.
+      Elas significam a mesma coisa nas duas marcas.
+   2. A MARCA ativa pinta o cromo — logo, pílula ligada, botão principal —
+      com textura: gradiente, brilho interno no topo e sombra colorida.
+   Cromo com textura, dado chapado. É o que separa "enfeite" de "informação".
+   ═══════════════════════════════════════════════════════════════════ */
+:root{
+  --papel:#F5F6F4;
+  --carta:#FFFFFF;
+  --tinta:#16181A;
+  --texto:#3A3F45;
+  --fraco:#6D737A;
+  --tenue:#9AA0A6;
+  --linha:#E2E4E0;
+  --linha-forte:#CDD0CA;
+
+  --pronta:#0E6B47;   --pronta-fundo:#DEEFE7;
+  --repasse:#2C39E2;  --repasse-fundo:#E6E8FC;
+  --plano:#7A2FBF;    --plano-fundo:#F1E7FB;
+
+  /* marca ativa — trocada em tempo de execução */
+  --marca:#2c39e2;
+  --marca-claro:#5B69E8;
+  --marca-escuro:#1B27B0;
+
+  --sombra:0 1px 2px rgba(22,24,26,.06), 0 10px 30px rgba(22,24,26,.06);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --papel:#111315; --carta:#1A1D20; --tinta:#F0F1EE; --texto:#C6CACE;
+    --fraco:#8D9298; --tenue:#666B71; --linha:#292D31; --linha-forte:#3A3F45;
+    --pronta:#5CC195;  --pronta-fundo:#12291F;
+    --repasse:#8E99F0; --repasse-fundo:#181C33;
+    --plano:#C79BEE;   --plano-fundo:#2A1A3D;
+    --sombra:0 1px 2px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --papel:#111315; --carta:#1A1D20; --tinta:#F0F1EE; --texto:#C6CACE;
+  --fraco:#8D9298; --tenue:#666B71; --linha:#292D31; --linha-forte:#3A3F45;
+  --pronta:#5CC195;  --pronta-fundo:#12291F;
+  --repasse:#8E99F0; --repasse-fundo:#181C33;
+  --plano:#C79BEE;   --plano-fundo:#2A1A3D;
+  --sombra:0 1px 2px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.35);
+}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--papel); color:var(--texto);
+  font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.mono,.qtd,.chip,.cod,.preco,.n,.cel,.lote,.mes{font-variant-numeric:tabular-nums}
+button{font:inherit}
+
+/* ── cabeçalho ───────────────────────────────────────────────────── */
+.topo{
+  position:sticky; top:0; z-index:20; background:var(--carta);
+  border-bottom:1px solid var(--linha);
+  padding:calc(10px + env(safe-area-inset-top)) 13px 10px;
+}
+/* Do tablet pra cima e uma linha so: o que nao couber rola dentro da propria
+   faixa de filtros. No celular o flex-wrap joga os filtros pra baixo, sem
+   duplicar marcação — o gap de 9px vira o espaço entre as duas linhas. */
+.topo-l1{display:flex;align-items:center;gap:9px;flex-wrap:nowrap;max-width:1180px;margin:0 auto}
+/* textura premium: gradiente + brilho no topo + sombra da própria cor */
+.selo-cms{
+  width:32px;height:32px;border-radius:10px;flex:none;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;color:#fff;letter-spacing:.02em;
+  background:linear-gradient(145deg,#a970ff 0%,#8b5cf6 48%,#7439e0 100%);
+  box-shadow:0 5px 14px rgba(124,58,237,.38), inset 0 1px 0 rgba(255,255,255,.28);
+}
+.marca-btn{position:relative;flex:none;width:32px;height:32px;border:0;border-radius:50%;
+  padding:0 5px;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  background:linear-gradient(145deg, var(--marca-claro), var(--marca) 55%, var(--marca-escuro));
+  box-shadow:0 4px 12px color-mix(in srgb,var(--marca) 34%,transparent),
+             inset 0 1px 0 rgba(255,255,255,.3)}
+.marca-btn img{max-width:100%;max-height:13px;object-fit:contain}
+/* A setinha e o que promete a troca: sem ela a logo parece so enfeite. */
+.marca-btn .troca{position:absolute;right:-3px;bottom:-3px;width:15px;height:15px;
+  border-radius:999px;background:var(--carta);border:1px solid var(--linha);color:var(--fraco);
+  display:flex;align-items:center;justify-content:center}
+.marca-btn:hover .troca{color:var(--tinta);border-color:var(--linha-forte)}
+.marca-btn:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+
+.tit{min-width:0;flex:1}
+.tit{min-width:0}
+.tit b{display:block;font-size:14.5px;font-weight:800;color:var(--tinta);
+  line-height:1.15;letter-spacing:-.015em;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.tit b .quem{font-weight:600;color:var(--tenue);font-size:12.5px}
+.icone{width:32px;height:32px;border-radius:999px;border:1px solid var(--linha);background:var(--carta);
+  color:var(--fraco);display:flex;align-items:center;justify-content:center;flex:none;cursor:pointer;
+  font-size:13px;text-decoration:none}
+.icone:hover{border-color:var(--linha-forte);color:var(--tinta)}
+.icone:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+
+/* Colapsada a busca e so a lupa, do tamanho dos outros botoes da linha.
+   Aberta ela toma o espaco livre e o titulo sai da frente. */
+.busca{display:flex;align-items:center;flex:none;width:32px;height:32px;
+  border:1px solid var(--linha);border-radius:999px;background:var(--carta);
+  overflow:hidden;transition:width .18s ease, background .18s ease}
+.busca.aberta{flex:1 1 280px;width:auto;min-width:0;background:var(--papel);padding-right:3px}
+.busca .lupa{flex:none;width:30px;height:30px;display:flex;align-items:center;justify-content:center;
+  border:0;background:none;color:var(--fraco);cursor:pointer;padding:0}
+.busca .lupa:hover{color:var(--tinta)}
+.busca input{flex:1;width:0;min-width:0;border:0;background:none;outline:none;padding:0;
+  color:var(--tinta);font:inherit;font-size:16px;opacity:0;transition:opacity .18s ease}
+.busca.aberta input{opacity:1}
+.busca input::placeholder{color:var(--tenue);font-size:13px}
+.busca .x{flex:none;width:26px;height:26px;border:0;border-radius:999px;background:none;
+  color:var(--tenue);cursor:pointer;padding:0;font-size:13px;display:flex;align-items:center;justify-content:center}
+.busca .x:hover{color:var(--tinta);background:var(--linha)}
+.busca .x[hidden]{display:none}
+.busca .lupa:focus-visible,.busca .x:focus-visible{outline:2px solid var(--marca);outline-offset:-2px;border-radius:999px}
+/* Aberta, a busca precisa da largura que o titulo ocupa. */
+.topo-l1:has(.busca.aberta) .tit{display:none}
+@media(min-width:768px) and (max-width:1099px){
+  .topo-l1:has(.busca.aberta) .linha2{display:none}
+}
+@media(max-width:520px){ .topo-l1:has(.busca.aberta) .selo-cms{display:none} }
+
+.linha2{display:flex;align-items:center;gap:10px;flex:0 1 auto;min-width:0;
+  margin-left:auto;overflow-x:auto;scrollbar-width:none;padding:1px 0}
+.tit{flex:none}
+@media(max-width:767px){
+  /* order manda os filtros pro fim; a base de 100% os quebra pra linha de baixo,
+     e busca e voltar continuam em cima. */
+  .topo-l1{flex-wrap:wrap}
+  .linha2{order:10;flex-basis:100%;margin-left:0}
+  .tit{flex:1}
+}
+.linha2::-webkit-scrollbar{display:none}
+.risco{width:1px;align-self:stretch;background:var(--linha);flex:none;margin:2px 1px}
+
+.seg{display:inline-flex;flex:none;background:var(--papel);border:1px solid var(--linha);
+  border-radius:10px;padding:2px}
+.seg button{border:0;background:none;padding:5px 11px;font-size:11.5px;font-weight:600;
+  color:var(--fraco);border-radius:8px;cursor:pointer;white-space:nowrap}
+.seg button:hover{color:var(--tinta)}
+.seg button:focus-visible{outline:2px solid var(--marca);outline-offset:-1px}
+/* Contagem so na opcao ativa: nas quatro, o trilho nao cabe em 390px. */
+.seg button .n{font-size:10.5px;opacity:.72;margin-left:4px}
+.seg button.on{color:#fff}
+.seg .on.o-tudo{background:linear-gradient(145deg,var(--marca-claro),var(--marca) 55%,var(--marca-escuro))}
+.seg .on.o-est {background:linear-gradient(145deg,#159C68,var(--pronta) 60%,#0A4F35)}
+.seg .on.o-rep {background:linear-gradient(145deg,var(--marca-claro),var(--repasse) 55%,#1B27B0)}
+.seg .on.o-pro {background:linear-gradient(145deg,#A05FD8,var(--plano) 55%,#5B1F92)}
+
+.cat{display:flex;gap:5px;flex-wrap:nowrap}
+.cat button{border:1px dashed var(--linha-forte);background:none;color:var(--fraco);
+  border-radius:999px;padding:4px 10px;font-size:11px;font-weight:500;cursor:pointer;white-space:nowrap}
+.cat button:hover{border-style:solid;color:var(--tinta)}
+.cat button:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+.cat button.on{border-style:solid;border-color:var(--marca);color:var(--marca);font-weight:600;
+  background:color-mix(in srgb,var(--marca) 8%,transparent)}
+
+.contagem{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:11px 13px 0;font-size:12px;color:var(--fraco);max-width:1180px;margin:0 auto}
+.contagem b{color:var(--tinta);font-weight:600}
+
+/* ── grade ───────────────────────────────────────────────────────── */
+.grade{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:11px 13px 30px;
+  max-width:1180px;margin:0 auto}
+@media(min-width:700px){ .grade{grid-template-columns:repeat(3,1fr);gap:14px;padding:14px 18px 40px} }
+@media(min-width:1000px){ .grade{grid-template-columns:repeat(4,1fr)} }
+
+.card{background:var(--carta);border:1px solid var(--linha);border-radius:14px;overflow:hidden;
+  display:flex;flex-direction:column;
+  transition:border-color .14s,box-shadow .14s,transform .14s}
+.card:hover{border-color:var(--linha-forte);box-shadow:var(--sombra);transform:translateY(-1px)}
+.card:has(:focus-visible){outline:2px solid var(--marca);outline-offset:2px}
+.card :focus-visible{outline:none}
+
+.canto{position:absolute;top:8px;z-index:2;width:28px;height:28px;border-radius:50%;
+  border:1px solid var(--linha);background:rgba(255,255,255,.88);backdrop-filter:blur(4px);
+  color:var(--fraco);cursor:pointer;padding:0;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 8px rgba(22,24,26,.10);transition:color .14s,border-color .14s,background .14s}
+.canto:hover{background:#fff;border-color:var(--linha-forte);color:var(--tinta)}
+.canto:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+.cz{left:8px}
+.cf{right:8px}
+.cf.on{color:#E0245E;border-color:#F3B9C8}
+.cf.on svg{fill:#E0245E}
+.foto{position:relative;aspect-ratio:1/1;background:#fff;border-bottom:1px solid var(--linha);
+  display:flex;align-items:center;justify-content:center;overflow:hidden}
+.foto img{width:100%;height:100%;object-fit:contain}
+.corpo{padding:8px 9px 9px;display:flex;flex-direction:column;gap:5px;flex:1}
+.nome{display:block;font-size:12px;font-weight:800;color:var(--tinta);line-height:1.15;letter-spacing:-.015em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cod{display:block;font-size:9.5px;font-weight:600;color:var(--tenue);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.preco{display:block;font-size:14px;font-weight:900;color:var(--marca);letter-spacing:-.025em}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .preco{color:var(--marca-claro)} }
+:root[data-theme="dark"] .preco{color:var(--marca-claro)}
+.campanha{display:block;font-size:9.5px;font-weight:600;color:var(--fraco)}
+.campanha b{color:var(--tinta);font-weight:600}
+
+/* faixas de disponibilidade — dado, sempre chapado */
+.quando{display:flex;flex-wrap:wrap;gap:3px;margin-top:auto;padding-top:3px}
+/* Pilula com icone, como os chips do Repasses: o icone da a leitura rapida
+   e a borda da mesma familia de cor sustenta o chip no fundo claro. */
+.chip{display:inline-flex;align-items:center;gap:3px;border-radius:999px;
+  border:1px solid;padding:2px 6px;font-size:10px;font-weight:700;line-height:1.35}
+.chip svg{flex:none;opacity:.9}
+.chip .qual{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* fora da tela, mas presente pra leitor de tela */
+.vso{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.chip .quando,.chip .qtd{flex:none}
+.chip .quando{font-size:9.5px;font-weight:600;opacity:.88}
+.chip .qtd{font-size:10.5px;font-weight:600;padding-left:1px}
+.c-pronta {background:var(--pronta-fundo); color:var(--pronta);
+           border-color:color-mix(in srgb,var(--pronta) 28%,transparent)}
+.c-repasse{background:var(--repasse-fundo);color:var(--repasse);
+           border-color:color-mix(in srgb,var(--repasse) 28%,transparent)}
+.c-plano  {background:var(--plano-fundo);  color:var(--plano);
+           border-color:color-mix(in srgb,var(--plano) 30%,transparent)}
+
+.acao{margin-top:6px;width:100%;border:1px solid var(--linha-forte);background:var(--carta);
+  color:var(--tinta);border-radius:9px;padding:6px;font-size:11px;font-weight:600;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none}
+.acao:hover{background:var(--papel)}
+.acao:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+.acao.forte{
+  border-color:transparent;color:#fff;
+  background:linear-gradient(145deg, var(--marca-claro), var(--marca) 55%, var(--marca-escuro));
+  box-shadow:0 4px 12px color-mix(in srgb,var(--marca) 32%,transparent), inset 0 1px 0 rgba(255,255,255,.26)
+}
+.acao.forte:hover{filter:brightness(1.06)}
+
+/* ── estados ─────────────────────────────────────────────────────── */
+.aviso{max-width:640px;margin:60px auto;padding:26px 22px;text-align:center;background:var(--carta);
+  border:1px solid var(--linha);border-radius:14px}
+.aviso h2{margin:0 0 6px;font-size:19px;font-weight:600;color:var(--tinta)}
+.aviso p{margin:0;font-size:14px;color:var(--fraco)}
+.girando{display:inline-block;width:22px;height:22px;border-radius:50%;border:2.5px solid var(--linha);
+  border-top-color:var(--marca);animation:gira .7s linear infinite;margin-bottom:12px}
+@keyframes gira{to{transform:rotate(360deg)}}
+
+/* ── modal ───────────────────────────────────────────────────────── */
+.zoom-cx{margin:0;max-width:620px;width:100%;display:flex;flex-direction:column;
+  align-items:center;gap:12px}
+.zoom-cx img{max-width:100%;max-height:74vh;object-fit:contain;background:#fff;
+  border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.45)}
+.zoom-cx figcaption{color:#fff;font-size:13px;font-weight:600;text-align:center;
+  text-shadow:0 1px 3px rgba(0,0,0,.5)}
+#zoom{background:rgba(10,12,14,.86);cursor:zoom-out}
+
+/* ── sacola ──────────────────────────────────────────────────────── */
+.fab-sacola{position:fixed;right:14px;z-index:55;
+  bottom:calc(14px + env(safe-area-inset-bottom,0px));
+  display:inline-flex;align-items:center;gap:8px;border:0;border-radius:32px;
+  padding:11px 16px 11px 14px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;
+  background:linear-gradient(145deg,var(--marca-claro),var(--marca) 55%,var(--marca-escuro));
+  box-shadow:0 8px 24px color-mix(in srgb,var(--marca) 40%,transparent),
+             inset 0 1px 0 rgba(255,255,255,.26)}
+.fab-sacola[hidden]{display:none}
+.fab-sacola:hover{filter:brightness(1.06)}
+.fab-sacola .n{background:rgba(255,255,255,.24);border-radius:999px;padding:1px 7px;
+  font-size:11.5px;font-variant-numeric:tabular-nums}
+/* O botao e fixo: sem reservar o rodape, ele cobre o "Ver detalhes" do
+   ultimo card. A folga so existe quando ha algo na sacola. */
+@media(max-width:640px){
+  body.com-sacola .grade{padding-bottom:88px}
+  .fab-sacola{width:54px;height:54px;padding:0;border-radius:50%;justify-content:center;gap:0}
+  .fab-sacola > span:not(.n){display:none}
+  .fab-sacola .n{position:absolute;top:-2px;right:-2px;min-width:20px;height:20px;
+    display:flex;align-items:center;justify-content:center;padding:0 5px;font-size:11px;
+    font-weight:800;background:var(--carta);color:var(--marca);
+    border:2px solid var(--marca);box-shadow:0 2px 6px rgba(0,0,0,.18)}
+}
+
+.sc-bg{position:fixed;inset:0;background:rgba(16,18,20,.5);backdrop-filter:blur(2px);
+  display:flex;justify-content:flex-end;z-index:80}
+.sc-bg[hidden]{display:none}
+.sc{background:var(--carta);width:100%;max-width:430px;height:100%;display:flex;
+  flex-direction:column;border-left:1px solid var(--linha);box-shadow:-8px 0 32px rgba(0,0,0,.18)}
+.sc-topo{display:flex;align-items:center;gap:9px;
+  padding:calc(13px + env(safe-area-inset-top)) 14px 13px;border-bottom:1px solid var(--linha)}
+.sc-topo b{font-size:15px;font-weight:800;color:var(--tinta);letter-spacing:-.015em}
+.sc-topo .limpar{margin-left:auto;border:0;background:none;color:var(--fraco);
+  font-size:11.5px;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.sc-topo .limpar:hover{color:var(--tinta)}
+/* Total das duas metades sempre à vista: com abas, uma delas fica escondida,
+   e sem isso o vendedor perderia de vista o que montou do outro lado. */
+.sc-geral{display:flex;gap:14px;padding:9px 14px;border-bottom:1px solid var(--linha);
+  background:var(--papel);font-size:11.5px;color:var(--fraco)}
+.sc-geral[hidden]{display:none}
+.sc-geral span{display:inline-flex;align-items:center;gap:5px}
+.sc-geral b{color:var(--tinta);font-weight:700;font-variant-numeric:tabular-nums}
+.sc-geral i{width:8px;height:8px;border-radius:2px;flex:none}
+.sc-geral .i-est{background:var(--pronta)} .sc-geral .i-rep{background:var(--repasse)}
+
+/* Elas mandam no que a sacola mostra, então precisam pesar mais que um
+   rótulo: caixa alta, sublinhado grosso e a contagem num selo. */
+.sc-abas{display:flex;gap:4px;padding:8px 10px 0;border-bottom:1px solid var(--linha);
+  background:var(--papel)}
+.sc-abas[hidden]{display:none}
+.sc-abas button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+  border:0;background:none;padding:9px 8px;font-size:11.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--tenue);
+  border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap;
+  border-radius:8px 8px 0 0}
+.sc-abas button:hover{color:var(--texto);background:var(--carta)}
+.sc-abas button .n{font-weight:800;font-size:10.5px;letter-spacing:0;
+  border-radius:999px;padding:1px 6px;background:var(--linha);color:var(--fraco)}
+.sc-abas button.on{background:var(--carta)}
+.sc-abas .on.a-est{color:var(--pronta);border-bottom-color:var(--pronta)}
+.sc-abas .on.a-rep{color:var(--repasse);border-bottom-color:var(--repasse)}
+.sc-abas .on.a-est .n{background:var(--pronta-fundo);color:var(--pronta)}
+.sc-abas .on.a-rep .n{background:var(--repasse-fundo);color:var(--repasse)}
+.sc-abas button:focus-visible{outline:2px solid var(--marca);outline-offset:-2px}
+
+.sc-corpo{flex:1;overflow-y:auto;padding:0 14px 14px}
+
+/* Um bloco por destino. Eles não se misturam porque não terminam no mesmo
+   lugar: um vira pedido no sistema, o outro vira planilha. */
+.sc-sec{padding:13px 0 4px}
+.sc-sec-sub{margin:0 0 11px;font-size:10.5px;color:var(--tenue);line-height:1.4}
+
+.sc-item{border:1px solid var(--linha);border-radius:11px;padding:10px;margin-bottom:7px}
+.sc-item-topo{display:flex;gap:9px;align-items:flex-start}
+.sc-item .mini{width:44px;height:44px;flex:none;border:1px solid var(--linha);border-radius:8px;
+  overflow:hidden;background:#fff}
+.sc-item .mini img{width:100%;height:100%;object-fit:contain}
+.sc-item .txt{flex:1;min-width:0}
+.sc-item .nm{display:block;font-size:12.5px;font-weight:800;color:var(--tinta);
+  line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-item .sb{display:block;font-size:10px;font-weight:600;color:var(--tenue);margin-top:1px}
+/* Estoque e produção convivem na mesma aba: sem um selo, a diferença entre
+   "sai agora" e "sai em dezembro" desapareceria. */
+.selo-pro{display:inline-flex;align-items:center;gap:4px;margin-top:3px;
+  background:var(--plano-fundo);color:var(--plano);border-radius:999px;
+  padding:1px 7px;font-size:9.5px;font-weight:800}
+.sc-item .tirar{flex:none;width:26px;height:26px;border:0;border-radius:999px;background:none;
+  color:var(--tenue);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
+.sc-item .tirar:hover{background:var(--linha);color:var(--tinta)}
+
+/* Estoque: uma caixinha por tamanho, com o disponível escrito embaixo. */
+.sc-tam{display:flex;flex-wrap:wrap;gap:4px;margin-top:9px}
+.sc-tam label{width:40px;text-align:center}
+.sc-tam .t{display:block;font-size:9px;font-weight:700;color:var(--tenue)}
+.sc-tam input{width:100%;border:1px solid var(--linha);border-radius:6px;padding:3px 0;
+  text-align:center;font:inherit;font-size:12px;font-weight:700;color:var(--tinta);
+  background:var(--carta);font-variant-numeric:tabular-nums;-moz-appearance:textfield}
+.sc-tam input::-webkit-outer-spin-button,.sc-tam input::-webkit-inner-spin-button{
+  -webkit-appearance:none;margin:0}
+.sc-tam input:focus{outline:2px solid var(--marca);outline-offset:-1px}
+.sc-tam .d{display:block;font-size:8.5px;color:var(--tenue);margin-top:1px}
+
+/* Repasse: caixa fechada, então o controle é quantas caixas. */
+.sc-cx{display:flex;align-items:center;gap:9px;margin-top:9px}
+.sc-cx .passo{display:inline-flex;align-items:center;border:1px solid var(--linha);border-radius:999px}
+.sc-cx .passo button{width:28px;height:28px;border:0;background:none;color:var(--texto);
+  font-size:15px;font-weight:700;cursor:pointer;border-radius:999px}
+.sc-cx .passo button:hover:not(:disabled){background:var(--papel);color:var(--tinta)}
+.sc-cx .passo button:disabled{opacity:.35;cursor:not-allowed}
+.sc-cx .passo span{min-width:34px;text-align:center;font-size:13px;font-weight:800;
+  color:var(--tinta);font-variant-numeric:tabular-nums}
+.sc-cx .info{font-size:10.5px;color:var(--fraco);line-height:1.35}
+.sc-cx .info b{color:var(--tinta);font-weight:700}
+
+/* Rola junto com os itens: fixo, ele tapava justamente a grade em edição. */
+.sc-form{border:1px solid var(--linha);background:var(--papel);border-radius:11px;
+  padding:10px;margin-top:4px}
+.sc-form[hidden]{display:none}
+.sc-form-tit{margin:0 0 8px;font-size:10px;font-weight:800;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--fraco)}
+.sc-campos{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.sc-campos label{display:flex;flex-direction:column;gap:2px;min-width:0}
+.sc-campos label.largo{grid-column:1 / -1}
+.sc-campos span{font-size:10px;font-weight:600;color:var(--fraco)}
+.sc-campos i{font-style:normal;color:#E0245E}
+/* 16px é o piso: abaixo disso o iPhone dá zoom sozinho ao focar o campo. */
+.sc-campos input{border:1px solid var(--linha);border-radius:7px;padding:5px 8px;
+  font:inherit;font-size:16px;line-height:1.25;color:var(--tinta);
+  background:var(--carta);min-width:0}
+.sc-campos input:focus{outline:2px solid var(--marca);outline-offset:-1px}
+.sc-campos select{border:1px solid var(--linha);border-radius:7px;padding:5px 8px;
+  font:inherit;font-size:13px;font-weight:600;color:var(--tinta);background:var(--carta);
+  min-width:0;cursor:pointer}
+.sc-campos select:focus{outline:2px solid var(--marca);outline-offset:-1px}
+.sc-campos input.erro,.sc-campos select.erro{border-color:#E0245E}
+
+/* A lista sobe acima do rodapé, então precisa de camada própria. */
+.sc-busca-cli{position:relative}
+.cli-sug{position:absolute;left:0;right:0;top:calc(100% + 3px);z-index:5;
+  max-height:210px;overflow-y:auto;background:var(--carta);border:1px solid var(--linha-forte);
+  border-radius:10px;box-shadow:0 8px 24px rgba(22,24,26,.16);padding:4px}
+.cli-sug[hidden]{display:none}
+.cli-opt{display:flex;gap:9px;width:100%;text-align:left;border:0;background:none;
+  border-radius:7px;padding:7px 8px;cursor:pointer;align-items:flex-start}
+.cli-opt:hover,.cli-opt.on{background:var(--papel)}
+.cli-opt .cod{flex:none;font-size:11px;font-weight:800;color:var(--marca);
+  font-variant-numeric:tabular-nums;padding-top:1px}
+.cli-opt .txt{min-width:0}
+.cli-opt .nm{display:block;font-size:12px;font-weight:700;color:var(--tinta);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cli-opt .loc{display:block;font-size:10px;color:var(--tenue);margin-top:1px}
+.cli-sug .mais{padding:6px 8px;font-size:10px;color:var(--tenue);text-align:center}
+.cli-dica{font-size:10px;font-weight:600;min-height:12px}
+.cli-dica.ok{color:var(--pronta)} .cli-dica.na{color:#E0245E}
+
+.mg-meses{display:flex;gap:5px;flex-wrap:wrap}
+.mg-meses button{border:1px solid var(--linha);background:var(--carta);color:var(--texto);
+  border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px}
+.mg-meses button .q{font-size:10px;font-weight:600;color:var(--tenue)}
+.mg-meses button.on{border-color:transparent;color:#fff;
+  background:linear-gradient(145deg,#A05FD8,var(--plano) 55%,#5B1F92)}
+.mg-meses button.on .q{color:rgba(255,255,255,.78)}
+.mg-teto{margin:9px 0 0;font-size:10.5px;color:var(--tenue)}
+.mg-teto.estourou{color:#E0245E;font-weight:700}
+
+.sc-vazia{padding:40px 20px;text-align:center}
+.sc-vazia h3{margin:0 0 5px;font-size:15px;font-weight:700;color:var(--tinta)}
+.sc-vazia p{margin:0;font-size:12.5px;color:var(--fraco);line-height:1.5}
+
+.sc-pe{border-top:1px solid var(--linha);padding:12px 14px calc(12px + env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;gap:8px}
+.sc-pe .acao{margin-top:0}
+.sc-pe .depois{border-style:dashed;color:var(--fraco);cursor:not-allowed}
+.sc-pe .depois:hover{background:var(--carta)}
+.sc-resumo{display:flex;justify-content:space-between;font-size:11.5px;color:var(--fraco)}
+.sc-resumo b{color:var(--tinta);font-weight:700;font-variant-numeric:tabular-nums}
+
+/* ── painel de filtros ───────────────────────────────────────────── */
+.pn-bg{position:fixed;inset:0;background:rgba(16,18,20,.5);backdrop-filter:blur(2px);
+  display:flex;justify-content:flex-end;z-index:70}
+.pn-bg[hidden]{display:none}
+.pn{background:var(--carta);width:100%;max-width:376px;height:100%;display:flex;
+  flex-direction:column;border-left:1px solid var(--linha);box-shadow:-8px 0 32px rgba(0,0,0,.18)}
+.pn-topo{display:flex;align-items:center;gap:9px;padding:calc(13px + env(safe-area-inset-top)) 14px 13px;
+  border-bottom:1px solid var(--linha)}
+.pn-topo b{font-size:15px;font-weight:800;color:var(--tinta);letter-spacing:-.015em}
+.pn-topo .n{font-size:11px;font-weight:700;color:#fff;background:var(--marca);
+  border-radius:999px;padding:2px 7px;font-variant-numeric:tabular-nums}
+.pn-topo .limpar{margin-left:auto;border:0;background:none;color:var(--fraco);
+  font-size:11.5px;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.pn-topo .limpar:hover{color:var(--tinta)}
+.pn-topo .limpar[hidden]{display:none}
+
+.pn-ativos{display:flex;flex-wrap:wrap;gap:5px;padding:11px 14px;
+  border-bottom:1px solid var(--linha);background:var(--papel)}
+.pn-ativos[hidden]{display:none}
+.pn-ativos button{display:inline-flex;align-items:center;gap:5px;border-radius:999px;
+  background:var(--carta);border:1px solid var(--marca);color:var(--marca);
+  padding:3px 7px 3px 9px;font-size:10.5px;font-weight:700;cursor:pointer}
+.pn-ativos button i{font-style:normal;font-weight:600;opacity:.6}
+.pn-ativos button b{font-weight:400;font-size:13px;line-height:1;opacity:.8}
+
+.pn-corpo{flex:1;overflow-y:auto;padding:2px 14px 14px}
+.gr{padding:13px 0;border-bottom:1px solid var(--linha)}
+.gr:last-child{border-bottom:0}
+.gr h3{margin:0;font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--fraco)}
+.gr p{margin:3px 0 0;font-size:10.5px;color:var(--tenue);line-height:1.4}
+.ops{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.ops button{border:1px solid var(--linha);background:var(--carta);color:var(--texto);
+  border-radius:999px;padding:5px 10px;font-size:11.5px;font-weight:600;cursor:pointer;
+  display:inline-flex;align-items:center;gap:5px}
+.ops button:hover{border-color:var(--linha-forte)}
+.ops button:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+.ops .q{font-size:10px;font-weight:600;color:var(--tenue);font-variant-numeric:tabular-nums}
+.ops button.on{border-color:transparent;color:#fff;
+  background:linear-gradient(145deg,var(--marca-claro),var(--marca) 55%,var(--marca-escuro));
+  box-shadow:0 3px 10px color-mix(in srgb,var(--marca) 30%,transparent),
+             inset 0 1px 0 rgba(255,255,255,.26)}
+.ops button.on .q{color:rgba(255,255,255,.78)}
+/* Campanha carrega dois dados (tabela e MKP), então vira linha, não pílula. */
+.ops.linhas{flex-direction:column;gap:5px}
+.ops.linhas button{width:100%;justify-content:space-between;border-radius:9px;padding:8px 10px}
+.ops.linhas .mkp{font-weight:800;font-variant-numeric:tabular-nums}
+
+.pn-pe{padding:12px 14px calc(12px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--linha);display:flex;gap:8px}
+.pn-pe .acao{margin-top:0}
+
+.btn-filtro{position:relative;width:auto;gap:6px;padding:0 11px;border-radius:999px;
+  font-size:11.5px;font-weight:700;color:var(--texto)}
+.btn-filtro:hover{color:var(--tinta)}
+.btn-filtro svg{flex:none}
+.btn-filtro .badge{position:absolute;top:-3px;right:-3px;min-width:15px;height:15px;
+  border-radius:999px;background:var(--marca);color:#fff;font-size:9.5px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;padding:0 4px;
+  border:1.5px solid var(--carta);font-variant-numeric:tabular-nums}
+.btn-filtro .badge[hidden]{display:none}
+
+.fundo{position:fixed;inset:0;background:rgba(16,18,20,.55);backdrop-filter:blur(2px);
+  display:flex;align-items:center;justify-content:center;padding:16px;z-index:60}
+.fundo[hidden]{display:none}
+.folha{background:var(--carta);border:1px solid var(--linha);border-radius:16px;width:100%;
+  max-width:470px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--sombra)}
+.folha-topo{padding:15px 17px;border-bottom:1px solid var(--linha);display:flex;gap:12px;align-items:flex-start}
+.folha-topo .min{width:54px;height:54px;border-radius:9px;border:1px solid var(--linha);flex:none;overflow:hidden;background:#fff}
+.folha-topo .min img{width:100%;height:100%;object-fit:contain}
+.folha-topo h3{margin:0;font-size:16px;font-weight:600;color:var(--tinta);letter-spacing:-.015em}
+.folha-topo p{margin:2px 0 0;font-size:11.5px;color:var(--tenue);}
+.folha-corpo{padding:15px 17px;overflow-y:auto;display:flex;flex-direction:column;gap:16px}
+.bloco .rot{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--fraco);margin:0 0 8px;display:flex;align-items:center;gap:7px}
+.bloco .rot svg{flex:none}
+.bloco .rot.r-pronta{color:var(--pronta)}
+.bloco .rot.r-repasse{color:var(--repasse)}
+.bloco .rot.r-plano{color:var(--plano)}
+.celulas{display:flex;flex-wrap:wrap;gap:5px}
+.cel{border:1px solid var(--linha);border-radius:6px;padding:4px 0;width:40px;text-align:center;background:var(--carta)}
+@media(max-width:520px){
+  .celulas{gap:4px}
+  .cel{width:33px;padding:3px 0}
+  .cel .t{font-size:9px}
+  .cel .q{font-size:11.5px}
+  .folha{max-height:92vh}
+  .folha-corpo{padding:13px 14px;gap:14px}
+  .folha-topo{padding:13px 14px}
+}
+.cel .t{display:block;font-size:9.5px;color:var(--tenue);line-height:1}
+.cel .q{display:block;font-size:12.5px;font-weight:600;color:var(--tinta);margin-top:2px;line-height:1}
+/* Uma entrega por cartão, com a grade daquela entrega — igual ao Repasses. */
+.lotes{display:flex;flex-direction:column;gap:7px}
+.lote{border:1px solid var(--linha);border-radius:10px;padding:9px 10px}
+.lote-l1{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.lote .n{font-size:11px;color:var(--repasse);font-weight:700}
+.lote .s{font-size:12px;font-weight:700;color:var(--tinta);font-variant-numeric:tabular-nums;flex:none}
+.lote-d{font-size:10.5px;color:var(--fraco);margin-top:1px}
+.lote .celulas{margin-top:7px}
+.lote-add{margin-top:9px;padding:6px;font-size:11px}
+.lote-add:disabled{color:var(--tenue);border-style:dashed;cursor:default;background:none}
+
+.meses{display:flex;flex-direction:column}
+.mes{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+  padding:6px 0;border-bottom:1px solid var(--linha)}
+.mes:last-child{border-bottom:0}
+.mes .m{font-size:12px;font-weight:600;color:var(--texto)}
+.mes .v{font-weight:700;color:var(--tinta);font-size:12.5px;font-variant-numeric:tabular-nums}
+.folha-pe{padding:13px 17px;border-top:1px solid var(--linha);display:flex;gap:8px}
+.folha-pe > *{flex:1;margin-top:0}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <div class="topo-l1">
+    <span class="selo-cms">CMS</span>
+    <button class="marca-btn" id="btnMarca"></button>
+    <span class="tit"><b id="titMarca">—</b></span>
+    <span class="busca" id="busca">
+      <button class="lupa" id="btnBusca" aria-label="Buscar" aria-expanded="false">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg>
+      </button>
+      <input id="campoBusca" aria-label="Buscar produto">
+      <button class="x" id="limpaBusca" hidden aria-label="Limpar busca">✕</button>
+    </span>
+    <div class="linha2">
+      <span class="seg" id="segOrigem"></span>
+      <span class="risco" id="riscoCat" hidden></span>
+      <span class="cat" id="catFiltros"></span>
+    </div>
+    <button class="icone btn-filtro" id="btnFiltros" aria-label="Filtros" aria-expanded="false">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+        <path d="M3 6h18M7 12h10M11 18h2"/></svg>
+      <span>Filtros</span>
+      <span class="badge" id="badgeFiltros" hidden></span>
+    </button>
+    <a class="icone" id="linkPortal" href="../" title="Voltar ao Portal" aria-label="Voltar ao Portal">←</a>
+  </div>
+</header>
+
+<div class="contagem" id="contagem" hidden></div>
+<main class="grade" id="grade" aria-live="polite"></main>
+<div id="estado"></div>
+
+<button class="fab-sacola" id="fabSacola" hidden onclick="abrirSacola()">
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+    <path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+  <span>Sacola</span><span class="n" id="fabSacolaN">0</span>
+</button>
+
+<div class="fundo" id="modalGrade" hidden>
+  <div class="folha" role="dialog" aria-modal="true" aria-labelledby="mgTit"
+       style="max-width:420px">
+    <div class="folha-topo">
+      <span class="min"><img id="mgImg" alt=""></span>
+      <span style="flex:1;min-width:0"><h3 id="mgTit"></h3><p id="mgSub"></p></span>
+      <button class="icone" onclick="fecharGrade()" aria-label="Fechar">✕</button>
+    </div>
+    <div class="folha-corpo">
+      <div class="bloco" id="mgMeses" hidden>
+        <p class="rot r-plano">Mês da produção</p>
+        <div class="mg-meses" id="mgMesesOps"></div>
+      </div>
+      <div class="bloco">
+        <p class="rot" id="mgRot"></p>
+        <div class="sc-tam" id="mgTam"></div>
+        <p class="mg-teto" id="mgTeto"></p>
+      </div>
+    </div>
+    <div class="folha-pe">
+      <button class="acao" id="mgDepois">Preencher depois</button>
+      <button class="acao forte" id="mgAgora">Adicionar à sacola</button>
+    </div>
+  </div>
+</div>
+
+<div class="sc-bg" id="sacola" hidden>
+  <aside class="sc" role="dialog" aria-modal="true" aria-label="Sacola">
+    <div class="sc-topo">
+      <b>Sacola</b>
+      <button class="limpar" id="scLimpar" hidden>Esvaziar</button>
+      <button class="icone" onclick="fecharSacola()" aria-label="Fechar sacola">✕</button>
+    </div>
+    <div class="sc-geral" id="scGeral" hidden></div>
+    <div class="sc-abas" id="scAbas" role="tablist" hidden></div>
+    <div class="sc-corpo" id="scCorpo"></div>
+    <div class="sc-pe" id="scPe"></div>
+  </aside>
+</div>
+
+<div class="pn-bg" id="painel" hidden>
+  <aside class="pn" role="dialog" aria-modal="true" aria-label="Filtros">
+    <div class="pn-topo">
+      <b>Filtros</b>
+      <span class="n" id="pnConta" hidden></span>
+      <button class="limpar" id="pnLimpar" hidden>Limpar tudo</button>
+      <button class="icone" onclick="fecharPainel()" aria-label="Fechar filtros">✕</button>
+    </div>
+    <div class="pn-ativos" id="pnAtivos" hidden></div>
+    <div class="pn-corpo" id="pnCorpo"></div>
+    <div class="pn-pe"><button class="acao forte" id="pnVer" onclick="fecharPainel()"></button></div>
+  </aside>
+</div>
+
+<div class="fundo" id="zoom" hidden>
+  <figure class="zoom-cx" role="dialog" aria-modal="true" aria-label="Foto ampliada">
+    <img id="zoomImg" alt="">
+    <figcaption id="zoomLegenda"></figcaption>
+  </figure>
+</div>
+
+<div class="fundo" id="modal" hidden>
+  <div class="folha" role="dialog" aria-modal="true" aria-labelledby="mTit">
+    <div class="folha-topo">
+      <span class="min"><img id="mImg" alt=""></span>
+      <span style="flex:1;min-width:0">
+        <h3 id="mTit"></h3>
+        <p id="mSub"></p>
+      </span>
+      <button class="icone" onclick="fecharModal()" aria-label="Fechar">✕</button>
+    </div>
+    <div class="folha-corpo" id="mCorpo"></div>
+    <div class="folha-pe" id="mPe"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const DADOS = '../data/';
+// Piso de exposicao: estoque e producao so entram na vitrine com pelo menos
+// isso. Vale por entrega — uma quinzena abaixo do piso sai sozinha, sem
+// derrubar as outras do mesmo produto. Repasse nao entra na regra: la o lote
+// ja vem fechado.
+const MIN_PARES = 48;
+const IMG   = '../Catalogo/';
+
+/* ── sessão ─────────────────────────────────────────────────────── */
+// A mesma chave que o portal grava; todos os apps leem daqui.
+const SESSION_KEY = 'cms_portal_session_v1';
+// Enquanto a vitrine está em obra, só o CMS entra. Para abrir para todos,
+// basta esvaziar a lista.
+const SO_ESTES = ['CMS'];
+
+function getSessao(){
+  try{
+    const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+    if(!s || !s.expiraEm || new Date(s.expiraEm).getTime() < Date.now()) return null;
+    return s;
+  }catch(_){ return null; }
+}
+const SESSAO = getSessao();
+// CMS é sigla e fica como está; nomes de gente vão em caixa de título.
+function nomeCurto(n){
+  const t = String(n || '').trim();
+  if(!t) return '';
+  if(t.length <= 4 && t === t.toUpperCase()) return t;
+  return t.split(/\s+/).map(w => w[0].toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+}
+
+function barrar(titulo, texto, comBotao){
+  document.body.innerHTML =
+    `<div class="aviso"><h2>${esc(titulo)}</h2><p>${esc(texto)}</p>` +
+    (comBotao ? '<p style="margin-top:14px"><a class="acao forte" style="display:inline-flex;' +
+      'width:auto;padding:9px 18px;text-decoration:none" href="../">Ir para o Portal</a></p>' : '') +
+    '</div>';
+}
+
+/* ── marcas ─────────────────────────────────────────────────────── */
+const MARCAS = {
+  oly: { nome:'Olympikus',    curto:'Oly', marca:'#2c39e2', claro:'#5B69E8', escuro:'#1B27B0', logo:'../logo-oly-simbolo.png' },
+  ua:  { nome:'Under Armour', curto:'UA',  marca:'#e52125', claro:'#F2494C', escuro:'#A81215', logo:'../logo-ua-simbolo.png' }
+};
+let MARCA = (new URLSearchParams(location.search).get('marca') || 'oly').toLowerCase();
+if(!MARCAS[MARCA]) MARCA = 'oly';
+
+/* ── estado ─────────────────────────────────────────────────────── */
+const STATE = { produtos:[], filtrados:[], origem:'tudo', categoria:'', busca:'',
+                termos:[], termosIgnorados:0,
+                sel:{ chega:new Set(), genero:new Set(), sub:new Set(),
+                      fabrica:new Set(), camp:new Set() },
+                sacola:new Map(), aba:'estoque' };
+
+const FORM_HTML = `<p class="sc-form-tit">Dados do pedido</p>
+      <div class="sc-campos">
+        <label class="largo sc-busca-cli"><span>Cliente <i>*</i></span>
+          <input id="scCliente" placeholder="código ou nome" autocomplete="off"
+                 role="combobox" aria-expanded="false" aria-autocomplete="list">
+          <div class="cli-sug" id="scCliSug" role="listbox" hidden></div>
+          <span class="cli-dica" id="scCliDica"></span></label>
+        <label><span>Condição de pagamento <i>*</i></span>
+          <select id="scPrazo"></select></label>
+        <label><span>Campanha</span>
+          <select id="scCampanha"></select></label>
+        <label class="largo"><span>Data desejada <i>*</i></span>
+          <input id="scData" type="date"></label>`;
+
+/* ── sacola ─────────────────────────────────────────────────────── */
+// Uma sacola por vendedor E por marca: misturar Oly com UA geraria um pedido
+// que nenhum dos dois sistemas aceita.
+// Guardado fora do DOM entre um render e outro: assim o que já foi digitado
+// não se perde quando a lista de itens é redesenhada.
+const FORM_PEDIDO = (() => {
+  const d = document.createElement('div');
+  d.className = 'sc-form';
+  d.id = 'scForm';
+  d.innerHTML = FORM_HTML;
+  return d;
+})();
+
+const $f = id => FORM_PEDIDO.querySelector('#' + id);
+
+const chaveSacola = () =>
+  `vitrine_sacola_v1_${(SESSAO && SESSAO.codigo) || 'anon'}_${MARCA}`;
+
+function salvarSacola(){
+  try{ localStorage.setItem(chaveSacola(), JSON.stringify([...STATE.sacola.values()])); }
+  catch(_){ /* cota cheia ou modo privado: a sacola segue só em memória */ }
+}
+function carregarSacola(){
+  STATE.sacola.clear();
+  try{
+    const arr = JSON.parse(localStorage.getItem(chaveSacola()) || '[]');
+    for(const it of arr) if(it && it.key) STATE.sacola.set(it.key, it);
+  }catch(_){ /* ignora sacola corrompida */ }
+}
+
+// O item já nasce com os campos dos dois destinos. O XLSX usa artigo/cor/
+// gradePedido; o pedido do Repasses usa num/gci/ebm/packSize/amount/grade.
+// Ter tudo desde agora evita reconstruir a sacola quando o envio for ligado.
+function itemEstoque(o){
+  return { key:`est|${o.k}`, origem:'estoque',
+    artigo:o.artigo, cor:o.cor, corCodigo:o.cor, nome:o.nome, produto:o.nome,
+    codigo:o.artigo, pdv:o.pdv, imagem:o.imagem, categoria:o.categoria,
+    gradeDisp:{ ...(o.pronta ? o.pronta.grade : {}) }, gradePedido:{},
+    num:'', gci:'', ebm:'', prevFaturamento:'' };
+}
+// Vai para a mesma planilha do estoque; o que muda é a origem e o mês a que
+// a reserva se refere. O teto é o total planejado para aquela quinzena.
+function itemProducao(o, q){
+  const tam = tamanhosDe(o);
+  const disp = {};
+  for(const t of tam) disp[t] = q.v;   // sem quebra por tamanho na base
+  return { key:`pro|${o.k}|${q.mes}`, origem:'producao',
+    artigo:o.artigo, cor:o.cor, corCodigo:o.cor, nome:o.nome, produto:o.nome,
+    codigo:o.artigo, pdv:o.pdv, imagem:o.imagem, categoria:o.categoria,
+    mes:q.mes, quinzena:q.rot, teto:q.v,
+    gradeDisp:disp, gradePedido:{},
+    num:'', gci:'', ebm:'', prevFaturamento:'' };
+}
+function itemRepasse(o, lote){
+  const packSize = Object.values(lote.grade).reduce((a, b) => a + b, 0);
+  return { key:`rep|${o.k}|${lote.num}`, origem:'repasse',
+    artigo:o.artigo, cor:o.cor, corCodigo:o.cor, nome:o.nome, produto:o.nome,
+    codigo:o.artigo, pdv:o.pdv, imagem:o.imagem, categoria:o.categoria,
+    num:lote.num, gci:lote.gci, ebm:'', prevFaturamento:lote.data,
+    grade:{ ...lote.grade }, packSize, mode:'boxed', saldo:lote.saldo,
+    amount: packSize > 0 && lote.saldo >= packSize ? 1 : 0 };
+}
+const naSacola = k => STATE.sacola.has(k);
+const totalUnidades = it => it.origem === 'repasse'
+  ? Number(it.amount || 0) * Number(it.packSize || 0)
+  : Object.values(it.gradePedido || {}).reduce((a, b) => a + Number(b || 0), 0);
+
+/* ── utilidades ─────────────────────────────────────────────────── */
+const nf   = n => Number(n||0).toLocaleString('pt-BR');
+const brl  = v => 'R$ ' + Number(v||0).toFixed(2).replace('.', ',');
+const norm = v => String(v==null?'':v).normalize('NFD').replace(/[̀-ͯ]/g,'').trim().toUpperCase();
+const esc  = v => String(v==null?'':v).replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// Cor no nome do arquivo de imagem: / e - viram _
+const corArquivo = c => norm(c).replace(/[\/\-]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+const chave = (artigo, cor) => norm(artigo) + '|' + corArquivo(cor);
+const foto = o => IMG + (o.imagem || (o.artigo + '_' + corArquivo(o.cor))) + '.jpg';
+
+// Algumas planilhas chegam com Código e Produto trocados: o código traz o nome
+// e o produto traz a referência. A referência é sempre numérica e o nome nunca.
+const ehRef = v => /^\d+$/.test(String(v==null?'':v).replace(/\s+/g,''));
+function desinverte(cod, prod){
+  const c = String(cod||'').trim(), p = String(prod||'').trim();
+  return (c && p && !ehRef(c) && ehRef(p)) ? [p, c] : [c, p];
+}
+
+const MES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const SIGLA = { JAN:'Jan', FEV:'Fev', MAR:'Mar', ABR:'Abr', MAI:'Mai', JUN:'Jun',
+                JUL:'Jul', AGO:'Ago', SET:'Set', OUT:'Out', NOV:'Nov', DEZ:'Dez' };
+// A fonte so manda 2Q hoje, e todo mundo sabe disso — entao o rotulo e so o
+// mes. Se um dia vier 1Q, ele volta a diferenciar em vez de mentir que sao
+// a mesma quinzena.
+function rotuloQuinzena(k){                      // '2Q_DEZ' → 'Dez'
+  const [q, m] = String(k||'').split('_');
+  const mes = SIGLA[m] || m || '';
+  return q === '2Q' ? mes : '1ª ' + mes;
+}
+// Quantos meses faltam ate esse mes, contando de hoje. Dezembro visto em
+// janeiro da 11, nao -11.
+const MES_HOJE = new Date().getMonth();
+function distanciaMes(m){
+  const i = MES.indexOf(m);
+  return i < 0 ? 99 : (i - MES_HOJE + 12) % 12;
+}
+function mesDaData(br){                          // '01/11/2026' → 'NOV'
+  const m = String(br||'').match(/^(\d{2})\/(\d{2})\//);
+  return m ? MES[Number(m[2])-1] || '' : '';
+}
+
+/* ── carga ──────────────────────────────────────────────────────── */
+async function json(arquivo){
+  const r = await fetch(DADOS + arquivo + '?t=' + Date.now(), { cache:'no-store' });
+  if(!r.ok) throw new Error(arquivo + ' (' + r.status + ')');
+  return r.json();
+}
+
+async function carregar(){
+  $('estado').innerHTML =
+    '<div class="aviso"><span class="girando"></span><h2>Carregando a vitrine</h2>' +
+    '<p>Reunindo repasse, pronta entrega e meta produtiva.</p></div>';
+  try{
+    const [dispo, disponib, produtos, pedidos] = await Promise.all([
+      json('dispo.json'), json('disponibilidades.json'),
+      json('produtos.json'), json('pedidos.json').catch(() => [])
+    ]);
+    STATE.produtos = montar(dispo, disponib, produtos, pedidos);
+    $('estado').innerHTML = '';
+    aplicar();
+  }catch(e){
+    console.error(e);
+    $('estado').innerHTML =
+      '<div class="aviso"><h2>Não foi possível carregar</h2><p>' + esc(e.message) +
+      '. Recarregue a página; se continuar, avise o suporte.</p></div>';
+  }
+}
+
+/* ── normalização ───────────────────────────────────────────────── */
+// Quanto de cada Nº de repasse já está comprometido por pedido em aberto.
+// Sem isso o saldo mostrado seria maior do que o que o vendedor consegue.
+function reservasPorNum(pedidos){
+  const r = new Map();
+  const contam = new Set(['PENDENTE','EM ANÁLISE','APROVADO','ATENDIDO PARCIALMENTE']);
+  for(const p of (pedidos||[])){
+    if(p && p.archived) continue;
+    if(!contam.has(norm(p && p.status || 'Pendente'))) continue;
+    for(const it of (p.items || [])){
+      const num = String(it && it.num || '').trim();
+      if(!num) continue;
+      r.set(num, (r.get(num) || 0) + (Number(it.totalUnits) || 0));
+    }
+  }
+  return r;
+}
+
+function montar(dispo, disponib, produtos, pedidos){
+  const mapa = new Map();
+  const refCor = new Map();   // artigo|cor — a linha exata
+  const refArt = new Map();   // artigo — só para o que não muda com a cor
+  for(const p of (produtos || [])){
+    refCor.set(chave(p.codigo, p.cor || p.corCodigo), p);
+    if(!refArt.has(norm(p.codigo))) refArt.set(norm(p.codigo), p);
+  }
+
+  const pega = (artigo, cor) => {
+    const k = chave(artigo, cor);
+    if(!mapa.has(k)) mapa.set(k, {
+      k, artigo:norm(artigo), cor:String(cor||'').trim().toUpperCase(),
+      nome:'', marca:'', pdv:0, categoria:'', genero:'', imagem:'', fabrica:'',
+      sub:'', camp:'', chega:[], campanha:null,
+      pronta:null, repasse:null, meta:null
+    });
+    return mapa.get(k);
+  };
+
+  // 1) disponibilidades: pronta entrega e meta produtiva
+  for(const i of (disponib || [])){
+    const o = pega(i.artigo, i.cor);
+    o.nome      = o.nome      || String(i.descricao || '').trim();
+    o.marca     = o.marca     || String(i.marca || '').toLowerCase();
+    o.pdv       = o.pdv       || Number(i.pdv || 0);
+    o.categoria = o.categoria || String(i.categoriaProduto || '').toUpperCase();
+    o.genero    = o.genero    || String(i.genero || '').toUpperCase();
+    o.imagem  = o.imagem  || String(i.imagem || '').trim();
+    o.fabrica = o.fabrica || String(i.empresa || '').trim().toUpperCase();
+    if(!o.campanha){
+      o.campanha = (Array.isArray(i.tabelasEspeciais) && i.tabelasEspeciais[0])
+        || (i.codigoTabela ? { codigoTabela:i.codigoTabela, mkp:i.mkp, custo:i.custo } : null);
+    }
+    if(i._meta){
+      const q = Object.entries(i.quinzenas || {}).filter(([,v]) => Number(v) >= MIN_PARES);
+      if(q.length) o.meta = { quinzenas:q
+        .map(([k,v]) => ({ rot:rotuloQuinzena(k),
+                           mes:SIGLA[String(k).split('_')[1]] || '', v:Number(v) }))
+        .sort((a, b) => distanciaMes(a.mes) - distanciaMes(b.mes)) };
+    }else{
+      const g = {};
+      for(const [t,v] of Object.entries(i.grade || {})) if(Number(v) > 0) g[t] = Number(v);
+      const total = Object.values(g).reduce((s,v) => s+v, 0);
+      if(total >= MIN_PARES) o.pronta = { total, grade:g };
+    }
+  }
+
+  // 2) dispo: lotes de repasse, um por Nº
+  const reservas = reservasPorNum(pedidos);
+  for(const r of (dispo || [])){
+    const [cod, nome] = desinverte(r.codigo, r.produto);
+    if(!cod) continue;
+    const o = pega(cod, r.cor);
+    const pc = refCor.get(chave(cod, r.cor));      // mesma cor
+    const p  = pc || refArt.get(norm(cod));         // qualquer cor do artigo
+    o.nome      = o.nome      || nome || String(p && p.produto || '').trim();
+    o.pdv       = o.pdv       || Number(p && p.preco || 0);
+    o.categoria = o.categoria || String(p && p.categoria || '').toUpperCase();
+    o.genero    = o.genero    || String(p && p.genero || '').toUpperCase();
+    // A foto sai SÓ da cor exata. Nome e preço podem vir de outra cor do mesmo
+    // artigo sem prejuízo; a foto não — ela passaria a cor errada pro cliente.
+    o.imagem    = o.imagem    || String(pc && pc.imagem || '').trim();
+    // Sem marca no dispo.json: se o produto não veio das disponibilidades,
+    // assume Olympikus — hoje o repasse é todo Oly.
+    o.marca = o.marca || 'oly';
+
+    const num   = String(r.num || '').trim();
+    const saldo = Math.max(0, Number(r.saldo || 0) - (reservas.get(num) || 0));
+    if(saldo <= 0) continue;
+    const g = {};
+    for(const [t,v] of Object.entries(r.grade || {})) if(Number(v) > 0) g[t] = Number(v);
+    if(!o.repasse) o.repasse = { total:0, lotes:[], mes:'' };
+    o.repasse.total += saldo;
+    o.repasse.lotes.push({ num, gci:String(r.gci||'').trim(),
+                           data:String(r.dataEntrega||'').trim(), saldo, grade:g });
+  }
+
+  // mês mais próximo entre os lotes, para a faixa do card
+  for(const o of mapa.values()){
+    if(!o.repasse) continue;
+    o.repasse.lotes.sort((a,b) => String(a.data).split('/').reverse().join('')
+                                  .localeCompare(String(b.data).split('/').reverse().join('')));
+    o.repasse.mes = mesDaData(o.repasse.lotes[0].data);
+  }
+
+  for(const o of mapa.values()){
+    // O texto de busca e montado uma vez aqui; refazer isso a cada tecla,
+    // para mil e duzentos produtos, era o que deixava a digitacao lenta.
+    o.hay = norm([o.artigo, o.nome, o.cor, o.categoria, o.genero].join(' '));
+    o.sub = subcategoriaDe(o);
+    o.camp = o.campanha
+      ? String(o.campanha.codigoTabela || '') + (o.campanha.mkp ? ' · MKP ' + o.campanha.mkp : '')
+      : '';
+    // "Chega em" e a prev. faturamento unificada: estoque sai agora, as outras
+    // duas origens entram pelo mes. Um produto pode estar em mais de um.
+    o.chega = [];
+    if(o.pronta) o.chega.push(AGORA);
+    if(o.repasse && o.repasse.mes) o.chega.push(o.repasse.mes);
+    if(o.meta && !o.chega.includes(o.meta.quinzenas[0].mes)) o.chega.push(o.meta.quinzenas[0].mes);
+  }
+
+  // Produto sem nenhuma origem com saldo não é vitrine.
+  return [...mapa.values()]
+    .filter(o => o.pronta || o.repasse || o.meta)
+    .sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity:'base' }));
+}
+
+const ICONE = {
+  'c-pronta':'<path d="M21 8v8a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4A2 2 0 0 1 21 8z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+  'c-repasse':'<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>',
+  'c-plano':'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>'
+};
+const svgIcone = (cls, tam = 11) => `<svg width="${tam}" height="${tam}" viewBox="0 0 24 24"
+  fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"
+  stroke-linejoin="round" aria-hidden="true">${ICONE[cls]}</svg>`;
+
+const SVG_ZOOM = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+  stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+  <circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2M8.5 11h5M11 8.5v5"/></svg>`;
+const SVG_CORACAO = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+  stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
+  aria-hidden="true"><path d="M20.8 5.6a5.2 5.2 0 0 0-7.4 0L12 7l-1.4-1.4a5.2 5.2 0 1 0-7.4 7.4
+  L12 21.4l8.8-8.4a5.2 5.2 0 0 0 0-7.4z"/></svg>`;
+
+const AGORA = 'Agora';
+// Nenhuma das 1.155 linhas de produção traz grade — só o total do mês. Os
+// tamanhos saem do próprio produto quando ele também tem estoque (595 casos);
+// nos demais, do conjunto que a categoria usa na base.
+const TAMANHOS_POR_CATEGORIA = {
+  TENIS:     ['34','35','36','37','38','39','40','41','42','43','44','45','46','47','48'],
+  CHINELO:   ['33/34','35/36','37/38','39/40','41/42','43/44','45/46'],
+  VESTUARIO: ['PP','P','M','G','GG','G1','G2','G3','2GG'],
+  ACESSORIO: ['U','GG','M/G','33/38','39/44'],
+  MEIA:      ['M','G']
+};
+function tamanhosDe(o){
+  if(o.pronta && Object.keys(o.pronta.grade).length) return Object.keys(o.pronta.grade);
+  return TAMANHOS_POR_CATEGORIA[o.categoria] || [];
+}
+// Mesmas regras do app de disponibilidades, na mesma ordem de teste: o tipo sai
+// do inicio da descricao. Em tenis e chinelo a descricao e o nome do modelo
+// ("CORRE VENTO"), entao nao ha tipo a extrair.
+const CATS_COM_SUB = /^(ACESSORI|VESTUARIO|MEIA)/;
+const SUBCATEGORIAS = [
+  ['Meias',              /^(MEIAS?|TRIPK|TRIPACK)/],
+  ['Mochilas',           /^MOCHIL/],
+  ['Bolsas e malas',     /^(MALA|BOLSA|SACOLA|GYMSACK|GYM\b)/],
+  ['Bonés e viseiras',   /^(BONE|VISEIRA|BUCKET)/],
+  ['Camisetas',          /^(T-?SHIRT|CAMISETA|CAM\b|CAM\.)/],
+  ['Regatas',            /^(REGATA|REG[\s.])/],
+  ['Tops',               /^TOP\b/],
+  ['Bermudas e shorts',  /^(BERMUDA|BERM\b|SHORTS?)/],
+  ['Calças e leggings',  /^(CALCA|LEGGING)/],
+  ['Blusas e jaquetas',  /^(BLUSA|JAQUETA|JAQ[\s.]|QUEBRA|CORTA|MOLETOM|MOL[\s.]|MTL\b|CJ[\s.]?AGASAL|AGASAL)/],
+  ['Luvas e acessórios', /^(LUVA|MANGUITO|FAIXA|POCHETE)/]
+];
+function subcategoriaDe(o){
+  if(!CATS_COM_SUB.test(o.categoria)) return '';
+  const d = norm(o.nome);
+  if(!d) return '';
+  for(const [nome, re] of SUBCATEGORIAS) if(re.test(d)) return nome;
+  return 'Outros';   // dentro de acessórios/vestuário, o que não casou
+}
+
+/* ── faixas ─────────────────────────────────────────────────────── */
+// Ordem cronológica: o que o cliente recebe antes aparece em cima.
+function faixas(o){
+  const f = [];
+  if(o.pronta)  f.push({ cls:'c-pronta',  qual:'Estoque', qtd:o.pronta.total });
+  if(o.repasse) f.push({ cls:'c-repasse', qual:'Repasse', quando:o.repasse.mes, qtd:o.repasse.total });
+  if(o.meta && o.meta.quinzenas.length){
+    const q0 = o.meta.quinzenas[0];
+    // O card mostra so a quinzena mais proxima; as outras estao no modal.
+    f.push({ cls:'c-plano', qual:'Produção', quando:q0.mes });
+  }
+  return f;
+}
+
+// Sem a palavra na tela, o nome da origem ainda precisa chegar em quem passa
+// o mouse e em quem usa leitor de tela.
+function rotuloFaixa(f){
+  return f.qual + (f.quando ? ' · ' + f.quando : '') + (f.qtd ? ' · ' + nf(f.qtd) + ' un' : '');
+}
+
+/* ── filtros ────────────────────────────────────────────────────── */
+const CATEGORIAS = [
+  ['TENIS','Tênis'], ['CHINELO','Chinelos'], ['VESTUARIO','Vestuário'],
+  ['ACESSORIO','Acessórios'], ['MEIA','Meias']
+];
+
+function daMarca(o){ return o.marca === MARCA; }
+function temOrigem(o, q){
+  if(q === 'pronta')  return !!o.pronta;
+  if(q === 'repasse') return !!o.repasse;
+  if(q === 'meta')    return !!o.meta;
+  return true;
+}
+const MAX_TERMOS = 3;
+// "corre, atalho, venus" procura os tres de uma vez. Virgula separa; o que
+// passar de tres e ignorado, e a contagem avisa que foi ignorado.
+function termosDe(txt){
+  const t = norm(txt).split(',').map(x => x.trim()).filter(Boolean);
+  return { usados:t.slice(0, MAX_TERMOS), total:t.length };
+}
+function combina(o, termos){
+  if(!termos.length) return true;
+  return termos.some(t => o.hay.includes(t));
+}
+
+// Origem e categoria ficam no topo; estes cinco vivem no painel.
+const GRUPOS = [
+  { id:'chega',   rot:'Chega em',
+    ajuda:'Estoque sai agora; repasse e produção entram pelo mês.' },
+  { id:'genero',  rot:'Gênero' },
+  { id:'sub',     rot:'Tipo de produto' },
+  { id:'fabrica', rot:'Fábrica' },
+  { id:'camp',    rot:'Campanha' }
+];
+const valoresDe = (o, id) => id === 'chega' ? o.chega : (o[id] ? [o[id]] : []);
+function casaGrupo(o, id){
+  const sel = STATE.sel[id];
+  return sel.size === 0 || valoresDe(o, id).some(v => sel.has(v));
+}
+
+// Um produto passa por tudo, menos pelo campo que estamos recontando. É o que
+// faz cada grupo mostrar contagens que nunca levam a uma lista vazia.
+function passa(o, ignorar){
+  if(!daMarca(o)) return false;
+  if(ignorar !== 'origem'    && !temOrigem(o, STATE.origem)) return false;
+  if(ignorar !== 'categoria' && STATE.categoria && o.categoria !== STATE.categoria) return false;
+  if(!combina(o, STATE.termos)) return false;
+  for(const g of GRUPOS) if(g.id !== ignorar && !casaGrupo(o, g.id)) return false;
+  return true;
+}
+const nSelecionados = () => GRUPOS.reduce((n, g) => n + STATE.sel[g.id].size, 0);
+
+function aplicar(){
+  const { usados, total } = termosDe(STATE.busca);
+  STATE.termos = usados;
+  STATE.termosIgnorados = Math.max(0, total - usados.length);
+  STATE.filtrados = STATE.produtos.filter(o => passa(o, null));
+  pintarFiltros();
+  pintarPainel();
+  pintarGrade();
+}
+
+function pintarFiltros(){
+  const daMarcaAtual = STATE.produtos.filter(daMarca);
+  const paraOrigem   = STATE.produtos.filter(o => passa(o, 'origem'));
+  const paraCategoria= STATE.produtos.filter(o => passa(o, 'categoria'));
+  const conta = f => paraOrigem.filter(f).length;
+  const orig = [
+    ['tudo','Tudo', () => true],
+    ['pronta','Estoque', o => o.pronta],
+    ['repasse','Repasse', o => o.repasse],
+    ['meta','Produção', o => o.meta]
+  ];
+  const CLS = { tudo:'o-tudo', pronta:'o-est', repasse:'o-rep', meta:'o-pro' };
+  $('segOrigem').innerHTML = orig.map(([id, rot, f]) => {
+    const n = conta(f);
+    if(n === 0 && id !== 'tudo') return '';
+    const ativo = STATE.origem === id;
+    // O numero so na ativa: com os quatro, o trilho nao cabe em 390px.
+    return `<button class="${CLS[id]}${ativo?' on':''}" onclick="setOrigem('${id}')"
+      aria-pressed="${ativo}">${rot}${ativo?`<span class="n">${nf(n)}</span>`:''}</button>`;
+  }).join('');
+
+  const comCat = CATEGORIAS.filter(([id]) => paraCategoria.some(o => o.categoria === id));
+  const temCat = comCat.length > 1;
+  $('riscoCat').hidden = !temCat;
+  $('catFiltros').innerHTML = !temCat ? '' : comCat.map(([id, rot]) =>
+    `<button class="${STATE.categoria===id?'on':''}" onclick="setCategoria('${id}')"
+      aria-pressed="${STATE.categoria===id}">${rot}</button>`).join('');
+}
+
+// Rótulos: nas telas o vendedor lê "Feminino", não "FEMININO"; já VULSP e
+// AZABA são códigos de fábrica e ficam como estão.
+const GEN_ROT = { FEMININO:'Feminino', MASCULINO:'Masculino', UNISSEX:'Unissex',
+                  INFANTIL:'Infantil', KIDS:'Kids' };
+const rotuloOpcao = (id, v) => id === 'genero' ? (GEN_ROT[v] || v) : v;
+
+function ordemOpcoes(id, itens){
+  if(id === 'chega'){
+    return itens.sort((a, b) =>
+      (a[0] === AGORA ? -1 : distanciaMes(a[0])) - (b[0] === AGORA ? -1 : distanciaMes(b[0])));
+  }
+  return itens.sort((a, b) => b[1] - a[1]);
+}
+
+function pintarPainel(){
+  const n = nSelecionados();
+  $('badgeFiltros').hidden = !n;
+  $('badgeFiltros').textContent = n;
+  $('btnFiltros').setAttribute('aria-expanded', String(!$('painel').hidden));
+  $('pnConta').hidden = !n;
+  $('pnConta').textContent = n;
+  $('pnLimpar').hidden = !n;
+  $('pnVer').textContent = `Ver ${nf(STATE.filtrados.length)} produto` +
+    (STATE.filtrados.length === 1 ? '' : 's');
+
+  const chips = [];
+  for(const g of GRUPOS) for(const v of STATE.sel[g.id]){
+    chips.push(`<button data-g="${esc(g.id)}" data-v="${esc(v)}"
+      aria-label="Remover ${esc(g.rot)} ${esc(rotuloOpcao(g.id, v))}">
+      <i>${esc(g.rot)}</i>${esc(rotuloOpcao(g.id, v))}<b>×</b></button>`);
+  }
+  $('pnAtivos').hidden = !chips.length;
+  $('pnAtivos').innerHTML = chips.join('');
+
+  $('pnCorpo').innerHTML = GRUPOS.map(g => {
+    const c = new Map();
+    for(const o of STATE.produtos){
+      if(!passa(o, g.id)) continue;
+      for(const v of valoresDe(o, g.id)) c.set(v, (c.get(v) || 0) + 1);
+    }
+    // Grupo sem nenhuma opção some: é o caso de Tipo de produto quando a
+    // seleção só tem tênis, e de Campanha quando nada está em promoção.
+    if(!c.size) return '';
+    const ops = ordemOpcoes(g.id, [...c]).map(([v, q]) => {
+      const on = STATE.sel[g.id].has(v) ? ' on' : '';
+      const attr = `data-g="${esc(g.id)}" data-v="${esc(v)}" aria-pressed="${!!on}"`;
+      if(g.id === 'camp'){
+        const [tab, mkp] = v.split(' · MKP ');
+        return `<button class="${on.trim()}" ${attr}>
+          <span>${esc(tab)}<span class="q"> · ${nf(q)} produtos</span></span>
+          ${mkp ? `<span class="mkp">MKP ${esc(mkp)}</span>` : ''}</button>`;
+      }
+      return `<button class="${on.trim()}" ${attr}>` +
+        `${esc(rotuloOpcao(g.id, v))}<span class="q">${nf(q)}</span></button>`;
+    }).join('');
+    return `<section class="gr"><h3>${esc(g.rot)}</h3>` +
+      (g.ajuda ? `<p>${esc(g.ajuda)}</p>` : '') +
+      `<div class="ops${g.id === 'camp' ? ' linhas' : ''}">${ops}</div></section>`;
+  }).join('');
+}
+
+function alternarFiltro(id, v){
+  const sel = STATE.sel[id];
+  sel.has(v) ? sel.delete(v) : sel.add(v);
+  aplicar();
+}
+// Um ouvinte por container: o valor viaja em data-*, nunca dentro de um
+// atributo de codigo, entao aspas e acento no nome da opcao nao quebram nada.
+function ligarCliques(el){
+  el.addEventListener('click', e => {
+    const b = e.target.closest('button[data-g]');
+    if(b) alternarFiltro(b.dataset.g, b.dataset.v);
+  });
+}
+ligarCliques($('pnCorpo'));
+ligarCliques($('pnAtivos'));
+function limparFiltros(){
+  for(const g of GRUPOS) STATE.sel[g.id].clear();
+  aplicar();
+}
+function abrirPainel(){ $('painel').hidden = false; pintarPainel(); }
+function fecharPainel(){ $('painel').hidden = true; pintarPainel(); }
+$('btnFiltros').onclick = () => $('painel').hidden ? abrirPainel() : fecharPainel();
+$('pnLimpar').onclick = limparFiltros;
+$('painel').onclick = e => { if(e.target.id === 'painel') fecharPainel(); };
+
+function setOrigem(id){ STATE.origem = id; aplicar(); }
+function setCategoria(id){ STATE.categoria = (STATE.categoria === id) ? '' : id; aplicar(); }
+
+/* ── grade ──────────────────────────────────────────────────────── */
+function cardHtml(o, i){
+  const cam = o.campanha
+    ? `<div class="campanha">${esc(o.campanha.codigoTabela||'')}${o.campanha.mkp?' · MKP <b>'+esc(o.campanha.mkp)+'</b>':''}${o.campanha.custo?' · custo <b>'+brl(o.campanha.custo)+'</b>':''}</div>`
+    : '';
+  const quem = esc(o.nome || o.artigo) + ' ' + esc(o.cor);
+  return `<article class="card">
+    <div class="foto">
+      <img src="${esc(foto(o))}" alt="${esc(o.nome)}" loading="lazy"
+           onerror="this.style.visibility='hidden'">
+      <button class="canto cz" onclick="abrirZoom(${i})" title="Ampliar foto"
+              aria-label="Ampliar foto de ${quem}">${SVG_ZOOM}</button>
+      <button class="canto cf" onclick="alternarFavorito(this)" title="Favoritos"
+              aria-label="Favoritar ${quem}" aria-pressed="false">${SVG_CORACAO}</button>
+    </div>
+    <div class="corpo">
+      <span>
+        <span class="nome">${esc(o.nome || o.artigo)}</span>
+        <span class="cod">${esc(o.artigo)} · ${esc(o.cor)}</span>
+      </span>
+      ${o.pdv ? `<span class="preco">${brl(o.pdv)}</span>` : ''}
+      ${cam}
+      <span class="quando">${faixas(o).map(f =>
+        `<span class="chip ${f.cls}" title="${esc(rotuloFaixa(f))}">${svgIcone(f.cls, 10)}` +
+        `<span class="vso">${f.qual}</span>` +
+        `${f.quando?`<span class="quando">${f.quando}</span>`:''}` +
+        `${f.qtd?`<span class="qtd">${nf(f.qtd)}</span>`:''}</span>`
+      ).join('')}</span>
+      <button class="acao forte" onclick="abrirModal(${i})">Ver detalhes</button>
+    </div>
+  </article>`;
+}
+
+function pintarGrade(){
+  const lista = STATE.filtrados;
+  $('titMarca').innerHTML = esc(MARCAS[MARCA].curto) +
+    (SESSAO ? `<span class="quem"> · ${esc(nomeCurto(SESSAO.nome))}</span>` : '');
+  // A faixa fixa de contagem saiu; ela só reaparece pra avisar o que foi
+  // ignorado na busca, que é o que o vendedor não teria como adivinhar.
+  $('contagem').hidden = !STATE.termosIgnorados;
+  $('contagem').innerHTML = STATE.termosIgnorados
+    ? `<span>buscando só os ${MAX_TERMOS} primeiros termos</span>` : '';
+  if(!lista.length){
+    $('grade').innerHTML = '';
+    $('estado').innerHTML =
+      '<div class="aviso"><h2>Nenhum produto aqui</h2><p>Ajuste a busca ou os filtros acima.</p></div>';
+    return;
+  }
+  $('estado').innerHTML = '';
+  $('grade').innerHTML = lista.map(cardHtml).join('');
+}
+
+/* ── cliente, prazo e campanha ──────────────────────────────────── */
+// Mesmas listas do app de Repasses — elas alimentam colunas do sistema, então
+// não podem ser reescritas por conta própria.
+const PRAZOS = ['Z01 - A VISTA','Z02 - 14 D','Z03 - 21 D','Z04 - 28 D','Z05 - 35 D','Z06 - 42 D',
+  'Z07 - 49 D','Z08 - 56 D','Z09 - 63 D','Z10 - 70 D','Z11 - 77 D','Z12 - 84 D','Z13 - 91 D',
+  'Z14 - 98 D','Z15 - 105 D','Z16 - 112 D','Z17 - 119 D','Z18 - 21/49 D','Z19 - 28/56 D',
+  'Z20 - 35/63 D','Z21 - 42/70 D','Z22 - 49/77 D','Z23 - 56/84 D','Z24 - 63/91 D','Z25 - 70/98 D',
+  'Z26 - 77/105 D','Z27 - 84/112 D','Z28 - 91/119 D','Z29 - 21/49/77 D','Z30 - 28/56/84 D',
+  'Z31 - 35/63/91 D','Z32 - 42/70/98 D','Z33 - 49/77/105 D','Z34 - 56/84/112 D','Z35 - 63/91/119 D'];
+const CAMPANHAS = ['CO681 +28DD OLY','CO689 +56DD OLY','CO684 +28DD UA','CO690 +56DD UA'];
+
+// As bases de cliente são JSON estático servido do mesmo domínio — não passam
+// pelo Worker, então a sacola funciona mesmo com ele fora do ar.
+const BASES_CLIENTE = { '114611':'JORGE', '109839':'MARIANA',
+                        '1333497':'RAFAEL', '25471':'WILLAME' };
+const CLI = { lista:[], carregou:false, achados:[], total:0, ativo:-1 };
+const LIMITE_SUG = 8;
+
+async function carregarClientes(){
+  if(CLI.carregou) return;
+  // O CMS enxerga todas as carteiras; um vendedor vê só a dele.
+  const cod = String((SESSAO && SESSAO.codigo) || '').trim();
+  const bases = BASES_CLIENTE[cod] ? [cod] : Object.keys(BASES_CLIENTE);
+  const partes = await Promise.all(bases.map(async c => {
+    try{
+      const r = await fetch(`${DADOS}clientes/${c}.json`, { cache:'no-store' });
+      if(!r.ok) return [];
+      const l = await r.json();
+      return (Array.isArray(l) ? l : []).map(x => ({ ...x, _vend:BASES_CLIENTE[c] }));
+    }catch(_){ return []; }   // uma base fora não pode derrubar as outras
+  }));
+  CLI.lista = partes.flat();
+  CLI.carregou = true;
+  $f('scCliente').placeholder = CLI.lista.length
+    ? `código ou nome · ${nf(CLI.lista.length)} clientes`
+    : 'código do cliente';
+}
+
+// Mesma pontuação do Repasses: código exato primeiro, depois prefixo, depois
+// qualquer parte — e nome quando o termo não é numérico.
+function buscarClientes(termo){
+  const q = norm(termo);
+  CLI.total = 0;
+  if(!q) return [];
+  const soDigitos = /^[0-9]+$/.test(q);
+  const achados = [];
+  for(const c of CLI.lista){
+    const cod = String(c.codigo == null ? '' : c.codigo).trim();
+    const nome = norm(c.nome);
+    let p = -1;
+    if(soDigitos){
+      if(cod === q) p = 0; else if(cod.startsWith(q)) p = 1;
+      else if(cod.includes(q)) p = 2; else if(nome.includes(q)) p = 4;
+    }else{
+      if(nome.startsWith(q)) p = 0; else if(nome.includes(q)) p = 2;
+    }
+    if(p >= 0) achados.push({ c, p });
+  }
+  achados.sort((a, b) => a.p - b.p ||
+    String(a.c.nome || '').localeCompare(String(b.c.nome || '')));
+  CLI.total = achados.length;
+  return achados.slice(0, LIMITE_SUG).map(x => x.c);
+}
+
+function pintarSugestoes(){
+  const box = $f('scCliSug');
+  if(!CLI.achados.length){ fecharSugestoes(); return; }
+  box.innerHTML = CLI.achados.map((c, i) => {
+    const loc = [c.cidade, c.estado, c._vend].filter(Boolean).join(' · ');
+    return `<button type="button" class="cli-opt${i === CLI.ativo ? ' on' : ''}"
+      role="option" aria-selected="${i === CLI.ativo}" data-i="${i}">
+      <span class="cod">${esc(c.codigo)}</span>
+      <span class="txt"><span class="nm">${esc(c.nome || '—')}</span>
+      ${loc ? `<span class="loc">${esc(loc)}</span>` : ''}</span></button>`;
+  }).join('');
+  // Avisa quando a lista foi cortada, pra ninguém achar que "acabou".
+  if(CLI.total > CLI.achados.length){
+    box.innerHTML += `<div class="mais">${CLI.achados.length} de ${nf(CLI.total)} —
+      digite mais para refinar</div>`;
+  }
+  box.hidden = false;
+  $f('scCliente').setAttribute('aria-expanded', 'true');
+}
+function fecharSugestoes(){
+  $f('scCliSug').hidden = true;
+  CLI.ativo = -1;
+  $f('scCliente').setAttribute('aria-expanded', 'false');
+}
+function escolherCliente(i){
+  const c = CLI.achados[i];
+  if(!c) return;
+  $f('scCliente').value = String(c.codigo == null ? '' : c.codigo);
+  fecharSugestoes();
+  conferirCliente();
+}
+// Não bloqueia nada: só diz de quem é o código digitado.
+function conferirCliente(){
+  const v = $f('scCliente').value.trim();
+  const d = $f('scCliDica');
+  if(!v || !CLI.lista.length){ d.textContent = ''; d.className = 'cli-dica'; return; }
+  const c = CLI.lista.find(x => String(x.codigo).trim() === v);
+  if(c){
+    d.className = 'cli-dica ok';
+    d.textContent = [c.nome, [c.cidade, c.estado].filter(Boolean).join('/')]
+      .filter(Boolean).join(' · ');
+  }else{
+    d.className = 'cli-dica na';
+    d.textContent = 'Código fora da carteira';
+  }
+}
+
+function montarFormulario(){
+  $f('scPrazo').innerHTML = '<option value="">Selecione…</option>' +
+    PRAZOS.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  // A campanha da outra marca não é opção: a sacola já é por marca.
+  const suf = MARCA === 'ua' ? 'UA' : 'OLY';
+  $f('scCampanha').innerHTML = '<option value="">Sem campanha</option>' +
+    CAMPANHAS.filter(c => c.endsWith(suf))
+      .map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+}
+
+$f('scCliente').addEventListener('focus', () => { carregarClientes(); });
+$f('scCliente').addEventListener('input', e => {
+  CLI.achados = buscarClientes(e.target.value);
+  CLI.ativo = -1;
+  pintarSugestoes();
+  conferirCliente();
+});
+$f('scCliente').addEventListener('keydown', e => {
+  if($f('scCliSug').hidden) return;
+  if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+    e.preventDefault();
+    CLI.ativo = Math.max(0, Math.min(CLI.achados.length - 1,
+      CLI.ativo + (e.key === 'ArrowDown' ? 1 : -1)));
+    pintarSugestoes();
+  }else if(e.key === 'Enter' && CLI.ativo >= 0){
+    e.preventDefault(); escolherCliente(CLI.ativo);
+  }else if(e.key === 'Escape'){
+    e.preventDefault(); e.stopPropagation(); fecharSugestoes();
+  }
+});
+// mousedown, não click: o blur do campo fecharia a lista antes do clique.
+$f('scCliSug').addEventListener('mousedown', e => {
+  const b = e.target.closest('[data-i]');
+  if(b){ e.preventDefault(); escolherCliente(Number(b.dataset.i)); }
+});
+$f('scCliente').addEventListener('blur', () => setTimeout(fecharSugestoes, 120));
+
+/* ── planilha do estoque ────────────────────────────────────────── */
+// Mesmas colunas e mesma ordem do export do Disponibilidades — é o formato
+// que o sistema deles importa, então não pode divergir em nada.
+const XLS_COLS = [
+  "Nº","Comissionista","Loja","Cliente","Pedido do Cliente","Observação da NF","Observação do Pedido",
+  "Tabela de Preço","Prazo Médio","Número de Parcelas","Condição de Pagamento","Campanha",
+  "Desconto Global","Forma de Embalar","Tipo de Entrega","Data Firme","Pedido Mãe","Aceita Antecipação?",
+  "Data Desejada","Data de Faturamento","Data Início da Agenda","Horário Início da Agenda",
+  "Horário Fim da Agenda","Data da Liberação do Faturamento",
+  "Artigo","Descrição","Cor","Quantidade de Caixas",
+  "28","29","30","31","32","33","34","35","36","37","38","39","40","41","42","43","44","45","46","47","48",
+  "33/34","35/36","37/38","39/40","41/42","43/44",
+  "PP","P","M","G","GG","U",
+  "33/38","39/44",
+  "Total"
+];
+const TABELA_PRECO = { oly:'OL025', ua:'' };
+
+// "Z24 - 63/91 D" vira prazo médio 77 em 2 parcelas — a planilha quer os
+// números, não o rótulo. Mesma conta do app de disponibilidades.
+function partesPrazo(p){
+  if(!p) return { medio:'', parcelas:'' };
+  if(/A\s*VISTA/i.test(p)) return { medio:0, parcelas:1 };
+  const m = p.match(/-\s*([0-9/]+)\s*D\b/i);
+  if(!m) return { medio:'', parcelas:'' };
+  const dias = m[1].split('/').map(Number).filter(n => !isNaN(n));
+  if(!dias.length) return { medio:'', parcelas:'' };
+  return { medio:Math.round(dias.reduce((a, b) => a + b, 0) / dias.length),
+           parcelas:dias.length };
+}
+
+function exportarXlsx(){
+  const cliente = $f('scCliente').value.trim();
+  const prazo   = $f('scPrazo').value.trim();
+  const data    = $f('scData').value.trim();
+  const faltou  = [];
+  if(!cliente) faltou.push($f('scCliente'));
+  if(!prazo)   faltou.push($f('scPrazo'));
+  if(!data)    faltou.push($f('scData'));
+  [$f('scCliente'), $f('scPrazo'), $f('scData')].forEach(el => el.classList.remove('erro'));
+  if(faltou.length){
+    faltou.forEach(el => el.classList.add('erro'));
+    faltou[0].scrollIntoView({ block:'center', behavior:'smooth' });
+    faltou[0].focus();
+    return;
+  }
+
+  const idx = Object.fromEntries(XLS_COLS.map((c, i) => [c, i]));
+  const aoa = [XLS_COLS.slice()];
+  const foraDoLayout = new Set();
+
+  for(const it of STATE.sacola.values()){
+    if(it.origem === 'repasse') continue;
+    const total = totalUnidades(it);
+    if(!total) continue;                     // sem tamanho marcado não vira linha
+    const l = new Array(XLS_COLS.length).fill('');
+    l[idx['Nº']] = 1;
+    l[idx['Cliente']] = cliente;
+    const pz = partesPrazo(prazo);
+    l[idx['Condição de Pagamento']] = prazo;
+    l[idx['Prazo Médio']] = pz.medio;
+    l[idx['Número de Parcelas']] = pz.parcelas;
+    // A planilha leva só o código da campanha, não o rótulo inteiro.
+    l[idx['Campanha']] = ($f('scCampanha').value.split(/\s/)[0] || '');
+    if(data){
+      const [ano, mes, dia] = data.split('-');
+      const br = (ano && mes && dia) ? `${dia}/${mes}/${ano}` : data;
+      l[idx['Data Desejada']] = br;
+      l[idx['Data de Faturamento']] = br;
+    }
+    l[idx['Tabela de Preço']] = TABELA_PRECO[MARCA] || '';
+    l[idx['Artigo']] = it.artigo;
+    l[idx['Descrição']] = it.nome;
+    // No sistema a cor vai com barra; aqui ela é guardada como veio da base.
+    l[idx['Cor']] = String(it.corCodigo || it.cor || '').replace(/_/g, '/');
+    for(const [tam, q] of Object.entries(it.gradePedido)){
+      // Um tamanho que não existe como coluna não pode sumir calado: some do
+      // arquivo e o pedido sai menor do que o vendedor montou.
+      if(idx[tam] === undefined){ foraDoLayout.add(tam); continue; }
+      l[idx[tam]] = q;
+    }
+    l[idx['Total']] = total;
+    aoa.push(l);
+  }
+
+  if(aoa.length <= 1){ alert('Nenhum item do estoque tem quantidade definida.'); return; }
+  if(foraDoLayout.size){
+    alert('Estes tamanhos não existem no layout da planilha e ficaram de fora: ' +
+          [...foraDoLayout].join(', ') + '.\nConfira antes de importar.');
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Pedido');
+  const d = new Date(), p2 = n => String(n).padStart(2, '0');
+  XLSX.writeFile(wb, `pedido_${MARCA}_${d.getFullYear()}${p2(d.getMonth()+1)}${p2(d.getDate())}` +
+    `_${p2(d.getHours())}${p2(d.getMinutes())}.xlsx`);
+}
+
+/* ── modal ──────────────────────────────────────────────────────── */
+const celulas = g => `<div class="celulas">${Object.entries(g).map(([t,q]) =>
+  `<span class="cel"><span class="t">${esc(t)}</span><span class="q">${nf(q)}</span></span>`).join('')}</div>`;
+
+let _abertoEm = -1;
+function abrirModal(i){
+  const o = STATE.filtrados[i];
+  if(!o) return;
+  _abertoEm = i;
+  $('mImg').src = foto(o);
+  $('mImg').alt = o.nome;
+  $('mTit').textContent = o.nome || o.artigo;
+  $('mSub').textContent = o.artigo + ' · ' + o.cor + (o.pdv ? ' · ' + brl(o.pdv) : '');
+
+  let h = '';
+  if(o.pronta){
+    h += `<div class="bloco"><p class="rot r-pronta">${svgIcone('c-pronta')}Estoque · ${nf(o.pronta.total)} un</p>${celulas(o.pronta.grade)}</div>`;
+  }
+  if(o.repasse){
+    h += `<div class="bloco"><p class="rot r-repasse">${svgIcone('c-repasse')}Repasse · ${o.repasse.lotes.length} ${o.repasse.lotes.length === 1 ? 'lote' : 'lotes'} · ${nf(o.repasse.total)} un</p>
+      <div class="lotes">${o.repasse.lotes.map(l =>
+        `<div class="lote">
+          <div class="lote-l1">
+            <span class="n">Nº ${esc(l.num)}${l.gci?` · GCI ${esc(l.gci)}`:''}</span>
+            <span class="s">${nf(l.saldo)} un</span>
+          </div>
+          <div class="lote-d">fat. ${esc(l.data||'—')}</div>
+          ${Object.keys(l.grade).length ? celulas(l.grade) : ''}
+          <button class="acao lote-add" data-lote="${esc(l.num)}"
+            ${naSacola(`rep|${o.k}|${l.num}`) ? 'disabled' : ''}>
+            ${naSacola(`rep|${o.k}|${l.num}`) ? 'Já está na sacola' : 'Adicionar à sacola'}
+          </button>
+        </div>`).join('')}</div></div>`;
+  }
+  if(o.meta){
+    h += `<div class="bloco"><p class="rot r-plano">${svgIcone('c-plano')}Produção</p>
+      <div class="meses">${o.meta.quinzenas.map(({rot, v}) =>
+        `<div class="mes"><span class="m">${esc(rot)}</span>
+          <span class="v">${nf(v)} un</span></div>`).join('')}</div></div>`;
+  }
+  $('mCorpo').innerHTML = h;
+
+  // Cada origem leva ao fluxo que já existe para ela. Produção é plano de
+  // fabricação, não estoque: não há pedido a fazer por ali.
+  const alvo = encodeURIComponent(o.artigo);
+  let pe = '<button class="acao" onclick="fecharModal()">Fechar</button>';
+  // Estoque e produção vão os dois para a planilha do EBM, cada um pelo seu
+  // botão: o teto e o mês são diferentes.
+  if(o.pronta){
+    const dentro = naSacola('est|' + o.k);
+    pe += `<button class="acao forte" id="mAddEst" ${dentro ? 'disabled' : ''}>` +
+      `${dentro ? 'Estoque na sacola' : 'Adicionar estoque'}</button>`;
+  }
+  if(o.meta && o.meta.quinzenas.length){
+    pe += `<button class="acao${o.pronta ? '' : ' forte'}" id="mAddPro">` +
+      `Adicionar produção</button>`;
+  }
+  $('mPe').innerHTML = pe;
+  // Delegação: o produto aberto fica no closure, então nada precisa viajar
+  // por atributo — nem aspas nem acento quebram.
+  const addEst = $('mAddEst');
+  if(addEst) addEst.onclick = () => { fecharModal(); abrirGrade(o, 'estoque'); };
+  const addPro = $('mAddPro');
+  if(addPro) addPro.onclick = () => { fecharModal(); abrirGrade(o, 'producao'); };
+  $('mCorpo').querySelectorAll('.lote-add').forEach(b => {
+    b.onclick = () => {
+      const l = o.repasse.lotes.find(x => x.num === b.dataset.lote);
+      if(l) { porNaSacola(itemRepasse(o, l)); abrirModal(i); }
+    };
+  });
+  $('modal').hidden = false;
+}
+function fecharModal(){ $('modal').hidden = true; }
+
+function porNaSacola(item){
+  if(STATE.sacola.has(item.key)) return;
+  STATE.sacola.set(item.key, item);
+  salvarSacola(); pintarSacola();
+}
+function tirarDaSacola(k){
+  STATE.sacola.delete(k);
+  salvarSacola(); pintarSacola();
+  if(!$('modal').hidden && STATE.filtrados[_abertoEm]) abrirModal(_abertoEm);
+}
+function esvaziarSacola(){
+  if(!STATE.sacola.size) return;
+  STATE.sacola.clear(); STATE.aba = 'estoque'; salvarSacola(); pintarSacola();
+}
+// Redesenhar tudo aqui apagaria o campo sob o cursor, então só os números
+// mudam de lugar. Add e remove seguem redesenhando: ali não há nada digitando.
+function atualizarNumeros(){
+  for(const it of STATE.sacola.values()){
+    const bloco = $('scCorpo').querySelector(`[data-k="${CSS.escape(it.key)}"]`);
+    if(!bloco) continue;
+    const un = totalUnidades(it);
+    const alvo = bloco.querySelector('[data-un]');
+    if(alvo) alvo.innerHTML = `<b>${nf(un)}</b> un selecionada${un === 1 ? '' : 's'}`;
+    const q = bloco.querySelector('[data-qtd]');
+    if(q){
+      const teto = Math.floor(Number(it.saldo || 0) / Math.max(1, Number(it.packSize || 1)));
+      q.textContent = nf(it.amount);
+      const bs = bloco.querySelectorAll('.passo button');
+      if(bs[0]) bs[0].disabled = it.amount <= 0;
+      if(bs[1]) bs[1].disabled = it.amount >= teto;
+    }
+  }
+  pintarRodapeSacola();
+}
+
+// Estoque: uma quantidade por tamanho, limitada ao que existe daquele tamanho.
+function mudarTamanho(k, tam, valor){
+  const it = STATE.sacola.get(k); if(!it) return;
+  const teto = Number(it.gradeDisp[tam] || 0);
+  const q = Math.max(0, Math.min(teto, Math.floor(Number(valor) || 0)));
+  if(q) it.gradePedido[tam] = q; else delete it.gradePedido[tam];
+  salvarSacola(); atualizarNumeros();
+}
+// Repasse: a grade é fechada, então o que se escolhe é quantas caixas.
+function mudarCaixas(k, delta){
+  const it = STATE.sacola.get(k); if(!it) return;
+  const teto = Math.floor(Number(it.saldo || 0) / Math.max(1, Number(it.packSize || 1)));
+  it.amount = Math.max(0, Math.min(teto, Number(it.amount || 0) + delta));
+  salvarSacola(); atualizarNumeros();
+}
+
+// Preencher a grade na hora poupa a viagem até a sacola, mas obrigar seria
+// pior: quem está só juntando produtos sai pelo "Preencher depois".
+let _gradeItem = null, _gradeProd = null;
+function abrirGrade(o, origem){
+  _gradeProd = o;
+  $('mgImg').src = foto(o);
+  $('mgImg').alt = o.nome;
+  $('mgTit').textContent = o.nome || o.artigo;
+  $('mgSub').textContent = `${o.artigo} · ${o.cor}` + (o.pdv ? ` · ${brl(o.pdv)}` : '');
+
+  const ehProd = origem === 'producao';
+  $('mgMeses').hidden = !ehProd;
+  if(ehProd){
+    // Cada quinzena é uma reserva diferente; escolher o mês vem antes dos
+    // tamanhos, porque é ele que define o teto.
+    $('mgMesesOps').innerHTML = o.meta.quinzenas.map((q, i) =>
+      `<button data-q="${i}" class="${i === 0 ? 'on' : ''}">${esc(q.mes)}
+        <span class="q">${nf(q.v)} un</span></button>`).join('');
+    montarGradeDe(itemProducao(o, o.meta.quinzenas[0]));
+  }else{
+    montarGradeDe(itemEstoque(o));
+  }
+  $('modalGrade').hidden = false;
+  const p1 = $('mgTam').querySelector('input');
+  if(p1) setTimeout(() => p1.focus(), 60);
+}
+
+function montarGradeDe(item){
+  _gradeItem = item;
+  const prod = item.origem === 'producao';
+  $('mgRot').className = 'rot ' + (prod ? 'r-plano' : 'r-pronta');
+  $('mgRot').innerHTML = prod
+    ? `${svgIcone('c-plano')}Produção · ${esc(item.mes)} · ${nf(item.teto)} un`
+    : `${svgIcone('c-pronta')}Estoque · ${nf(Object.values(item.gradeDisp)
+        .reduce((a, b) => a + b, 0))} un`;
+  $('mgTam').innerHTML = Object.keys(item.gradeDisp)
+    .filter(t => Number(item.gradeDisp[t]) > 0)
+    .map(t => `<label><span class="t">${esc(t)}</span>
+      <input type="number" inputmode="numeric" min="0" max="${item.gradeDisp[t]}"
+        placeholder="0" data-t="${esc(t)}" aria-label="Tamanho ${esc(t)}">
+      ${prod ? '' : `<span class="d">${nf(item.gradeDisp[t])}</span>`}</label>`).join('');
+  conferirTeto();
+}
+
+// Produção não tem quebra por tamanho na base: o vendedor distribui como
+// quiser, desde que a soma não passe do que está planejado pro mês.
+function conferirTeto(){
+  const t = $('mgTeto');
+  if(!_gradeItem || _gradeItem.origem !== 'producao'){ t.textContent = ''; return; }
+  let soma = 0;
+  for(const i of $('mgTam').querySelectorAll('input')) soma += Math.max(0, Number(i.value) || 0);
+  const estourou = soma > _gradeItem.teto;
+  t.className = 'mg-teto' + (estourou ? ' estourou' : '');
+  t.textContent = estourou
+    ? `${nf(soma)} un — passa do planejado para ${_gradeItem.mes} (${nf(_gradeItem.teto)} un)`
+    : `${nf(soma)} de ${nf(_gradeItem.teto)} un planejadas para ${_gradeItem.mes}`;
+  $('mgAgora').disabled = estourou;
+}
+$('mgTam').addEventListener('input', conferirTeto);
+$('mgMesesOps').addEventListener('click', e => {
+  const b = e.target.closest('[data-q]');
+  if(!b || !_gradeProd) return;
+  for(const x of $('mgMesesOps').children) x.classList.toggle('on', x === b);
+  montarGradeDe(itemProducao(_gradeProd, _gradeProd.meta.quinzenas[Number(b.dataset.q)]));
+});
+function fecharGrade(){
+  $('modalGrade').hidden = true;
+  _gradeItem = null; _gradeProd = null;
+  $('mgAgora').disabled = false;
+}
+function confirmarGrade(comQuantidade){
+  if(!_gradeItem) return;
+  if(comQuantidade){
+    for(const i of $('mgTam').querySelectorAll('input')){
+      const teto = Number(_gradeItem.gradeDisp[i.dataset.t] || 0);
+      const q = Math.max(0, Math.min(teto, Math.floor(Number(i.value) || 0)));
+      if(q) _gradeItem.gradePedido[i.dataset.t] = q;
+    }
+  }
+  porNaSacola(_gradeItem);
+  fecharGrade();
+}
+$('mgAgora').onclick = () => confirmarGrade(true);
+$('mgDepois').onclick = () => confirmarGrade(false);
+$('modalGrade').onclick = e => { if(e.target.id === 'modalGrade') fecharGrade(); };
+
+function abrirSacola(){
+  const vals = [...STATE.sacola.values()];
+  const tem = o => o === 'estoque' ? vals.some(i => i.origem !== 'repasse')
+                                   : vals.some(i => i.origem === 'repasse');
+  if(!tem(STATE.aba)) STATE.aba = tem('estoque') ? 'estoque' : 'repasse';
+  $('sacola').hidden = false;
+  pintarSacola();
+}
+function fecharSacola(){ $('sacola').hidden = true; pintarSacola(); }
+$('sacola').onclick = e => { if(e.target.id === 'sacola') fecharSacola(); };
+$('scLimpar').onclick = esvaziarSacola;
+
+function itemHtml(it){
+  const un = totalUnidades(it);
+  const cab = `<div class="sc-item-topo">
+      <span class="mini"><img src="${esc(foto(it))}" alt="" loading="lazy"
+        onerror="this.style.visibility='hidden'"></span>
+      <span class="txt"><span class="nm">${esc(it.nome || it.artigo)}</span>
+        <span class="sb">${esc(it.artigo)} · ${esc(it.cor)}` +
+        (it.origem === 'repasse' ? ` · Nº ${esc(it.num)}${it.gci ? ' · GCI ' + esc(it.gci) : ''}` : '') +
+        (it.origem === 'producao' ? `</span><span class="selo-pro">${svgIcone('c-plano', 10)}
+          Produção · ${esc(it.mes)}</span><span class="sb" hidden>` : '') +
+      `</span></span>
+      <button class="tirar" data-tirar="${esc(it.key)}" aria-label="Tirar da sacola">✕</button>
+    </div>`;
+
+  if(it.origem === 'repasse'){
+    const teto = Math.floor(Number(it.saldo || 0) / Math.max(1, Number(it.packSize || 1)));
+    return `<div class="sc-item" data-k="${esc(it.key)}">${cab}
+      <div class="sc-cx">
+        <span class="passo">
+          <button data-cx="${esc(it.key)}" data-d="-1" ${it.amount <= 0 ? 'disabled' : ''}>−</button>
+          <span data-qtd>${nf(it.amount)}</span>
+          <button data-cx="${esc(it.key)}" data-d="1" ${it.amount >= teto ? 'disabled' : ''}>+</button>
+        </span>
+        <span class="info"><b>${nf(it.packSize)}</b> pares
+          <br>fat. ${esc(it.prevFaturamento || '—')}</span>
+      </div></div>`;
+  }
+
+  const tams = Object.keys(it.gradeDisp).filter(t => Number(it.gradeDisp[t]) > 0);
+  return `<div class="sc-item" data-k="${esc(it.key)}">${cab}
+    <div class="sc-tam">${tams.map(t => `<label>
+      <span class="t">${esc(t)}</span>
+      <input type="number" inputmode="numeric" min="0" max="${it.gradeDisp[t]}"
+        value="${it.gradePedido[t] || ''}" placeholder="0"
+        data-tam="${esc(it.key)}" data-t="${esc(t)}" aria-label="Tamanho ${esc(t)}">
+      <span class="d">${nf(it.gradeDisp[t])}</span></label>`).join('')}</div>
+    <div class="sc-cx"><span class="info" data-un><b>${nf(un)}</b> un selecionada${un === 1 ? '' : 's'}</span></div>
+  </div>`;
+}
+
+function pintarRodapeSacola(){
+  const itens = [...STATE.sacola.values()];
+  // Estoque e produção terminam na mesma planilha do EBM, então dividem a aba.
+  const est = itens.filter(i => i.origem !== 'repasse');
+  const rep = itens.filter(i => i.origem === 'repasse');
+  const unEst = est.reduce((a, i) => a + totalUnidades(i), 0);
+  const unRep = rep.reduce((a, i) => a + totalUnidades(i), 0);
+
+  // O total dos dois lados fica no topo, fora das abas.
+  $('scGeral').hidden = !(est.length && rep.length);
+  $('scGeral').innerHTML =
+    `<span><i class="i-est"></i>Estoque <b>${nf(unEst)} un</b></span>` +
+    `<span><i class="i-rep"></i>Repasse <b>${nf(unRep)} un</b></span>`;
+
+  const naEst = STATE.aba === 'estoque';
+  // Cliente e prazo alimentam a planilha: fora da aba de estoque eles não
+  // querem dizer nada, e era isso que confundia.
+  $('scPe').innerHTML = naEst
+    ? (est.length ? `<div class="sc-resumo"><span>Total do estoque</span>
+          <b>${nf(unEst)} un</b></div>
+        <button class="acao forte" id="scXlsx" ${unEst ? '' : 'disabled'}>
+          Gerar planilha do EBM</button>` : '')
+    : (rep.length ? `<div class="sc-resumo"><span>Total do repasse</span>
+          <b>${nf(unRep)} un</b></div>
+        <button class="acao depois" disabled
+          title="Próxima etapa: enviar direto daqui">Enviar repasse · em breve</button>` : '');
+}
+
+function trocarAba(qual){
+  STATE.aba = qual;
+  pintarSacola();
+  $('scCorpo').scrollTop = 0;
+}
+$('scPe').addEventListener('click', e => {
+  if(e.target.closest('#scXlsx')) exportarXlsx();
+});
+
+function pintarSacola(){
+  const itens = [...STATE.sacola.values()];
+  const est = itens.filter(i => i.origem !== 'repasse');
+  const rep = itens.filter(i => i.origem === 'repasse');
+  $('fabSacola').hidden = !itens.length || !$('sacola').hidden;
+  document.body.classList.toggle('com-sacola', itens.length > 0);
+  $('fabSacolaN').textContent = nf(itens.length);
+  $('scLimpar').hidden = !itens.length;
+
+  if(!itens.length){
+    $('scGeral').hidden = true;
+    $('scAbas').hidden = true;
+    $('scCorpo').innerHTML = `<div class="sc-vazia"><h3>Sacola vazia</h3>
+      <p>Abra um produto e adicione o estoque ou uma entrega de repasse.
+      Produção não entra: ela é plano de fabricação, não pedido.</p></div>`;
+    $('scPe').innerHTML = '';
+    return;
+  }
+
+  // Com uma origem só, aba é ruído: some e a sacola volta a ser uma lista.
+  const duas = est.length > 0 && rep.length > 0;
+  if(!duas) STATE.aba = rep.length && !est.length ? 'repasse' : 'estoque';
+  $('scAbas').hidden = !duas;
+  if(duas){
+    $('scAbas').innerHTML = [
+      ['estoque', 'a-est', 'Planilha', est.length],
+      ['repasse', 'a-rep', 'Repasse', rep.length]
+    ].map(([id, cls, rot, n]) => {
+      const on = STATE.aba === id;
+      return `<button class="${cls}${on ? ' on' : ''}" role="tab" aria-selected="${on}"
+        data-aba="${id}">${rot}<span class="n">${n}</span></button>`;
+    }).join('');
+  }
+
+  const lista = STATE.aba === 'repasse' ? rep : est;
+  const ajuda = STATE.aba === 'repasse'
+    ? 'Vira pedido no sistema, como no Repasses.'
+    : 'Sai na planilha do EBM. Estoque sai agora; produção, no mês marcado.';
+  $('scCorpo').innerHTML =
+    `<section class="sc-sec"><p class="sc-sec-sub">${ajuda}</p>` +
+    lista.map(itemHtml).join('') + '</section>';
+  // O formulário é do estoque: vive dentro da aba dele e rola com os itens.
+  if(STATE.aba === 'estoque' && est.length) $('scCorpo').appendChild(FORM_PEDIDO);
+
+  pintarRodapeSacola();
+}
+
+// Um ouvinte por container, como no painel de filtros.
+$('scAbas').addEventListener('click', e => {
+  const b = e.target.closest('[data-aba]');
+  if(b) trocarAba(b.dataset.aba);
+});
+$('scCorpo').addEventListener('click', e => {
+  const t = e.target.closest('[data-tirar]');
+  if(t) return tirarDaSacola(t.dataset.tirar);
+  const c = e.target.closest('[data-cx]');
+  if(c) return mudarCaixas(c.dataset.cx, Number(c.dataset.d));
+});
+$('scCorpo').addEventListener('change', e => {
+  const i = e.target.closest('[data-tam]');
+  if(i) mudarTamanho(i.dataset.tam, i.dataset.t, i.value);
+});
+
+function abrirZoom(i){
+  const o = STATE.filtrados[i];
+  if(!o) return;
+  $('zoomImg').src = foto(o);
+  $('zoomImg').alt = o.nome;
+  $('zoomLegenda').textContent = `${o.nome || o.artigo} · ${o.artigo} · ${o.cor}`;
+  $('zoom').hidden = false;
+}
+function fecharZoom(){ $('zoom').hidden = true; }
+$('zoom').onclick = fecharZoom;
+
+// Ainda sem destino definido: por ora o coração só marca e desmarca na tela,
+// não guarda nada nem dispara ação nenhuma.
+function alternarFavorito(btn){
+  const on = btn.classList.toggle('on');
+  btn.setAttribute('aria-pressed', String(on));
+}
+$('modal').onclick = e => { if(e.target.id === 'modal') fecharModal(); };
+document.addEventListener('keydown', e => {
+  if(e.key !== 'Escape') return;
+  if(!$('modalGrade').hidden) fecharGrade();
+  else if(!$('zoom').hidden) fecharZoom();
+  else if(!$('modal').hidden) fecharModal();
+  else if(!$('sacola').hidden) fecharSacola();
+  else if(!$('painel').hidden) fecharPainel();
+});
+
+/* ── marca ──────────────────────────────────────────────────────── */
+function pintarMarca(){
+  const m = MARCAS[MARCA];
+  const r = document.documentElement.style;
+  r.setProperty('--marca', m.marca);
+  r.setProperty('--marca-claro', m.claro);
+  r.setProperty('--marca-escuro', m.escuro);
+  document.title = m.nome + ' · Vitrine CMS';
+  const outro = MARCAS[MARCA === 'oly' ? 'ua' : 'oly'];
+  const b = $('btnMarca');
+  b.title = 'Trocar para ' + outro.nome;
+  b.setAttribute('aria-label', m.nome + ' — trocar para ' + outro.nome);
+  b.innerHTML = `<img src="${esc(m.logo)}" alt="${esc(m.nome)}">
+    <span class="troca" aria-hidden="true"><svg width="8" height="8" viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"
+      stroke-linejoin="round"><path d="M8 4 4 8l4 4"/><path d="M4 8h15"/>
+      <path d="m16 20 4-4-4-4"/><path d="M20 16H5"/></svg></span>`;
+  b.onclick = () => escolherMarca(MARCA === 'oly' ? 'ua' : 'oly');
+  montarFormulario();
+}
+function escolherMarca(id){
+  if(id === MARCA || !MARCAS[id]) return;
+  MARCA = id;
+  if(!STATE.produtos.some(o => o.marca === id && temOrigem(o, STATE.origem))) STATE.origem = 'tudo';
+  STATE.categoria = '';
+  for(const g of GRUPOS) STATE.sel[g.id].clear();
+  carregarSacola();
+  history.replaceState(null, '', '?marca=' + id);
+  pintarMarca();
+  aplicar();
+}
+
+/* ── busca ──────────────────────────────────────────────────────── */
+const _busca = $('busca'), _campo = $('campoBusca'), _x = $('limpaBusca');
+
+function abrirBusca(){
+  _busca.classList.add('aberta');
+  $('btnBusca').setAttribute('aria-expanded', 'true');
+  _campo.focus();
+}
+// So fecha vazia: colapsar com texto dentro esconderia o filtro que está ativo.
+function fecharBusca(){
+  if(_campo.value) return;
+  _busca.classList.remove('aberta');
+  $('btnBusca').setAttribute('aria-expanded', 'false');
+}
+function limparBusca(){
+  _campo.value = ''; STATE.busca = ''; _x.hidden = true;
+  clearTimeout(tBusca); aplicar();
+}
+
+// Redesenhar mil e duzentos cards a cada tecla trava no celular: só a última
+// tecla vale. Limpar não espera.
+let tBusca = null;
+_campo.addEventListener('input', e => {
+  STATE.busca = e.target.value;
+  _x.hidden = !e.target.value;
+  clearTimeout(tBusca);
+  tBusca = setTimeout(aplicar, 130);
+});
+
+// A vírgula é o único jeito de descobrir a busca múltipla, então ela fica no
+// texto do campo mesmo na tela estreita — o que sai é a parte adivinhável.
+const _estreito = matchMedia('(max-width:620px)');
+function ajustarDica(){
+  _campo.placeholder = _estreito.matches
+    ? 'Até 3, separados por vírgula'
+    : 'Produto, artigo ou cor — até 3, separados por vírgula';
+}
+_estreito.addEventListener('change', ajustarDica);
+ajustarDica();
+
+$('btnBusca').addEventListener('click', () => {
+  if(_busca.classList.contains('aberta') && !_campo.value) fecharBusca();
+  else abrirBusca();
+});
+// Chegar no campo pelo teclado abre a busca: sem isso o Tab levaria a um
+// campo de largura zero.
+_campo.addEventListener('focus', abrirBusca);
+_campo.addEventListener('blur', () => setTimeout(fecharBusca, 160));
+
+// Esc apaga o que está escrito; com o campo já vazio, fecha.
+_campo.addEventListener('keydown', e => {
+  if(e.key !== 'Escape') return;
+  e.preventDefault();
+  if(_campo.value){ limparBusca(); _campo.focus(); }
+  else { _campo.blur(); fecharBusca(); }
+});
+_x.addEventListener('click', () => { limparBusca(); _campo.focus(); });
+
+if(!SESSAO){
+  barrar('Entre pelo Portal',
+         'Esta vitrine usa o mesmo login dos outros aplicativos.', true);
+}else if(SO_ESTES.length && !SO_ESTES.includes(String(SESSAO.nome || '').toUpperCase())){
+  barrar('Ainda em desenvolvimento',
+         'A vitrine única está sendo montada e por enquanto só o acesso CMS entra. ' +
+         'Use o Repasses e o Disponibilidades normalmente.', true);
+}else{
+  pintarMarca();
+  carregarSacola();
+  pintarSacola();
+  carregar();
+}
+</script>
+</body>
+</html>
