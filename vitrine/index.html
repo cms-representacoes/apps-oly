@@ -403,14 +403,24 @@ button{font:inherit}
 /* Estoque: uma caixinha por tamanho, com o disponível escrito embaixo. */
 .sc-tam{display:flex;flex-wrap:wrap;gap:4px;margin-top:9px}
 .sc-tam label{width:40px;text-align:center}
-.sc-tam .t{display:block;font-size:9px;font-weight:700;color:var(--tenue)}
-.sc-tam input{width:100%;border:1px solid var(--linha);border-radius:6px;padding:3px 0;
-  text-align:center;font:inherit;font-size:12px;font-weight:700;color:var(--tinta);
-  background:var(--carta);font-variant-numeric:tabular-nums;-moz-appearance:textfield}
+.sc-tam .t{display:block;font-size:9.5px;font-weight:800;color:var(--pronta)}
+/* O que ja foi digitado fica em destaque; o vazio segue discreto, senao um
+   campo em branco chamaria tanto quanto uma quantidade escolhida. */
+.sc-tam input{width:100%;border:1px solid color-mix(in srgb,var(--pronta) 30%,transparent);
+  border-radius:6px;padding:3px 0;text-align:center;font:inherit;font-size:12.5px;
+  font-weight:800;color:var(--pronta);background:color-mix(in srgb,var(--pronta) 7%,var(--carta));
+  font-variant-numeric:tabular-nums;-moz-appearance:textfield}
+.sc-tam input:placeholder-shown{border-color:var(--linha);background:var(--carta);
+  color:var(--tenue);font-weight:600}
 .sc-tam input::-webkit-outer-spin-button,.sc-tam input::-webkit-inner-spin-button{
   -webkit-appearance:none;margin:0}
 .sc-tam input:focus{outline:2px solid var(--marca);outline-offset:-1px}
-.sc-tam .d{display:block;font-size:8.5px;color:var(--tenue);margin-top:1px}
+.sc-tam .d{display:block;font-size:9px;font-weight:600;color:var(--fraco);margin-top:1px}
+.sc-tam.t-pro .t{color:var(--plano)}
+.sc-tam.t-pro input{border-color:color-mix(in srgb,var(--plano) 30%,transparent);
+  color:var(--plano);background:color-mix(in srgb,var(--plano) 7%,var(--carta))}
+.sc-tam.t-pro input:placeholder-shown{border-color:var(--linha);background:var(--carta);
+  color:var(--tenue)}
 
 /* Repasse: caixa fechada, então o controle é quantas caixas. */
 .sc-cx{display:flex;align-items:center;gap:9px;margin-top:9px}
@@ -587,7 +597,18 @@ button{font:inherit}
 .bloco .rot.r-repasse{color:var(--repasse)}
 .bloco .rot.r-plano{color:var(--plano)}
 .celulas{display:flex;flex-wrap:wrap;gap:5px}
-.cel{border:1px solid var(--linha);border-radius:6px;padding:4px 0;width:40px;text-align:center;background:var(--carta)}
+/* A grade herda a cor da origem em que esta: assim ela para de ser um bloco
+   cinza e diz de onde aquelas pecas vem, sem precisar de legenda. */
+.cel{border:1px solid var(--linha);border-radius:6px;padding:4px 0;width:40px;
+  text-align:center;background:var(--carta)}
+.celulas.g-est .cel{border-color:color-mix(in srgb,var(--pronta) 34%,transparent);
+  background:color-mix(in srgb,var(--pronta) 7%,var(--carta))}
+.celulas.g-est .cel .t{color:var(--pronta)}
+.celulas.g-est .cel .q{color:var(--pronta)}
+.celulas.g-rep .cel{border-color:color-mix(in srgb,var(--repasse) 34%,transparent);
+  background:color-mix(in srgb,var(--repasse) 7%,var(--carta))}
+.celulas.g-rep .cel .t{color:var(--repasse)}
+.celulas.g-rep .cel .q{color:var(--repasse)}
 @media(max-width:520px){
   .celulas{gap:4px}
   .cel{width:33px;padding:3px 0}
@@ -597,8 +618,8 @@ button{font:inherit}
   .folha-corpo{padding:13px 14px;gap:14px}
   .folha-topo{padding:13px 14px}
 }
-.cel .t{display:block;font-size:9.5px;color:var(--tenue);line-height:1}
-.cel .q{display:block;font-size:12.5px;font-weight:600;color:var(--tinta);margin-top:2px;line-height:1}
+.cel .t{display:block;font-size:9.5px;font-weight:700;color:var(--fraco);line-height:1}
+.cel .q{display:block;font-size:13px;font-weight:800;color:var(--tinta);margin-top:2px;line-height:1}
 /* Uma entrega por cartão, com a grade daquela entrega — igual ao Repasses. */
 .lotes{display:flex;flex-direction:column;gap:7px}
 .lote{border:1px solid var(--linha);border-radius:10px;padding:9px 10px}
@@ -608,7 +629,9 @@ button{font:inherit}
 .lote-d{font-size:10.5px;color:var(--fraco);margin-top:1px}
 .lote .celulas{margin-top:7px}
 .lote-add{margin-top:9px;padding:6px;font-size:11px}
-.lote-add:disabled{color:var(--tenue);border-style:dashed;cursor:default;background:none}
+/* Ja na sacola: perde o preenchimento e vira aviso, nao mais um convite. */
+.lote-add:disabled{color:var(--tenue);border:1px dashed var(--linha-forte);
+  cursor:default;background:none;box-shadow:none}
 
 .meses{display:flex;flex-direction:column}
 .mes{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
@@ -1738,7 +1761,7 @@ function exportarXlsx(){
 }
 
 /* ── modal ──────────────────────────────────────────────────────── */
-const celulas = g => `<div class="celulas">${Object.entries(g).map(([t,q]) =>
+const celulas = (g, cls = '') => `<div class="celulas ${cls}">${Object.entries(g).map(([t,q]) =>
   `<span class="cel"><span class="t">${esc(t)}</span><span class="q">${nf(q)}</span></span>`).join('')}</div>`;
 
 let _abertoEm = -1;
@@ -1753,7 +1776,7 @@ function abrirModal(i){
 
   let h = '';
   if(o.pronta){
-    h += `<div class="bloco"><p class="rot r-pronta">${svgIcone('c-pronta')}Estoque · ${nf(o.pronta.total)} un</p>${celulas(o.pronta.grade)}</div>`;
+    h += `<div class="bloco"><p class="rot r-pronta">${svgIcone('c-pronta')}Estoque · ${nf(o.pronta.total)} un</p>${celulas(o.pronta.grade, 'g-est')}</div>`;
   }
   if(o.repasse){
     h += `<div class="bloco"><p class="rot r-repasse">${svgIcone('c-repasse')}Repasse · ${o.repasse.lotes.length} ${o.repasse.lotes.length === 1 ? 'lote' : 'lotes'} · ${nf(o.repasse.total)} un</p>
@@ -1764,8 +1787,8 @@ function abrirModal(i){
             <span class="s">${nf(l.saldo)} un</span>
           </div>
           <div class="lote-d">fat. ${esc(l.data||'—')}</div>
-          ${Object.keys(l.grade).length ? celulas(l.grade) : ''}
-          <button class="acao lote-add" data-lote="${esc(l.num)}"
+          ${Object.keys(l.grade).length ? celulas(l.grade, 'g-rep') : ''}
+          <button class="acao forte lote-add" data-lote="${esc(l.num)}"
             ${naSacola(`rep|${o.k}|${l.num}`) ? 'disabled' : ''}>
             ${naSacola(`rep|${o.k}|${l.num}`) ? 'Já está na sacola' : 'Adicionar à sacola'}
           </button>
@@ -1943,6 +1966,7 @@ function montarGradeDe(item){
     ? `${svgIcone('c-plano')}Produção · ${esc(item.mes)} · ${nf(item.teto)} un`
     : `${svgIcone('c-pronta')}Estoque · ${nf(Object.values(item.gradeDisp)
         .reduce((a, b) => a + b, 0))} un`;
+  $('mgTam').className = 'sc-tam' + (prod ? ' t-pro' : '');
   $('mgTam').innerHTML = Object.keys(item.gradeDisp)
     .filter(t => Number(item.gradeDisp[t]) > 0)
     .map(t => `<label><span class="t">${esc(t)}</span>
@@ -2144,11 +2168,9 @@ function pintarSacola(){
   }
 
   const lista = STATE.aba === 'repasse' ? rep : est;
-  const ajuda = STATE.aba === 'repasse'
-    ? 'Vira pedido no sistema, como no Repasses.'
-    : 'Sai na planilha do EBM. Estoque sai agora; produção, no mês marcado.';
+  const ajuda = '';
   $('scCorpo').innerHTML =
-    `<section class="sc-sec"><p class="sc-sec-sub">${ajuda}</p>` +
+    `<section class="sc-sec">${ajuda ? `<p class="sc-sec-sub">${ajuda}</p>` : ''}` +
     lista.map(itemHtml).join('') + '</section>';
   // O formulário é do estoque: vive dentro da aba dele e rola com os itens.
   if(STATE.aba === 'estoque' && est.length) $('scCorpo').appendChild(FORM_PEDIDO);
