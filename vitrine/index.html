@@ -379,6 +379,27 @@ button{font:inherit}
   color:var(--tenue);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
 .sc-item .tirar:hover{background:var(--linha);color:var(--tinta)}
 
+.sc-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+/* Tracejado e em âmbar enquanto falta; sólido e calmo quando resolvido. */
+.sc-data{position:relative;display:inline-flex;align-items:center;gap:5px;cursor:pointer;
+  border-radius:999px;padding:3px 9px;font-size:10.5px;font-weight:800;
+  border:1px dashed #E0A106;background:rgba(251,191,36,.14);color:#A45B06}
+.sc-data.ok{border-style:solid;border-color:var(--linha-forte);
+  background:var(--papel);color:var(--texto);font-weight:700}
+.sc-data:hover{filter:brightness(.97)}
+.sc-data:focus-within{outline:2px solid var(--marca);outline-offset:2px}
+/* O seletor cobre o chip inteiro e some: o clique vale em qualquer ponto. */
+.sc-data input{position:absolute;inset:-1px;width:auto;height:auto;opacity:0;
+  border:0;padding:0;margin:0;cursor:pointer}
+.sc-data input::-webkit-calendar-picker-indicator{position:absolute;inset:0;
+  width:100%;height:100%;opacity:0;cursor:pointer}
+
+.sc-dup{display:inline-flex;align-items:center;gap:5px;cursor:pointer;
+  border:1px solid var(--linha);background:var(--carta);color:var(--fraco);
+  border-radius:999px;padding:3px 9px;font-size:10.5px;font-weight:700}
+.sc-dup:hover{border-color:var(--linha-forte);color:var(--tinta)}
+.sc-dup:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+
 /* Estoque: uma caixinha por tamanho, com o disponível escrito embaixo. */
 .sc-tam{display:flex;flex-wrap:wrap;gap:4px;margin-top:9px}
 .sc-tam label{width:40px;text-align:center}
@@ -424,6 +445,8 @@ button{font:inherit}
   min-width:0;cursor:pointer}
 .sc-campos select:focus{outline:2px solid var(--marca);outline-offset:-1px}
 .sc-campos input.erro,.sc-campos select.erro{border-color:#E0245E}
+.sc-campos .ajuda{font-style:normal;font-size:9.5px;color:var(--tenue);line-height:1.35;
+  margin-top:1px}
 
 /* A lista sobe acima do rodapé, então precisa de camada própria. */
 .sc-busca-cli{position:relative}
@@ -778,8 +801,10 @@ const FORM_HTML = `<p class="sc-form-tit">Dados do pedido</p>
           <select id="scPrazo"></select></label>
         <label><span>Campanha</span>
           <select id="scCampanha"></select></label>
-        <label class="largo"><span>Data desejada <i>*</i></span>
-          <input id="scData" type="date"></label>`;
+        <label class="largo"><span>Data para os itens sem data</span>
+          <input id="scData" type="date">
+          <em class="ajuda">Preenche só quem ainda está sem data. Cada item pode
+            ter a sua, pelo chip no card.</em></label>`;
 
 /* ── sacola ─────────────────────────────────────────────────────── */
 // Uma sacola por vendedor E por marca: misturar Oly com UA geraria um pedido
@@ -815,7 +840,7 @@ function carregarSacola(){
 // gradePedido; o pedido do Repasses usa num/gci/ebm/packSize/amount/grade.
 // Ter tudo desde agora evita reconstruir a sacola quando o envio for ligado.
 function itemEstoque(o){
-  return { key:`est|${o.k}`, origem:'estoque',
+  return { key:`est|${o.k}`, origem:'estoque', dataDesejada:'',
     artigo:o.artigo, cor:o.cor, corCodigo:o.cor, nome:o.nome, produto:o.nome,
     codigo:o.artigo, pdv:o.pdv, imagem:o.imagem, categoria:o.categoria,
     gradeDisp:{ ...(o.pronta ? o.pronta.grade : {}) }, gradePedido:{},
@@ -827,7 +852,7 @@ function itemProducao(o, q){
   const tam = tamanhosDe(o);
   const disp = {};
   for(const t of tam) disp[t] = q.v;   // sem quebra por tamanho na base
-  return { key:`pro|${o.k}|${q.mes}`, origem:'producao',
+  return { key:`pro|${o.k}|${q.mes}`, origem:'producao', dataDesejada:'',
     artigo:o.artigo, cor:o.cor, corCodigo:o.cor, nome:o.nome, produto:o.nome,
     codigo:o.artigo, pdv:o.pdv, imagem:o.imagem, categoria:o.categoria,
     mes:q.mes, quinzena:q.rot, teto:q.v,
@@ -836,7 +861,7 @@ function itemProducao(o, q){
 }
 function itemRepasse(o, lote){
   const packSize = Object.values(lote.grade).reduce((a, b) => a + b, 0);
-  return { key:`rep|${o.k}|${lote.num}`, origem:'repasse',
+  return { key:`rep|${o.k}|${lote.num}`, origem:'repasse', dataDesejada:'',
     artigo:o.artigo, cor:o.cor, corCodigo:o.cor, nome:o.nome, produto:o.nome,
     codigo:o.artigo, pdv:o.pdv, imagem:o.imagem, categoria:o.categoria,
     num:lote.num, gci:lote.gci, ebm:'', prevFaturamento:lote.data,
@@ -850,6 +875,10 @@ const totalUnidades = it => it.origem === 'repasse'
 
 /* ── utilidades ─────────────────────────────────────────────────── */
 const nf   = n => Number(n||0).toLocaleString('pt-BR');
+const dataBR = iso => {                      // 2026-11-20 -> 20/11/2026
+  const [a, m, d] = String(iso || '').split('-');
+  return (a && m && d) ? `${d}/${m}/${a}` : String(iso || '');
+};
 const brl  = v => 'R$ ' + Number(v||0).toFixed(2).replace('.', ',');
 const norm = v => String(v==null?'':v).normalize('NFD').replace(/[̀-ͯ]/g,'').trim().toUpperCase();
 const esc  = v => String(v==null?'':v).replace(/[&<>"']/g, c =>
@@ -1521,6 +1550,19 @@ function montarFormulario(){
       .map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
 }
 
+// Atalho para o caso comum, um pedido com data unica: preenche so as linhas
+// vazias, para nao apagar em silencio as datas ja escolhidas uma a uma.
+$f('scData').addEventListener('change', e => {
+  const v = e.target.value;
+  if(!v) return;
+  let n = 0;
+  for(const it of STATE.sacola.values()){
+    if(it.origem === 'repasse' || it.dataDesejada) continue;
+    it.dataDesejada = v; n++;
+  }
+  if(n){ salvarSacola(); pintarSacola(); }
+});
+
 $f('scCliente').addEventListener('focus', () => { carregarClientes(); });
 $f('scCliente').addEventListener('input', e => {
   CLI.achados = buscarClientes(e.target.value);
@@ -1582,16 +1624,26 @@ function partesPrazo(p){
 function exportarXlsx(){
   const cliente = $f('scCliente').value.trim();
   const prazo   = $f('scPrazo').value.trim();
-  const data    = $f('scData').value.trim();
   const faltou  = [];
   if(!cliente) faltou.push($f('scCliente'));
   if(!prazo)   faltou.push($f('scPrazo'));
-  if(!data)    faltou.push($f('scData'));
-  [$f('scCliente'), $f('scPrazo'), $f('scData')].forEach(el => el.classList.remove('erro'));
+  [$f('scCliente'), $f('scPrazo')].forEach(el => el.classList.remove('erro'));
   if(faltou.length){
     faltou.forEach(el => el.classList.add('erro'));
     faltou[0].scrollIntoView({ block:'center', behavior:'smooth' });
     faltou[0].focus();
+    return;
+  }
+
+  // A data agora e por item: cobrar so a do rodape deixaria linhas sem data
+  // passarem batido para a planilha.
+  const semData = [...STATE.sacola.values()]
+    .filter(it => it.origem !== 'repasse' && totalUnidades(it) > 0 && !it.dataDesejada);
+  if(semData.length){
+    alert(`${semData.length === 1 ? 'Um item está' : semData.length + ' itens estão'}` +
+      ' sem data desejada. Defina no chip do card ou use o campo de data do pedido.');
+    const alvo = $('scCorpo').querySelector('.sc-data:not(.ok)');
+    if(alvo) alvo.scrollIntoView({ block:'center', behavior:'smooth' });
     return;
   }
 
@@ -1612,9 +1664,8 @@ function exportarXlsx(){
     l[idx['Número de Parcelas']] = pz.parcelas;
     // A planilha leva só o código da campanha, não o rótulo inteiro.
     l[idx['Campanha']] = ($f('scCampanha').value.split(/\s/)[0] || '');
-    if(data){
-      const [ano, mes, dia] = data.split('-');
-      const br = (ano && mes && dia) ? `${dia}/${mes}/${ano}` : data;
+    if(it.dataDesejada){
+      const br = dataBR(it.dataDesejada);
       l[idx['Data Desejada']] = br;
       l[idx['Data de Faturamento']] = br;
     }
@@ -1731,6 +1782,35 @@ function tirarDaSacola(k){
   salvarSacola(); pintarSacola();
   if(!$('modal').hidden && STATE.filtrados[_abertoEm]) abrirModal(_abertoEm);
 }
+function mudarData(k, valor){
+  const it = STATE.sacola.get(k);
+  if(!it) return;
+  it.dataDesejada = valor || '';
+  salvarSacola();
+  pintarSacola();
+}
+
+// Duplicar existe para o mesmo produto ir em duas datas — ou dois pedidos —
+// sem que um sobrescreva o outro. A cópia nasce sem data, para não herdar em
+// silêncio a data da linha de origem.
+let _copia = 0;
+function duplicarItem(k){
+  const it = STATE.sacola.get(k);
+  if(!it) return;
+  const copia = { ...it, key: `${it.key}#${++_copia}${Date.now().toString(36)}`,
+                  dataDesejada: '' };
+  if(it.gradePedido) copia.gradePedido = { ...it.gradePedido };
+  if(it.gradeDisp)   copia.gradeDisp   = { ...it.gradeDisp };
+  if(it.grade)       copia.grade       = { ...it.grade };
+  // Entra logo abaixo do original, não no fim: a comparação entre os dois é
+  // o motivo de existir a cópia.
+  const arr = [...STATE.sacola.entries()];
+  arr.splice(arr.findIndex(([kk]) => kk === k) + 1, 0, [copia.key, copia]);
+  STATE.sacola = new Map(arr);
+  salvarSacola();
+  pintarSacola();
+}
+
 function esvaziarSacola(){
   if(!STATE.sacola.size) return;
   STATE.sacola.clear(); STATE.aba = 'estoque'; salvarSacola(); pintarSacola();
@@ -1870,6 +1950,23 @@ function fecharSacola(){ $('sacola').hidden = true; pintarSacola(); }
 $('sacola').onclick = e => { if(e.target.id === 'sacola') fecharSacola(); };
 $('scLimpar').onclick = esvaziarSacola;
 
+// Sem data o chip é tracejado e chama; com data ele mostra o dia e o lápis.
+// O input cobre o chip inteiro e é invisível: o clique em qualquer ponto abre
+// o calendário do próprio aparelho.
+function chipData(it){
+  const tem = !!it.dataDesejada;
+  const rot = tem ? dataBR(it.dataDesejada) : 'Definir data';
+  return `<label class="sc-data${tem ? ' ok' : ''}"
+      title="${tem ? 'Alterar a data deste item' : 'Definir a data deste item'}">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+    ${esc(rot)}
+    <input type="date" data-data="${esc(it.key)}" value="${esc(it.dataDesejada)}"
+           aria-label="Data desejada de ${esc(it.nome || it.artigo)}">
+  </label>`;
+}
+
 function itemHtml(it){
   const un = totalUnidades(it);
   const cab = `<div class="sc-item-topo">
@@ -1882,6 +1979,15 @@ function itemHtml(it){
           Produção · ${esc(it.mes)}</span><span class="sb" hidden>` : '') +
       `</span></span>
       <button class="tirar" data-tirar="${esc(it.key)}" aria-label="Tirar da sacola">✕</button>
+    </div>
+    <div class="sc-chips">${chipData(it)}
+      <button class="sc-dup" data-dup="${esc(it.key)}" title="Duplicar este item"
+        aria-label="Duplicar ${esc(it.nome || it.artigo)}">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="9" y="9" width="12" height="12" rx="2"/>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Duplicar</button>
     </div>`;
 
   if(it.origem === 'repasse'){
@@ -2004,10 +2110,14 @@ $('scCorpo').addEventListener('click', e => {
   if(t) return tirarDaSacola(t.dataset.tirar);
   const c = e.target.closest('[data-cx]');
   if(c) return mudarCaixas(c.dataset.cx, Number(c.dataset.d));
+  const d = e.target.closest('[data-dup]');
+  if(d) return duplicarItem(d.dataset.dup);
 });
 $('scCorpo').addEventListener('change', e => {
   const i = e.target.closest('[data-tam]');
-  if(i) mudarTamanho(i.dataset.tam, i.dataset.t, i.value);
+  if(i) return mudarTamanho(i.dataset.tam, i.dataset.t, i.value);
+  const dt = e.target.closest('[data-data]');
+  if(dt) mudarData(dt.dataset.data, dt.value);
 });
 
 function abrirZoom(i){
