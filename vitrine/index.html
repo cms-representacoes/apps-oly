@@ -2426,7 +2426,7 @@ function pintarSacola(){
   const itens = [...STATE.sacola.values()];
   const est = itens.filter(i => i.origem !== 'repasse');
   const rep = itens.filter(i => i.origem === 'repasse');
-  $('fabSacola').hidden = !itens.length || !$('sacola').hidden || STATE.marcados.size > 0;
+  $('fabSacola').hidden = !itens.length || !$('sacola').hidden || marcadosVisiveis().length > 0;
   document.body.classList.toggle('com-sacola', itens.length > 0);
   $('fabSacolaN').textContent = nf(itens.length);
   $('scLimpar').hidden = !itens.length;
@@ -2517,15 +2517,14 @@ function limparMarcados(){
   pintarSelecao();
 }
 
-// Produtos marcados que ainda estão na lista: o vendedor pode ter marcado e
-// depois trocado de marca ou de filtro, e exportar o que sumiu da tela seria
-// uma surpresa.
+// Todos os marcados da marca ativa, na ordem da vitrine — o filtro em que o
+// vendedor estava quando marcou nao muda o que ele escolheu levar.
 function marcadosVisiveis(){
-  return STATE.filtrados.filter(o => STATE.marcados.has(o.k));
+  return STATE.produtos.filter(o => daMarca(o) && STATE.marcados.has(o.k));
 }
 
 function pintarSelecao(){
-  const n = STATE.marcados.size;
+  const n = marcadosVisiveis().length;
   $('selBarra').hidden = n === 0;
   $('selN').textContent = nf(n);
   document.body.classList.toggle('com-selecao', n > 0);
@@ -2570,6 +2569,7 @@ function escolherMarca(id){
   if(!STATE.produtos.some(o => o.marca === id && temOrigem(o, STATE.origem))) STATE.origem = 'tudo';
   STATE.categoria = '';
   for(const g of GRUPOS) STATE.sel[g.id].clear();
+  STATE.marcados.clear();
   carregarSacola();
   history.replaceState(null, '', '?marca=' + id);
   pintarMarca();
