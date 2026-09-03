@@ -950,7 +950,7 @@ function montar(dispo, disponib, produtos, pedidos){
     if(!mapa.has(k)) mapa.set(k, {
       k, artigo:norm(artigo), cor:String(cor||'').trim().toUpperCase(),
       nome:'', marca:'', pdv:0, categoria:'', genero:'', imagem:'', fabrica:'',
-      sub:'', camp:'', chega:[], campanha:null,
+      sub:'', camp:[], chega:[], campanhas:[],
       pronta:null, repasse:null, meta:null
     });
     return mapa.get(k);
@@ -966,9 +966,13 @@ function montar(dispo, disponib, produtos, pedidos){
     o.genero    = o.genero    || String(i.genero || '').toUpperCase();
     o.imagem  = o.imagem  || String(i.imagem || '').trim();
     o.fabrica = o.fabrica || String(i.empresa || '').trim().toUpperCase();
-    if(!o.campanha){
-      o.campanha = (Array.isArray(i.tabelasEspeciais) && i.tabelasEspeciais[0])
-        || (i.codigoTabela ? { codigoTabela:i.codigoTabela, mkp:i.mkp, custo:i.custo } : null);
+    // 70 linhas da Olympikus trazem DUAS campanhas, e a segunda (E4822, MKP
+    // 2,8) nunca aparecia porque só a primeira era guardada. O produto pode
+    // estar em mais de uma promoção ao mesmo tempo.
+    if(!o.campanhas.length){
+      const te = Array.isArray(i.tabelasEspeciais) ? i.tabelasEspeciais : [];
+      o.campanhas = te.length ? te.slice()
+        : (i.codigoTabela ? [{ codigoTabela:i.codigoTabela, mkp:i.mkp, custo:i.custo }] : []);
     }
     if(i._meta){
       const q = Object.entries(i.quinzenas || {}).filter(([,v]) => Number(v) >= MIN_PARES);
@@ -1027,9 +1031,7 @@ function montar(dispo, disponib, produtos, pedidos){
     // para mil e duzentos produtos, era o que deixava a digitacao lenta.
     o.hay = norm([o.artigo, o.nome, o.cor, o.categoria, o.genero].join(' '));
     o.sub = subcategoriaDe(o);
-    o.camp = o.campanha
-      ? String(o.campanha.codigoTabela || '') + (o.campanha.mkp ? ' · MKP ' + o.campanha.mkp : '')
-      : '';
+    o.camp = o.campanhas.map(rotuloCampanha);
     // "Chega em" e a prev. faturamento unificada: estoque sai agora, as outras
     // duas origens entram pelo mes. Um produto pode estar em mais de um.
     o.chega = [];
@@ -1062,6 +1064,10 @@ const SVG_CORACAO = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"
   L12 21.4l8.8-8.4a5.2 5.2 0 0 0 0-7.4z"/></svg>`;
 
 const AGORA = 'Agora';
+// O rótulo é a chave do filtro: mesma tabela com MKP diferente é campanha
+// diferente na prática, porque muda o custo.
+const rotuloCampanha = c =>
+  String(c.codigoTabela || '') + (c.mkp ? ' · MKP ' + c.mkp : '');
 // Nenhuma das 1.155 linhas de produção traz grade — só o total do mês. Os
 // tamanhos saem do próprio produto quando ele também tem estoque (595 casos);
 // nos demais, do conjunto que a categoria usa na base.
@@ -1155,7 +1161,8 @@ const GRUPOS = [
   { id:'fabrica', rot:'Fábrica' },
   { id:'camp',    rot:'Campanha' }
 ];
-const valoresDe = (o, id) => id === 'chega' ? o.chega : (o[id] ? [o[id]] : []);
+const LISTAS = new Set(['chega', 'camp']);   // campos com vários valores por produto
+const valoresDe = (o, id) => LISTAS.has(id) ? o[id] : (o[id] ? [o[id]] : []);
 function casaGrupo(o, id){
   const sel = STATE.sel[id];
   return sel.size === 0 || valoresDe(o, id).some(v => sel.has(v));
@@ -1301,14 +1308,14 @@ function limparFiltros(){
 
 // Tudo que restringe a lista, inclusive a busca: quem clica aqui quer voltar
 // a ver a vitrine inteira, não descobrir que ainda sobrou um filtro.
+// A origem fica de fora: alternar entre Tudo, Estoque, Repasse e Produção é
+// navegar, não filtrar, e o botão apareceria o tempo todo sem nada a desfazer.
 function contarFiltros(){
-  return (STATE.origem !== 'tudo' ? 1 : 0)
-       + (STATE.categoria ? 1 : 0)
+  return (STATE.categoria ? 1 : 0)
        + (STATE.busca.trim() ? 1 : 0)
        + nSelecionados();
 }
 function limparTudo(){
-  STATE.origem = 'tudo';
   STATE.categoria = '';
   for(const g of GRUPOS) STATE.sel[g.id].clear();
   STATE.busca = '';
@@ -1338,9 +1345,14 @@ function setCategoria(id){ STATE.categoria = (STATE.categoria === id) ? '' : id;
 
 /* ── grade ──────────────────────────────────────────────────────── */
 function cardHtml(o, i){
-  const cam = o.campanha
-    ? `<div class="campanha">${esc(o.campanha.codigoTabela||'')}${o.campanha.mkp?' · MKP <b>'+esc(o.campanha.mkp)+'</b>':''}${o.campanha.custo?' · custo <b>'+brl(o.campanha.custo)+'</b>':''}</div>`
-    : '';
+  // Com uma campanha filtrada, o card mostra a que foi escolhida — senão o
+  // vendedor marca a de 2,8 e continua lendo o preço da de 2,3.
+  const sel = STATE.sel.camp;
+  const cs = o.campanhas.filter(c => sel.size === 0 || sel.has(rotuloCampanha(c)));
+  const cam = cs.map(c =>
+    `<div class="campanha">${esc(c.codigoTabela||'')}` +
+    `${c.mkp ? ' · MKP <b>' + esc(c.mkp) + '</b>' : ''}` +
+    `${c.custo ? ' · custo <b>' + brl(c.custo) + '</b>' : ''}</div>`).join('');
   const quem = esc(o.nome || o.artigo) + ' ' + esc(o.cor);
   return `<article class="card">
     <div class="foto">
