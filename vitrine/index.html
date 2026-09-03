@@ -263,6 +263,9 @@ button{font:inherit}
 .acao{margin-top:6px;width:100%;border:1px solid var(--linha-forte);background:var(--carta);
   color:var(--tinta);border-radius:9px;padding:6px;font-size:11px;font-weight:600;
   cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none}
+/* display:flex numa classe empata com o [hidden] do navegador e vence pela
+   ordem — sem esta linha o botao escondido continuaria na tela. */
+.acao[hidden]{display:none}
 .acao:hover{background:var(--papel)}
 .acao:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
 .acao.forte{
@@ -429,6 +432,14 @@ button{font:inherit}
   border-radius:999px;padding:3px 9px;font-size:10.5px;font-weight:700}
 .sc-dup:hover{border-color:var(--linha-forte);color:var(--tinta)}
 .sc-dup:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+/* Item que entrou sem grade: um convite, não um erro. Nome próprio porque
+   .sc-vazia já é o estado "sacola vazia" e passaria o padding dela. */
+.sc-semgrade{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;
+  margin-top:9px;cursor:pointer;border:1px dashed var(--linha-forte);border-radius:9px;
+  padding:9px;background:var(--papel);color:var(--fraco);font:inherit;
+  font-size:11.5px;font-weight:700}
+.sc-semgrade:hover{border-color:var(--marca);color:var(--marca)}
+.sc-semgrade:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
 
 /* Estoque: uma caixinha por tamanho, com o disponível escrito embaixo. */
 .sc-tam{display:flex;flex-wrap:wrap;gap:4px;margin-top:9px}
@@ -520,6 +531,7 @@ button{font:inherit}
 
 /* Fica acima da propria sacola: e de dentro dela que a acao parte. */
 #confirma{z-index:90}
+#modalGrade{z-index:85}   /* acima da sacola (80), para poder editar de dentro dela */
 .dlg{max-width:330px}
 .cf-corpo{padding:22px 20px 6px;text-align:center}
 .cf-ico{width:46px;height:46px;border-radius:50%;margin:0 auto 12px;
@@ -2222,9 +2234,11 @@ function mudarCaixas(k, delta){
 
 // Preencher a grade na hora poupa a viagem até a sacola, mas obrigar seria
 // pior: quem está só juntando produtos sai pelo "Preencher depois".
-let _gradeItem = null, _gradeProd = null;
+let _gradeItem = null, _gradeProd = null, _gradeEdit = false;
 function abrirGrade(o, origem){
-  _gradeProd = o;
+  _gradeProd = o; _gradeEdit = false;
+  $('mgDepois').hidden = false;
+  $('mgAgora').textContent = 'Adicionar à sacola';
   $('mgImg').src = foto(o);
   $('mgImg').alt = o.nome;
   $('mgTit').textContent = o.nome || o.artigo;
@@ -2245,6 +2259,28 @@ function abrirGrade(o, origem){
   $('modalGrade').hidden = false;
   const p1 = $('mgTam').querySelector('input');
   if(p1) setTimeout(() => p1.focus(), 60);
+}
+
+// Reabre a grade cheia de um item que já está na sacola: no card só ficam os
+// tamanhos escolhidos, então é aqui que se acrescenta ou se tira um.
+function editarGrade(k){
+  const it = STATE.sacola.get(k);
+  if(!it) return;
+  _gradeProd = null; _gradeEdit = true;
+  $('mgImg').src = foto(it);
+  $('mgImg').alt = it.nome || '';
+  $('mgTit').textContent = it.nome || it.artigo;
+  $('mgSub').textContent = `${it.artigo} · ${it.cor}` + (it.pdv ? ` · ${brl(it.pdv)}` : '');
+  $('mgMeses').hidden = true;   // o mês foi decidido quando o item entrou
+  montarGradeDe(it);
+  for(const i of $('mgTam').querySelectorAll('input')){
+    const q = Number(it.gradePedido[i.dataset.t] || 0);
+    if(q) i.value = q;
+  }
+  conferirTeto();
+  $('mgDepois').hidden = true;  // já está na sacola: não há "depois"
+  $('mgAgora').textContent = 'Salvar grade';
+  $('modalGrade').hidden = false;
 }
 
 function montarGradeDe(item){
@@ -2288,19 +2324,24 @@ $('mgMesesOps').addEventListener('click', e => {
 });
 function fecharGrade(){
   $('modalGrade').hidden = true;
-  _gradeItem = null; _gradeProd = null;
+  _gradeItem = null; _gradeProd = null; _gradeEdit = false;
   $('mgAgora').disabled = false;
+  $('mgDepois').hidden = false;
 }
 function confirmarGrade(comQuantidade){
   if(!_gradeItem) return;
   if(comQuantidade){
+    // Editando, a grade é substituída: zerar um tamanho precisa apagá-lo, e
+    // um merge deixaria o valor antigo de pé.
+    if(_gradeEdit) _gradeItem.gradePedido = {};
     for(const i of $('mgTam').querySelectorAll('input')){
       const teto = Number(_gradeItem.gradeDisp[i.dataset.t] || 0);
       const q = Math.max(0, Math.min(teto, Math.floor(Number(i.value) || 0)));
       if(q) _gradeItem.gradePedido[i.dataset.t] = q;
     }
   }
-  porNaSacola(_gradeItem);
+  if(_gradeEdit){ salvarSacola(); pintarSacola(); }
+  else porNaSacola(_gradeItem);
   fecharGrade();
 }
 $('mgAgora').onclick = () => confirmarGrade(true);
@@ -2350,6 +2391,14 @@ function itemHtml(it){
       <button class="tirar" data-tirar="${esc(it.key)}" aria-label="Tirar da sacola">✕</button>
     </div>
     <div class="sc-chips">${chipData(it)}
+      ${it.origem === 'repasse' ? '' : `<button class="sc-dup" data-editar="${esc(it.key)}"
+        title="Acrescentar ou tirar tamanhos"
+        aria-label="Editar a grade de ${esc(it.nome || it.artigo)}">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M3 9h18M3 15h18M9 3v18"/></svg>
+        Grade</button>`}
       <button class="sc-dup" data-dup="${esc(it.key)}" title="Duplicar este item"
         aria-label="Duplicar ${esc(it.nome || it.artigo)}">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -2373,14 +2422,24 @@ function itemHtml(it){
       </div></div>`;
   }
 
-  const tams = Object.keys(it.gradeDisp).filter(t => Number(it.gradeDisp[t]) > 0);
+  // Só os tamanhos escolhidos: a lista inteira virava uma parede de zeros e
+  // escondia a grade de verdade. Para mexer no resto, o chip reabre a grade
+  // cheia. A ordem vem de gradeDisp, que é a ordem canônica dos tamanhos.
+  const prod = it.origem === 'producao';
+  const tams = Object.keys(it.gradeDisp).filter(t => Number(it.gradePedido[t]) > 0);
+  const grade = tams.length
+    ? `<div class="sc-tam${prod ? ' t-pro' : ''}">${tams.map(t => `<label>
+        <span class="t">${esc(t)}</span>
+        <input type="number" inputmode="numeric" min="0" max="${it.gradeDisp[t]}"
+          value="${it.gradePedido[t]}" placeholder="0"
+          data-tam="${esc(it.key)}" data-t="${esc(t)}" aria-label="Tamanho ${esc(t)}">
+        ${prod ? '' : `<span class="d">${nf(it.gradeDisp[t])}</span>`}</label>`).join('')}</div>`
+    // Entrou pelo "preencher depois": sem isto o item ficaria mudo no card.
+    : `<button class="sc-semgrade" data-editar="${esc(it.key)}">
+        ${svgIcone(prod ? 'c-plano' : 'c-pronta', 12)}Definir a grade</button>`;
+
   return `<div class="sc-item" data-k="${esc(it.key)}">${cab}
-    <div class="sc-tam">${tams.map(t => `<label>
-      <span class="t">${esc(t)}</span>
-      <input type="number" inputmode="numeric" min="0" max="${it.gradeDisp[t]}"
-        value="${it.gradePedido[t] || ''}" placeholder="0"
-        data-tam="${esc(it.key)}" data-t="${esc(t)}" aria-label="Tamanho ${esc(t)}">
-      <span class="d">${nf(it.gradeDisp[t])}</span></label>`).join('')}</div>
+    ${grade}
     <div class="sc-cx"><span class="info" data-un><b>${nf(un)}</b> un selecionada${un === 1 ? '' : 's'}</span></div>
   </div>`;
 }
@@ -2479,6 +2538,8 @@ $('scCorpo').addEventListener('click', e => {
   if(c) return mudarCaixas(c.dataset.cx, Number(c.dataset.d));
   const d = e.target.closest('[data-dup]');
   if(d) return duplicarItem(d.dataset.dup);
+  const ed = e.target.closest('[data-editar]');
+  if(ed) return editarGrade(ed.dataset.editar);
 });
 $('scCorpo').addEventListener('change', e => {
   const i = e.target.closest('[data-tam]');
