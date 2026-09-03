@@ -478,6 +478,23 @@ button{font:inherit}
 .mg-teto{margin:9px 0 0;font-size:10.5px;color:var(--tenue)}
 .mg-teto.estourou{color:#E0245E;font-weight:700}
 
+/* Fica acima da propria sacola: e de dentro dela que a acao parte. */
+#confirma{z-index:90}
+.dlg{max-width:330px}
+.cf-corpo{padding:22px 20px 6px;text-align:center}
+.cf-ico{width:46px;height:46px;border-radius:50%;margin:0 auto 12px;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(224,36,94,.10);color:#C2183F}
+.cf-corpo h3{margin:0 0 6px;font-size:16px;font-weight:800;color:var(--tinta);
+  letter-spacing:-.015em}
+.cf-corpo p{margin:0;font-size:12.5px;line-height:1.5;color:var(--fraco)}
+.cf-corpo p b{color:var(--tinta);font-weight:700}
+/* Vermelho so no que destroi; "Manter" fica com o peso neutro de sempre. */
+.acao.perigo{border-color:transparent;color:#fff;
+  background:linear-gradient(145deg,#F2557A 0%,#E0245E 48%,#A8123C 100%);
+  box-shadow:0 4px 12px rgba(224,36,94,.35), inset 0 1px 0 rgba(255,255,255,.26)}
+.acao.perigo:hover{filter:brightness(1.06)}
+
 .sc-vazia{padding:40px 20px;text-align:center}
 .sc-vazia h3{margin:0 0 5px;font-size:15px;font-weight:700;color:var(--tinta)}
 .sc-vazia p{margin:0;font-size:12.5px;color:var(--fraco);line-height:1.5}
@@ -679,6 +696,27 @@ button{font:inherit}
     <div class="folha-pe">
       <button class="acao" id="mgDepois">Preencher depois</button>
       <button class="acao forte" id="mgAgora">Adicionar à sacola</button>
+    </div>
+  </div>
+</div>
+
+<div class="fundo" id="confirma" hidden>
+  <div class="folha dlg" role="alertdialog" aria-modal="true"
+       aria-labelledby="cfTit" aria-describedby="cfTxt">
+    <div class="cf-corpo">
+      <span class="cf-ico" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+          <path d="M10 11v6M14 11v6"/></svg>
+      </span>
+      <h3 id="cfTit">Esvaziar a sacola?</h3>
+      <p id="cfTxt"></p>
+    </div>
+    <div class="folha-pe">
+      <button class="acao" id="cfNao">Manter</button>
+      <button class="acao perigo" id="cfSim">Esvaziar</button>
     </div>
   </div>
 </div>
@@ -1813,9 +1851,26 @@ function duplicarItem(k){
 }
 
 function esvaziarSacola(){
-  if(!STATE.sacola.size) return;
-  STATE.sacola.clear(); STATE.aba = 'estoque'; salvarSacola(); pintarSacola();
+  const n = STATE.sacola.size;
+  if(!n) return;
+  // Quantos itens e quantas unidades: sem isso "tem certeza?" e uma pergunta
+  // que nao ajuda a responder.
+  const un = [...STATE.sacola.values()].reduce((a, i) => a + totalUnidades(i), 0);
+  $('cfTxt').innerHTML =
+    `Você vai perder <b>${nf(n)} ${n === 1 ? 'produto' : 'produtos'}</b>` +
+    (un ? ` e <b>${nf(un)} ${un === 1 ? 'unidade' : 'unidades'}</b> já marcadas` : '') +
+    '. Não dá para desfazer.';
+  $('confirma').hidden = false;
+  $('cfNao').focus();
 }
+function fecharConfirma(){ $('confirma').hidden = true; }
+$('cfNao').onclick = fecharConfirma;
+$('cfSim').onclick = () => {
+  STATE.sacola.clear(); STATE.aba = 'estoque';
+  salvarSacola(); pintarSacola();
+  fecharConfirma();
+};
+$('confirma').onclick = e => { if(e.target.id === 'confirma') fecharConfirma(); };
 // Redesenhar tudo aqui apagaria o campo sob o cursor, então só os números
 // mudam de lugar. Add e remove seguem redesenhando: ali não há nada digitando.
 function atualizarNumeros(){
@@ -2141,7 +2196,8 @@ function alternarFavorito(btn){
 $('modal').onclick = e => { if(e.target.id === 'modal') fecharModal(); };
 document.addEventListener('keydown', e => {
   if(e.key !== 'Escape') return;
-  if(!$('modalGrade').hidden) fecharGrade();
+  if(!$('confirma').hidden) fecharConfirma();
+  else if(!$('modalGrade').hidden) fecharGrade();
   else if(!$('zoom').hidden) fecharZoom();
   else if(!$('modal').hidden) fecharModal();
   else if(!$('sacola').hidden) fecharSacola();
