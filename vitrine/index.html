@@ -1781,13 +1781,41 @@ async function gerarCatalogoPdf(){
     const FOTO = 88, PADX = 14, PADY = 12;
 
     // Uma faixa por origem, com o dado que só ela tem.
+    // As mesmas caixinhas da tela: tamanho em cima, quantidade embaixo, na cor
+    // da origem. Em texto corrido ("34:41 35:66") ninguem confere grade.
+    const CEL_W = 26, CEL_H = 20, CEL_GAP = 3;
+    function desenharGrade(g, x, y, w, c){
+      const tam = Object.entries(g || {}).filter(([, q]) => Number(q) > 0);
+      if(!tam.length) return y;
+      const porLinha = Math.max(1, Math.floor((w + CEL_GAP) / (CEL_W + CEL_GAP)));
+      const mostra = tam.slice(0, porLinha);
+      let cx = x;
+      for(const [t, q] of mostra){
+        cor(c,'draw'); doc.setLineWidth(0.5);
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(cx, y, CEL_W, CEL_H, 3, 3, 'FD');
+        cor(c); doc.setFont('helvetica','bold'); doc.setFontSize(6);
+        doc.text(String(t), cx + CEL_W/2, y + 7.5, { align:'center' });
+        cor(C.texto); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+        doc.text(String(q), cx + CEL_W/2, y + 16, { align:'center' });
+        cx += CEL_W + CEL_GAP;
+      }
+      // Se algum tamanho nao coube, o card precisa dizer — senao a grade
+      // impressa parece completa e nao e.
+      const sobra = tam.length - mostra.length;
+      if(sobra){
+        cor(C.fraco); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+        doc.text('+' + sobra, cx + 2, y + 13);
+      }
+      return y + CEL_H + 11;
+    }
+
     function faixaOrigem(o, x, y, w){
       const linhas = [];
       if(o.pronta) linhas.push({ c:C.est, rot:'ESTOQUE',
-        val:nf(o.pronta.total) + ' un',
-        det:Object.entries(o.pronta.grade).map(([t,q]) => t + ':' + q).join('  ') });
+        val:nf(o.pronta.total) + ' un', grade:o.pronta.grade });
       if(o.repasse) for(const l of o.repasse.lotes) linhas.push({ c:C.rep, rot:'REPASSE',
-        val:nf(l.saldo) + ' un',
+        val:nf(l.saldo) + ' un', grade:l.grade,
         det:`Nº ${l.num}${l.gci ? ' · GCI ' + l.gci : ''} · fat. ${l.data || '—'}` });
       if(o.meta) linhas.push({ c:C.pro, rot:'PRODUÇÃO',
         val:nf(o.meta.quinzenas[0].v) + ' un',
@@ -1801,11 +1829,15 @@ async function gerarCatalogoPdf(){
         const wr = doc.getTextWidth(l.rot);
         cor(C.texto); doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
         doc.text(l.val, x+8+wr+8, ly);
-        cor(C.fraco); doc.setFont('helvetica','normal'); doc.setFontSize(7);
         const wv = doc.getTextWidth(l.val);
-        doc.text(doc.splitTextToSize(l.det, w - (8+wr+8+wv+8)).slice(0,1),
-                 x+8+wr+8+wv+8, ly);
-        ly += 15;
+        if(l.det){
+          cor(C.fraco); doc.setFont('helvetica','normal'); doc.setFontSize(7);
+          doc.text(doc.splitTextToSize(l.det, w - (8+wr+8+wv+8)).slice(0,1),
+                   x+8+wr+8+wv+8, ly);
+        }
+        ly += 6;
+        ly = desenharGrade(l.grade, x+8, ly, w-8, l.c);
+        if(!l.grade || !Object.keys(l.grade).length) ly += 9;
       }
       return ly;
     }
