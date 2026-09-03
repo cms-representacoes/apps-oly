@@ -61,6 +61,12 @@
   .kpi:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(40,54,212,.28);border-color:var(--ftw-lite)}
   .kpi-label{font-size:10px;font-weight:600;color:var(--mute);text-transform:uppercase;letter-spacing:.06em}
   .kpi-val{font-family:"Space Grotesk",sans-serif;font-size:20px;font-weight:700;margin-top:2px;color:var(--ftw)}
+  /* O total precisa bater com o ranking; a quebra por status vem abaixo, sem
+     competir com ele. */
+  .kpi-sub{font-size:10.5px;font-weight:600;color:var(--mute);margin-top:2px}
+  .kpi-sub b{font-weight:700}
+  .kpi-sub .pend{color:#B45309}
+  .kpi-sub .aprov{color:#15803D}
 
   /* blocos */
   .block{padding:18px 0}
@@ -180,6 +186,7 @@
     <div class="kpi">
       <div class="kpi-label">Pares repassados</div>
       <div class="kpi-val num" id="kAprovPares">—</div>
+      <div class="kpi-sub" id="kAprovSub"></div>
     </div>
   </div>
 
@@ -395,10 +402,23 @@ async function loadAll(){
 // ── RENDER ────────────────────────────────────────────────────────────────────
 function render(){
   const orders=ordersInPeriod();
-  const aprov=orders.filter(o=>canonicalStatus(o.status)==='Aprovado');
-  const paresAprov=aprov.reduce((s,o)=>(o.items||[]).reduce((ss,i)=>ss+getItemUnits(i),s),0);
+  const pares=o=>(o.items||[]).reduce((ss,i)=>ss+getItemUnits(i),0);
+  // Cancelado nao e repasse: sai da conta dos tres numeros.
+  const vivos=orders.filter(o=>canonicalStatus(o.status)!=='Cancelado');
+  const paresTotal=vivos.reduce((s,o)=>s+pares(o),0);
+  const paresAprov=vivos.filter(o=>canonicalStatus(o.status)==='Aprovado')
+                        .reduce((s,o)=>s+pares(o),0);
+  const paresPend=paresTotal-paresAprov;
 
-  document.getElementById('kAprovPares').textContent=fmt(paresAprov);
+  // O numero grande e o do periodo inteiro, para bater com o ranking logo
+  // abaixo. Antes ele so contava aprovados e marcava zero num dia com 444
+  // pares pedidos — duas verdades diferentes na mesma tela.
+  document.getElementById('kAprovPares').textContent=fmt(paresTotal);
+  const sub=document.getElementById('kAprovSub');
+  sub.innerHTML = paresTotal
+    ? `<span class="aprov"><b>${fmt(paresAprov)}</b> aprovados</span> · ` +
+      `<span class="pend"><b>${fmt(paresPend)}</b> a aprovar</span>`
+    : '';
 
   // Saldo em estoque (todos os pedidos, não só o período — é foto do agora)
   const { pendMap, aprovMap } = buildDispoMaps();
@@ -413,7 +433,8 @@ function render(){
   document.getElementById('kSaldo').textContent=fmt(saldoTotal);
 
   renderRanking(orders);
-  renderProdutosRanking(aprov, buildSaldoLookup(pendMap, aprovMap));
+  const aprovados = vivos.filter(o=>canonicalStatus(o.status)==='Aprovado');
+  renderProdutosRanking(aprovados, buildSaldoLookup(pendMap, aprovMap));
   renderDispo(pendMap, aprovMap);
   renderPrazo();
 }
