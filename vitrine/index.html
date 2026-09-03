@@ -412,7 +412,11 @@ button{font:inherit}
   color:var(--tenue);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
 .sc-item .tirar:hover{background:var(--linha);color:var(--tinta)}
 
-.sc-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+/* Cada item carrega a cor da propria origem: verde estoque, azul repasse,
+   roxo producao — a mesma leitura das celulas logo abaixo. */
+.sc-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;--org:var(--pronta)}
+.sc-chips.o-rep{--org:var(--repasse)}
+.sc-chips.o-pro{--org:var(--plano)}
 /* Tracejado e em âmbar enquanto falta; sólido e calmo quando resolvido. */
 .sc-data{position:relative;display:inline-flex;align-items:center;gap:5px;cursor:pointer;
   border-radius:999px;padding:3px 9px;font-size:10.5px;font-weight:800;
@@ -427,13 +431,13 @@ button{font:inherit}
 .sc-data input::-webkit-calendar-picker-indicator{position:absolute;inset:0;
   width:100%;height:100%;opacity:0;cursor:pointer}
 
-/* Contorno na cor da marca, fundo limpo: eles ficam ao lado do chip ambar da
+/* Contorno na cor da origem, fundo limpo: eles ficam ao lado do chip ambar da
    data e dois preenchidos brigariam pela mesma atencao. */
 .sc-dup{display:inline-flex;align-items:center;gap:5px;cursor:pointer;
-  border:1px solid color-mix(in srgb,var(--marca) 45%,transparent);
-  background:var(--carta);color:var(--marca);
+  border:1px solid color-mix(in srgb,var(--org) 45%,transparent);
+  background:var(--carta);color:var(--org);
   border-radius:999px;padding:3px 9px;font-size:10.5px;font-weight:700}
-.sc-dup:hover{border-color:var(--marca);background:color-mix(in srgb,var(--marca) 6%,var(--carta))}
+.sc-dup:hover{border-color:var(--org);background:color-mix(in srgb,var(--org) 6%,var(--carta))}
 .sc-dup:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
 /* Item que entrou sem grade: um convite, não um erro. Nome próprio porque
    .sc-vazia já é o estado "sacola vazia" e passaria o padding dela. */
@@ -441,7 +445,7 @@ button{font:inherit}
   margin-top:9px;cursor:pointer;border:1px dashed var(--linha-forte);border-radius:9px;
   padding:9px;background:var(--papel);color:var(--fraco);font:inherit;
   font-size:11.5px;font-weight:700}
-.sc-semgrade:hover{border-color:var(--marca);color:var(--marca)}
+.sc-semgrade:hover{border-color:var(--org);color:var(--org)}
 .sc-semgrade:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
 
 /* Estoque: uma caixinha por tamanho, com o disponível escrito embaixo. */
@@ -2393,7 +2397,7 @@ function itemHtml(it){
       `</span></span>
       <button class="tirar" data-tirar="${esc(it.key)}" aria-label="Tirar da sacola">✕</button>
     </div>
-    <div class="sc-chips">${chipData(it)}
+    <div class="sc-chips ${it.origem === 'repasse' ? 'o-rep' : it.origem === 'producao' ? 'o-pro' : 'o-est'}">${chipData(it)}
       ${it.origem === 'repasse' ? '' : `<button class="sc-dup" data-editar="${esc(it.key)}"
         title="Acrescentar ou tirar tamanhos"
         aria-label="Editar a grade de ${esc(it.nome || it.artigo)}">
@@ -2438,7 +2442,7 @@ function itemHtml(it){
           data-tam="${esc(it.key)}" data-t="${esc(t)}" aria-label="Tamanho ${esc(t)}">
         ${prod ? '' : `<span class="d">${nf(it.gradeDisp[t])}</span>`}</label>`).join('')}</div>`
     // Entrou pelo "preencher depois": sem isto o item ficaria mudo no card.
-    : `<button class="sc-semgrade" data-editar="${esc(it.key)}">
+    : `<button class="sc-semgrade" data-editar="${esc(it.key)}" style="--org:var(${prod ? '--plano' : '--pronta'})">
         ${svgIcone(prod ? 'c-plano' : 'c-pronta', 12)}Definir a grade</button>`;
 
   return `<div class="sc-item" data-k="${esc(it.key)}">${cab}
