@@ -1727,6 +1727,30 @@ $f('scCliSug').addEventListener('mousedown', e => {
 $f('scCliente').addEventListener('blur', () => setTimeout(fecharSugestoes, 120));
 
 /* ── catálogo dos marcados ──────────────────────────────────────── */
+// A mesma campanha que o card mostra: com um filtro de campanha ligado, sair
+// no PDF com o custo de outra tabela seria dizer um preço que não é o daquela
+// negociação.
+function campanhaAtiva(o){
+  const sel = STATE.sel.camp;
+  if(sel.size){
+    const daFiltrada = o.campanhas.find(c => sel.has(rotuloCampanha(c)));
+    if(daFiltrada) return daFiltrada;
+  }
+  return o.campanhas[0] || null;
+}
+
+// De/Por, como no PDF de disponibilidades: "De" é o custo no markup padrão
+// 2,0 e "Por" é o da campanha (custo = pdv ÷ mkp). A diferença entre os dois
+// é o que o lojista ganha comprando dentro da campanha — é o número que fecha
+// a venda, e sem ele o custo sozinho não diz nada.
+function economiaDePor(o, c){
+  const pdv = Number(o.pdv || 0), por = Number(c && c.custo || 0);
+  if(!pdv || !por) return null;
+  const de = pdv / 2;
+  if(por >= de) return null;   // sem vantagem, não há o que anunciar
+  const ganho = de - por;
+  return { de, por, ganho, pct: Math.round(ganho / de * 100) };
+}
 // A foto vem do mesmo domínio, então o canvas não fica manchado e o PDF
 // consegue lê-la de volta.
 function fotoDataUrl(o){
@@ -1896,14 +1920,46 @@ async function gerarCatalogoPdf(){
       cor(C.marca); doc.setFont('helvetica','bold'); doc.setFontSize(13);
       doc.text(o.pdv ? brl(o.pdv) : '—', tx, ty);
       const wp = doc.getTextWidth(o.pdv ? brl(o.pdv) : '—');
+      const camp = campanhaAtiva(o);
       // A campanha muda o custo: ao lado do preço é onde ela é lida.
-      if(o.campanhas.length){
-        const c = o.campanhas[0];
+      if(camp){
         cor(C.fraco); doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
-        doc.text(`${c.codigoTabela || ''}${c.mkp ? ' · MKP ' + c.mkp : ''}` +
-                 `${c.custo ? ' · custo ' + brl(c.custo) : ''}`, tx + wp + 10, ty);
+        doc.text(`${camp.codigoTabela || ''}${camp.mkp ? ' · MKP ' + camp.mkp : ''}`,
+                 tx + wp + 10, ty);
       }
-      ty += 15;
+      ty += 13;
+
+      const eco = economiaDePor(o, camp);
+      if(eco){
+        cor(C.fraco); doc.setFont('helvetica','bold'); doc.setFontSize(6.2);
+        doc.text('CUSTO', tx, ty);
+        let x = tx + doc.getTextWidth('CUSTO') + 7;
+        // O "de" riscado: sem o risco ele viraria só mais um número na linha.
+        const de = brl(eco.de);
+        cor(C.fraco); doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+        doc.text(de, x, ty);
+        const wd = doc.getTextWidth(de);
+        cor(C.fraco,'draw'); doc.setLineWidth(0.5);
+        doc.line(x, ty - 2.4, x + wd, ty - 2.4);
+        x += wd + 6;
+        cor(C.texto); doc.setFont('helvetica','bold'); doc.setFontSize(9.5);
+        const por = brl(eco.por);
+        doc.text(por, x, ty);
+        x += doc.getTextWidth(por) + 8;
+        // A economia em verde e em pílula: é a informação que o vendedor
+        // aponta com o dedo na frente do lojista.
+        const sel = `economia ${brl(eco.ganho)} · ${eco.pct}%`;
+        doc.setFont('helvetica','bold'); doc.setFontSize(7);
+        const ws = doc.getTextWidth(sel);
+        if(x + ws + 12 <= tx + tw){
+          doc.setFillColor(222, 239, 231);
+          doc.roundedRect(x, ty - 7.5, ws + 12, 11.5, 5.5, 5.5, 'F');
+          cor(C.est); doc.text(sel, x + 6, ty);
+        }
+        ty += 14;
+      }else{
+        ty += 2;
+      }
       faixaOrigem(o, tx, ty, tw);
     }
 
@@ -1935,7 +1991,7 @@ function gerarCatalogoXlsx(){
                'Nº','GCI','Grade'];
   const linhas = [cab];
   const base = o => {
-    const c = o.campanhas[0] || {};
+    const c = campanhaAtiva(o) || {};
     return [MARCAS[o.marca].nome, o.artigo, o.nome, String(o.cor).replace(/_/g,'/'),
             o.categoria, o.genero, o.pdv || '',
             c.codigoTabela || '', c.mkp || '', c.custo || ''];
