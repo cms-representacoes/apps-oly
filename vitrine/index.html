@@ -2437,9 +2437,8 @@ $('pedXlsx').onclick = () => {
   const ws = XLSX.utils.aoa_to_sheet([cab, ...corpo]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Pedido');
-  const d = new Date(), p2 = n => String(n).padStart(2, '0');
-  XLSX.writeFile(wb, `pedidos_${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}` +
-    `_${p2(d.getHours())}${p2(d.getMinutes())}.xlsx`);
+  XLSX.writeFile(wb, `pedido${alvos.length > 1 ? 's' : ''}_` +
+    `${pedacoDeVarios(alvos)}_${carimboAgora()}.xlsx`);
 };
 
 $('pedPdf').onclick = () => pdfDosPedidos(selecionados());
@@ -2665,9 +2664,8 @@ async function pdfDosPedidos(pedidos){
       passo(btn, `${i + 1}/${pedidos.length}`);
     }
 
-    const d = new Date();
-    doc.save(`pedido${pedidos.length > 1 ? 's' : ''}_${d.getFullYear()}` +
-      `${p2(d.getMonth() + 1)}${p2(d.getDate())}_${p2(d.getHours())}${p2(d.getMinutes())}.pdf`);
+    doc.save(`pedido${pedidos.length > 1 ? 's' : ''}_` +
+      `${pedacoDeVarios(pedidos)}_${carimboAgora()}.pdf`);
   }catch(e){
     console.error(e);
     avisar('Não deu para gerar o PDF', 'Tente de novo em alguns instantes.');
@@ -3115,9 +3113,8 @@ function baixarPlanilha(itens, cfg, sufixo){
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Pedido');
-  const d = new Date(), p2 = n => String(n).padStart(2, '0');
-  XLSX.writeFile(wb, `pedido_${cfg.marca || MARCA}_${d.getFullYear()}${p2(d.getMonth()+1)}` +
-    `${p2(d.getDate())}_${p2(d.getHours())}${p2(d.getMinutes())}${sufixo || ''}.xlsx`);
+  XLSX.writeFile(wb, `pedido_${cfg.marca || MARCA}_` +
+    `${pedacoCliente(cfg.cliente, cfg.clienteNome)}_${carimboAgora()}${sufixo || ''}.xlsx`);
   return true;
 }
 
@@ -3127,6 +3124,28 @@ const avisarTamanhosFora = tams =>
   avisar('Tamanhos fora do layout',
     `Estes tamanhos não existem na planilha do EBM e ficaram de fora: ` +
     `<b>${esc([...tams].join(', '))}</b>. Confira antes de importar.`);
+
+// Num dia de muitos pedidos, "pedido_oly_20260904_1559.xlsx" repetido dez
+// vezes na pasta de downloads não diz qual é qual. O nome leva código e
+// cliente para o arquivo ser achado sem precisar abrir.
+function pedacoCliente(codigo, nome){
+  const cod = String(codigo || '').replace(/[^\w-]/g, '');
+  const limpo = norm(nome).replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const curto = limpo.slice(0, 24).replace(/-$/, '');
+  return cod + (curto ? '_' + curto : '');
+}
+// Vários pedidos de clientes diferentes num arquivo só não têm um nome: o que
+// vale dizer ali é quantos são.
+function pedacoDeVarios(pedidos){
+  const clientes = new Set(pedidos.map(p => String(p.cliente || '')));
+  if(clientes.size === 1) return pedacoCliente(pedidos[0].cliente, pedidos[0].clienteNome);
+  return `${pedidos.length}-clientes`;
+}
+const carimboAgora = () => {
+  const d = new Date(), p2 = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}` +
+         `_${p2(d.getHours())}${p2(d.getMinutes())}`;
+};
 
 const nomeDoCliente = cod => {
   const c = CLI.lista.find(x => String(x.codigo).trim() === String(cod).trim());
