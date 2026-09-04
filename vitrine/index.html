@@ -142,6 +142,7 @@ button{font:inherit}
 }
 @media(max-width:767px){
   .topo-l1:has(.busca.aberta) .btn-filtro,
+  .topo-l1:has(.busca.aberta) .btn-sacola,
   .topo-l1:has(.busca.aberta) #linkPortal{display:none}
 }
 @media(max-width:520px){ .topo-l1:has(.busca.aberta) .selo-cms{display:none} }
@@ -152,10 +153,14 @@ button{font:inherit}
 @media(max-width:767px){
   /* order manda os filtros pro fim; a base de 100% os quebra pra linha de baixo,
      e busca e voltar continuam em cima. */
-  .topo-l1{flex-wrap:wrap}
+  .topo-l1{flex-wrap:wrap;gap:7px}
   .linha2{order:10;flex-basis:100%;margin-left:0}
   .tit{flex:1}
 }
+/* O botão da sacola custa 32px numa linha que já estava cheia, e quem cedia
+   era o nome do vendedor. O selo roxo sai: a marca está no botão ao lado e o
+   "CMS" continua escrito no título — era ele o repetido. */
+@media(max-width:430px){ .selo-cms{display:none} }
 .linha2::-webkit-scrollbar{display:none}
 .risco{width:1px;align-self:stretch;background:var(--linha);flex:none;margin:2px 1px}
 
@@ -603,6 +608,9 @@ button{font:inherit}
 .sc-pe .depois:hover{background:var(--carta)}
 .sc-resumo{display:flex;justify-content:space-between;font-size:11.5px;color:var(--fraco)}
 .sc-resumo b{color:var(--tinta);font-weight:700;font-variant-numeric:tabular-nums}
+.sc-falta{display:flex;align-items:center;gap:5px;margin:6px 0 0;
+  font-size:11px;font-weight:700;color:#A45B06}
+.sc-falta svg{flex:none}
 
 /* ── painel de filtros ───────────────────────────────────────────── */
 .pn-bg{position:fixed;inset:0;background:rgba(16,18,20,.5);backdrop-filter:blur(2px);
@@ -665,6 +673,15 @@ button{font:inherit}
   display:flex;align-items:center;justify-content:center;padding:0 4px;
   border:1.5px solid var(--carta);font-variant-numeric:tabular-nums}
 .btn-filtro .badge[hidden]{display:none}
+/* Mesma bolinha do filtro, na cor da sacola: chega perto do olho pela cor
+   antes de ser lida. Com a sacola vazia ela some, e sobra só o ícone. */
+.btn-sacola{position:relative;flex:none}
+.btn-sacola .badge{position:absolute;top:-3px;right:-3px;min-width:15px;height:15px;
+  border-radius:999px;background:var(--pronta);color:#fff;font-size:9.5px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;padding:0 4px;
+  border:1.5px solid var(--carta);font-variant-numeric:tabular-nums}
+.btn-sacola .badge[hidden]{display:none}
+.btn-sacola:hover{color:var(--pronta);border-color:var(--pronta)}
 
 .fundo{position:fixed;inset:0;background:rgba(16,18,20,.55);backdrop-filter:blur(2px);
   display:flex;align-items:center;justify-content:center;padding:16px;z-index:60}
@@ -701,6 +718,8 @@ button{font:inherit}
 .celulas.g-pro .cel .t{color:var(--plano)}
 .celulas.g-pro .cel .q{color:var(--plano)}
 .sc-grade{margin-top:9px}
+/* Falta grade ou data: o âmbar é o mesmo do chip de data por preencher. */
+.sc-item.pendente{border-color:#E0A106;box-shadow:0 0 0 3px rgba(251,191,36,.16)}
 @media(max-width:520px){
   .celulas{gap:4px}
   .cel{width:33px;padding:3px 0}
@@ -773,6 +792,14 @@ button{font:inherit}
         <path d="M3 6h18M7 12h10M11 18h2"/></svg>
       <span>Filtros</span>
       <span class="badge" id="badgeFiltros" hidden></span>
+    </button>
+    <button class="icone btn-sacola" id="btnSacolaTopo" title="Abrir a sacola"
+            aria-label="Abrir a sacola" onclick="abrirSacola()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+        <path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      <span class="badge" id="badgeSacola" hidden></span>
     </button>
     <a class="icone" id="linkPortal" href="../" title="Voltar ao Portal" aria-label="Voltar ao Portal">←</a>
   </div>
@@ -2205,14 +2232,23 @@ function exportarXlsx(){
     return;
   }
 
-  // A data agora e por item: cobrar so a do rodape deixaria linhas sem data
-  // passarem batido para a planilha.
-  const semData = [...STATE.sacola.values()]
-    .filter(it => it.origem !== 'repasse' && totalUnidades(it) > 0 && !it.dataDesejada);
-  if(semData.length){
-    alert(`${semData.length === 1 ? 'Um item está' : semData.length + ' itens estão'}` +
-      ' sem data desejada. Defina no chip do card ou use o campo de data do pedido.');
-    const alvo = $('scCorpo').querySelector('.sc-data:not(.ok)');
+  // Grade e data são por item, e as duas são obrigatórias. Antes o item sem
+  // grade era pulado em silêncio: a planilha saía menor do que a sacola e o
+  // vendedor só descobria no EBM.
+  const doEbm = [...STATE.sacola.values()].filter(it => it.origem !== 'repasse');
+  if(!doEbm.length){ alert('Não há item de estoque ou produção na sacola.'); return; }
+  const pendentes = doEbm.filter(it => totalUnidades(it) <= 0 || !it.dataDesejada);
+  if(pendentes.length){
+    const semGrade = pendentes.filter(it => totalUnidades(it) <= 0).length;
+    const semData  = pendentes.filter(it => !it.dataDesejada).length;
+    const falta = [];
+    if(semGrade) falta.push(semGrade === 1 ? 'um sem grade' : semGrade + ' sem grade');
+    if(semData)  falta.push(semData  === 1 ? 'um sem data'  : semData  + ' sem data');
+    marcarPendencias(pendentes);
+    alert(`Falta preencher: ${falta.join(' e ')}. ` +
+      (pendentes.length === 1 ? 'O item está marcado' : 'Os itens estão marcados') +
+      ' na sacola.');
+    const alvo = $('scCorpo').querySelector('.sc-item.pendente');
     if(alvo) alvo.scrollIntoView({ block:'center', behavior:'smooth' });
     return;
   }
@@ -2224,7 +2260,6 @@ function exportarXlsx(){
   for(const it of STATE.sacola.values()){
     if(it.origem === 'repasse') continue;
     const total = totalUnidades(it);
-    if(!total) continue;                     // sem tamanho marcado não vira linha
     const l = new Array(XLS_COLS.length).fill('');
     l[idx['Nº']] = 1;
     l[idx['Comissionista']] = (SESSAO && SESSAO.codigo) || '';
@@ -2414,6 +2449,17 @@ $('cfSim').onclick = () => {
 $('confirma').onclick = e => { if(e.target.id === 'confirma') fecharConfirma(); };
 // Redesenhar tudo aqui apagaria o campo sob o cursor, então só os números
 // mudam de lugar. Add e remove seguem redesenhando: ali não há nada digitando.
+// O card fica marcado até o vendedor resolver: salvar a grade ou escolher a
+// data repinta a sacola, e a marca sai junto.
+function marcarPendencias(itens){
+  for(const el of $('scCorpo').querySelectorAll('.sc-item.pendente'))
+    el.classList.remove('pendente');
+  for(const it of itens){
+    const el = $('scCorpo').querySelector(`[data-k="${CSS.escape(it.key)}"]`);
+    if(el) el.classList.add('pendente');
+  }
+}
+
 // Tudo no lugar, sem repintar o card: o botão que acabou de ser tocado não
 // pode sumir de baixo do dedo no meio do clique.
 function atualizarNumeros(){
@@ -2688,10 +2734,23 @@ function pintarRodapeSacola(){
   const naEst = STATE.aba === 'estoque';
   // Cliente e prazo alimentam a planilha: fora da aba de estoque eles não
   // querem dizer nada, e era isso que confundia.
+  // O que falta aparece antes do clique, não como recusa depois dele.
+  const faltaGrade = est.filter(i => totalUnidades(i) <= 0).length;
+  const faltaData  = est.filter(i => !i.dataDesejada).length;
+  const pend = [];
+  if(faltaGrade) pend.push(`${faltaGrade} sem grade`);
+  if(faltaData)  pend.push(`${faltaData} sem data`);
+
   $('scPe').innerHTML = naEst
     ? (est.length ? `<div class="sc-resumo"><span>Total do estoque</span>
           <b>${nf(unEst)} un</b></div>
-        <button class="acao forte" id="scXlsx" ${unEst ? '' : 'disabled'}>
+        ${pend.length ? `<p class="sc-falta">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>
+            <path d="M12 9v4M12 17h.01"/></svg>
+          Falta preencher: ${pend.join(' · ')}</p>` : ''}
+        <button class="acao forte" id="scXlsx">
           Gerar planilha do EBM</button>` : '')
     : (rep.length ? `<div class="sc-resumo"><span>Total do repasse</span>
           <b>${nf(unRep)} un</b></div>
@@ -2715,6 +2774,10 @@ function pintarSacola(){
   $('fabSacola').hidden = !itens.length || !$('sacola').hidden || marcadosVisiveis().length > 0;
   document.body.classList.toggle('com-sacola', itens.length > 0);
   $('fabSacolaN').textContent = nf(itens.length);
+  // O mesmo número no cabeçalho: quem rolou a vitrine até o fim não precisa
+  // procurar o botão flutuante para saber o que já juntou.
+  $('badgeSacola').hidden = !itens.length;
+  $('badgeSacola').textContent = nf(itens.length);
   $('scLimpar').hidden = !itens.length;
 
   if(!itens.length){
