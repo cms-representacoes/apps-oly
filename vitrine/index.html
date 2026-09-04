@@ -143,6 +143,7 @@ button{font:inherit}
 @media(max-width:767px){
   .topo-l1:has(.busca.aberta) .btn-filtro,
   .topo-l1:has(.busca.aberta) .btn-sacola,
+  .topo-l1:has(.busca.aberta) .btn-pedidos,
   .topo-l1:has(.busca.aberta) #linkPortal{display:none}
 }
 @media(max-width:520px){ .topo-l1:has(.busca.aberta) .selo-cms{display:none} }
@@ -584,9 +585,12 @@ button{font:inherit}
 #modalGrade{z-index:85}   /* acima da sacola (80), para poder editar de dentro dela */
 .dlg{max-width:330px}
 .cf-corpo{padding:22px 20px 6px;text-align:center}
+/* Ambar para recado, vermelho so quando alguma coisa vai ser perdida: a cor
+   diz o peso antes de o titulo ser lido. */
 .cf-ico{width:46px;height:46px;border-radius:50%;margin:0 auto 12px;
   display:flex;align-items:center;justify-content:center;
-  background:rgba(224,36,94,.10);color:#C2183F}
+  background:rgba(251,191,36,.16);color:#A45B06}
+.cf-ico.perigo{background:rgba(224,36,94,.10);color:#C2183F}
 .cf-corpo h3{margin:0 0 6px;font-size:16px;font-weight:800;color:var(--tinta);
   letter-spacing:-.015em}
 .cf-corpo p{margin:0;font-size:12.5px;line-height:1.5;color:var(--fraco)}
@@ -611,6 +615,134 @@ button{font:inherit}
 .sc-falta{display:flex;align-items:center;gap:5px;margin:6px 0 0;
   font-size:11px;font-weight:700;color:#A45B06}
 .sc-falta svg{flex:none}
+
+/* ── Meus pedidos ─────────────────────────────────────────────────── */
+/* Tela cheia, não gaveta: no desktop a linha precisa de largura para caber
+   inteira, e no celular cada pedido vira um card. */
+.ped-bg{position:fixed;inset:0;z-index:85;background:var(--papel);
+  display:flex;flex-direction:column}
+.ped-bg[hidden]{display:none}
+.ped{display:flex;flex-direction:column;flex:1;min-height:0;
+  width:100%;max-width:1180px;margin:0 auto}
+
+.ped-topo{display:flex;align-items:center;gap:12px;flex:none;
+  padding:calc(12px + env(safe-area-inset-top)) 16px 12px;
+  border-bottom:1px solid var(--linha-forte);background:var(--barra)}
+.ped-tit{flex:1;min-width:0}
+.ped-tit h2{margin:0;font-size:17px;font-weight:800;letter-spacing:-.02em;color:var(--tinta)}
+.ped-tit p{margin:1px 0 0;font-size:11.5px;font-weight:600;color:var(--fraco)}
+.ped-atualizar{display:inline-flex;align-items:center;gap:6px;flex:none;cursor:pointer;
+  border:1px solid var(--linha-forte);background:var(--carta);color:var(--texto);
+  border-radius:999px;padding:7px 13px 7px 11px;font:inherit;font-size:11.5px;font-weight:700}
+.ped-atualizar:hover{border-color:var(--marca);color:var(--marca)}
+.ped-atualizar[disabled]{opacity:.55;cursor:progress}
+
+.ped-filtros{display:flex;flex-wrap:wrap;gap:8px;flex:none;padding:12px 16px 0}
+.ped-campo{display:flex;align-items:center;gap:6px;
+  border:1px solid var(--linha);background:var(--carta);border-radius:10px;
+  padding:7px 10px;font-size:11.5px;font-weight:700;color:var(--fraco)}
+.ped-campo:focus-within{border-color:var(--marca)}
+.ped-campo select,.ped-campo input{border:0;background:none;font:inherit;font-size:12px;
+  font-weight:700;color:var(--tinta);outline:none;min-width:0}
+.ped-busca{flex:1;min-width:180px}
+.ped-busca input{flex:1;width:100%;font-weight:600}
+.ped-campo > svg{flex:none;color:var(--tenue)}
+
+.ped-barra{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  flex:none;padding:12px 16px 8px}
+.ped-todos{display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+  font-size:11.5px;font-weight:700;color:var(--fraco)}
+.ped-todos input{width:15px;height:15px;accent-color:var(--marca);cursor:pointer}
+.ped-conta{font-size:11.5px;font-weight:700;color:var(--tenue);
+  font-variant-numeric:tabular-nums}
+
+.ped-lista{flex:1;min-height:0;overflow-y:auto;padding:0 16px 24px;
+  display:flex;flex-direction:column;gap:8px}
+
+/* No desktop a linha é uma grade de colunas; no celular ela se empilha. */
+.ped-item{border:1px solid var(--linha);border-radius:12px;background:var(--carta)}
+.ped-item.sel{border-color:var(--marca);
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--marca) 18%,transparent)}
+.ped-linha{display:grid;align-items:center;gap:10px;padding:11px 13px;
+  grid-template-columns:20px 92px 1fr 78px 110px auto}
+.ped-linha input[type=checkbox]{width:16px;height:16px;accent-color:var(--marca);cursor:pointer}
+.ped-quando{font-size:11.5px;font-weight:700;color:var(--texto);line-height:1.25}
+.ped-quando small{display:block;font-size:10px;font-weight:600;color:var(--tenue)}
+.ped-cli{min-width:0}
+.ped-cli b{display:block;font-size:12.5px;font-weight:800;color:var(--tinta);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ped-cli span{display:block;font-size:10.5px;font-weight:600;color:var(--fraco);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ped-marca{justify-self:start;border-radius:999px;padding:3px 9px;
+  font-size:10px;font-weight:800;letter-spacing:.02em;
+  background:color-mix(in srgb,var(--m) 12%,var(--carta));color:var(--m)}
+/* Sem a coluna de dinheiro, o número da linha passa a ser o de pares. */
+.ped-nums{font-size:13px;font-weight:800;color:var(--tinta);text-align:right;
+  font-variant-numeric:tabular-nums;line-height:1.25}
+.ped-nums small{display:block;font-size:10px;font-weight:600;color:var(--tenue)}
+.ped-abrir{display:inline-flex;align-items:center;gap:5px;cursor:pointer;
+  border:1px solid var(--linha);background:var(--carta);color:var(--fraco);
+  border-radius:999px;padding:5px 10px;font:inherit;font-size:10.5px;font-weight:700}
+.ped-abrir:hover{border-color:var(--marca);color:var(--marca)}
+.ped-abrir svg{transition:transform .16s}
+.ped-item.aberto .ped-abrir svg{transform:rotate(180deg)}
+
+.ped-det{display:none;border-top:1px dashed var(--linha);padding:10px 13px 12px}
+.ped-item.aberto .ped-det{display:block}
+.ped-prod{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--linha)}
+.ped-prod:last-child{border-bottom:0}
+.ped-prod .mini{width:46px;height:46px;flex:none;border-radius:8px;overflow:hidden;
+  border:1px solid var(--linha);background:var(--papel)}
+.ped-prod .mini img{width:100%;height:100%;object-fit:contain}
+.ped-prod .txt{flex:1;min-width:0}
+.ped-prod .nm{display:block;font-size:12px;font-weight:800;color:var(--tinta)}
+.ped-prod .sb{display:block;font-size:10.5px;font-weight:600;color:var(--fraco)}
+.ped-prod .celulas{margin-top:6px}
+.ped-selo{display:inline-flex;align-items:center;gap:4px;border-radius:999px;
+  padding:2px 7px;margin-top:4px;font-size:9.5px;font-weight:800}
+.ped-selo.est{background:var(--pronta-fundo);color:var(--pronta)}
+.ped-selo.pro{background:var(--plano-fundo);color:var(--plano)}
+.ped-info{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+.ped-info span{border:1px solid var(--linha);border-radius:999px;padding:3px 9px;
+  font-size:10.5px;font-weight:700;color:var(--fraco);background:var(--papel)}
+.ped-info b{color:var(--tinta);font-weight:800}
+
+.ped-vazio{margin:34px auto;max-width:340px;text-align:center;color:var(--fraco)}
+.ped-vazio h3{margin:0 0 5px;font-size:15px;font-weight:700;color:var(--tinta)}
+.ped-vazio p{margin:0;font-size:12.5px;line-height:1.5}
+
+.ped-pe{display:flex;align-items:center;gap:10px;flex:none;
+  padding:11px 16px calc(11px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--linha-forte);background:var(--barra)}
+.ped-pe[hidden]{display:none}
+.ped-sel{flex:1;font-size:11.5px;font-weight:700;color:var(--fraco);
+  font-variant-numeric:tabular-nums}
+.ped-acao{margin-top:0;width:auto;flex:none;gap:7px;padding:9px 15px;
+  font-size:12px;font-weight:800;color:#fff;border:0;border-radius:999px}
+.ped-acao.pdf{background:linear-gradient(145deg,#F2557A 0%,#D6294B 55%,#96122E 100%)}
+.ped-acao.xls{background:linear-gradient(145deg,#34C77B 0%,#128A4F 55%,#0A5C35 100%)}
+.ped-acao:hover{filter:brightness(1.06)}
+.ped-acao:disabled{opacity:.6;cursor:progress}
+
+@media(max-width:900px){
+  /* A marca desce para a segunda linha em vez de sumir: Oly e UA não podem
+     virar a mesma coisa por falta de espaço. */
+  .ped-linha{grid-template-columns:20px auto 1fr auto;row-gap:6px;column-gap:8px;
+    grid-template-areas:"chk cli cli cli" "chk marca nums abrir"}
+  .ped-linha input[type=checkbox]{grid-area:chk;align-self:start;margin-top:2px}
+  .ped-quando{display:none}
+  .ped-cli{grid-area:cli}
+  .ped-marca{grid-area:marca;align-self:center}
+  .ped-nums{grid-area:nums;text-align:left}
+  .ped-abrir{grid-area:abrir;justify-self:end}
+  .ped-lista,.ped-filtros,.ped-barra,.ped-topo,.ped-pe{padding-left:12px;padding-right:12px}
+  .ped-acao span{display:none}
+  .ped-acao{padding:10px 13px}
+  /* Dois por linha: em quatro linhas os filtros empurravam a lista para fora
+     da tela antes do primeiro pedido. */
+  .ped-campo{flex:1 1 44%}
+  .ped-busca{flex-basis:100%}
+}
 
 /* ── painel de filtros ───────────────────────────────────────────── */
 .pn-bg{position:fixed;inset:0;background:rgba(16,18,20,.5);backdrop-filter:blur(2px);
@@ -673,19 +805,23 @@ button{font:inherit}
   display:flex;align-items:center;justify-content:center;padding:0 4px;
   border:1.5px solid var(--carta);font-variant-numeric:tabular-nums}
 .btn-filtro .badge[hidden]{display:none}
-/* Mesma bolinha do filtro, na cor da sacola: chega perto do olho pela cor
-   antes de ser lida. Com a sacola vazia ela some, e sobra só o ícone. */
-.btn-sacola{position:relative;flex:none}
+/* Sacola e pedidos sao as duas acoes do vendedor no cabecalho, e nao mais um
+   icone qualquer: ganham a mesma textura dos botoes fortes do layout. */
+.btn-sacola,.btn-pedidos{position:relative;flex:none;border-color:transparent;color:#fff;
+  background:linear-gradient(145deg,var(--marca-claro),var(--marca) 55%,var(--marca-escuro));
+  box-shadow:0 4px 12px color-mix(in srgb,var(--marca) 32%,transparent),
+             inset 0 1px 0 rgba(255,255,255,.26)}
+.btn-sacola:hover,.btn-pedidos:hover{filter:brightness(1.06);color:#fff}
 .btn-sacola .badge{position:absolute;top:-3px;right:-3px;min-width:15px;height:15px;
   border-radius:999px;background:var(--pronta);color:#fff;font-size:9.5px;font-weight:700;
   display:flex;align-items:center;justify-content:center;padding:0 4px;
-  border:1.5px solid var(--carta);font-variant-numeric:tabular-nums}
+  border:1.5px solid var(--barra);font-variant-numeric:tabular-nums}
 .btn-sacola .badge[hidden]{display:none}
-.btn-sacola:hover{color:var(--pronta);border-color:var(--pronta)}
 
 .fundo{position:fixed;inset:0;background:rgba(16,18,20,.55);backdrop-filter:blur(2px);
   display:flex;align-items:center;justify-content:center;padding:16px;z-index:60}
 .fundo[hidden]{display:none}
+body.trava{overflow:hidden}
 .folha{background:var(--carta);border:1px solid var(--linha);border-radius:16px;width:100%;
   max-width:470px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--sombra)}
 .folha-topo{padding:15px 17px;border-bottom:1px solid var(--linha);display:flex;gap:12px;align-items:flex-start}
@@ -793,6 +929,14 @@ button{font:inherit}
       <span>Filtros</span>
       <span class="badge" id="badgeFiltros" hidden></span>
     </button>
+    <button class="icone btn-pedidos" id="btnPedidos" title="Meus pedidos"
+            aria-label="Meus pedidos" onclick="abrirPedidos()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M8 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-2"/>
+        <rect x="8" y="2" width="8" height="4" rx="1"/>
+        <path d="M8 11h8M8 16h5"/></svg>
+    </button>
     <button class="icone btn-sacola" id="btnSacolaTopo" title="Abrir a sacola"
             aria-label="Abrir a sacola" onclick="abrirSacola()">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -876,23 +1020,83 @@ button{font:inherit}
   </div>
 </div>
 
+<div class="ped-bg" id="pedidos" hidden>
+  <section class="ped" role="dialog" aria-modal="true" aria-labelledby="pedTit">
+    <header class="ped-topo">
+      <div class="ped-tit">
+        <h2 id="pedTit">Meus pedidos</h2>
+        <p id="pedSub">—</p>
+      </div>
+      <button class="ped-atualizar" id="pedAtualizar" title="Buscar de novo no servidor">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+        <span>Atualizar</span></button>
+      <button class="icone" id="pedFechar" aria-label="Fechar">✕</button>
+    </header>
+
+    <div class="ped-filtros">
+      <label class="ped-campo ped-busca">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg>
+        <input id="pedBusca" placeholder="cliente, artigo ou produto" aria-label="Buscar pedido">
+      </label>
+      <label class="ped-campo"><span>Período</span>
+        <select id="pedPeriodo">
+          <option value="30">Últimos 30 dias</option>
+          <option value="7">Últimos 7 dias</option>
+          <option value="mes">Este mês</option>
+          <option value="anterior">Mês passado</option>
+          <option value="tudo">Tudo</option>
+        </select></label>
+      <label class="ped-campo"><span>Marca</span>
+        <select id="pedMarca">
+          <option value="">Todas</option>
+          <option value="oly">Olympikus</option>
+          <option value="ua">Under Armour</option>
+        </select></label>
+      <label class="ped-campo" id="pedCampoVend" hidden><span>Vendedor</span>
+        <select id="pedVendedor"></select></label>
+    </div>
+
+    <div class="ped-barra">
+      <label class="ped-todos"><input type="checkbox" id="pedTodos"><span>Selecionar todos</span></label>
+      <span class="ped-conta" id="pedConta">—</span>
+    </div>
+
+    <div class="ped-lista" id="pedLista"></div>
+
+    <footer class="ped-pe" id="pedPe" hidden>
+      <span class="ped-sel" id="pedSel">—</span>
+      <button class="acao ped-acao pdf" id="pedPdf">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <path d="M14 2v6h6"/><path d="M8 13h2.5a1.5 1.5 0 0 1 0 3H8v-3zM8 16v3"/>
+          <path d="M14 13h3M14 16h2M14 13v6"/></svg>
+        <span>PDF do pedido</span></button>
+      <button class="acao ped-acao xls" id="pedXlsx">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <path d="M14 2v6h6"/><path d="m9 13 6 6M15 13l-6 6"/></svg>
+        <span>Reemitir XLSX</span></button>
+    </footer>
+  </section>
+</div>
+
 <div class="fundo" id="confirma" hidden>
   <div class="folha dlg" role="alertdialog" aria-modal="true"
        aria-labelledby="cfTit" aria-describedby="cfTxt">
     <div class="cf-corpo">
-      <span class="cf-ico" aria-hidden="true">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
-          <path d="M10 11v6M14 11v6"/></svg>
-      </span>
-      <h3 id="cfTit">Esvaziar a sacola?</h3>
+      <span class="cf-ico" id="cfIco" aria-hidden="true"></span>
+      <h3 id="cfTit">—</h3>
       <p id="cfTxt"></p>
     </div>
     <div class="folha-pe">
       <button class="acao" id="cfNao">Manter</button>
-      <button class="acao perigo" id="cfSim">Esvaziar</button>
+      <button class="acao forte" id="cfSim">Entendi</button>
     </div>
   </div>
 </div>
@@ -1886,6 +2090,590 @@ $f('scCliSug').addEventListener('mousedown', e => {
 });
 $f('scCliente').addEventListener('blur', () => setTimeout(fecharSugestoes, 120));
 
+/* ── histórico de pedidos ───────────────────────────────────────── */
+// O Worker já guarda um arquivo de histórico por comissionista, e é o mesmo
+// que o catálogo digital usa. A vitrine grava sob uma chave própria
+// ("vitrine-25846") para as duas telas não misturarem formatos de item: o
+// arquivo é outro, a ação do Worker é a mesma, e nada precisa ser publicado.
+const CHAVE_HIST = cod => 'vitrine-' + String(cod || '').replace(/[^a-zA-Z0-9_-]/g, '');
+
+function snapshotPedido(itens, cfg){
+  const linhas = itens.map(it => ({
+    artigo: it.artigo, nome: it.nome, cor: it.cor, corCodigo: it.corCodigo || it.cor,
+    categoria: it.categoria || '', genero: it.genero || '',
+    pdv: Number(it.pdv || 0), imagem: it.imagem || '',
+    origem: it.origem, mes: it.mes || '',
+    // A grade da caixa e o multiplicador vão juntos com o resultado: quem
+    // reabrir o pedido precisa ver como ele foi montado, não só o total.
+    gradeCaixa: { ...(it.gradePedido || {}) },
+    caixas: caixasDe(it),
+    gradeSaida: gradeFinal(it),
+    total: totalUnidades(it),
+    dataDesejada: it.dataDesejada || ''
+  }));
+  const d = new Date();
+  return {
+    id: `${d.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
+    criadoEm: d.toISOString(),
+    origem: 'vitrine',
+    marca: cfg.marca,
+    marcaNome: MARCAS[cfg.marca] ? MARCAS[cfg.marca].nome : cfg.marca,
+    comissionista: String(cfg.comissionista || ''),
+    comissionistaNome: cfg.comissionistaNome || '',
+    cliente: String(cfg.cliente || ''),
+    clienteNome: cfg.clienteNome || '',
+    prazo: cfg.prazo || '',
+    campanha: cfg.campanha || '',
+    tabelaPreco: TABELA_PRECO[cfg.marca] || '',
+    itens: linhas,
+    totalItens: linhas.length,
+    totalPares: linhas.reduce((a, l) => a + l.total, 0),
+    valor: Number(linhas.reduce((a, l) => a + l.pdv * l.total, 0).toFixed(2))
+  };
+}
+
+// Cópia no próprio aparelho, além do servidor. Ela é o que segura a tela em
+// pé quando o Worker não responde — e um pedido que não aparece em lugar
+// nenhum é pior do que um pedido que só aparece aqui.
+const LOCAL_PED = 'cms_vitrine_pedidos_v1';
+function lerLocal(chave){
+  try{
+    const t = JSON.parse(localStorage.getItem(LOCAL_PED) || '{}');
+    return Array.isArray(t[chave]) ? t[chave] : [];
+  }catch(_){ return []; }
+}
+function gravarLocal(chave, pedido){
+  try{
+    const t = JSON.parse(localStorage.getItem(LOCAL_PED) || '{}');
+    const lista = Array.isArray(t[chave]) ? t[chave] : [];
+    lista.push(pedido);
+    // 200 pedidos por vendedor já cobrem muito mais do que a tela mostra, e
+    // o localStorage tem cota: os mais antigos saem primeiro.
+    t[chave] = lista.slice(-200);
+    localStorage.setItem(LOCAL_PED, JSON.stringify(t));
+  }catch(_){ /* cota cheia: o servidor continua sendo a fonte */ }
+}
+
+// Gravar não pode atrapalhar a entrega da planilha: ela já baixou. Se o
+// servidor recusar, o vendedor precisa saber que o pedido só ficou aqui.
+async function registrarPedido(itens, cfg){
+  const chave = CHAVE_HIST(cfg.comissionista);
+  if(!chave || chave === 'vitrine-') return;
+  const pedido = snapshotPedido(itens, cfg);
+  gravarLocal(chave, pedido);
+  delete PED.cache[chave];
+  try{
+    const r = await fetch(WORKER_URL, { method:'PATCH',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ action:'savePedidoHistorico', comissionista:chave, pedido }) });
+    const j = await r.json().catch(() => null);
+    if(r.ok && j && j.success) return;
+    avisar('Pedido salvo só neste aparelho',
+      'A planilha foi gerada e o pedido está guardado aqui, mas não subiu para o ' +
+      'servidor. ' + esc((j && j.error) || 'Ele não vai aparecer em outro aparelho.'));
+  }catch(_){
+    avisar('Pedido salvo só neste aparelho',
+      'A planilha foi gerada e o pedido está guardado aqui. Sem conexão, ele ainda ' +
+      'não subiu para o servidor e não aparece em outro aparelho.');
+  }
+}
+
+// Servidor e aparelho juntos, sem repetir: o id é gerado na hora do pedido, e
+// é ele que diz que os dois lados falam do mesmo.
+async function buscarPedidos(codigo){
+  const chave = CHAVE_HIST(codigo);
+  if(PED.cache[chave]) return PED.cache[chave];
+  const locais = lerLocal(chave);
+  let remotos = [], falhou = false;
+  try{
+    const r = await fetch(WORKER_URL, { method:'PATCH',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ action:'getPedidoHistorico', comissionista:chave }) });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const lista = await r.json();
+    remotos = Array.isArray(lista) ? lista : [];
+  }catch(_){ falhou = true; }
+  if(falhou && !locais.length) throw new Error('sem histórico');
+
+  const porId = new Map();
+  for(const p of remotos) if(p && p.id) porId.set(p.id, p);
+  for(const p of locais)  if(p && p.id && !porId.has(p.id)) porId.set(p.id, p);
+  const juntos = [...porId.values()];
+  PED.cache[chave] = juntos;
+  PED.soLocal = falhou;
+  return juntos;
+}
+
+/* ── tela de Meus pedidos ───────────────────────────────────────── */
+const PED = { cache:{}, lista:[], filtrados:[], sel:new Set(), abertos:new Set(),
+              vendedor:'', carregando:false, erro:'' };
+
+// Vendedores conhecidos, para o CMS poder abrir o histórico de qualquer um.
+// A lista é a mesma do portal; um vendedor comum nem vê o campo.
+const VENDEDORES = [
+  { codigo:'25846',   nome:'CMS' },
+  { codigo:'25745',   nome:'LEANDRO' },
+  { codigo:'4322318', nome:'CHRISTIAN LUCAS' },
+  { codigo:'114611',  nome:'JORGE' },
+  { codigo:'109839',  nome:'MARIANA' },
+  { codigo:'1333497', nome:'RAFAEL' },
+  { codigo:'25471',   nome:'WILLAME' }
+];
+const ehCms = () => String((SESSAO && SESSAO.nome) || '').toUpperCase() === 'CMS';
+
+function abrirPedidos(){
+  $('pedidos').hidden = false;
+  document.body.classList.add('trava');
+  if(!PED.vendedor) PED.vendedor = String((SESSAO && SESSAO.codigo) || '');
+  if(ehCms()){
+    $('pedCampoVend').hidden = false;
+    $('pedVendedor').innerHTML = VENDEDORES.map(v =>
+      `<option value="${esc(v.codigo)}"${v.codigo === PED.vendedor ? ' selected' : ''}>` +
+      `${esc(nomeCurto(v.nome))}</option>`).join('');
+  }
+  carregarPedidos();
+}
+function fecharPedidos(){
+  $('pedidos').hidden = true;
+  document.body.classList.remove('trava');
+}
+
+async function carregarPedidos(recarregar){
+  const cod = PED.vendedor;
+  if(recarregar) delete PED.cache[CHAVE_HIST(cod)];
+  PED.carregando = true; PED.erro = '';
+  pintarPedidos();
+  try{
+    PED.lista = await buscarPedidos(cod);
+  }catch(e){
+    PED.lista = [];
+    // Lista vazia por erro não pode parecer "nenhum pedido": são coisas
+    // diferentes, e uma delas o vendedor resolve tentando de novo.
+    PED.erro = 'Não foi possível carregar. Toque em Atualizar para tentar de novo.';
+  }
+  PED.carregando = false;
+  PED.sel.clear(); PED.abertos.clear();
+  pintarPedidos();
+}
+
+// Períodos em cima da data de criação: é a data do pedido, não a de entrega.
+function dentroDoPeriodo(iso, modo){
+  if(modo === 'tudo') return true;
+  const d = new Date(iso);
+  if(isNaN(d)) return false;
+  const hoje = new Date();
+  if(modo === 'mes')
+    return d.getFullYear() === hoje.getFullYear() && d.getMonth() === hoje.getMonth();
+  if(modo === 'anterior'){
+    const m = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+    return d.getFullYear() === m.getFullYear() && d.getMonth() === m.getMonth();
+  }
+  const dias = Number(modo) || 30;
+  return (Date.now() - d.getTime()) <= dias * 864e5;
+}
+
+function filtrarPedidos(){
+  const modo  = $('pedPeriodo').value;
+  const marca = $('pedMarca').value;
+  const busca = norm($('pedBusca').value.trim());
+  PED.filtrados = PED.lista
+    .filter(p => dentroDoPeriodo(p.criadoEm, modo))
+    .filter(p => !marca || p.marca === marca)
+    .filter(p => {
+      if(!busca) return true;
+      const alvo = norm([p.cliente, p.clienteNome, p.campanha,
+        ...(p.itens || []).map(i => `${i.artigo} ${i.nome} ${i.cor}`)].join(' '));
+      return alvo.includes(busca);
+    })
+    .sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm)));
+}
+
+const dataHora = iso => {
+  const d = new Date(iso);
+  if(isNaN(d)) return { dia:'—', hora:'' };
+  const p2 = n => String(n).padStart(2, '0');
+  return { dia:`${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${d.getFullYear()}`,
+           hora:`${p2(d.getHours())}:${p2(d.getMinutes())}` };
+};
+
+function pedidoHtml(p){
+  const q = dataHora(p.criadoEm);
+  const sel = PED.sel.has(p.id), aberto = PED.abertos.has(p.id);
+  const curto = MARCAS[p.marca] ? MARCAS[p.marca].curto : (p.marca || '—');
+  const itens = p.itens || [];
+  return `<article class="ped-item${sel ? ' sel' : ''}${aberto ? ' aberto' : ''}" data-id="${esc(p.id)}">
+    <div class="ped-linha">
+      <input type="checkbox" data-sel="${esc(p.id)}" ${sel ? 'checked' : ''}
+             aria-label="Selecionar pedido de ${esc(q.dia)}">
+      <span class="ped-quando">${esc(q.dia)}<small>${esc(q.hora)}</small></span>
+      <span class="ped-cli"><b>${esc(p.clienteNome || 'Cliente ' + p.cliente)}</b>
+        <span>${esc(p.cliente)}${p.prazo ? ' · ' + esc(p.prazo) : ''} · ${esc(q.dia)} ${esc(q.hora)}</span></span>
+      <span class="ped-marca" style="--m:${esc(MARCAS[p.marca] ? MARCAS[p.marca].marca : '#6D737A')}">${esc(curto)}</span>
+      <span class="ped-nums">${nf(p.totalPares)} pares
+        <small>${nf(p.totalItens)} ${p.totalItens === 1 ? 'produto' : 'produtos'}</small></span>
+      <button class="ped-abrir" data-abrir="${esc(p.id)}">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m6 9 6 6 6-6"/></svg>
+        ${aberto ? 'Fechar' : 'Itens'}</button>
+    </div>
+    <div class="ped-det">
+      <p class="ped-info">
+        <span>Cliente <b>${esc(p.cliente)}</b></span>
+        ${p.prazo ? `<span>Prazo <b>${esc(p.prazo)}</b></span>` : ''}
+        ${p.campanha ? `<span>Campanha <b>${esc(p.campanha)}</b></span>` : ''}
+        <span>Tabela <b>${esc(p.tabelaPreco || '—')}</b></span>
+        <span>Vendedor <b>${esc(nomeCurto(p.comissionistaNome || p.comissionista))}</b></span>
+      </p>
+      ${itens.map(i => `<div class="ped-prod">
+        <span class="mini"><img src="${esc(foto(i))}" alt="" loading="lazy"
+          onerror="this.style.visibility='hidden'"></span>
+        <span class="txt">
+          <span class="nm">${esc(i.nome || i.artigo)}</span>
+          <span class="sb">${esc(i.artigo)} · ${esc(i.cor)} · ${nf(i.total)} un${
+            i.caixas > 1 ? ` · ${nf(i.caixas)} caixas` : ''}${
+            i.dataDesejada ? ' · fat. ' + dataBR(i.dataDesejada) : ''}</span>
+          <span class="ped-selo ${i.origem === 'producao' ? 'pro' : 'est'}">${
+            i.origem === 'producao' ? 'Produção · ' + esc(i.mes || '') : 'Estoque'}</span>
+          ${celulas(i.gradeSaida || {}, i.origem === 'producao' ? 'g-pro' : 'g-est')}
+        </span></div>`).join('')}
+    </div>
+  </article>`;
+}
+
+function pintarPedidos(){
+  const lista = $('pedLista');
+  if(PED.carregando){
+    lista.innerHTML = '<div class="ped-vazio"><span class="girando"></span>' +
+      '<h3>Buscando os pedidos</h3></div>';
+    $('pedConta').textContent = '—';
+    $('pedPe').hidden = true;
+    return;
+  }
+  filtrarPedidos();
+  const n = PED.filtrados.length;
+  const pares = PED.filtrados.reduce((a, p) => a + Number(p.totalPares || 0), 0);
+  $('pedSub').textContent = PED.erro ||
+    `${nf(PED.lista.length)} ${PED.lista.length === 1 ? 'pedido' : 'pedidos'} · ` +
+    nomeCurto(nomeDoVendedor(PED.vendedor)) +
+    (PED.soLocal ? ' · sem conexão, mostrando só este aparelho' : '');
+  $('pedConta').textContent = n
+    ? `${nf(n)} na tela · ${nf(pares)} pares` : '';
+
+  if(!n){
+    lista.innerHTML = PED.erro
+      ? `<div class="ped-vazio"><h3>Não deu para carregar</h3><p>${esc(PED.erro)}</p></div>`
+      : `<div class="ped-vazio"><h3>Nenhum pedido aqui</h3>
+          <p>${PED.lista.length ? 'Nenhum pedido nesse período ou nessa busca.'
+            : 'Os pedidos aparecem aqui assim que você gera a planilha do EBM na sacola.'}</p></div>`;
+  }else{
+    lista.innerHTML = PED.filtrados.map(pedidoHtml).join('');
+  }
+
+  // Só conta o que está na tela: marcar "todos" e exportar um pedido filtrado
+  // fora seria uma surpresa.
+  const selVis = PED.filtrados.filter(p => PED.sel.has(p.id));
+  $('pedTodos').checked = n > 0 && selVis.length === n;
+  $('pedPe').hidden = !selVis.length;
+  const selPares = selVis.reduce((a, p) => a + Number(p.totalPares || 0), 0);
+  $('pedSel').textContent = `${nf(selVis.length)} ${selVis.length === 1 ? 'pedido' : 'pedidos'}` +
+    ` · ${nf(selPares)} pares`;
+}
+
+const nomeDoVendedor = cod => {
+  const v = VENDEDORES.find(x => x.codigo === String(cod));
+  return v ? v.nome : (SESSAO && SESSAO.nome) || '';
+};
+const pedidoPorId = id => PED.lista.find(p => p.id === id);
+const selecionados = () => PED.filtrados.filter(p => PED.sel.has(p.id));
+
+$('pedFechar').onclick = fecharPedidos;
+$('pedAtualizar').onclick = () => carregarPedidos(true);
+for(const id of ['pedPeriodo', 'pedMarca'])
+  $(id).addEventListener('change', pintarPedidos);
+$('pedBusca').addEventListener('input', pintarPedidos);
+$('pedVendedor').addEventListener('change', e => {
+  PED.vendedor = e.target.value;
+  carregarPedidos();
+});
+$('pedTodos').addEventListener('change', e => {
+  for(const p of PED.filtrados) e.target.checked ? PED.sel.add(p.id) : PED.sel.delete(p.id);
+  pintarPedidos();
+});
+$('pedLista').addEventListener('change', e => {
+  const c = e.target.closest('[data-sel]');
+  if(!c) return;
+  c.checked ? PED.sel.add(c.dataset.sel) : PED.sel.delete(c.dataset.sel);
+  pintarPedidos();
+});
+$('pedLista').addEventListener('click', e => {
+  const b = e.target.closest('[data-abrir]');
+  if(!b) return;
+  const id = b.dataset.abrir;
+  PED.abertos.has(id) ? PED.abertos.delete(id) : PED.abertos.add(id);
+  pintarPedidos();
+});
+
+// Reemissão: cada pedido tem o seu cliente e o seu prazo, então as linhas
+// saem por pedido e se juntam numa planilha só.
+$('pedXlsx').onclick = () => {
+  const alvos = selecionados();
+  if(!alvos.length) return;
+  const cab = XLS_COLS.slice();
+  const corpo = [];
+  const fora = new Set();
+  for(const p of alvos){
+    const { aoa, foraDoLayout } = montarPlanilha(p.itens || [], {
+      comissionista:p.comissionista, cliente:p.cliente, prazo:p.prazo,
+      campanha:p.campanha, marca:p.marca });
+    corpo.push(...aoa.slice(1));
+    for(const t of foraDoLayout) fora.add(t);
+  }
+  if(!corpo.length){
+    avisar('Nada para reemitir', 'Os pedidos selecionados não têm quantidade.');
+    return;
+  }
+  if(fora.size) avisarTamanhosFora(fora);
+  const ws = XLSX.utils.aoa_to_sheet([cab, ...corpo]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Pedido');
+  const d = new Date(), p2 = n => String(n).padStart(2, '0');
+  XLSX.writeFile(wb, `pedidos_${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}` +
+    `_${p2(d.getHours())}${p2(d.getMinutes())}.xlsx`);
+};
+
+$('pedPdf').onclick = () => pdfDosPedidos(selecionados());
+
+// ── PDF do pedido, no mesmo desenho do catálogo digital ────────────────
+// Cabeçalho CMS roxo, bloco de dados, um card por produto com foto, grade em
+// pílulas e coluna de preço, resumo por data quando há mais de uma, e total
+// geral. Vários pedidos selecionados saem no mesmo arquivo, um por página.
+async function pdfDosPedidos(pedidos){
+  if(!pedidos.length) return;
+  const btn = $('pedPdf');
+  ocupado(btn, 'Gerando…');
+  try{
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'pt', format:'a4', orientation:'portrait', compress:true });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const M = 28, W = pageW - M * 2;
+    const C = { roxo:[124,58,237], roxoClaro:[245,243,255], roxoEsc:[88,28,135],
+                texto:[15,23,42], fraco:[107,114,128], linha:[229,231,235],
+                suave:[248,250,252], verde:[22,163,74], branco:[255,255,255] };
+    const fill = c => doc.setFillColor(c[0], c[1], c[2]);
+    const cor  = c => doc.setTextColor(c[0], c[1], c[2]);
+    const traco= c => doc.setDrawColor(c[0], c[1], c[2]);
+    const cut  = (t, n) => { t = String(t == null ? '' : t); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
+    const p2   = n => String(n).padStart(2, '0');
+    const agora = new Date();
+    const emitido = `${p2(agora.getDate())}/${p2(agora.getMonth() + 1)}/${agora.getFullYear()} ` +
+                    `${p2(agora.getHours())}:${p2(agora.getMinutes())}`;
+
+    let y = 0;
+    function cabecalho(p){
+      fill(C.roxo); doc.rect(M, M, W, 3, 'F');
+      let t = M + 14;
+      fill(C.roxo); doc.roundedRect(M, t, 48, 48, 8, 8, 'F');
+      cor(C.branco); doc.setFont('helvetica','bold'); doc.setFontSize(15);
+      doc.text('CMS', M + 24, t + 30, { align:'center' });
+      cor(C.texto); doc.setFont('helvetica','bold'); doc.setFontSize(14);
+      doc.text('CMS Representações', M + 58, t + 14);
+      cor(C.fraco); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      doc.text('OLYMPIKUS · UNDER ARMOUR', M + 58, t + 26);
+      fill(C.roxo); doc.roundedRect(M + 58, t + 32, 120, 12, 6, 6, 'F');
+      cor(C.branco); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+      doc.text('REPRESENTANTE AUTORIZADO', M + 118, t + 40, { align:'center' });
+      cor(C.texto); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+      doc.text('PEDIDO DE COMPRA', pageW - M, t + 14, { align:'right' });
+      cor(C.fraco); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      doc.text(`Emitido em ${emitido}`, pageW - M, t + 26, { align:'right' });
+      const q = dataHora(p.criadoEm);
+      doc.text(`Pedido de ${q.dia} ${q.hora}`, pageW - M, t + 36, { align:'right' });
+      return t + 70;
+    }
+
+    function dados(p, yi){
+      const pz = partesPrazo(p.prazo || '');
+      const campos = [
+        ['Cliente',         p.clienteNome ? `${p.cliente} · ${p.clienteNome}` : (p.cliente || '—')],
+        ['Comissionista',   nomeCurto(p.comissionistaNome || '') || p.comissionista || '—'],
+        ['Marca',           p.marcaNome || '—'],
+        ['Tabela de Preço', p.tabelaPreco || '—'],
+        ['Cond. Pagamento', p.prazo || '—'],
+        ['Prazo Médio',     pz.medio ? `${pz.medio} dias` : '—']
+      ];
+      const camp = String(p.campanha || '').trim();
+      if(camp && !/sem\s*campanha/i.test(camp)) campos.push(['Campanha', camp]);
+      const cols = 3, linhas = Math.ceil(campos.length / cols), h = linhas * 22 + 12;
+      fill(C.suave); doc.roundedRect(M, yi, W, h, 6, 6, 'F');
+      traco(C.linha); doc.setLineWidth(.5); doc.roundedRect(M, yi, W, h, 6, 6, 'S');
+      const colW = W / cols;
+      campos.forEach((par, i) => {
+        const x = M + (i % cols) * colW + 8, yy = yi + 12 + Math.floor(i / cols) * 22;
+        cor(C.fraco); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+        doc.text(par[0].toUpperCase(), x, yy);
+        cor(C.texto); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+        doc.text(cut(par[1], 30), x, yy + 10);
+      });
+      return yi + h + 10;
+    }
+
+    function titulo(yi, txt){
+      cor(C.roxo); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+      doc.text(txt.toUpperCase(), M, yi);
+      traco(C.linha); doc.setLineWidth(.5);
+      doc.line(M + doc.getTextWidth(txt.toUpperCase()) + 6, yi - 3, M + W, yi - 3);
+      return yi + 8;
+    }
+
+    const CARD = 110;
+    async function card(it, yi){
+      traco(C.linha); doc.setLineWidth(.4); doc.line(M, yi, M + W, yi);
+      const t = yi + 7, img = 78;
+      fill([243,244,246]); doc.roundedRect(M, t, img, img, 6, 6, 'F');
+      traco(C.linha); doc.roundedRect(M, t, img, img, 6, 6, 'S');
+      const im = await fotoDataUrl(it);
+      if(im) doc.addImage(im.url, 'JPEG', M + 2, t + 2, img - 4, img - 4, undefined, 'FAST');
+
+      const x = M + img + 10, precoW = 110;
+      cor(C.texto); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+      doc.text(cut(`${it.nome || '—'} · ${it.artigo || ''}`, 48), x, t + 9);
+      cor(C.fraco); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      const meta = [String(it.cor || '').replace(/_/g, '/'), it.genero,
+        it.origem === 'producao' ? `Produção ${it.mes || ''}` : 'Estoque'].filter(Boolean).join(' · ');
+      doc.text(cut(meta, 60), x, t + 20);
+
+      const grade = it.gradeSaida || {};
+      const tams = Object.entries(grade).filter(([, q]) => Number(q) > 0);
+      if(tams.length){
+        const pw = 26, ph = 24, gap = 4, ty = t + 26;
+        const cabem = Math.max(1, Math.floor((W - img - 10 - precoW - 10 + gap) / (pw + gap)));
+        let total = 0;
+        tams.slice(0, cabem).forEach(([tam, q], i) => {
+          const px = x + i * (pw + gap);
+          fill(C.branco); doc.roundedRect(px, ty, pw, ph, 4, 4, 'F');
+          traco(C.linha); doc.setLineWidth(.5); doc.roundedRect(px, ty, pw, ph, 4, 4, 'S');
+          cor(C.fraco); doc.setFont('helvetica','bold'); doc.setFontSize(6);
+          doc.text(String(tam), px + pw / 2, ty + 9, { align:'center' });
+          cor(C.roxo); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+          doc.text(String(q), px + pw / 2, ty + 19, { align:'center' });
+        });
+        for(const [, q] of tams) total += Number(q) || 0;
+        cor(C.fraco); doc.setFont('helvetica','normal'); doc.setFontSize(7);
+        const sobra = tams.length - Math.min(cabem, tams.length);
+        doc.text(`${nf(total)} pares no total` +
+          (it.caixas > 1 ? ` · ${nf(it.caixas)} caixas` : '') +
+          (sobra ? ` · +${sobra} tam.` : ''), x, ty + ph + 8);
+      }
+
+      if(it.dataDesejada){
+        const dy = t + (tams.length ? 78 : 48);
+        fill(C.roxoClaro); doc.roundedRect(x, dy, 115, 13, 6, 6, 'F');
+        traco([196,181,253]); doc.setLineWidth(.4);
+        doc.roundedRect(x, dy, 115, 13, 6, 6, 'S');
+        cor(C.roxo); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+        doc.text(`Faturar em ${dataBR(it.dataDesejada)}`, x + 6, dy + 9);
+      }
+
+      const px = M + W - precoW;
+      traco(C.linha); doc.setLineWidth(.3);
+      doc.line(px - 6, t + 4, px - 6, t + CARD - 14);
+      // Só o preço de venda. O subtotal saía de PDV × pares, e não é assim que
+      // o lojista compra — o número estava errado em toda página.
+      const qtd = Number(it.total) || 0, unit = Number(it.pdv) || 0;
+      cor(C.fraco); doc.setFont('helvetica','normal'); doc.setFontSize(7);
+      doc.text('PREÇO DE VENDA', px, t + 10);
+      cor(C.texto); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+      doc.text(brl(unit), px, t + 26);
+      cor(C.fraco); doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+      doc.text(`${nf(qtd)} pares`, px, t + 38);
+      return yi + CARD;
+    }
+
+    function resumoPorData(p, yi){
+      const porData = new Map();
+      for(const it of p.itens || []){
+        const k = it.dataDesejada || '';
+        if(!porData.has(k)) porData.set(k, { data:k, itens:0, pares:0, valor:0 });
+        const e = porData.get(k);
+        e.itens++; e.pares += Number(it.total) || 0;
+        e.valor += (Number(it.pdv) || 0) * (Number(it.total) || 0);
+      }
+      if(porData.size < 2) return yi;
+      let y2 = titulo(yi + 4, 'Resumo por data de faturamento');
+      const linhas = [...porData.values()].sort((a, b) => a.data.localeCompare(b.data));
+      const h = linhas.length * 18 + 16;
+      fill(C.roxoClaro); doc.roundedRect(M, y2, W, h, 8, 8, 'F');
+      traco([196,181,253]); doc.setLineWidth(.5); doc.roundedRect(M, y2, W, h, 8, 8, 'S');
+      let yr = y2 + 12, soma = 0;
+      linhas.forEach((r, i) => {
+        fill(C.roxo); doc.circle(M + 14, yr + 5, 7, 'F');
+        cor(C.branco); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+        doc.text(String(i + 1), M + 14, yr + 8, { align:'center' });
+        cor(C.texto); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+        doc.text(r.data ? dataBR(r.data) : 'sem data', M + 28, yr + 8);
+        cor(C.fraco); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+        doc.text(`${r.itens} produto${r.itens !== 1 ? 's' : ''}`, M + 110, yr + 8);
+        cor(C.roxo); doc.setFont('helvetica','bold'); doc.setFontSize(10);
+        doc.text(`${nf(r.pares)} pares`, M + W - 8, yr + 8, { align:'right' });
+        yr += 18;
+      });
+      return y2 + h + 10;
+    }
+
+    function totalGeral(p, yi){
+      const h = 46;
+      fill(C.texto); doc.roundedRect(M, yi, W, h, 8, 8, 'F');
+      cor(C.branco); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+      doc.text('TOTAL DO PEDIDO', M + 14, yi + 18);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9);
+      doc.text(`${nf(p.totalItens)} produto${p.totalItens !== 1 ? 's' : ''}`, M + 14, yi + 33);
+      // O total em dinheiro sairia do mesmo PDV × pares do subtotal: enquanto
+      // não houver o preço que o lojista paga, o pedido fecha em pares.
+      doc.setFont('helvetica','bold'); doc.setFontSize(17);
+      doc.text(`${nf(p.totalPares)} pares`, M + W - 14, yi + 29, { align:'right' });
+      return yi + h + 8;
+    }
+
+    function rodape(n){
+      traco(C.linha); doc.setLineWidth(.4);
+      doc.line(M, pageH - 28, pageW - M, pageH - 28);
+      cor(C.fraco); doc.setFont('helvetica','normal'); doc.setFontSize(7);
+      doc.text('CMS Representações · vitrine', M, pageH - 16);
+      doc.text('pág. ' + n, pageW - M, pageH - 16, { align:'right' });
+    }
+
+    let pag = 0;
+    const novaPagina = p => { doc.addPage(); pag++; rodape(pag); return cabecalho(p); };
+
+    for(let i = 0; i < pedidos.length; i++){
+      const p = pedidos[i];
+      if(i) { y = novaPagina(p); }
+      else  { pag = 1; rodape(pag); y = cabecalho(p); }
+      y = dados(p, y);
+      y = titulo(y + 4, `Itens do pedido (${nf(p.totalItens)})`);
+      for(const it of p.itens || []){
+        // O card é alto: quando não cabe inteiro, ele começa na próxima página
+        // em vez de sair cortado no rodapé.
+        if(y + CARD > pageH - 50) y = novaPagina(p);
+        y = await card(it, y);
+      }
+      y = resumoPorData(p, y + 6);
+      if(y + 54 > pageH - 50) y = novaPagina(p);
+      y = totalGeral(p, y + 6);
+      passo(btn, `${i + 1}/${pedidos.length}`);
+    }
+
+    const d = new Date();
+    doc.save(`pedido${pedidos.length > 1 ? 's' : ''}_${d.getFullYear()}` +
+      `${p2(d.getMonth() + 1)}${p2(d.getDate())}_${p2(d.getHours())}${p2(d.getMinutes())}.pdf`);
+  }catch(e){
+    console.error(e);
+    avisar('Não deu para gerar o PDF', 'Tente de novo em alguns instantes.');
+  }finally{ liberado(btn); }
+}
+
 /* ── catálogo dos marcados ──────────────────────────────────────── */
 // A mesma campanha que o card mostra: com um filtro de campanha ligado, sair
 // no PDF com o custo de outra tabela seria dizer um preço que não é o daquela
@@ -2144,7 +2932,7 @@ async function gerarCatalogoPdf(){
       `_${p2(d.getHours())}${p2(d.getMinutes())}.pdf`);
   }catch(e){
     console.error(e);
-    alert('Não foi possível gerar o PDF. Tente de novo.');
+    avisar('Não deu para gerar o PDF', 'Tente de novo em alguns instantes.');
   }finally{ liberado(btn); }
 }
 
@@ -2236,7 +3024,10 @@ function exportarXlsx(){
   // grade era pulado em silêncio: a planilha saía menor do que a sacola e o
   // vendedor só descobria no EBM.
   const doEbm = [...STATE.sacola.values()].filter(it => it.origem !== 'repasse');
-  if(!doEbm.length){ alert('Não há item de estoque ou produção na sacola.'); return; }
+  if(!doEbm.length){
+    avisar('Nada para a planilha', 'A sacola não tem item de estoque nem de produção.');
+    return;
+  }
   const pendentes = doEbm.filter(it => totalUnidades(it) <= 0 || !it.dataDesejada);
   if(pendentes.length){
     const semGrade = pendentes.filter(it => totalUnidades(it) <= 0).length;
@@ -2245,42 +3036,64 @@ function exportarXlsx(){
     if(semGrade) falta.push(semGrade === 1 ? 'um sem grade' : semGrade + ' sem grade');
     if(semData)  falta.push(semData  === 1 ? 'um sem data'  : semData  + ' sem data');
     marcarPendencias(pendentes);
-    alert(`Falta preencher: ${falta.join(' e ')}. ` +
+    avisar('Falta preencher a sacola',
+      `Ainda tem <b>${falta.join('</b> e <b>')}</b>. ` +
       (pendentes.length === 1 ? 'O item está marcado' : 'Os itens estão marcados') +
-      ' na sacola.');
+      ' em âmbar na sacola.');
     const alvo = $('scCorpo').querySelector('.sc-item.pendente');
     if(alvo) alvo.scrollIntoView({ block:'center', behavior:'smooth' });
     return;
   }
 
+  const cfg = {
+    comissionista: (SESSAO && SESSAO.codigo) || '',
+    comissionistaNome: (SESSAO && SESSAO.nome) || '',
+    cliente,
+    clienteNome: nomeDoCliente(cliente),
+    prazo,
+    campanha: $f('scCampanha').value || '',
+    marca: MARCA
+  };
+  const linhas = [...STATE.sacola.values()].filter(it => it.origem !== 'repasse');
+  if(!baixarPlanilha(linhas, cfg)) return;
+  // O pedido só entra no histórico depois que a planilha saiu: o que fica
+  // registrado é o que o vendedor realmente levou para o EBM.
+  registrarPedido(linhas, cfg);
+}
+
+// Uma linha por item, no layout que o EBM importa. Fica fora do botão porque a
+// reemissão em "Meus pedidos" monta a mesma planilha a partir do histórico, e
+// duas cópias do layout acabariam divergindo.
+function montarPlanilha(itens, cfg){
   const idx = Object.fromEntries(XLS_COLS.map((c, i) => [c, i]));
   const aoa = [XLS_COLS.slice()];
   const foraDoLayout = new Set();
+  const pz = partesPrazo(cfg.prazo || '');
 
-  for(const it of STATE.sacola.values()){
-    if(it.origem === 'repasse') continue;
-    const total = totalUnidades(it);
+  for(const it of itens){
+    const grade = it.gradeSaida || gradeFinal(it);
+    const total = Object.values(grade).reduce((a, b) => a + Number(b || 0), 0);
+    if(!total) continue;
     const l = new Array(XLS_COLS.length).fill('');
     l[idx['Nº']] = 1;
-    l[idx['Comissionista']] = (SESSAO && SESSAO.codigo) || '';
-    l[idx['Cliente']] = cliente;
-    const pz = partesPrazo(prazo);
-    l[idx['Condição de Pagamento']] = prazo;
+    l[idx['Comissionista']] = cfg.comissionista || '';
+    l[idx['Cliente']] = cfg.cliente || '';
+    l[idx['Condição de Pagamento']] = cfg.prazo || '';
     l[idx['Prazo Médio']] = pz.medio;
     l[idx['Número de Parcelas']] = pz.parcelas;
     // A planilha leva só o código da campanha, não o rótulo inteiro.
-    l[idx['Campanha']] = ($f('scCampanha').value.split(/\s/)[0] || '');
+    l[idx['Campanha']] = String(cfg.campanha || '').split(/\s/)[0] || '';
     if(it.dataDesejada){
       const br = dataBR(it.dataDesejada);
       l[idx['Data Desejada']] = br;
       l[idx['Data de Faturamento']] = br;
     }
-    l[idx['Tabela de Preço']] = TABELA_PRECO[MARCA] || '';
+    l[idx['Tabela de Preço']] = TABELA_PRECO[cfg.marca || MARCA] || '';
     l[idx['Artigo']] = it.artigo;
     l[idx['Descrição']] = it.nome;
     // No sistema a cor vai com barra; aqui ela é guardada como veio da base.
     l[idx['Cor']] = String(it.corCodigo || it.cor || '').replace(/_/g, '/');
-    for(const [tam, q] of Object.entries(gradeFinal(it))){
+    for(const [tam, q] of Object.entries(grade)){
       // Um tamanho que não existe como coluna não pode sumir calado: some do
       // arquivo e o pedido sai menor do que o vendedor montou.
       if(idx[tam] === undefined){ foraDoLayout.add(tam); continue; }
@@ -2289,20 +3102,36 @@ function exportarXlsx(){
     l[idx['Total']] = total;
     aoa.push(l);
   }
+  return { aoa, foraDoLayout };
+}
 
-  if(aoa.length <= 1){ alert('Nenhum item do estoque tem quantidade definida.'); return; }
-  if(foraDoLayout.size){
-    alert('Estes tamanhos não existem no layout da planilha e ficaram de fora: ' +
-          [...foraDoLayout].join(', ') + '.\nConfira antes de importar.');
+function baixarPlanilha(itens, cfg, sufixo){
+  const { aoa, foraDoLayout } = montarPlanilha(itens, cfg);
+  if(aoa.length <= 1){
+    avisar('Sem quantidade', 'Nenhum item do estoque tem quantidade definida.');
+    return false;
   }
-
+  if(foraDoLayout.size) avisarTamanhosFora(foraDoLayout);
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Pedido');
   const d = new Date(), p2 = n => String(n).padStart(2, '0');
-  XLSX.writeFile(wb, `pedido_${MARCA}_${d.getFullYear()}${p2(d.getMonth()+1)}${p2(d.getDate())}` +
-    `_${p2(d.getHours())}${p2(d.getMinutes())}.xlsx`);
+  XLSX.writeFile(wb, `pedido_${cfg.marca || MARCA}_${d.getFullYear()}${p2(d.getMonth()+1)}` +
+    `${p2(d.getDate())}_${p2(d.getHours())}${p2(d.getMinutes())}${sufixo || ''}.xlsx`);
+  return true;
 }
+
+// Um tamanho sem coluna some do arquivo, e o pedido chega menor no EBM: isso
+// precisa de nome e de lista, não de um "ok" apressado.
+const avisarTamanhosFora = tams =>
+  avisar('Tamanhos fora do layout',
+    `Estes tamanhos não existem na planilha do EBM e ficaram de fora: ` +
+    `<b>${esc([...tams].join(', '))}</b>. Confira antes de importar.`);
+
+const nomeDoCliente = cod => {
+  const c = CLI.lista.find(x => String(x.codigo).trim() === String(cod).trim());
+  return c ? (c.nome || c.razao || '') : '';
+};
 
 /* ── modal ──────────────────────────────────────────────────────── */
 const celulas = (g, cls = '') => `<div class="celulas ${cls}">${Object.entries(g).map(([t,q]) =>
@@ -2426,27 +3255,74 @@ function duplicarItem(k){
   pintarSacola();
 }
 
+/* ── avisos e confirmações ──────────────────────────────────────── */
+// Todo recado passa por aqui. O alert() do navegador não se parece com o resto
+// da tela e, quando vêm dois seguidos, empilha caixas cinzas uma sobre a outra
+// — foi assim que a primeira versão apareceu.
+const SVG_ALERTA = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+  stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>
+  <path d="M12 9v4M12 17h.01"/></svg>`;
+const SVG_LIXO = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+  stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
+  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+  <path d="M10 11v6M14 11v6"/></svg>`;
+
+const FILA_DLG = [];
+let _dlgAberto = false, _dlgAcao = null;
+
+// Fila: o segundo recado espera o primeiro sair, em vez de sobrescrevê-lo.
+function mostrarDialogo(op){
+  FILA_DLG.push(op);
+  if(!_dlgAberto) proximoDialogo();
+}
+function proximoDialogo(){
+  const op = FILA_DLG.shift();
+  _dlgAcao = null;
+  if(!op){ _dlgAberto = false; $('confirma').hidden = true; return; }
+  _dlgAberto = true;
+  $('cfIco').className = 'cf-ico' + (op.perigo ? ' perigo' : '');
+  $('cfIco').innerHTML = op.perigo ? SVG_LIXO : SVG_ALERTA;
+  $('cfTit').textContent = op.titulo;
+  $('cfTxt').innerHTML = op.texto || '';
+  $('cfNao').hidden = !op.cancelar;
+  $('cfNao').textContent = op.cancelar || '';
+  $('cfSim').textContent = op.ok || 'Entendi';
+  $('cfSim').className = 'acao ' + (op.perigo ? 'perigo' : 'forte');
+  _dlgAcao = op.aoConfirmar || null;
+  $('confirma').hidden = false;
+  setTimeout(() => (op.cancelar ? $('cfNao') : $('cfSim')).focus(), 30);
+}
+const avisar = (titulo, texto) => mostrarDialogo({ titulo, texto });
+function fecharConfirma(){ proximoDialogo(); }
+$('cfNao').onclick = fecharConfirma;
+$('cfSim').onclick = () => {
+  const acao = _dlgAcao;
+  _dlgAcao = null;
+  if(acao) acao();
+  proximoDialogo();
+};
+$('confirma').onclick = e => { if(e.target.id === 'confirma') fecharConfirma(); };
+
 function esvaziarSacola(){
   const n = STATE.sacola.size;
   if(!n) return;
   // Quantos itens e quantas unidades: sem isso "tem certeza?" e uma pergunta
   // que nao ajuda a responder.
   const un = [...STATE.sacola.values()].reduce((a, i) => a + totalUnidades(i), 0);
-  $('cfTxt').innerHTML =
-    `Você vai perder <b>${nf(n)} ${n === 1 ? 'produto' : 'produtos'}</b>` +
-    (un ? ` e <b>${nf(un)} ${un === 1 ? 'unidade' : 'unidades'}</b> já marcadas` : '') +
-    '. Não dá para desfazer.';
-  $('confirma').hidden = false;
-  $('cfNao').focus();
+  mostrarDialogo({
+    titulo:'Esvaziar a sacola?',
+    texto:`Você vai perder <b>${nf(n)} ${n === 1 ? 'produto' : 'produtos'}</b>` +
+      (un ? ` e <b>${nf(un)} ${un === 1 ? 'unidade' : 'unidades'}</b> já marcadas` : '') +
+      '. Não dá para desfazer.',
+    ok:'Esvaziar', cancelar:'Manter', perigo:true,
+    aoConfirmar(){
+      STATE.sacola.clear(); STATE.aba = 'estoque';
+      salvarSacola(); pintarSacola();
+    }
+  });
 }
-function fecharConfirma(){ $('confirma').hidden = true; }
-$('cfNao').onclick = fecharConfirma;
-$('cfSim').onclick = () => {
-  STATE.sacola.clear(); STATE.aba = 'estoque';
-  salvarSacola(); pintarSacola();
-  fecharConfirma();
-};
-$('confirma').onclick = e => { if(e.target.id === 'confirma') fecharConfirma(); };
 // Redesenhar tudo aqui apagaria o campo sob o cursor, então só os números
 // mudam de lugar. Add e remove seguem redesenhando: ali não há nada digitando.
 // O card fica marcado até o vendedor resolver: salvar a grade ou escolher a
