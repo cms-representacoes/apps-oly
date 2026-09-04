@@ -696,6 +696,11 @@ button{font:inherit}
   background:color-mix(in srgb,var(--repasse) 7%,var(--carta))}
 .celulas.g-rep .cel .t{color:var(--repasse)}
 .celulas.g-rep .cel .q{color:var(--repasse)}
+.celulas.g-pro .cel{border-color:color-mix(in srgb,var(--plano) 34%,transparent);
+  background:color-mix(in srgb,var(--plano) 7%,var(--carta))}
+.celulas.g-pro .cel .t{color:var(--plano)}
+.celulas.g-pro .cel .q{color:var(--plano)}
+.sc-grade{margin-top:9px}
 @media(max-width:520px){
   .celulas{gap:4px}
   .cel{width:33px;padding:3px 0}
@@ -1022,7 +1027,7 @@ function carregarSacola(){
 // gradePedido; o pedido do Repasses usa num/gci/ebm/packSize/amount/grade.
 // Ter tudo desde agora evita reconstruir a sacola quando o envio for ligado.
 function itemEstoque(o){
-  return { key:`est|${o.k}`, origem:'estoque', dataDesejada:'',
+  return { key:`est|${o.k}`, origem:'estoque', dataDesejada:'', caixas:1,
     artigo:o.artigo, cor:o.cor, corCodigo:o.cor, nome:o.nome, produto:o.nome,
     codigo:o.artigo, pdv:o.pdv, imagem:o.imagem, categoria:o.categoria,
     gradeDisp:{ ...(o.pronta ? o.pronta.grade : {}) }, gradePedido:{},
@@ -1034,7 +1039,7 @@ function itemProducao(o, q){
   const tam = tamanhosDe(o);
   const disp = {};
   for(const t of tam) disp[t] = q.v;   // sem quebra por tamanho na base
-  return { key:`pro|${o.k}|${q.mes}`, origem:'producao', dataDesejada:'',
+  return { key:`pro|${o.k}|${q.mes}`, origem:'producao', dataDesejada:'', caixas:1,
     artigo:o.artigo, cor:o.cor, corCodigo:o.cor, nome:o.nome, produto:o.nome,
     codigo:o.artigo, pdv:o.pdv, imagem:o.imagem, categoria:o.categoria,
     mes:q.mes, quinzena:q.rot, teto:q.v,
@@ -1051,9 +1056,38 @@ function itemRepasse(o, lote){
     amount: packSize > 0 && lote.saldo >= packSize ? 1 : 0 };
 }
 const naSacola = k => STATE.sacola.has(k);
+
+// A grade que o vendedor digita é a de UMA caixa; as caixas multiplicam. Um
+// 1-2-2-1 com 2 caixas é um 2-4-4-2, e é esse número que vai para a planilha.
+// Sacola antiga não tem o campo, então 1 é o piso.
+const caixasDe = it => Math.max(1, Math.floor(Number(it.caixas || 1)));
+const somaGrade = g => Object.values(g || {}).reduce((a, b) => a + Number(b || 0), 0);
+function gradeFinal(it){
+  const cx = caixasDe(it), fim = {};
+  for(const [t, q] of Object.entries(it.gradePedido || {})){
+    const n = Number(q || 0) * cx;
+    if(n) fim[t] = n;
+  }
+  return fim;
+}
+// Quantas caixas ainda cabem: nenhum tamanho pode passar do disponível e, na
+// produção, a soma não pode passar do planejado para o mês.
+function maxCaixas(it){
+  const base = it.gradePedido || {};
+  const tams = Object.keys(base).filter(t => Number(base[t]) > 0);
+  if(!tams.length) return 1;
+  let teto = Infinity;
+  for(const t of tams){
+    const disp = Number(it.gradeDisp[t] || 0);
+    teto = Math.min(teto, Math.floor(disp / Number(base[t])));
+  }
+  if(it.origem === 'producao' && it.teto)
+    teto = Math.min(teto, Math.floor(Number(it.teto) / somaGrade(base)));
+  return Math.max(1, teto === Infinity ? 1 : teto);
+}
 const totalUnidades = it => it.origem === 'repasse'
   ? Number(it.amount || 0) * Number(it.packSize || 0)
-  : Object.values(it.gradePedido || {}).reduce((a, b) => a + Number(b || 0), 0);
+  : somaGrade(it.gradePedido) * caixasDe(it);
 
 /* ── utilidades ─────────────────────────────────────────────────── */
 const nf   = n => Number(n||0).toLocaleString('pt-BR');
@@ -2211,7 +2245,7 @@ function exportarXlsx(){
     l[idx['Descrição']] = it.nome;
     // No sistema a cor vai com barra; aqui ela é guardada como veio da base.
     l[idx['Cor']] = String(it.corCodigo || it.cor || '').replace(/_/g, '/');
-    for(const [tam, q] of Object.entries(it.gradePedido)){
+    for(const [tam, q] of Object.entries(gradeFinal(it))){
       // Um tamanho que não existe como coluna não pode sumir calado: some do
       // arquivo e o pedido sai menor do que o vendedor montou.
       if(idx[tam] === undefined){ foraDoLayout.add(tam); continue; }
@@ -2345,6 +2379,7 @@ function duplicarItem(k){
   const copia = { ...it, key: `${it.key}#${++_copia}${Date.now().toString(36)}`,
                   dataDesejada: '' };
   if(it.gradePedido) copia.gradePedido = { ...it.gradePedido };
+  copia.caixas = caixasDe(it);
   if(it.gradeDisp)   copia.gradeDisp   = { ...it.gradeDisp };
   if(it.grade)       copia.grade       = { ...it.grade };
   // Entra logo abaixo do original, não no fim: a comparação entre os dois é
@@ -2379,38 +2414,77 @@ $('cfSim').onclick = () => {
 $('confirma').onclick = e => { if(e.target.id === 'confirma') fecharConfirma(); };
 // Redesenhar tudo aqui apagaria o campo sob o cursor, então só os números
 // mudam de lugar. Add e remove seguem redesenhando: ali não há nada digitando.
+// Tudo no lugar, sem repintar o card: o botão que acabou de ser tocado não
+// pode sumir de baixo do dedo no meio do clique.
 function atualizarNumeros(){
   for(const it of STATE.sacola.values()){
     const bloco = $('scCorpo').querySelector(`[data-k="${CSS.escape(it.key)}"]`);
     if(!bloco) continue;
     const un = totalUnidades(it);
+    const rep = it.origem === 'repasse';
+    const base = rep ? 0 : somaGrade(it.gradePedido);
     const alvo = bloco.querySelector('[data-un]');
-    if(alvo) alvo.innerHTML = `<b>${nf(un)}</b> un selecionada${un === 1 ? '' : 's'}`;
+    if(alvo && !rep) alvo.innerHTML = base
+      ? `<b>${nf(un)}</b> un<br>${nf(base)} un por caixa`
+      : `<b>0</b> un selecionadas`;
+    // A grade exibida é a das caixas: mudar o passo muda cada número dela.
+    const cels = bloco.querySelectorAll('[data-grade] .cel .q');
+    if(cels.length && !rep){
+      const fim = Object.values(gradeFinal(it));
+      cels.forEach((c, i) => { if(fim[i] !== undefined) c.textContent = nf(fim[i]); });
+    }
     const q = bloco.querySelector('[data-qtd]');
     if(q){
-      const teto = Math.floor(Number(it.saldo || 0) / Math.max(1, Number(it.packSize || 1)));
-      q.textContent = nf(it.amount);
+      const atual = rep ? Number(it.amount || 0) : caixasDe(it);
+      const teto  = rep
+        ? Math.floor(Number(it.saldo || 0) / Math.max(1, Number(it.packSize || 1)))
+        : maxCaixas(it);
+      q.textContent = nf(atual);
       const bs = bloco.querySelectorAll('.passo button');
-      if(bs[0]) bs[0].disabled = it.amount <= 0;
-      if(bs[1]) bs[1].disabled = it.amount >= teto;
+      if(bs[0]) bs[0].disabled = atual <= (rep ? 0 : 1);
+      if(bs[1]) bs[1].disabled = atual >= teto;
     }
   }
   pintarRodapeSacola();
 }
 
 // Estoque: uma quantidade por tamanho, limitada ao que existe daquele tamanho.
-function mudarTamanho(k, tam, valor){
-  const it = STATE.sacola.get(k); if(!it) return;
-  const teto = Number(it.gradeDisp[tam] || 0);
-  const q = Math.max(0, Math.min(teto, Math.floor(Number(valor) || 0)));
-  if(q) it.gradePedido[tam] = q; else delete it.gradePedido[tam];
-  salvarSacola(); atualizarNumeros();
+/* ── pulo automático entre os tamanhos ──────────────────────────── */
+// A grade digitada é a de uma caixa (1-2-2-1), então é um dígito por tamanho:
+// o campo passa adiante no mesmo toque, sem esperar. Procurar o próximo campo
+// a cada número era o que travava a digitação da grade inteira.
+function pularTamanho(campo){
+  const campos = [...$('mgTam').querySelectorAll('input')];
+  const prox = campos[campos.indexOf(campo) + 1];
+  // No último fica parado: fechar o teclado sozinho seria pior que não pular.
+  if(!prox) return;
+  prox.focus();
+  prox.select();
 }
-// Repasse: a grade é fechada, então o que se escolhe é quantas caixas.
+$('mgTam').addEventListener('input', e => {
+  if(e.target.matches('input') && e.target.value !== '') pularTamanho(e.target);
+});
+$('mgTam').addEventListener('keydown', e => {
+  if(e.key === 'Enter' && e.target.matches('input')){ e.preventDefault(); pularTamanho(e.target); }
+});
+// Ao voltar a um tamanho que já tem número, o conteúdo vem selecionado: digitar
+// troca a quantidade, em vez de grudar no que já estava (2 + 7 = 27).
+$('mgTam').addEventListener('focusin', e => {
+  if(e.target.matches('input') && e.target.value !== '')
+    setTimeout(() => { if(document.activeElement === e.target) e.target.select(); }, 0);
+});
+
+// Repasse: a grade é fechada, então o que se escolhe é quantas caixas. No
+// estoque e na produção a caixa é a grade digitada, e o piso é 1 — zero caixas
+// seria um item na sacola sem pedido nenhum.
 function mudarCaixas(k, delta){
   const it = STATE.sacola.get(k); if(!it) return;
-  const teto = Math.floor(Number(it.saldo || 0) / Math.max(1, Number(it.packSize || 1)));
-  it.amount = Math.max(0, Math.min(teto, Number(it.amount || 0) + delta));
+  if(it.origem === 'repasse'){
+    const teto = Math.floor(Number(it.saldo || 0) / Math.max(1, Number(it.packSize || 1)));
+    it.amount = Math.max(0, Math.min(teto, Number(it.amount || 0) + delta));
+  }else{
+    it.caixas = Math.max(1, Math.min(maxCaixas(it), caixasDe(it) + delta));
+  }
   salvarSacola(); atualizarNumeros();
 }
 
@@ -2483,6 +2557,9 @@ function salvarGrade(){
     const q = Math.max(0, Math.min(teto, Math.floor(Number(i.value) || 0)));
     if(q) _gradeItem.gradePedido[i.dataset.t] = q;
   }
+  // A grade mudou: o número de caixas que cabia antes pode não caber mais.
+  if(_gradeItem.origem !== 'repasse')
+    _gradeItem.caixas = Math.min(caixasDe(_gradeItem), maxCaixas(_gradeItem));
   salvarSacola(); pintarSacola();
   fecharGrade();
 }
@@ -2564,25 +2641,33 @@ function itemHtml(it){
       </div></div>`;
   }
 
-  // Só os tamanhos escolhidos: a lista inteira virava uma parede de zeros e
-  // escondia a grade de verdade. Para mexer no resto, o chip reabre a grade
-  // cheia. A ordem vem de gradeDisp, que é a ordem canônica dos tamanhos.
+  // A grade aqui é só leitura: ela mostra o resultado das caixas, e o que se
+  // digita — a grade de uma caixa — se edita no chip "Grade". Um campo que
+  // exibe 4 mas guarda 2 seria uma armadilha.
   const prod = it.origem === 'producao';
-  const tams = Object.keys(it.gradeDisp).filter(t => Number(it.gradePedido[t]) > 0);
-  const grade = tams.length
-    ? `<div class="sc-tam${prod ? ' t-pro' : ''}">${tams.map(t => `<label>
-        <span class="t">${esc(t)}</span>
-        <input type="number" inputmode="numeric" min="0" max="${it.gradeDisp[t]}"
-          value="${it.gradePedido[t]}" placeholder="0"
-          data-tam="${esc(it.key)}" data-t="${esc(t)}" aria-label="Tamanho ${esc(t)}">
-        ${prod ? '' : `<span class="d">${nf(it.gradeDisp[t])}</span>`}</label>`).join('')}</div>`
-    // Entrou pelo "preencher depois": sem isto o item ficaria mudo no card.
+  const base = somaGrade(it.gradePedido);
+  const grade = base
+    ? `<div class="sc-grade" data-grade>${celulas(gradeFinal(it), prod ? 'g-pro' : 'g-est')}</div>`
+    // Entrou sem grade: sem isto o item ficaria mudo no card.
     : `<button class="sc-semgrade" data-editar="${esc(it.key)}" style="--org:var(${prod ? '--plano' : '--pronta'})">
         ${svgIcone(prod ? 'c-plano' : 'c-pronta', 12)}Definir a grade</button>`;
 
+  const cx = caixasDe(it), teto = maxCaixas(it);
+  const passo = base
+    ? `<div class="sc-cx">
+        <span class="passo">
+          <button data-cx="${esc(it.key)}" data-d="-1" ${cx <= 1 ? 'disabled' : ''}>−</button>
+          <span data-qtd>${nf(cx)}</span>
+          <button data-cx="${esc(it.key)}" data-d="1" ${cx >= teto ? 'disabled' : ''}>+</button>
+        </span>
+        <span class="info" data-un><b>${nf(un)}</b> un
+          <br>${nf(base)} un por caixa</span>
+      </div>`
+    : `<div class="sc-cx"><span class="info" data-un><b>0</b> un selecionadas</span></div>`;
+
   return `<div class="sc-item" data-k="${esc(it.key)}">${cab}
     ${grade}
-    <div class="sc-cx"><span class="info" data-un><b>${nf(un)}</b> un selecionada${un === 1 ? '' : 's'}</span></div>
+    ${passo}
   </div>`;
 }
 
@@ -2684,8 +2769,6 @@ $('scCorpo').addEventListener('click', e => {
   if(ed) return editarGrade(ed.dataset.editar);
 });
 $('scCorpo').addEventListener('change', e => {
-  const i = e.target.closest('[data-tam]');
-  if(i) return mudarTamanho(i.dataset.tam, i.dataset.t, i.value);
   const dt = e.target.closest('[data-data]');
   if(dt) mudarData(dt.dataset.data, dt.value);
 });
