@@ -1424,16 +1424,58 @@ async function json(arquivo){
   return r.json();
 }
 
+// O que o admin manda esconder. São três listas com chaves diferentes, e cada
+// uma vale para uma origem:
+//   ocultos            → lote de repasse, "CODIGO|COR|GCI" (admin/dispo)
+//   ocultosDisp        → produto de estoque/produção, "ARTIGO|COR"
+//   exclusivos         → DTC/ML, "ARTIGO|COR": não podem ser oferecidos
+// O Worker responde com o arquivo do GitHub na hora, então esconder no painel
+// vale na vitrine em seguida; o arquivo estático é o plano B, que também é o
+// que funciona fora do domínio de produção.
+async function bloqueios(){
+  // Com prazo: a vitrine inteira espera por estas listas, e um Worker lento
+  // deixaria a tela em branco. Passou de 6s, vale o arquivo estatico.
+  const doWorker = async (action) => {
+    const corta = new AbortController();
+    const t = setTimeout(() => corta.abort(), 6000);
+    try{
+      const r = await fetch(WORKER_URL, { method:'PATCH', signal:corta.signal,
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ action }) });
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      return await r.json();
+    }finally{ clearTimeout(t); }
+  };
+  const pegar = async (action, arquivo) => {
+    try{ return await doWorker(action); }
+    catch(_){ try{ return await json(arquivo); }catch(__){ return null; } }
+  };
+  const [oc, ocD, exc] = await Promise.all([
+    pegar('getOcultos', 'ocultos.json'),
+    pegar('getOcultosDisp', 'ocultos_disponibilidades.json'),
+    pegar('getExclusivos', 'exclusivos.json')
+  ]);
+  return {
+    lotes: new Set(Array.isArray(oc) ? oc : []),
+    // Exclusivo e oculto barram o mesmo produto: um conjunto só resolve os dois.
+    produtos: new Set([
+      ...(Array.isArray(ocD) ? ocD : []),
+      ...(exc && typeof exc === 'object' && !Array.isArray(exc) ? Object.keys(exc) : [])
+    ])
+  };
+}
+
 async function carregar(){
   $('estado').innerHTML =
     '<div class="aviso"><span class="girando"></span><h2>Carregando a vitrine</h2>' +
     '<p>Reunindo repasse, pronta entrega e meta produtiva.</p></div>';
   try{
-    const [dispo, disponib, produtos, pedidos] = await Promise.all([
+    const [dispo, disponib, produtos, pedidos, oculto] = await Promise.all([
       json('dispo.json'), json('disponibilidades.json'),
-      json('produtos.json'), json('pedidos.json').catch(() => [])
+      json('produtos.json'), json('pedidos.json').catch(() => []),
+      bloqueios()
     ]);
-    STATE.produtos = montar(dispo, disponib, produtos, pedidos);
+    STATE.produtos = montar(dispo, disponib, produtos, pedidos, oculto);
     $('estado').innerHTML = '';
     aplicar();
   }catch(e){
@@ -1462,7 +1504,15 @@ function reservasPorNum(pedidos){
   return r;
 }
 
-function montar(dispo, disponib, produtos, pedidos){
+// As chaves são as mesmas que os dois painéis gravam — copiar o formato errado
+// aqui faria o filtro passar batido sem erro nenhum.
+const chaveLote = r => `${String(r.codigo || '').trim().toUpperCase()}|` +
+  `${String(r.cor || '').trim().toUpperCase()}|${String(r.gci || '').trim()}`;
+const chaveProduto = i => `${String(i.artigo || '').trim().toUpperCase()}|` +
+  `${String(i.cor || '').trim().toUpperCase()}`;
+
+function montar(dispo, disponib, produtos, pedidos, oculto){
+  const bloq = oculto || { lotes:new Set(), produtos:new Set() };
   const mapa = new Map();
   const refCor = new Map();   // artigo|cor — a linha exata
   const refArt = new Map();   // artigo — só para o que não muda com a cor
@@ -1484,6 +1534,7 @@ function montar(dispo, disponib, produtos, pedidos){
 
   // 1) disponibilidades: pronta entrega e meta produtiva
   for(const i of (disponib || [])){
+    if(bloq.produtos.has(chaveProduto(i))) continue;
     const o = pega(i.artigo, i.cor);
     o.nome      = o.nome      || String(i.descricao || '').trim();
     o.marca     = o.marca     || String(i.marca || '').toLowerCase();
@@ -1519,6 +1570,10 @@ function montar(dispo, disponib, produtos, pedidos){
   for(const r of (dispo || [])){
     const [cod, nome] = desinverte(r.codigo, r.produto);
     if(!cod) continue;
+    // O painel esconde LOTE, não produto: o CHALLENGER tem seis entregas e
+    // cinco delas estão ocultas. Filtrar o produto inteiro tiraria a sexta
+    // junto, e ignorar a lista somava as seis no saldo do card.
+    if(bloq.lotes.has(chaveLote(r))) continue;
     const o = pega(cod, r.cor);
     const pc = refCor.get(chave(cod, r.cor));      // mesma cor
     const p  = pc || refArt.get(norm(cod));         // qualquer cor do artigo
