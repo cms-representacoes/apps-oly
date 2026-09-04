@@ -715,14 +715,18 @@ button{font:inherit}
 .lote .s{font-size:12px;font-weight:700;color:var(--tinta);font-variant-numeric:tabular-nums;flex:none}
 .lote-d{font-size:10.5px;color:var(--fraco);margin-top:1px}
 .lote .celulas{margin-top:7px}
-.lote-add,.pro-add{margin-top:9px;padding:6px;font-size:11px}
+.lote-add{margin-top:9px;padding:6px;font-size:11px}
 /* Ja na sacola: perde o preenchimento e vira aviso, nao mais um convite.
    Vale para o lote, para o mes de producao e para o botao do rodape. */
 .acao.na-sacola:disabled{color:var(--tenue);border:1px dashed var(--linha-forte);
   cursor:default;background:none;box-shadow:none}
 
-/* Mesmo bloco do lote, na cor da produção. */
-.lote.plano .n{color:var(--plano)}
+.meses{display:flex;flex-direction:column}
+.mes{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+  padding:6px 0;border-bottom:1px solid var(--linha)}
+.mes:last-child{border-bottom:0}
+.mes .m{font-size:12px;font-weight:600;color:var(--texto)}
+.mes .v{font-weight:700;color:var(--tinta);font-size:12.5px;font-variant-numeric:tabular-nums}
 .folha-pe{padding:13px 17px;border-top:1px solid var(--linha);display:flex;gap:8px}
 .folha-pe > *{flex:1;margin-top:0}
 
@@ -2266,21 +2270,10 @@ function abrirModal(i){
         </div>`).join('')}</div></div>`;
   }
   if(o.meta){
-    // Cada mês é uma reserva com teto próprio, como um lote de repasse — então
-    // ganha o mesmo formato e o mesmo botão, em vez de uma lista para ler e um
-    // botão no rodapé para escolher o mês depois.
-    h += `<div class="bloco"><p class="rot r-plano">${svgIcone('c-plano')}Produção · ${nf(o.meta.quinzenas.length)} ${o.meta.quinzenas.length === 1 ? 'mês' : 'meses'}</p>
-      <div class="lotes">${o.meta.quinzenas.map(q => {
-        const dentro = naSacola(`pro|${o.k}|${q.mes}`);
-        return `<div class="lote plano">
-          <div class="lote-l1">
-            <span class="n">${esc(q.rot)}</span>
-            <span class="s">${nf(q.v)} un</span>
-          </div>
-          <button class="acao forte pro-add na-sacola" data-mes="${esc(q.mes)}" ${dentro ? 'disabled' : ''}>
-            ${dentro ? 'Já está na sacola' : 'Adicionar à sacola'}
-          </button>
-        </div>`; }).join('')}</div></div>`;
+    h += `<div class="bloco"><p class="rot r-plano">${svgIcone('c-plano')}Produção</p>
+      <div class="meses">${o.meta.quinzenas.map(({rot, v}) =>
+        `<div class="mes"><span class="m">${esc(rot)}</span>
+          <span class="v">${nf(v)} un</span></div>`).join('')}</div></div>`;
   }
   $('mCorpo').innerHTML = h;
 
@@ -2295,6 +2288,14 @@ function abrirModal(i){
     pe += `<button class="acao forte na-sacola" id="mAddEst" ${dentro ? 'disabled' : ''}>` +
       `${dentro ? 'Estoque na sacola' : 'Adicionar estoque'}</button>`;
   }
+  // O mês é sempre o mais próximo, o mesmo do chip do card. Vai escrito no
+  // botão para ninguém descobrir só na sacola qual mês entrou.
+  if(o.meta && o.meta.quinzenas.length){
+    const q0 = o.meta.quinzenas[0];
+    const dentro = naSacola(`pro|${o.k}|${q0.mes}`);
+    pe += `<button class="acao${o.pronta ? '' : ' forte'} na-sacola" id="mAddPro" ${dentro ? 'disabled' : ''}>` +
+      `${dentro ? 'Produção na sacola' : 'Adicionar produção · ' + esc(q0.rot)}</button>`;
+  }
   $('mPe').innerHTML = pe;
   // Delegação: o produto aberto fica no closure, então nada precisa viajar
   // por atributo — nem aspas nem acento quebram.
@@ -2302,12 +2303,10 @@ function abrirModal(i){
   // digitá-la antes era um passo que ninguém usava.
   const addEst = $('mAddEst');
   if(addEst) addEst.onclick = () => { porNaSacola(itemEstoque(o)); abrirModal(i); };
-  $('mCorpo').querySelectorAll('.pro-add').forEach(b => {
-    b.onclick = () => {
-      const q = o.meta.quinzenas.find(x => x.mes === b.dataset.mes);
-      if(q){ porNaSacola(itemProducao(o, q)); abrirModal(i); }
-    };
-  });
+  const addPro = $('mAddPro');
+  if(addPro) addPro.onclick = () => {
+    porNaSacola(itemProducao(o, o.meta.quinzenas[0])); abrirModal(i);
+  };
   $('mCorpo').querySelectorAll('.lote-add').forEach(b => {
     b.onclick = () => {
       const l = o.repasse.lotes.find(x => x.num === b.dataset.lote);
