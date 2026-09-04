@@ -721,6 +721,11 @@ button{font:inherit}
   font-size:12px;font-weight:800;color:#fff;border:0;border-radius:999px}
 .ped-acao.pdf{background:linear-gradient(145deg,#F2557A 0%,#D6294B 55%,#96122E 100%)}
 .ped-acao.xls{background:linear-gradient(145deg,#34C77B 0%,#128A4F 55%,#0A5C35 100%)}
+/* Contornado, nao preenchido: apagar nao pode competir com PDF e planilha,
+   que sao o que o vendedor vem fazer aqui. */
+.ped-acao.apagar{background:var(--carta);color:#C2183F;
+  border:1px solid color-mix(in srgb,#C2183F 40%,transparent)}
+.ped-acao.apagar:hover{background:rgba(224,36,94,.07);border-color:#C2183F}
 .ped-acao:hover{filter:brightness(1.06)}
 .ped-acao:disabled{opacity:.6;cursor:progress}
 
@@ -1069,6 +1074,13 @@ body.trava{overflow:hidden}
 
     <footer class="ped-pe" id="pedPe" hidden>
       <span class="ped-sel" id="pedSel">—</span>
+      <button class="acao ped-acao apagar" id="pedApagar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+          <path d="M10 11v6M14 11v6"/></svg>
+        <span>Apagar</span></button>
       <button class="acao ped-acao pdf" id="pedPdf">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -2497,6 +2509,76 @@ $('pedXlsx').onclick = () => {
 };
 
 $('pedPdf').onclick = () => pdfDosPedidos(selecionados());
+
+// O Worker sabe zerar o histórico inteiro (com backup automático antes), mas
+// não sabe apagar um pedido só. Então apagar poucos é zerar e devolver os que
+// ficam — e é por isso que o número de sobreviventes aparece na pergunta: são
+// eles que serão regravados, um a um.
+$('pedApagar').onclick = () => {
+  const alvos = selecionados();
+  if(!alvos.length) return;
+  const ids = new Set(alvos.map(p => p.id));
+  const ficam = PED.lista.filter(p => !ids.has(p.id));
+  mostrarDialogo({
+    titulo: alvos.length === 1 ? 'Apagar este pedido?' : `Apagar ${nf(alvos.length)} pedidos?`,
+    texto: `Some da lista de <b>${esc(nomeCurto(nomeDoVendedor(PED.vendedor)))}</b>` +
+      (ficam.length
+        ? `, e os outros <b>${nf(ficam.length)}</b> são regravados em seguida.`
+        : '. A lista fica vazia.') +
+      ' O servidor guarda um backup antes de apagar.',
+    ok:'Apagar', cancelar:'Manter', perigo:true,
+    aoConfirmar(){ apagarPedidos(ids, ficam); }
+  });
+};
+
+async function apagarPedidos(ids, ficam){
+  const btn = $('pedApagar');
+  ocupado(btn, 'Apagando…');
+  const chave = CHAVE_HIST(PED.vendedor);
+  try{
+    const r = await fetch(WORKER_URL, { method:'PATCH',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ action:'clearPedidosHistorico', comissionista:chave }) });
+    const j = await r.json().catch(() => null);
+    if(!r.ok || !j || !j.success) throw new Error((j && j.error) || 'HTTP ' + r.status);
+
+    // De volta um a um. Se algum falhar, o vendedor precisa saber quais — o
+    // backup no servidor é o que garante que nada se perdeu de verdade.
+    const falhou = [];
+    for(let i = 0; i < ficam.length; i++){
+      passo(btn, `${i + 1}/${ficam.length}`);
+      try{
+        const rr = await fetch(WORKER_URL, { method:'PATCH',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ action:'savePedidoHistorico', comissionista:chave, pedido:ficam[i] }) });
+        const jj = await rr.json().catch(() => null);
+        if(!rr.ok || !jj || !jj.success) throw new Error('falhou');
+      }catch(_){ falhou.push(ficam[i]); }
+    }
+    limparLocal(chave, ids);
+    PED.cache = {}; PED.sel.clear(); PED.abertos.clear();
+    await carregarPedidos(true);
+    if(falhou.length){
+      avisar('Nem tudo voltou',
+        `<b>${nf(falhou.length)}</b> ${falhou.length === 1 ? 'pedido não foi regravado' :
+          'pedidos não foram regravados'} depois de apagar. O servidor tem o backup de ` +
+        'antes da limpeza — avise o suporte antes de mexer de novo.');
+    }
+  }catch(e){
+    avisar('Não deu para apagar', esc(e.message || 'Tente de novo em alguns instantes.'));
+  }finally{ liberado(btn); }
+}
+
+// A cópia do aparelho tem que sumir junto: senão o pedido apagado voltaria a
+// aparecer na próxima abertura, vindo do localStorage.
+function limparLocal(chave, ids){
+  try{
+    const t = JSON.parse(localStorage.getItem(LOCAL_PED) || '{}');
+    if(!Array.isArray(t[chave])) return;
+    t[chave] = t[chave].filter(p => !ids.has(p && p.id));
+    localStorage.setItem(LOCAL_PED, JSON.stringify(t));
+  }catch(_){ /* sem cópia local, nada a limpar */ }
+}
 
 // ── PDF do pedido, no mesmo desenho do catálogo digital ────────────────
 // Cabeçalho CMS roxo, bloco de dados, um card por produto com foto, grade em
