@@ -2299,18 +2299,18 @@ function abrirModal(i){
   $('mPe').innerHTML = pe;
   // Delegação: o produto aberto fica no closure, então nada precisa viajar
   // por atributo — nem aspas nem acento quebram.
-  // Vai direto para a sacola: a grade se preenche lá, e um modal só para
-  // digitá-la antes era um passo que ninguém usava.
+  // Vai direto para a sacola e fecha: a grade se preenche lá, e o modal aberto
+  // depois do clique era mais um toque para sair dele.
   const addEst = $('mAddEst');
-  if(addEst) addEst.onclick = () => { porNaSacola(itemEstoque(o)); abrirModal(i); };
+  if(addEst) addEst.onclick = () => { porNaSacola(itemEstoque(o)); fecharModal(); };
   const addPro = $('mAddPro');
   if(addPro) addPro.onclick = () => {
-    porNaSacola(itemProducao(o, o.meta.quinzenas[0])); abrirModal(i);
+    porNaSacola(itemProducao(o, o.meta.quinzenas[0])); fecharModal();
   };
   $('mCorpo').querySelectorAll('.lote-add').forEach(b => {
     b.onclick = () => {
       const l = o.repasse.lotes.find(x => x.num === b.dataset.lote);
-      if(l) { porNaSacola(itemRepasse(o, l)); abrirModal(i); }
+      if(l) { porNaSacola(itemRepasse(o, l)); fecharModal(); }
     };
   });
   $('modal').hidden = false;
