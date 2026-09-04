@@ -97,6 +97,19 @@ button{font:inherit}
   line-height:1.15;letter-spacing:-.015em;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
 .tit b .quem{font-weight:600;color:var(--tenue);font-size:12.5px}
+/* flex, nao inline-flex: como bloco ele nao arrasta a entrelinha do pai e o
+   cabecalho continua com a mesma altura dos botoes redondos. */
+.tit .upd{display:flex;align-items:center;margin-top:1px;max-width:100%;
+  font-size:10px;font-weight:700;color:var(--tenue);white-space:nowrap;
+  line-height:1.1;letter-spacing:0;overflow:hidden}
+.tit .upd[hidden]{display:none}
+/* o respiro fica so depois do relogio: com gap entre todos, "atualizado ha 2h"
+   ganhava um espaco duplo no meio */
+.tit .upd svg{flex:none;opacity:.8;margin-right:3px}
+.tit .upd span{overflow:hidden;text-overflow:ellipsis}
+/* Em tela estreita "atualizado" nao cabe sem empurrar a lupa: o relogio ja
+   diz do que se trata, e a data cheia continua no toque longo. */
+@media(max-width:480px){ .tit .upd .pal{display:none} }
 .icone{width:32px;height:32px;border-radius:999px;border:1px solid var(--linha);background:var(--carta);
   color:var(--fraco);display:flex;align-items:center;justify-content:center;flex:none;cursor:pointer;
   font-size:13px;text-decoration:none}
@@ -729,7 +742,12 @@ button{font:inherit}
   <div class="topo-l1">
     <span class="selo-cms">CMS</span>
     <button class="marca-btn" id="btnMarca"></button>
-    <span class="tit"><b id="titMarca">—</b></span>
+    <span class="tit"><b id="titMarca">—</b>
+      <span class="upd" id="updChip" hidden>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+        <span class="pal">atualizado&nbsp;</span><span id="updTxt"></span></span></span>
     <span class="busca" id="busca">
       <button class="lupa" id="btnBusca" aria-label="Buscar" aria-expanded="false">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1087,6 +1105,56 @@ function mesDaData(br){                          // '01/11/2026' → 'NOV'
   const m = String(br||'').match(/^(\d{2})\/(\d{2})\//);
   return m ? MES[Number(m[2])-1] || '' : '';
 }
+
+/* ── última atualização do estoque ──────────────────────────────── */
+const WORKER_URL = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
+// Não há timestamp dentro do disponibilidades.json: o Worker devolve a data do
+// último commit do arquivo, que é quando o admin gravou. Mesma fonte do selo da
+// vitrine de disponibilidades, então os dois nunca discordam.
+let _updQuando = null, _updBuscaEm = 0;
+
+async function carregarAtualizacao(){
+  // O app volta do segundo plano sem recarregar: sem esta releitura o "há 2h"
+  // envelheceria na tela sem ninguém perceber.
+  if(Date.now() - _updBuscaEm < 60000) return pintarAtualizacao();
+  _updBuscaEm = Date.now();
+  try{
+    const r = await fetch(WORKER_URL, { method:'PATCH',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ action:'getDispoInfo' }) });
+    if(r.ok){
+      const j = await r.json();
+      if(j && j.atualizadoEm) _updQuando = new Date(j.atualizadoEm);
+    }
+  }catch(_){ /* sem data, sem selo — não é motivo de erro na tela */ }
+  pintarAtualizacao();
+}
+
+function pintarAtualizacao(){
+  const chip = $('updChip');
+  chip.hidden = !_updQuando;
+  if(!_updQuando) return;
+  $('updTxt').textContent = faQuanto(_updQuando);
+  chip.title = 'Estoque e produção atualizados em ' +
+    _updQuando.toLocaleString('pt-BR', { dateStyle:'short', timeStyle:'short' });
+}
+
+// "há 20 min" perto, data curta depois: o que o vendedor quer saber é se o
+// número que ele vai falar para o cliente ainda vale.
+function faQuanto(d){
+  const min = Math.floor((Date.now() - d.getTime()) / 60000);
+  if(min < 1)  return 'agora mesmo';
+  if(min < 60) return `há ${min} min`;
+  const h = Math.floor(min / 60);
+  if(h < 24)   return `há ${h}h`;
+  const dias = Math.floor(h / 24);
+  if(dias === 1) return 'ontem';
+  if(dias < 7)   return `há ${dias} dias`;
+  return 'em ' + d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+}
+document.addEventListener('visibilitychange', () => {
+  if(!document.hidden) carregarAtualizacao();
+});
 
 /* ── carga ──────────────────────────────────────────────────────── */
 async function json(arquivo){
@@ -2837,6 +2905,7 @@ if(!SESSAO){
   carregarSacola();
   pintarSacola();
   carregar();
+  carregarAtualizacao();
 }
 </script>
 </body>
