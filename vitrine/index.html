@@ -1547,6 +1547,10 @@ function montar(dispo, disponib, produtos, pedidos, oculto){
   // 1) disponibilidades: pronta entrega e meta produtiva
   for(const i of (disponib || [])){
     if(bloq.produtos.has(chaveProduto(i))) continue;
+    // O admin marca o que ainda nao tem foto, e a vitrine de disponibilidades
+    // ja respeitava isso. Aqui a marcacao passava batido: o card saia com o
+    // buraco branco no lugar da imagem, porque o arquivo nao existe mesmo.
+    if(i._aguardandoImagem || i._oculto) continue;
     const o = pega(i.artigo, i.cor);
     o.nome      = o.nome      || String(i.descricao || '').trim();
     o.marca     = o.marca     || String(i.marca || '').toLowerCase();
