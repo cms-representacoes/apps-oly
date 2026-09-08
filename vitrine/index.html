@@ -766,21 +766,16 @@ button{font:inherit}
 .lk-ops button .q{font-size:10px;font-weight:600;opacity:.75}
 .lk-ajuda{margin:7px 0 0;font-size:10.5px;color:var(--tenue);line-height:1.45}
 
-.lk-ok{text-align:center;padding:4px 0 2px}
-.lk-ok-ico{width:46px;height:46px;border-radius:50%;margin:0 auto 12px;
-  display:flex;align-items:center;justify-content:center;
-  background:var(--pronta-fundo);color:var(--pronta)}
-.lk-ok h4{margin:0 0 4px;font-size:16px;font-weight:800;color:var(--tinta)}
-.lk-ok p{margin:0 0 12px;font-size:12px;color:var(--fraco)}
-.lk-url{border:1px dashed var(--linha-forte);border-radius:9px;padding:9px 11px;
-  background:var(--papel);font-size:11.5px;font-weight:700;color:var(--tinta);
-  word-break:break-all;text-align:left}
-.lk-acoes{display:flex;gap:8px;margin-top:11px}
-.lk-acoes > *{flex:1;margin-top:0;text-align:center;justify-content:center}
-.lk-zap{display:inline-flex;align-items:center;justify-content:center;gap:6px;
-  margin-top:10px;font-size:11.5px;font-weight:700;color:var(--pronta);
-  text-decoration:none}
-.lk-zap:hover{text-decoration:underline}
+.lk-ok-l1{display:flex;align-items:center;gap:6px;margin:0 0 9px;
+  font-size:12px;color:var(--fraco);flex-wrap:wrap}
+.lk-ok-l1 svg{flex:none;color:var(--pronta)}
+.lk-ok-l1 b{font-size:13px;font-weight:800;color:var(--tinta)}
+.lk-url{border:1px dashed var(--linha-forte);border-radius:9px;padding:8px 10px;
+  background:var(--papel);font-size:11px;font-weight:700;color:var(--tinta);
+  word-break:break-all}
+.lk-acoes{display:flex;gap:7px;margin-top:9px}
+.lk-acoes > *{flex:1;margin-top:0;text-align:center;justify-content:center;
+  padding:8px 6px;font-size:11.5px}
 
 /* ── painel de filtros ───────────────────────────────────────────── */
 .pn-bg{position:fixed;inset:0;background:rgba(16,18,20,.5);backdrop-filter:blur(2px);
@@ -868,6 +863,7 @@ body.trava{overflow:hidden}
 .folha-topo h3{margin:0;font-size:16px;font-weight:600;color:var(--tinta);letter-spacing:-.015em}
 .folha-topo p{margin:2px 0 0;font-size:11.5px;color:var(--tenue);}
 .folha-corpo{padding:15px 17px;overflow-y:auto;display:flex;flex-direction:column;gap:16px}
+.folha-corpo[hidden]{display:none}
 .bloco .rot{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
   color:var(--fraco);margin:0 0 8px;display:flex;align-items:center;gap:7px}
 .bloco .rot svg{flex:none}
@@ -1174,18 +1170,17 @@ body.trava{overflow:hidden}
     </div>
     <div class="folha-corpo" id="lkPronto" hidden>
       <div class="lk-ok">
-        <span class="lk-ok-ico">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 6 9 17l-5-5"/></svg></span>
-        <h4 id="lkOkTit">Link criado</h4>
-        <p id="lkOkSub">—</p>
+        <p class="lk-ok-l1">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 6 9 17l-5-5"/></svg>
+          <b>Link criado</b><span id="lkOkSub">—</span></p>
         <div class="lk-url" id="lkUrl"></div>
         <div class="lk-acoes">
-          <button class="acao" id="lkCopiar">Copiar link</button>
-          <a class="acao forte" id="lkAbrir" target="_blank" rel="noopener">Abrir</a>
+          <button class="acao" id="lkCopiar">Copiar</button>
+          <a class="acao" id="lkAbrir" target="_blank" rel="noopener">Abrir</a>
+          <a class="acao forte" id="lkZap" target="_blank" rel="noopener">WhatsApp</a>
         </div>
-        <a class="lk-zap" id="lkZap" target="_blank" rel="noopener">Enviar no WhatsApp</a>
       </div>
     </div>
     <div class="folha-pe" id="lkPe">
@@ -2986,7 +2981,8 @@ function abrirLink(){
       if(marcados.some(tem)) LK.origens.add(id);
   }
   LK.criado = null;
-  $('lkForm').hidden = false; $('lkPronto').hidden = true; $('lkPe').hidden = false;
+  $('lkForm').hidden = false; $('lkPronto').hidden = true;
+  pintarPeLink();
   $('lkSub').textContent = `${MARCAS[MARCA].nome} · ${nomeCurto((SESSAO && SESSAO.nome) || '')}`;
   $('lkCliente').value = '';
   $('lkCliDica').textContent = '';
@@ -3086,11 +3082,10 @@ async function gerarLink(){
         horas = Math.round((Number(jj.link.expiraEm) - Date.now()) / 36e5);
     }catch(_){ /* sem confirmação, mostra o que foi pedido */ }
 
-    $('lkForm').hidden = true; $('lkPronto').hidden = false; $('lkPe').hidden = true;
-    $('lkOkTit').textContent = 'Link criado';
-    $('lkOkSub').innerHTML = `<b>${nf(dentro.length)}</b> ` +
-      `${dentro.length === 1 ? 'produto' : 'produtos'} para <b>${esc(nomeDoCliente(cliente) || cliente)}</b>` +
-      ` · expira em <b>${textoValidade(horas)}</b>`;
+    $('lkForm').hidden = true; $('lkPronto').hidden = false;
+    $('lkSub').textContent = `${esc(nomeDoCliente(cliente) || cliente)}`;
+    $('lkOkSub').textContent = `${nf(dentro.length)} ` +
+      `${dentro.length === 1 ? 'produto' : 'produtos'} · expira em ${textoValidade(horas)}`;
     $('lkUrl').textContent = url;
     $('lkAbrir').href = url;
     $('lkZap').href = 'https://wa.me/?text=' + encodeURIComponent(
@@ -3103,18 +3098,24 @@ async function gerarLink(){
     }
   }catch(e){
     avisar('Não deu para gerar o link', esc(e.message || 'Tente de novo.'));
-  }finally{ liberado(btn); }
+  }finally{ liberado(btn); pintarPeLink(); }
+}
+// Criado, o botao do rodape vira saida: gerar de novo ali criaria um segundo
+// link para o mesmo cliente sem ninguem pedir.
+function pintarPeLink(){
+  $('lkCancelar').hidden = !!LK.criado;
+  $('lkGerar').textContent = LK.criado ? 'Fechar' : 'Gerar link';
 }
 const textoValidade = h => h >= 24 && h % 24 === 0
   ? `${h / 24} ${h === 24 ? 'dia' : 'dias'}` : `${Math.max(1, h)} horas`;
 
-$('lkGerar').onclick = gerarLink;
+$('lkGerar').onclick = () => { LK.criado ? fecharLink() : gerarLink(); };
 $('lkCopiar').onclick = async () => {
   if(!LK.criado) return;
   try{
     await navigator.clipboard.writeText(LK.criado.url);
     $('lkCopiar').textContent = 'Copiado';
-    setTimeout(() => { $('lkCopiar').textContent = 'Copiar link'; }, 1600);
+    setTimeout(() => { $('lkCopiar').textContent = 'Copiar'; }, 1600);
   }catch(_){
     avisar('Não deu para copiar', 'Toque e segure no endereço para copiar à mão.');
   }

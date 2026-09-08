@@ -116,11 +116,13 @@ button{ font:inherit }
   color:var(--plano) }
 .mes b{ font-weight:800 }
 
-.quero-bar{ margin-top:auto; padding-top:10px; display:flex; align-items:center; gap:8px }
+.quero-bar{ margin-top:auto; padding-top:10px; display:flex; align-items:flex-start; gap:8px }
 .btn-quero{ flex:1; border:1px solid var(--linha-forte); background:var(--carta);
-  color:var(--texto); border-radius:9px; padding:8px; font-size:12px; font-weight:800;
+  color:var(--texto); border-radius:9px; padding:9px 8px; font-size:12px; font-weight:800;
   cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px }
-.btn-quero:hover{ border-color:var(--marca); color:var(--marca) }
+.btn-quero:hover:not(:disabled){ border-color:var(--marca); color:var(--marca) }
+/* Sem quantidade não há o que adicionar: o botão fica de fora até ter número. */
+.btn-quero:disabled{ opacity:.45; cursor:not-allowed; border-style:dashed }
 .card.quero .btn-quero{ border-color:transparent; color:#fff;
   background:linear-gradient(145deg,var(--marca-claro),var(--marca) 55%,var(--marca-escuro)) }
 .qtd{ width:74px; flex:none }
@@ -221,7 +223,8 @@ const foto = p => IMG + (p.imagem || (p.artigo + '_' + corArquivo(p.cor))) + '.j
 
 const CODIGO = new URLSearchParams(location.search).get('link') || '';
 const MARCAS = { oly:'Olympikus', ua:'Under Armour' };
-const ESCOLHA = new Map();   // artigo|cor -> { pares }
+const ESCOLHA = new Map();   // no carrinho: artigo|cor -> { pares }
+const RASCUNHO = new Map();  // digitado mas ainda não confirmado
 let LINK = null;
 
 const chave = p => p.artigo + '|' + p.cor;
@@ -242,60 +245,34 @@ function textoPrazo(ms){
   return `expira em ${d} ${d === 1 ? 'dia' : 'dias'}`;
 }
 
+// O cliente vê produto, preço e nada mais: de onde a peça sai — estoque, lote
+// de repasse ou mês de produção — é decisão do vendedor depois da resposta, e
+// mostrar isso aqui só levantaria pergunta que ele não tem como responder.
 function cardHtml(p){
   const k = chave(p);
-  const marcado = ESCOLHA.has(k);
-  const pares = marcado ? (ESCOLHA.get(k).pares || '') : '';
+  const noCarrinho = ESCOLHA.has(k);
+  const pares = noCarrinho ? (ESCOLHA.get(k).pares || '') : (RASCUNHO.get(k) || '');
   const cor = String(p.cor || '').replace(/_/g, '/');
+  const podeAdicionar = Number(pares) > 0;
 
-  let origens = '';
-  if(p.estoque){
-    const g = Object.entries(p.estoque.grade || {}).filter(([, q]) => Number(q) > 0);
-    origens += `<div class="origem"><p class="rot est">Pronta entrega ·
-      ${nf(p.estoque.total)} pares</p>
-      ${g.length ? `<div class="celulas est">${g.map(([t, q]) =>
-        `<span class="cel"><span class="t">${esc(t)}</span>
-         <span class="q">${nf(q)}</span></span>`).join('')}</div>` : ''}</div>`;
-  }
-  if(p.repasse){
-    origens += `<div class="origem"><p class="rot rep">Repasse ·
-      ${nf(p.repasse.total)} pares</p>` +
-      p.repasse.lotes.map(l => {
-        const g = Object.entries(l.grade || {}).filter(([, q]) => Number(q) > 0);
-        return `<div class="lote">
-          <div class="lote-l1"><span class="n">Entrega ${esc(l.num)}</span>
-            <span class="s">${nf(l.saldo)} pares</span></div>
-          <div class="d">fat. ${esc(l.data || '—')}</div>
-          ${g.length ? `<div class="celulas rep">${g.map(([t, q]) =>
-            `<span class="cel"><span class="t">${esc(t)}</span>
-             <span class="q">${nf(q)}</span></span>`).join('')}</div>` : ''}
-        </div>`;
-      }).join('') + '</div>';
-  }
-  if(p.producao){
-    origens += `<div class="origem"><p class="rot pro">Produção</p>
-      <div class="meses">${p.producao.quinzenas.map(q =>
-        `<span class="mes">${esc(q.rot)} · <b>${nf(q.v)}</b></span>`).join('')}</div></div>`;
-  }
-
-  return `<article class="card${marcado ? ' quero' : ''}" data-k="${esc(k)}">
+  return `<article class="card${noCarrinho ? ' quero' : ''}" data-k="${esc(k)}">
     <div class="foto"><img src="${esc(foto(p))}" alt="${esc(p.descricao || '')}"
       loading="lazy" onerror="this.style.visibility='hidden'"></div>
     <div class="corpo">
       <span class="nm">${esc(p.descricao || p.artigo)}</span>
       <span class="sb">${esc(p.artigo)} · ${esc(cor)}</span>
       <span class="pdv">${p.pdv ? brl(p.pdv) : ''}</span>
-      ${origens}
       <div class="quero-bar">
-        <button class="btn-quero" data-quero="${esc(k)}">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 6 9 17l-5-5"/></svg>
-          ${marcado ? 'Quero' : 'Tenho interesse'}</button>
         <label class="qtd"><input type="number" inputmode="numeric" min="0"
           placeholder="0" value="${pares}" data-pares="${esc(k)}"
           aria-label="Quantos pares de ${esc(p.descricao || p.artigo)}">
           <em>pares</em></label>
+        <button class="btn-quero" data-quero="${esc(k)}"
+          ${podeAdicionar || noCarrinho ? '' : 'disabled'}>
+          ${noCarrinho ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.4" stroke-linecap="round"
+              stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>No carrinho`
+            : 'Adicionar no carrinho'}</button>
       </div>
     </div>
   </article>`;
@@ -310,30 +287,46 @@ function pintarRodape(){
   const n = ESCOLHA.size;
   const pares = [...ESCOLHA.values()].reduce((a, e) => a + (Number(e.pares) || 0), 0);
   $('peCont').innerHTML = n
-    ? `<b>${nf(n)}</b> ${n === 1 ? 'produto marcado' : 'produtos marcados'}` +
+    ? `<b>${nf(n)}</b> ${n === 1 ? 'produto' : 'produtos'} no carrinho` +
       (pares ? ` · <b>${nf(pares)}</b> pares` : '')
-    : 'Marque o que interessa';
+    : 'Coloque a quantidade do que interessa';
   $('peEnviar').disabled = !n;
 }
 
-// O card inteiro não é botão: o cliente precisa poder rolar e ler sem marcar
-// nada por engano.
+// O card inteiro não é botão: o cliente precisa poder rolar e ler sem colocar
+// nada no carrinho por engano.
 $('grade').addEventListener('click', e => {
   const b = e.target.closest('[data-quero]');
-  if(!b) return;
+  if(!b || b.disabled) return;
   const k = b.dataset.quero;
-  ESCOLHA.has(k) ? ESCOLHA.delete(k) : ESCOLHA.set(k, { pares:'' });
+  if(ESCOLHA.has(k)){
+    // Sai do carrinho, mas o número digitado fica: tirar por engano não pode
+    // custar a digitação de novo.
+    RASCUNHO.set(k, ESCOLHA.get(k).pares);
+    ESCOLHA.delete(k);
+  }else{
+    ESCOLHA.set(k, { pares: RASCUNHO.get(k) || '' });
+  }
   pintar();
 });
+// Digitar não põe no carrinho — só destrava o botão. Quem decide é o toque.
 $('grade').addEventListener('input', e => {
   const i = e.target.closest('[data-pares]');
   if(!i) return;
   const k = i.dataset.pares;
-  // Digitar a quantidade já marca: quem escreve "12" está dizendo que quer.
-  if(!ESCOLHA.has(k)) ESCOLHA.set(k, { pares:'' });
-  ESCOLHA.get(k).pares = i.value;
+  const n = Number(i.value) || 0;
+  RASCUNHO.set(k, i.value);
+  if(ESCOLHA.has(k)){
+    if(n > 0) ESCOLHA.get(k).pares = i.value;
+    else ESCOLHA.delete(k);      // zerou: sai do carrinho
+  }
   const card = i.closest('.card');
-  if(card) card.classList.add('quero');
+  const btn = card && card.querySelector('[data-quero]');
+  if(btn){
+    btn.disabled = !(n > 0) && !ESCOLHA.has(k);
+    if(!ESCOLHA.has(k)) btn.textContent = 'Adicionar no carrinho';
+  }
+  if(card) card.classList.toggle('quero', ESCOLHA.has(k));
   pintarRodape();
 });
 
@@ -397,8 +390,8 @@ $('peEnviar').onclick = async () => {
       $('tPrazo').classList.toggle('perto', resta < 24 * 36e5);
     }
     $('iSub').textContent = `${nf(LINK.produtos.length)} ` +
-      `${LINK.produtos.length === 1 ? 'produto' : 'produtos'} · marque o que interessa ` +
-      'e diga quantos pares.';
+      `${LINK.produtos.length === 1 ? 'produto' : 'produtos'} · diga quantos pares de ` +
+      'cada um e adicione no carrinho.';
     // Já respondeu antes: volta com o que marcou, para poder ajustar.
     if(LINK.resposta && Array.isArray(LINK.resposta.itens)){
       for(const it of LINK.resposta.itens)
