@@ -1354,6 +1354,15 @@ export default {
         // sua resposta sem token (igual savePedidoHistorico dos vendedores).
         // ─────────────────────────────────────────────────────────────────────
         const VL_48H = 48 * 60 * 60 * 1000;
+        // Validade escolhida pelo vendedor. Repasse nao oscila como
+        // disponibilidade, entao um link de 15 dias faz sentido la e nao aqui —
+        // quem decide e quem gera. Lista fechada: horas livres deixariam alguem
+        // criar um link eterno por engano.
+        const VL_OPCOES = { 24: 24, 48: 48, 168: 168, 360: 360 };
+        function validadeMs(horas) {
+          const h = VL_OPCOES[Number(horas)];
+          return h ? h * 60 * 60 * 1000 : VL_48H;   // sem escolha, segue 48h
+        }
         function gerarCodigoLink() {
           const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
           let s = "";
@@ -1376,7 +1385,8 @@ export default {
             marca:        String(body.data.marca || ""),
             produtos:     Array.isArray(body.data.produtos) ? body.data.produtos : [],
             criadoEm:     agora,
-            expiraEm:     agora + VL_48H,
+            validadeHoras: Number(VL_OPCOES[Number(body.data.validadeHoras)] || 48),
+            expiraEm:     agora + validadeMs(body.data.validadeHoras),
             status:       "aguardando",
             resposta:     null,
             respondidoEm: null
@@ -1462,10 +1472,12 @@ export default {
           if (!link) {
             return new Response(JSON.stringify({ success: false, erro: "nao_encontrado" }), { status: 200, headers: corsHeaders });
           }
-          link.expiraEm = Date.now() + VL_48H;
+          const horas = Number(body.validadeHoras || link.validadeHoras || 48);
+          link.validadeHoras = Number(VL_OPCOES[horas] || 48);
+          link.expiraEm = Date.now() + validadeMs(horas);
           if (link.status === "expirado") link.status = "aguardando";
           const { sha } = await getFile(GITHUB_LINKS);
-          await saveFile(GITHUB_LINKS, links, sha, "reativar link +48h");
+          await saveFile(GITHUB_LINKS, links, sha, `reativar link +${link.validadeHoras}h`);
           return new Response(JSON.stringify({ success: true, expiraEm: link.expiraEm }), { status: 200, headers: corsHeaders });
         }
 

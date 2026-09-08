@@ -339,6 +339,11 @@ button{font:inherit}
   box-shadow:0 4px 12px rgba(18,138,79,.35), inset 0 1px 0 rgba(255,255,255,.26)}
 .sel-btn.pdf{background:linear-gradient(145deg,#F2557A 0%,#D6294B 55%,#96122E 100%);
   box-shadow:0 4px 12px rgba(214,41,75,.35), inset 0 1px 0 rgba(255,255,255,.26)}
+/* O link é do cliente, não um arquivo: fica na cor da marca, separado da dupla
+   verde e vermelha que sempre gerou download. */
+.sel-btn.link{background:linear-gradient(145deg,var(--marca-claro),var(--marca) 55%,var(--marca-escuro));
+  box-shadow:0 4px 12px color-mix(in srgb,var(--marca) 32%,transparent),
+             inset 0 1px 0 rgba(255,255,255,.26)}
 /* Contornado, nao preenchido: quem manda na barra sao o PDF e a planilha. */
 .sel-todos{display:inline-flex;align-items:center;gap:5px;flex:none;cursor:pointer;
   border:1px solid var(--linha-forte);background:var(--carta);color:var(--tinta);
@@ -749,6 +754,34 @@ button{font:inherit}
   .ped-busca{flex-basis:100%}
 }
 
+/* ── link para o cliente ──────────────────────────────────────────── */
+.lk-ops{display:flex;flex-wrap:wrap;gap:6px}
+.lk-ops button{border:1px solid var(--linha);background:var(--carta);color:var(--texto);
+  border-radius:999px;padding:6px 12px;font:inherit;font-size:11.5px;font-weight:700;
+  cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.lk-ops button:hover{border-color:var(--linha-forte)}
+.lk-ops button.on{border-color:transparent;color:#fff;
+  background:linear-gradient(145deg,var(--marca-claro),var(--marca) 55%,var(--marca-escuro))}
+.lk-ops button:disabled{opacity:.4;cursor:not-allowed}
+.lk-ops button .q{font-size:10px;font-weight:600;opacity:.75}
+.lk-ajuda{margin:7px 0 0;font-size:10.5px;color:var(--tenue);line-height:1.45}
+
+.lk-ok{text-align:center;padding:4px 0 2px}
+.lk-ok-ico{width:46px;height:46px;border-radius:50%;margin:0 auto 12px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--pronta-fundo);color:var(--pronta)}
+.lk-ok h4{margin:0 0 4px;font-size:16px;font-weight:800;color:var(--tinta)}
+.lk-ok p{margin:0 0 12px;font-size:12px;color:var(--fraco)}
+.lk-url{border:1px dashed var(--linha-forte);border-radius:9px;padding:9px 11px;
+  background:var(--papel);font-size:11.5px;font-weight:700;color:var(--tinta);
+  word-break:break-all;text-align:left}
+.lk-acoes{display:flex;gap:8px;margin-top:11px}
+.lk-acoes > *{flex:1;margin-top:0;text-align:center;justify-content:center}
+.lk-zap{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  margin-top:10px;font-size:11.5px;font-weight:700;color:var(--pronta);
+  text-decoration:none}
+.lk-zap:hover{text-decoration:underline}
+
 /* ── painel de filtros ───────────────────────────────────────────── */
 .pn-bg{position:fixed;inset:0;background:rgba(16,18,20,.5);backdrop-filter:blur(2px);
   display:flex;justify-content:flex-end;z-index:70}
@@ -978,6 +1011,12 @@ body.trava{overflow:hidden}
       <path d="m3 8 2.5 2.5L10 6"/><path d="m3 17 2.5 2.5L10 15"/>
       <path d="M14 8h7M14 17h7"/></svg>
     <span>Todos</span></button>
+  <button class="sel-btn link" id="btnSelLink" title="Gerar link para o cliente">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M10 13a5 5 0 0 0 7.1.1l3-3a5 5 0 0 0-7.1-7.1L11.3 4.7"/>
+      <path d="M14 11a5 5 0 0 0-7.1-.1l-3 3a5 5 0 0 0 7.1 7.1l1.7-1.7"/></svg>
+    <span>Link</span></button>
   <button class="sel-btn xls" id="btnSelXlsx" title="Gerar planilha dos marcados">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
          stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1096,6 +1135,64 @@ body.trava{overflow:hidden}
         <span>Reemitir XLSX</span></button>
     </footer>
   </section>
+</div>
+
+<div class="fundo" id="modalLink" hidden>
+  <div class="folha" role="dialog" aria-modal="true" aria-labelledby="lkTit"
+       style="max-width:440px">
+    <div class="folha-topo">
+      <span style="flex:1;min-width:0"><h3 id="lkTit">Link para o cliente</h3>
+        <p id="lkSub">—</p></span>
+      <button class="icone" id="lkFechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="folha-corpo" id="lkForm">
+      <div class="bloco">
+        <p class="rot" id="lkRot"></p>
+        <div class="sc-campos">
+          <label class="largo sc-busca-cli"><span>Cliente <i>*</i></span>
+            <input id="lkCliente" placeholder="código ou nome" autocomplete="off"
+                   role="combobox" aria-expanded="false" aria-autocomplete="list">
+            <div class="cli-sug" id="lkCliSug" role="listbox" hidden></div>
+            <span class="cli-dica" id="lkCliDica"></span></label>
+        </div>
+      </div>
+      <div class="bloco">
+        <p class="rot">O que vai no link</p>
+        <div class="lk-ops" id="lkOrigens"></div>
+      </div>
+      <div class="bloco">
+        <p class="rot">Validade</p>
+        <div class="lk-ops" id="lkValidade">
+          <button data-h="24">24 horas</button>
+          <button data-h="48" class="on">48 horas</button>
+          <button data-h="168">7 dias</button>
+          <button data-h="360">15 dias</button>
+        </div>
+        <p class="lk-ajuda">Repasse não oscila como disponibilidade — um link
+          mais longo faz sentido aqui.</p>
+      </div>
+    </div>
+    <div class="folha-corpo" id="lkPronto" hidden>
+      <div class="lk-ok">
+        <span class="lk-ok-ico">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 6 9 17l-5-5"/></svg></span>
+        <h4 id="lkOkTit">Link criado</h4>
+        <p id="lkOkSub">—</p>
+        <div class="lk-url" id="lkUrl"></div>
+        <div class="lk-acoes">
+          <button class="acao" id="lkCopiar">Copiar link</button>
+          <a class="acao forte" id="lkAbrir" target="_blank" rel="noopener">Abrir</a>
+        </div>
+        <a class="lk-zap" id="lkZap" target="_blank" rel="noopener">Enviar no WhatsApp</a>
+      </div>
+    </div>
+    <div class="folha-pe" id="lkPe">
+      <button class="acao" id="lkCancelar">Cancelar</button>
+      <button class="acao forte" id="lkGerar">Gerar link</button>
+    </div>
+  </div>
 </div>
 
 <div class="fundo" id="confirma" hidden>
@@ -1249,7 +1346,9 @@ const FORM_PEDIDO = (() => {
   return d;
 })();
 
-const $f = id => FORM_PEDIDO.querySelector('#' + id);
+// O formulario da sacola vive num fragmento a parte; o resto da tela, no
+// documento. Quem procura um campo nao precisa saber de qual dos dois e.
+const $f = id => FORM_PEDIDO.querySelector('#' + id) || document.getElementById(id);
 
 const chaveSacola = () =>
   `vitrine_sacola_v1_${(SESSAO && SESSAO.codigo) || 'anon'}_${MARCA}`;
@@ -2033,9 +2132,12 @@ async function carregarClientes(){
   }));
   CLI.lista = partes.flat();
   CLI.carregou = true;
-  $f('scCliente').placeholder = CLI.lista.length
-    ? `código ou nome · ${nf(CLI.lista.length)} clientes`
-    : 'código do cliente';
+  for(const id of ['scCliente', 'lkCliente']){
+    const c = $f(id);
+    if(c) c.placeholder = CLI.lista.length
+      ? `código ou nome · ${nf(CLI.lista.length)} clientes`
+      : 'código do cliente';
+  }
 }
 
 // Mesma pontuação do Repasses: código exato primeiro, depois prefixo, depois
@@ -2064,8 +2166,12 @@ function buscarClientes(termo){
   return achados.slice(0, LIMITE_SUG).map(x => x.c);
 }
 
+// O autocomplete era amarrado aos ids da sacola. Agora o campo ativo é quem
+// diz onde desenhar: o do link usa o mesmo cadastro e o mesmo teclado.
+let CLI_ALVO = { campo:'scCliente', lista:'scCliSug', dica:'scCliDica' };
+
 function pintarSugestoes(){
-  const box = $f('scCliSug');
+  const box = $f(CLI_ALVO.lista);
   if(!CLI.achados.length){ fecharSugestoes(); return; }
   box.innerHTML = CLI.achados.map((c, i) => {
     const loc = [c.cidade, c.estado, c._vend].filter(Boolean).join(' · ');
@@ -2081,24 +2187,27 @@ function pintarSugestoes(){
       digite mais para refinar</div>`;
   }
   box.hidden = false;
-  $f('scCliente').setAttribute('aria-expanded', 'true');
+  $f(CLI_ALVO.campo).setAttribute('aria-expanded', 'true');
 }
 function fecharSugestoes(){
-  $f('scCliSug').hidden = true;
+  const box = $f(CLI_ALVO.lista);
+  if(box) box.hidden = true;
   CLI.ativo = -1;
-  $f('scCliente').setAttribute('aria-expanded', 'false');
+  const campo = $f(CLI_ALVO.campo);
+  if(campo) campo.setAttribute('aria-expanded', 'false');
 }
 function escolherCliente(i){
   const c = CLI.achados[i];
   if(!c) return;
-  $f('scCliente').value = String(c.codigo == null ? '' : c.codigo);
+  $f(CLI_ALVO.campo).value = String(c.codigo == null ? '' : c.codigo);
   fecharSugestoes();
   conferirCliente();
 }
 // Não bloqueia nada: só diz de quem é o código digitado.
 function conferirCliente(){
-  const v = $f('scCliente').value.trim();
-  const d = $f('scCliDica');
+  const v = $f(CLI_ALVO.campo).value.trim();
+  const d = $f(CLI_ALVO.dica);
+  if(!d) return;
   if(!v || !CLI.lista.length){ d.textContent = ''; d.className = 'cli-dica'; return; }
   const c = CLI.lista.find(x => String(x.codigo).trim() === v);
   if(c){
@@ -2134,32 +2243,41 @@ $f('scData').addEventListener('change', e => {
   if(n){ salvarSacola(); pintarSacola(); }
 });
 
-$f('scCliente').addEventListener('focus', () => { carregarClientes(); });
-$f('scCliente').addEventListener('input', e => {
-  CLI.achados = buscarClientes(e.target.value);
-  CLI.ativo = -1;
-  pintarSugestoes();
-  conferirCliente();
-});
-$f('scCliente').addEventListener('keydown', e => {
-  if($f('scCliSug').hidden) return;
-  if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
-    e.preventDefault();
-    CLI.ativo = Math.max(0, Math.min(CLI.achados.length - 1,
-      CLI.ativo + (e.key === 'ArrowDown' ? 1 : -1)));
+// Um campo de cliente é sempre a mesma coisa: cadastro, teclado e dica. Só o
+// lugar muda, então o alvo entra junto com o evento.
+function ligarCampoCliente(campo, lista, dica){
+  const alvo = { campo, lista, dica };
+  const c = $f(campo);
+  c.addEventListener('focus', () => { CLI_ALVO = alvo; carregarClientes(); });
+  c.addEventListener('input', e => {
+    CLI_ALVO = alvo;
+    CLI.achados = buscarClientes(e.target.value);
+    CLI.ativo = -1;
     pintarSugestoes();
-  }else if(e.key === 'Enter' && CLI.ativo >= 0){
-    e.preventDefault(); escolherCliente(CLI.ativo);
-  }else if(e.key === 'Escape'){
-    e.preventDefault(); e.stopPropagation(); fecharSugestoes();
-  }
-});
-// mousedown, não click: o blur do campo fecharia a lista antes do clique.
-$f('scCliSug').addEventListener('mousedown', e => {
-  const b = e.target.closest('[data-i]');
-  if(b){ e.preventDefault(); escolherCliente(Number(b.dataset.i)); }
-});
-$f('scCliente').addEventListener('blur', () => setTimeout(fecharSugestoes, 120));
+    conferirCliente();
+  });
+  c.addEventListener('keydown', e => {
+    if($f(lista).hidden) return;
+    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+      e.preventDefault();
+      CLI.ativo = Math.max(0, Math.min(CLI.achados.length - 1,
+        CLI.ativo + (e.key === 'ArrowDown' ? 1 : -1)));
+      pintarSugestoes();
+    }else if(e.key === 'Enter' && CLI.ativo >= 0){
+      e.preventDefault(); escolherCliente(CLI.ativo);
+    }else if(e.key === 'Escape'){
+      e.preventDefault(); e.stopPropagation(); fecharSugestoes();
+    }
+  });
+  // mousedown, não click: o blur do campo fecharia a lista antes do clique.
+  $f(lista).addEventListener('mousedown', e => {
+    const b = e.target.closest('[data-i]');
+    if(b){ e.preventDefault(); CLI_ALVO = alvo; escolherCliente(Number(b.dataset.i)); }
+  });
+  c.addEventListener('blur', () => setTimeout(fecharSugestoes, 120));
+}
+ligarCampoCliente('scCliente', 'scCliSug', 'scCliDica');
+ligarCampoCliente('lkCliente', 'lkCliSug', 'lkCliDica');
 
 /* ── histórico de pedidos ───────────────────────────────────────── */
 // O Worker já guarda um arquivo de histórico por comissionista, e é o mesmo
@@ -2813,6 +2931,195 @@ async function pdfDosPedidos(pedidos){
   }finally{ liberado(btn); }
 }
 
+/* ── link para o cliente ────────────────────────────────────────── */
+// O cliente abre uma página só de leitura com os produtos escolhidos e devolve
+// o que quer. Mesmo mecanismo da vitrine de disponibilidades — as ações do
+// Worker são as mesmas — mas aqui o link carrega as três origens, e é por isso
+// que ele abre a página do cliente desta vitrine, não a de lá.
+const LK = { origens:new Set(['estoque','repasse','producao']), horas:48, criado:null };
+const LK_ROTULO = { estoque:'Estoque', repasse:'Repasse', producao:'Produção' };
+
+// Um produto marcado pode ter as três origens. O link leva as que o vendedor
+// deixou ligadas — quem só tem origem desligada fica de fora.
+function itensDoLink(){
+  const fora = [];
+  const dentro = [];
+  for(const o of marcadosVisiveis()){
+    const tem = [];
+    if(o.pronta  && LK.origens.has('estoque'))  tem.push('estoque');
+    if(o.repasse && LK.origens.has('repasse'))  tem.push('repasse');
+    if(o.meta    && LK.origens.has('producao')) tem.push('producao');
+    (tem.length ? dentro : fora).push(o);
+    if(tem.length) o._lkOrigens = tem;
+  }
+  return { dentro, fora };
+}
+
+function pintarOpcoesLink(){
+  const marcados = marcadosVisiveis();
+  const conta = {
+    estoque:  marcados.filter(o => o.pronta).length,
+    repasse:  marcados.filter(o => o.repasse).length,
+    producao: marcados.filter(o => o.meta).length
+  };
+  $('lkOrigens').innerHTML = ['estoque','repasse','producao'].map(id =>
+    `<button data-o="${id}" class="${LK.origens.has(id) ? 'on' : ''}"
+       ${conta[id] ? '' : 'disabled'}>${LK_ROTULO[id]}
+       <span class="q">${nf(conta[id])}</span></button>`).join('');
+  for(const b of $('lkValidade').children) b.classList.toggle('on', Number(b.dataset.h) === LK.horas);
+  const { dentro } = itensDoLink();
+  $('lkRot').textContent = `${nf(dentro.length)} ${dentro.length === 1 ? 'produto' : 'produtos'} no link`;
+  $('lkGerar').disabled = !dentro.length;
+}
+
+function abrirLink(){
+  if(!marcadosVisiveis().length) return;
+  // Origem sem nenhum marcado não pode ficar ligada: o vendedor marcaria uma
+  // caixa que não muda nada.
+  const marcados = marcadosVisiveis();
+  if(!marcados.some(o => o.pronta))  LK.origens.delete('estoque');
+  if(!marcados.some(o => o.repasse)) LK.origens.delete('repasse');
+  if(!marcados.some(o => o.meta))    LK.origens.delete('producao');
+  if(!LK.origens.size){
+    for(const [id, tem] of [['estoque', o => o.pronta], ['repasse', o => o.repasse],
+                            ['producao', o => o.meta]])
+      if(marcados.some(tem)) LK.origens.add(id);
+  }
+  LK.criado = null;
+  $('lkForm').hidden = false; $('lkPronto').hidden = true; $('lkPe').hidden = false;
+  $('lkSub').textContent = `${MARCAS[MARCA].nome} · ${nomeCurto((SESSAO && SESSAO.nome) || '')}`;
+  $('lkCliente').value = '';
+  $('lkCliDica').textContent = '';
+  carregarClientes();
+  pintarOpcoesLink();
+  $('modalLink').hidden = false;
+  setTimeout(() => $('lkCliente').focus(), 60);
+}
+function fecharLink(){ $('modalLink').hidden = true; }
+
+$('btnSelLink').onclick = abrirLink;
+$('lkFechar').onclick = fecharLink;
+$('lkCancelar').onclick = fecharLink;
+$('modalLink').onclick = e => { if(e.target.id === 'modalLink') fecharLink(); };
+$('lkOrigens').addEventListener('click', e => {
+  const b = e.target.closest('[data-o]');
+  if(!b || b.disabled) return;
+  const id = b.dataset.o;
+  // A última ligada não desliga: um link sem origem nenhuma não tem produto.
+  if(LK.origens.has(id) && LK.origens.size > 1) LK.origens.delete(id);
+  else LK.origens.add(id);
+  pintarOpcoesLink();
+});
+$('lkValidade').addEventListener('click', e => {
+  const b = e.target.closest('[data-h]');
+  if(!b) return;
+  LK.horas = Number(b.dataset.h);
+  pintarOpcoesLink();
+});
+
+// O que o cliente vê. Cada origem leva o que só ela tem: o estoque leva grade,
+// o repasse leva lote e data de faturamento, a produção leva o mês.
+function produtoDoLink(o){
+  const c = campanhaAtiva(o);
+  const p = {
+    artigo:o.artigo, cor:o.cor, descricao:o.nome, categoria:o.categoria,
+    genero:o.genero, empresa:o.fabrica, pdv:Number(o.pdv || 0),
+    imagem:o.imagem || '', marca:o.marca,
+    codigoTabela:c ? (c.codigoTabela || '') : '', mkp:c ? (c.mkp || '') : '',
+    custo:c ? (c.custo || '') : '',
+    origens:o._lkOrigens || []
+  };
+  if(o.pronta && p.origens.includes('estoque'))
+    p.estoque = { total:o.pronta.total, grade:{ ...o.pronta.grade } };
+  if(o.repasse && p.origens.includes('repasse'))
+    p.repasse = { total:o.repasse.total,
+      lotes:o.repasse.lotes.map(l => ({ num:l.num, data:l.data, saldo:l.saldo,
+                                        grade:{ ...l.grade } })) };
+  if(o.meta && p.origens.includes('producao'))
+    p.producao = { quinzenas:o.meta.quinzenas.map(q => ({ rot:q.rot, mes:q.mes, v:q.v })) };
+  return p;
+}
+
+async function gerarLink(){
+  const cliente = $('lkCliente').value.trim();
+  if(!cliente){
+    $('lkCliente').classList.add('erro');
+    $('lkCliente').focus();
+    return;
+  }
+  $('lkCliente').classList.remove('erro');
+  const { dentro, fora } = itensDoLink();
+  if(!dentro.length) return;
+
+  const btn = $('lkGerar');
+  ocupado(btn, 'Gerando…');
+  try{
+    const r = await fetch(WORKER_URL, { method:'PATCH',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ action:'criarLink', data:{
+        vendedor: (SESSAO && SESSAO.codigo) || '',
+        vendedorNome: (SESSAO && SESSAO.nome) || '',
+        cliente,
+        clienteNome: nomeDoCliente(cliente),
+        marca: MARCA,
+        origem: 'vitrine',
+        validadeHoras: LK.horas,
+        produtos: dentro.map(produtoDoLink)
+      }}) });
+    const j = await r.json().catch(() => null);
+    if(!r.ok || !j || !j.success || !j.codigo)
+      throw new Error((j && j.erro) || 'Worker ' + r.status);
+
+    const base = location.origin + location.pathname.replace(/\/[^\/]*$/, '/');
+    const url = `${base}cliente.html?link=${j.codigo}`;
+    LK.criado = { codigo:j.codigo, url, cliente, qtd:dentro.length };
+
+    // O Worker antigo ignora a validade e grava 48h. Em vez de prometer 15
+    // dias na tela, lê de volta o que ficou gravado e mostra a verdade.
+    let horas = LK.horas;
+    try{
+      const rr = await fetch(WORKER_URL, { method:'PATCH',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ action:'getLink', codigo:j.codigo }) });
+      const jj = await rr.json();
+      if(jj && jj.link && jj.link.expiraEm)
+        horas = Math.round((Number(jj.link.expiraEm) - Date.now()) / 36e5);
+    }catch(_){ /* sem confirmação, mostra o que foi pedido */ }
+
+    $('lkForm').hidden = true; $('lkPronto').hidden = false; $('lkPe').hidden = true;
+    $('lkOkTit').textContent = 'Link criado';
+    $('lkOkSub').innerHTML = `<b>${nf(dentro.length)}</b> ` +
+      `${dentro.length === 1 ? 'produto' : 'produtos'} para <b>${esc(nomeDoCliente(cliente) || cliente)}</b>` +
+      ` · expira em <b>${textoValidade(horas)}</b>`;
+    $('lkUrl').textContent = url;
+    $('lkAbrir').href = url;
+    $('lkZap').href = 'https://wa.me/?text=' + encodeURIComponent(
+      `Separei ${dentro.length} ${dentro.length === 1 ? 'produto' : 'produtos'} para você: ${url}`);
+    if(fora.length){
+      avisar('Alguns ficaram de fora',
+        `<b>${nf(fora.length)}</b> ${fora.length === 1 ? 'produto marcado não tem' :
+          'produtos marcados não têm'} nenhuma das origens escolhidas, e não ` +
+        'entrou no link.');
+    }
+  }catch(e){
+    avisar('Não deu para gerar o link', esc(e.message || 'Tente de novo.'));
+  }finally{ liberado(btn); }
+}
+const textoValidade = h => h >= 24 && h % 24 === 0
+  ? `${h / 24} ${h === 24 ? 'dia' : 'dias'}` : `${Math.max(1, h)} horas`;
+
+$('lkGerar').onclick = gerarLink;
+$('lkCopiar').onclick = async () => {
+  if(!LK.criado) return;
+  try{
+    await navigator.clipboard.writeText(LK.criado.url);
+    $('lkCopiar').textContent = 'Copiado';
+    setTimeout(() => { $('lkCopiar').textContent = 'Copiar link'; }, 1600);
+  }catch(_){
+    avisar('Não deu para copiar', 'Toque e segure no endereço para copiar à mão.');
+  }
+};
+
 /* ── catálogo dos marcados ──────────────────────────────────────── */
 // A mesma campanha que o card mostra: com um filtro de campanha ligado, sair
 // no PDF com o custo de outra tabela seria dizer um preço que não é o daquela
@@ -2856,17 +3163,20 @@ function fotoDataUrl(o){
   });
 }
 
+// Nem todo botao tem <span> por dentro — os da barra tem, o de gerar link nao.
+// Sem esta escolha, mexer no texto de um deles quebrava a acao inteira.
+const rotuloDe = btn => btn.querySelector('span') || btn;
 function ocupado(btn, texto){
   btn.disabled = true;
   btn.classList.add('ocupado');
-  btn._txt = btn.querySelector('span').textContent;
-  btn.querySelector('span').textContent = texto;
+  btn._txt = rotuloDe(btn).textContent;
+  rotuloDe(btn).textContent = texto;
 }
-function passo(btn, texto){ btn.querySelector('span').textContent = texto; }
+function passo(btn, texto){ rotuloDe(btn).textContent = texto; }
 function liberado(btn){
   btn.disabled = false;
   btn.classList.remove('ocupado');
-  if(btn._txt) btn.querySelector('span').textContent = btn._txt;
+  if(btn._txt) rotuloDe(btn).textContent = btn._txt;
 }
 
 async function gerarCatalogoPdf(){
