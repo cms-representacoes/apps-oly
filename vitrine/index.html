@@ -151,6 +151,10 @@ button{font:inherit}
 
 .linha2{display:flex;align-items:center;gap:10px;flex:0 1 auto;min-width:0;
   margin-left:auto;overflow-x:auto;scrollbar-width:none;padding:1px 0}
+.linha2::-webkit-scrollbar{display:none}
+/* Enquanto arrasta, o cursor conta o que esta acontecendo e o texto para de
+   ser selecionado no meio do movimento. */
+.linha2.puxando{cursor:grabbing;user-select:none}
 .tit{flex:none}
 @media(max-width:767px){
   /* order manda os filtros pro fim; a base de 100% os quebra pra linha de baixo,
@@ -853,12 +857,16 @@ button{font:inherit}
 .btn-sacola .badge[hidden]{display:none}
 /* O sino só existe quando há resposta esperando: um sino mudo no cabeçalho
    vira enfeite e some da vista justamente quando toca. */
-.btn-respostas{position:relative;flex:none;border-color:transparent;color:#fff;
+/* Sem novidade ele é um botão comum; com resposta esperando vira laranja e
+   chama uma vez. Um sino sempre aceso deixa de significar alguma coisa. */
+.btn-respostas{position:relative;flex:none}
+.btn-respostas[hidden]{display:none}
+.btn-respostas.novo{border-color:transparent;color:#fff;
   background:linear-gradient(145deg,#FDBA74 0%,#F97316 48%,#C2410C 100%);
   box-shadow:0 4px 12px rgba(249,115,22,.38), inset 0 1px 0 rgba(255,255,255,.3);
   animation:sino 2.6s ease-in-out 3}
-.btn-respostas[hidden]{display:none}
-.btn-respostas:hover{filter:brightness(1.06);color:#fff}
+.btn-respostas.novo:hover{filter:brightness(1.06);color:#fff}
+.btn-respostas .badge[hidden]{display:none}
 .btn-respostas .badge{position:absolute;top:-3px;right:-3px;min-width:15px;height:15px;
   border-radius:999px;background:#C2183F;color:#fff;font-size:9.5px;font-weight:700;
   display:flex;align-items:center;justify-content:center;padding:0 4px;
@@ -880,6 +888,39 @@ button{font:inherit}
 .rs-btn{flex:none;margin-top:0;width:auto;padding:8px 13px;font-size:11.5px}
 .rs-vazio{margin:24px auto;max-width:320px;text-align:center;color:var(--fraco);
   font-size:12.5px;line-height:1.5}
+.rs-abas{display:flex;flex:none;border-bottom:1px solid var(--linha)}
+.rs-abas button{flex:1;border:0;background:none;cursor:pointer;padding:10px 8px;
+  font:inherit;font-size:12px;font-weight:700;color:var(--fraco);
+  border-bottom:2px solid transparent;display:flex;align-items:center;
+  justify-content:center;gap:6px}
+.rs-abas button.on{color:var(--marca);border-bottom-color:var(--marca)}
+.rs-abas .n{border-radius:999px;padding:1px 7px;font-size:10px;font-weight:800;
+  background:var(--papel);color:var(--fraco);font-variant-numeric:tabular-nums}
+.rs-abas button.on .n{background:color-mix(in srgb,var(--marca) 14%,var(--carta));
+  color:var(--marca)}
+
+/* Linha de link: estado à esquerda, ações à direita, e o código pequeno para
+   conferir contra o que o cliente recebeu. */
+.lk-item{border:1px solid var(--linha);border-radius:12px;background:var(--carta);
+  padding:10px 12px}
+.lk-item + .lk-item{margin-top:8px}
+.lk-l1{display:flex;align-items:center;gap:9px}
+.lk-l1 .txt{flex:1;min-width:0}
+.lk-l1 b{display:block;font-size:12.5px;font-weight:800;color:var(--tinta);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lk-l1 span{display:block;font-size:10.5px;font-weight:600;color:var(--fraco)}
+.lk-tag{flex:none;border-radius:999px;padding:2px 8px;font-size:9.5px;font-weight:800}
+.lk-tag.viva{background:var(--pronta-fundo);color:var(--pronta)}
+.lk-tag.resp{background:rgba(249,115,22,.16);color:#C2410C}
+.lk-tag.fim{background:var(--papel);color:var(--tenue)}
+.lk-tag.ok{background:var(--repasse-fundo);color:var(--repasse)}
+.lk-l2{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.lk-l2 button{border:1px solid var(--linha);background:var(--carta);color:var(--fraco);
+  border-radius:999px;padding:5px 11px;font:inherit;font-size:10.5px;font-weight:700;
+  cursor:pointer}
+.lk-l2 button:hover{border-color:var(--marca);color:var(--marca)}
+.lk-l2 button.perigo:hover{border-color:#C2183F;color:#C2183F}
+.lk-l2 button:disabled{opacity:.5;cursor:progress}
 
 .fundo{position:fixed;inset:0;background:rgba(16,18,20,.55);backdrop-filter:blur(2px);
   display:flex;align-items:center;justify-content:center;padding:16px;z-index:60}
@@ -980,7 +1021,7 @@ body.trava{overflow:hidden}
       <input id="campoBusca" aria-label="Buscar produto">
       <button class="x" id="limpaBusca" hidden aria-label="Limpar busca">✕</button>
     </span>
-    <div class="linha2">
+    <div class="linha2" id="linha2">
       <span class="seg" id="segOrigem"></span>
       <span class="risco" id="riscoCat" hidden></span>
       <span class="cat" id="catFiltros"></span>
@@ -1000,13 +1041,13 @@ body.trava{overflow:hidden}
       <span>Filtros</span>
       <span class="badge" id="badgeFiltros" hidden></span>
     </button>
-    <button class="icone btn-respostas" id="btnRespostas" hidden
-            title="Respostas de clientes" aria-label="Respostas de clientes">
+    <button class="icone btn-respostas" id="btnRespostas"
+            title="Links e respostas" aria-label="Links e respostas">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
            stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
         <path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
-      <span class="badge" id="badgeResp"></span>
+      <span class="badge" id="badgeResp" hidden></span>
     </button>
     <button class="icone btn-pedidos" id="btnPedidos" title="Meus pedidos"
             aria-label="Meus pedidos" onclick="abrirPedidos()">
@@ -1185,6 +1226,10 @@ body.trava{overflow:hidden}
       <span style="flex:1;min-width:0"><h3 id="rsTit">Respostas de clientes</h3>
         <p id="rsSub">—</p></span>
       <button class="icone" id="rsFechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="rs-abas">
+      <button data-aba="respostas" class="on">Respostas <span class="n" id="rsNresp">0</span></button>
+      <button data-aba="links">Links enviados <span class="n" id="rsNlink">0</span></button>
     </div>
     <div class="folha-corpo" id="rsLista"></div>
     <div class="folha-pe">
@@ -2285,7 +2330,48 @@ function montarFormulario(){
   $f('scCampanha').innerHTML = '<option value="">Sem campanha</option>' +
     CAMPANHAS.filter(c => c.endsWith(suf))
       .map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  carregarForm();
 }
+
+// Os itens da sacola sobreviviam a um F5, o cliente não. Quem monta um pedido
+// grande fecha e volta, e redigitar cliente e prazo a cada volta é o tipo de
+// atrito que faz o vendedor desistir da tela.
+const chaveForm = () =>
+  `vitrine_form_v1_${(SESSAO && SESSAO.codigo) || 'anon'}_${MARCA}`;
+const CAMPOS_FORM = ['scCliente', 'scPrazo', 'scCampanha'];
+
+function salvarForm(){
+  try{
+    const d = {};
+    for(const id of CAMPOS_FORM){ const c = $f(id); if(c) d[id] = c.value; }
+    localStorage.setItem(chaveForm(), JSON.stringify(d));
+  }catch(_){ /* cota cheia: segue sem lembrar */ }
+}
+function carregarForm(){
+  // O alvo do autocomplete pode ter ficado no campo do link: sem isto a dica
+  // do cliente iria parar no modal errado.
+  CLI_ALVO = { campo:'scCliente', lista:'scCliSug', dica:'scCliDica' };
+  let temCliente = false;
+  try{
+    const d = JSON.parse(localStorage.getItem(chaveForm()) || '{}');
+    for(const id of CAMPOS_FORM){
+      const c = $f(id);
+      if(c && d[id] != null && d[id] !== '') c.value = d[id];
+    }
+    temCliente = !!(d.scCliente || '').trim();
+  }catch(_){ /* formulário guardado corrompido: começa vazio */ }
+  conferirCliente();
+  // A base de clientes é carregada sob demanda: com um código já preenchido,
+  // sem ela o nome não apareceria até o vendedor tocar no campo.
+  if(temCliente && !CLI.carregou) carregarClientes().then(conferirCliente);
+}
+// Um ouvinte no fragmento inteiro: os campos são recriados a cada marca.
+FORM_PEDIDO.addEventListener('change', e => {
+  if(CAMPOS_FORM.includes(e.target.id)) salvarForm();
+});
+FORM_PEDIDO.addEventListener('input', e => {
+  if(e.target.id === 'scCliente') salvarForm();
+});
 
 // Atalho para o caso comum, um pedido com data unica: preenche so as linhas
 // vazias, para nao apagar em silencio as datas ja escolhidas uma a uma.
@@ -3187,7 +3273,7 @@ $('lkCopiar').onclick = async () => {
 // O cliente responde e o link fica marcado no servidor, mas ninguém avisava o
 // vendedor. O sino só aparece quando há resposta esperando — link respondido e
 // ainda não jogado na sacola.
-const RS = { lista:[], buscaEm:0 };
+const RS = { lista:[], todos:[], aba:'respostas', buscaEm:0 };
 
 async function carregarRespostas(forcar){
   const cod = String((SESSAO && SESSAO.codigo) || '').trim();
@@ -3201,8 +3287,8 @@ async function carregarRespostas(forcar){
       headers:{ 'Content-Type':'application/json' },
       body: JSON.stringify({ action:'getLinksVendedor', vendedor:cod }) });
     const j = await r.json();
-    RS.lista = (j && j.success && Array.isArray(j.links) ? j.links : [])
-      .filter(l => l.status === 'respondido' && !l.concluidoEm);
+    RS.todos = (j && j.success && Array.isArray(j.links) ? j.links : []);
+    RS.lista = RS.todos.filter(l => l.status === 'respondido' && !l.concluidoEm);
   }catch(_){ /* sem conexão o sino simplesmente não toca */ }
   if(RS.lista.length) carregarClientes();
   pintarRespostas();
@@ -3210,31 +3296,146 @@ async function carregarRespostas(forcar){
 
 function pintarRespostas(){
   const n = RS.lista.length;
-  $('btnRespostas').hidden = n === 0;
+  $('btnRespostas').classList.toggle('novo', n > 0);
+  $('badgeResp').hidden = n === 0;
   $('badgeResp').textContent = nf(n);
-  $('btnRespostas').title = n === 1 ? '1 cliente respondeu'
-                                    : `${nf(n)} clientes responderam`;
+  $('btnRespostas').title = n === 0 ? 'Links e respostas'
+    : n === 1 ? '1 cliente respondeu' : `${nf(n)} clientes responderam`;
+  if(!$('modalResp').hidden) pintarModalResp();
 }
 
 function abrirRespostas(){
+  // Abre na aba que tem novidade: com resposta esperando é ela que interessa.
+  RS.aba = RS.lista.length ? 'respostas' : 'links';
   $('modalResp').hidden = false;
-  const n = RS.lista.length;
-  $('rsSub').textContent = n
-    ? `${nf(n)} ${n === 1 ? 'cliente respondeu' : 'clientes responderam'}`
-    : 'Nada esperando';
-  $('rsLista').innerHTML = n
-    ? RS.lista.map(l => `<div class="rs-item" data-cod="${esc(l.codigo)}">
-        <span class="rs-txt">
-          <b>${esc(nomeDoCliente(l.cliente) || 'Cliente ' + l.cliente)}</b>
-          <span>${esc(l.cliente)} · ${nf(l.qtdResposta)} ${l.qtdResposta === 1 ? 'produto' : 'produtos'}
-            · ${esc(quandoRespondeu(l.respondidoEm))}</span></span>
-        <span class="rs-nova">novo</span>
-        <button class="acao forte rs-btn" data-usar="${esc(l.codigo)}">Ver na sacola</button>
-      </div>`).join('')
-    : `<p class="rs-vazio">Quando um cliente responder um link, ele aparece aqui
-       para você jogar na sacola.</p>`;
+  pintarModalResp();
+  carregarRespostas(true);
 }
 function fecharRespostas(){ $('modalResp').hidden = true; }
+
+function pintarModalResp(){
+  const nR = RS.lista.length, nL = RS.todos.length;
+  $('rsNresp').textContent = nf(nR);
+  $('rsNlink').textContent = nf(nL);
+  for(const b of $('modalResp').querySelectorAll('.rs-abas button'))
+    b.classList.toggle('on', b.dataset.aba === RS.aba);
+  $('rsSub').textContent = nR
+    ? `${nf(nR)} ${nR === 1 ? 'cliente respondeu' : 'clientes responderam'}`
+    : 'Nada esperando';
+  $('rsLista').innerHTML = RS.aba === 'respostas' ? htmlRespostas() : htmlLinks();
+}
+
+const htmlRespostas = () => RS.lista.length
+  ? RS.lista.map(l => `<div class="rs-item" data-cod="${esc(l.codigo)}">
+      <span class="rs-txt">
+        <b>${esc(nomeDoCliente(l.cliente) || 'Cliente ' + l.cliente)}</b>
+        <span>${esc(l.cliente)} · ${nf(l.qtdResposta)} ${l.qtdResposta === 1 ? 'produto' : 'produtos'}
+          · ${esc(quandoRespondeu(l.respondidoEm))}</span></span>
+      <span class="rs-nova">novo</span>
+      <button class="acao forte rs-btn" data-usar="${esc(l.codigo)}">Ver na sacola</button>
+    </div>`).join('')
+  : `<p class="rs-vazio">Quando um cliente responder um link, ele aparece aqui
+     para você jogar na sacola.</p>`;
+
+// Um link tem quatro estados, e cada um pede uma ação diferente: vivo se
+// copia, expirado se renova, respondido se abre na sacola, e qualquer um se
+// apaga.
+function estadoLink(l){
+  if(l.concluidoEm) return { cls:'ok', txt:'usado' };
+  if(l.status === 'respondido') return { cls:'resp', txt:'respondeu' };
+  if(l.expirado) return { cls:'fim', txt:'expirado' };
+  return { cls:'viva', txt:textoRestante(l.expiraEm) };
+}
+const textoRestante = ms => {
+  const h = Math.floor((Number(ms || 0) - Date.now()) / 36e5);
+  if(h < 1)  return 'expira já';
+  if(h < 24) return `${h}h`;
+  const d = Math.floor(h / 24);
+  return `${d} ${d === 1 ? 'dia' : 'dias'}`;
+};
+
+const htmlLinks = () => RS.todos.length
+  ? RS.todos.map(l => {
+      const e = estadoLink(l);
+      return `<div class="lk-item" data-cod="${esc(l.codigo)}">
+        <div class="lk-l1">
+          <span class="txt">
+            <b>${esc(nomeDoCliente(l.cliente) || 'Cliente ' + l.cliente)}</b>
+            <span>${esc(l.cliente)} · ${nf(l.qtdProdutos)}
+              ${l.qtdProdutos === 1 ? 'produto' : 'produtos'} ·
+              ${esc(dataHora(l.criadoEm).dia)} · ${esc(l.codigo)}</span></span>
+          <span class="lk-tag ${e.cls}">${esc(e.txt)}</span>
+        </div>
+        <div class="lk-l2">
+          <button data-copiar="${esc(l.codigo)}">Copiar</button>
+          <button data-renovar="${esc(l.codigo)}">Renovar</button>
+          ${l.status === 'respondido' && !l.concluidoEm
+            ? `<button data-usar="${esc(l.codigo)}">Ver na sacola</button>` : ''}
+          <button class="perigo" data-apagar="${esc(l.codigo)}">Apagar</button>
+        </div>
+      </div>`;
+    }).join('')
+  : `<p class="rs-vazio">Nenhum link ainda. Marque produtos na vitrine e use o
+     botão Link para montar o primeiro.</p>`;
+
+const urlDoLink = cod =>
+  location.origin + location.pathname.replace(/\/[^\/]*$/, '/') + 'cliente.html?link=' + cod;
+
+async function renovarLink(cod){
+  const l = RS.todos.find(x => x.codigo === cod);
+  mostrarDialogo({
+    titulo:'Renovar este link?',
+    texto:`O prazo volta a contar do zero para <b>` +
+      `${esc(nomeDoCliente(l && l.cliente) || 'o cliente')}</b>, com a mesma validade ` +
+      'que ele tinha. O endereço continua o mesmo — não precisa mandar de novo.',
+    ok:'Renovar', cancelar:'Cancelar',
+    async aoConfirmar(){
+      try{
+        const r = await fetch(WORKER_URL, { method:'PATCH',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ action:'reativarLink', codigo:cod }) });
+        const j = await r.json();
+        if(!j || !j.success) throw new Error(j && j.erro || 'falhou');
+        await carregarRespostas(true);
+        avisar('Link renovado', 'Ele já volta a abrir para o cliente.');
+      }catch(e){
+        avisar('Não deu para renovar', esc(e.message || 'Tente de novo.'));
+      }
+    }
+  });
+}
+
+function apagarLink(cod){
+  const l = RS.todos.find(x => x.codigo === cod);
+  mostrarDialogo({
+    titulo:'Apagar este link?',
+    texto:`O endereço para de abrir para <b>` +
+      `${esc(nomeDoCliente(l && l.cliente) || 'o cliente')}</b>` +
+      (l && l.status === 'respondido' && !l.concluidoEm
+        ? ', <b>e a resposta dele vai junto</b>' : '') +
+      '. Não dá para desfazer.',
+    ok:'Apagar', cancelar:'Manter', perigo:true,
+    async aoConfirmar(){
+      try{
+        const r = await fetch(WORKER_URL, { method:'PATCH',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ action:'apagarLinks', codigos:[cod] }) });
+        const j = await r.json();
+        if(!j || !j.success) throw new Error(j && j.erro || 'falhou');
+        await carregarRespostas(true);
+      }catch(e){
+        avisar('Não deu para apagar', esc(e.message || 'Tente de novo.'));
+      }
+    }
+  });
+}
+
+$('modalResp').querySelector('.rs-abas').addEventListener('click', e => {
+  const b = e.target.closest('[data-aba]');
+  if(!b) return;
+  RS.aba = b.dataset.aba;
+  pintarModalResp();
+});
 
 const quandoRespondeu = ms => {
   const min = Math.floor((Date.now() - Number(ms || 0)) / 60000);
@@ -3287,6 +3488,7 @@ async function usarResposta(codigo){
     $f('scCliente').value = String(link.cliente || '');
     CLI_ALVO = { campo:'scCliente', lista:'scCliSug', dica:'scCliDica' };
     conferirCliente();
+    salvarForm();
 
     await fetch(WORKER_URL, { method:'PATCH',
       headers:{ 'Content-Type':'application/json' },
@@ -3324,9 +3526,23 @@ $('btnRespostas').onclick = abrirRespostas;
 $('rsFechar').onclick = fecharRespostas;
 $('rsFechar2').onclick = fecharRespostas;
 $('modalResp').onclick = e => { if(e.target.id === 'modalResp') fecharRespostas(); };
-$('rsLista').addEventListener('click', e => {
-  const b = e.target.closest('[data-usar]');
-  if(b && !b.disabled) usarResposta(b.dataset.usar);
+$('rsLista').addEventListener('click', async e => {
+  const usar = e.target.closest('[data-usar]');
+  if(usar && !usar.disabled) return usarResposta(usar.dataset.usar);
+  const ren = e.target.closest('[data-renovar]');
+  if(ren) return renovarLink(ren.dataset.renovar);
+  const ap = e.target.closest('[data-apagar]');
+  if(ap) return apagarLink(ap.dataset.apagar);
+  const cp = e.target.closest('[data-copiar]');
+  if(cp){
+    try{
+      await navigator.clipboard.writeText(urlDoLink(cp.dataset.copiar));
+      cp.textContent = 'Copiado';
+      setTimeout(() => { cp.textContent = 'Copiar'; }, 1600);
+    }catch(_){
+      avisar('Não deu para copiar', 'O endereço é ' + esc(urlDoLink(cp.dataset.copiar)));
+    }
+  }
 });
 
 /* ── catálogo dos marcados ──────────────────────────────────────── */
@@ -3999,6 +4215,9 @@ function esvaziarSacola(){
     ok:'Esvaziar', cancelar:'Manter', perigo:true,
     aoConfirmar(){
       STATE.sacola.clear(); STATE.aba = 'estoque';
+      for(const id of CAMPOS_FORM){ const c = $f(id); if(c) c.value = ''; }
+      try{ localStorage.removeItem(chaveForm()); }catch(_){}
+      conferirCliente();
       salvarSacola(); pintarSacola();
     }
   });
@@ -4502,6 +4721,49 @@ function escolherMarca(id){
   pintarMarca();
   aplicar();
 }
+
+/* ── arrastar a fila de origens e categorias ────────────────────── */
+// No celular a fila se puxa com o dedo; no desktop ela transbordava sem jeito
+// de mover — a barra some no Chrome e ninguém adivinha shift+roda. Aqui o
+// arrasto do mouse move, e a roda vertical vira horizontal.
+(function arrastavel(){
+  const fila = $('linha2');
+  if(!fila) return;
+  let pegando = false, x0 = 0, s0 = 0, andou = 0;
+
+  fila.addEventListener('pointerdown', e => {
+    if(e.pointerType !== 'mouse' || e.button !== 0) return;
+    if(fila.scrollWidth <= fila.clientWidth + 1) return;
+    pegando = true; andou = 0;
+    x0 = e.clientX; s0 = fila.scrollLeft;
+    fila.classList.add('puxando');
+  });
+  fila.addEventListener('pointermove', e => {
+    if(!pegando) return;
+    const d = e.clientX - x0;
+    if(Math.abs(d) > 3){
+      andou = Math.max(andou, Math.abs(d));
+      fila.setPointerCapture(e.pointerId);
+    }
+    fila.scrollLeft = s0 - d;
+  });
+  const soltar = e => {
+    if(!pegando) return;
+    pegando = false;
+    fila.classList.remove('puxando');
+    try{ fila.releasePointerCapture(e.pointerId); }catch(_){}
+  };
+  fila.addEventListener('pointerup', soltar);
+  fila.addEventListener('pointercancel', soltar);
+  // Arrastar não pode disparar o filtro que estava sob o cursor no fim do
+  // movimento: o vendedor queria rolar, não escolher.
+  fila.addEventListener('click', e => { if(andou > 6){ e.stopPropagation(); andou = 0; } }, true);
+  fila.addEventListener('wheel', e => {
+    if(e.deltaX || fila.scrollWidth <= fila.clientWidth + 1) return;
+    e.preventDefault();
+    fila.scrollLeft += e.deltaY;
+  }, { passive:false });
+})();
 
 /* ── busca ──────────────────────────────────────────────────────── */
 const _busca = $('busca'), _campo = $('campoBusca'), _x = $('limpaBusca');
