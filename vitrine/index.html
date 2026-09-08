@@ -144,6 +144,7 @@ button{font:inherit}
   .topo-l1:has(.busca.aberta) .btn-filtro,
   .topo-l1:has(.busca.aberta) .btn-sacola,
   .topo-l1:has(.busca.aberta) .btn-pedidos,
+  .topo-l1:has(.busca.aberta) .btn-respostas,
   .topo-l1:has(.busca.aberta) #linkPortal{display:none}
 }
 @media(max-width:520px){ .topo-l1:has(.busca.aberta) .selo-cms{display:none} }
@@ -850,6 +851,35 @@ button{font:inherit}
   display:flex;align-items:center;justify-content:center;padding:0 4px;
   border:1.5px solid var(--barra);font-variant-numeric:tabular-nums}
 .btn-sacola .badge[hidden]{display:none}
+/* O sino só existe quando há resposta esperando: um sino mudo no cabeçalho
+   vira enfeite e some da vista justamente quando toca. */
+.btn-respostas{position:relative;flex:none;border-color:transparent;color:#fff;
+  background:linear-gradient(145deg,#FDBA74 0%,#F97316 48%,#C2410C 100%);
+  box-shadow:0 4px 12px rgba(249,115,22,.38), inset 0 1px 0 rgba(255,255,255,.3);
+  animation:sino 2.6s ease-in-out 3}
+.btn-respostas[hidden]{display:none}
+.btn-respostas:hover{filter:brightness(1.06);color:#fff}
+.btn-respostas .badge{position:absolute;top:-3px;right:-3px;min-width:15px;height:15px;
+  border-radius:999px;background:#C2183F;color:#fff;font-size:9.5px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;padding:0 4px;
+  border:1.5px solid var(--barra);font-variant-numeric:tabular-nums}
+@keyframes sino{0%,88%,100%{transform:none}91%{transform:rotate(-9deg)}
+  94%{transform:rotate(9deg)}97%{transform:rotate(-4deg)}}
+@media (prefers-reduced-motion:reduce){ .btn-respostas{animation:none} }
+
+/* ── respostas dos clientes ───────────────────────────────────────── */
+.rs-item{border:1px solid var(--linha);border-radius:12px;background:var(--carta);
+  padding:11px 13px;display:flex;align-items:center;gap:11px}
+.rs-item + .rs-item{margin-top:8px}
+.rs-txt{flex:1;min-width:0}
+.rs-txt b{display:block;font-size:13px;font-weight:800;color:var(--tinta);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rs-txt span{display:block;font-size:11px;font-weight:600;color:var(--fraco)}
+.rs-nova{flex:none;border-radius:999px;padding:2px 8px;font-size:9.5px;font-weight:800;
+  background:rgba(249,115,22,.16);color:#C2410C}
+.rs-btn{flex:none;margin-top:0;width:auto;padding:8px 13px;font-size:11.5px}
+.rs-vazio{margin:24px auto;max-width:320px;text-align:center;color:var(--fraco);
+  font-size:12.5px;line-height:1.5}
 
 .fundo{position:fixed;inset:0;background:rgba(16,18,20,.55);backdrop-filter:blur(2px);
   display:flex;align-items:center;justify-content:center;padding:16px;z-index:60}
@@ -888,6 +918,13 @@ body.trava{overflow:hidden}
 .celulas.g-pro .cel .t{color:var(--plano)}
 .celulas.g-pro .cel .q{color:var(--plano)}
 .sc-grade{margin-top:9px}
+/* O que o cliente pediu no link fica à vista enquanto o vendedor monta a
+   grade: sem isso o número se perde e a caixa sai por chute. */
+.sc-pediu{display:flex;align-items:center;gap:6px;margin:8px 0 0;
+  border:1px solid color-mix(in srgb,var(--repasse) 30%,transparent);
+  background:color-mix(in srgb,var(--repasse) 7%,var(--carta));
+  border-radius:9px;padding:6px 9px;font-size:11px;font-weight:700;color:var(--repasse)}
+.sc-pediu b{font-weight:800}
 /* Falta grade ou data: o âmbar é o mesmo do chip de data por preencher. */
 .sc-item.pendente{border-color:#E0A106;box-shadow:0 0 0 3px rgba(251,191,36,.16)}
 @media(max-width:520px){
@@ -962,6 +999,14 @@ body.trava{overflow:hidden}
         <path d="M3 6h18M7 12h10M11 18h2"/></svg>
       <span>Filtros</span>
       <span class="badge" id="badgeFiltros" hidden></span>
+    </button>
+    <button class="icone btn-respostas" id="btnRespostas" hidden
+            title="Respostas de clientes" aria-label="Respostas de clientes">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
+        <path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+      <span class="badge" id="badgeResp"></span>
     </button>
     <button class="icone btn-pedidos" id="btnPedidos" title="Meus pedidos"
             aria-label="Meus pedidos" onclick="abrirPedidos()">
@@ -1131,6 +1176,21 @@ body.trava{overflow:hidden}
         <span>Reemitir XLSX</span></button>
     </footer>
   </section>
+</div>
+
+<div class="fundo" id="modalResp" hidden>
+  <div class="folha" role="dialog" aria-modal="true" aria-labelledby="rsTit"
+       style="max-width:460px">
+    <div class="folha-topo">
+      <span style="flex:1;min-width:0"><h3 id="rsTit">Respostas de clientes</h3>
+        <p id="rsSub">—</p></span>
+      <button class="icone" id="rsFechar" aria-label="Fechar">✕</button>
+    </div>
+    <div class="folha-corpo" id="rsLista"></div>
+    <div class="folha-pe">
+      <button class="acao" id="rsFechar2">Fechar</button>
+    </div>
+  </div>
 </div>
 
 <div class="fundo" id="modalLink" hidden>
@@ -1520,7 +1580,9 @@ function faQuanto(d){
   return 'em ' + d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
 }
 document.addEventListener('visibilitychange', () => {
-  if(!document.hidden) carregarAtualizacao();
+  if(document.hidden) return;
+  carregarAtualizacao();
+  carregarRespostas();
 });
 
 /* ── carga ──────────────────────────────────────────────────────── */
@@ -3121,6 +3183,152 @@ $('lkCopiar').onclick = async () => {
   }
 };
 
+/* ── respostas dos clientes ─────────────────────────────────────── */
+// O cliente responde e o link fica marcado no servidor, mas ninguém avisava o
+// vendedor. O sino só aparece quando há resposta esperando — link respondido e
+// ainda não jogado na sacola.
+const RS = { lista:[], buscaEm:0 };
+
+async function carregarRespostas(forcar){
+  const cod = String((SESSAO && SESSAO.codigo) || '').trim();
+  if(!cod) return;
+  // Volta do segundo plano sem recarregar a página: relê, com a mesma trava de
+  // 60s do selo de atualização.
+  if(!forcar && Date.now() - RS.buscaEm < 60000) return pintarRespostas();
+  RS.buscaEm = Date.now();
+  try{
+    const r = await fetch(WORKER_URL, { method:'PATCH',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ action:'getLinksVendedor', vendedor:cod }) });
+    const j = await r.json();
+    RS.lista = (j && j.success && Array.isArray(j.links) ? j.links : [])
+      .filter(l => l.status === 'respondido' && !l.concluidoEm);
+  }catch(_){ /* sem conexão o sino simplesmente não toca */ }
+  if(RS.lista.length) carregarClientes();
+  pintarRespostas();
+}
+
+function pintarRespostas(){
+  const n = RS.lista.length;
+  $('btnRespostas').hidden = n === 0;
+  $('badgeResp').textContent = nf(n);
+  $('btnRespostas').title = n === 1 ? '1 cliente respondeu'
+                                    : `${nf(n)} clientes responderam`;
+}
+
+function abrirRespostas(){
+  $('modalResp').hidden = false;
+  const n = RS.lista.length;
+  $('rsSub').textContent = n
+    ? `${nf(n)} ${n === 1 ? 'cliente respondeu' : 'clientes responderam'}`
+    : 'Nada esperando';
+  $('rsLista').innerHTML = n
+    ? RS.lista.map(l => `<div class="rs-item" data-cod="${esc(l.codigo)}">
+        <span class="rs-txt">
+          <b>${esc(nomeDoCliente(l.cliente) || 'Cliente ' + l.cliente)}</b>
+          <span>${esc(l.cliente)} · ${nf(l.qtdResposta)} ${l.qtdResposta === 1 ? 'produto' : 'produtos'}
+            · ${esc(quandoRespondeu(l.respondidoEm))}</span></span>
+        <span class="rs-nova">novo</span>
+        <button class="acao forte rs-btn" data-usar="${esc(l.codigo)}">Ver na sacola</button>
+      </div>`).join('')
+    : `<p class="rs-vazio">Quando um cliente responder um link, ele aparece aqui
+       para você jogar na sacola.</p>`;
+}
+function fecharRespostas(){ $('modalResp').hidden = true; }
+
+const quandoRespondeu = ms => {
+  const min = Math.floor((Date.now() - Number(ms || 0)) / 60000);
+  if(min < 1)  return 'agora mesmo';
+  if(min < 60) return `há ${min} min`;
+  const h = Math.floor(min / 60);
+  if(h < 24)   return `há ${h}h`;
+  const d = Math.floor(h / 24);
+  return d === 1 ? 'ontem' : `há ${d} dias`;
+};
+
+// Do link para a sacola. A grade não vem da resposta — o cliente só disse
+// quantos pares — então o item entra sem grade e com o pedido dele à vista,
+// para o vendedor montar a caixa e a data.
+async function usarResposta(codigo){
+  const alvo = RS.lista.find(l => l.codigo === codigo);
+  const btn = $('rsLista').querySelector(`[data-usar="${CSS.escape(codigo)}"]`);
+  if(btn) ocupado(btn, 'Abrindo…');
+  try{
+    const r = await fetch(WORKER_URL, { method:'PATCH',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ action:'getLinkCompleto', codigo }) });
+    const j = await r.json();
+    if(!j || !j.success || !j.link) throw new Error('não foi possível ler a resposta');
+    const link = j.link;
+    const itens = (link.resposta && link.resposta.itens) || [];
+    if(!itens.length) throw new Error('a resposta veio vazia');
+
+    // A marca da sacola é a do link: jogar produto Oly numa sacola UA daria
+    // planilha com tabela de preço errada.
+    if(link.marca && link.marca !== MARCA) escolherMarca(link.marca);
+
+    const naoAchei = [];
+    let postos = 0;
+    for(const it of itens){
+      const o = STATE.produtos.find(x => x.artigo === norm(it.artigo) &&
+                                         x.cor === String(it.cor || '').trim().toUpperCase());
+      if(!o){ naoAchei.push(`${it.artigo} ${it.cor}`); continue; }
+      const item = itemDaResposta(o, it);
+      if(!item){ naoAchei.push(`${it.artigo} ${it.cor}`); continue; }
+      item.pedidoCliente = Number(it.pares) || 0;
+      if(!STATE.sacola.has(item.key)){ STATE.sacola.set(item.key, item); postos++; }
+      else STATE.sacola.get(item.key).pedidoCliente = item.pedidoCliente;
+    }
+    salvarSacola();
+
+    // Cliente já preenchido: o resto o vendedor completa.
+    montarFormulario();
+    await carregarClientes();
+    $f('scCliente').value = String(link.cliente || '');
+    CLI_ALVO = { campo:'scCliente', lista:'scCliSug', dica:'scCliDica' };
+    conferirCliente();
+
+    await fetch(WORKER_URL, { method:'PATCH',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ action:'marcarLinkConcluido', codigo }) }).catch(() => {});
+    RS.lista = RS.lista.filter(l => l.codigo !== codigo);
+    pintarRespostas();
+
+    fecharRespostas();
+    STATE.aba = 'estoque';
+    abrirSacola();
+    if(naoAchei.length){
+      avisar('Alguns produtos saíram da vitrine',
+        `<b>${nf(naoAchei.length)}</b> ${naoAchei.length === 1 ? 'item da resposta não está' :
+          'itens da resposta não estão'} mais disponível: ${esc(naoAchei.join(', '))}.`);
+    }
+  }catch(e){
+    avisar('Não deu para abrir a resposta', esc(e.message || 'Tente de novo.'));
+  }finally{ if(btn) liberado(btn); }
+}
+
+// Qual origem usar: o cliente não escolheu, então vale a que entrega antes —
+// estoque, depois repasse, depois produção. O vendedor troca na sacola.
+function itemDaResposta(o, it){
+  const querem = Array.isArray(it.origens) && it.origens.length
+    ? it.origens : ['estoque', 'repasse', 'producao'];
+  if(o.pronta && querem.includes('estoque')) return itemEstoque(o);
+  if(o.repasse && querem.includes('repasse') && o.repasse.lotes.length)
+    return itemRepasse(o, o.repasse.lotes[0]);
+  if(o.meta && querem.includes('producao') && o.meta.quinzenas.length)
+    return itemProducao(o, o.meta.quinzenas[0]);
+  return null;
+}
+
+$('btnRespostas').onclick = abrirRespostas;
+$('rsFechar').onclick = fecharRespostas;
+$('rsFechar2').onclick = fecharRespostas;
+$('modalResp').onclick = e => { if(e.target.id === 'modalResp') fecharRespostas(); };
+$('rsLista').addEventListener('click', e => {
+  const b = e.target.closest('[data-usar]');
+  if(b && !b.disabled) usarResposta(b.dataset.usar);
+});
+
 /* ── catálogo dos marcados ──────────────────────────────────────── */
 // A mesma campanha que o card mostra: com um filtro de campanha ligado, sair
 // no PDF com o custo de outra tabela seria dizer um preço que não é o daquela
@@ -3715,6 +3923,7 @@ function duplicarItem(k){
                   dataDesejada: '' };
   if(it.gradePedido) copia.gradePedido = { ...it.gradePedido };
   copia.caixas = caixasDe(it);
+  if(it.pedidoCliente) copia.pedidoCliente = it.pedidoCliente;
   if(it.gradeDisp)   copia.gradeDisp   = { ...it.gradeDisp };
   if(it.grade)       copia.grade       = { ...it.grade };
   // Entra logo abaixo do original, não no fim: a comparação entre os dois é
@@ -4002,6 +4211,8 @@ function itemHtml(it){
       `</span></span>
       <button class="tirar" data-tirar="${esc(it.key)}" aria-label="Tirar da sacola">✕</button>
     </div>
+    ${it.pedidoCliente ? `<p class="sc-pediu">${svgIcone('c-repasse', 11)}
+      O cliente pediu <b>${nf(it.pedidoCliente)} pares</b></p>` : ''}
     <div class="sc-chips ${it.origem === 'repasse' ? 'o-rep' : it.origem === 'producao' ? 'o-pro' : 'o-est'}">${it.origem === 'repasse' ? '' : chipData(it)}
       ${it.origem === 'repasse' ? '' : `<button class="sc-dup" data-editar="${esc(it.key)}"
         title="Acrescentar ou tirar tamanhos"
@@ -4363,6 +4574,7 @@ if(!SESSAO){
   pintarSacola();
   carregar();
   carregarAtualizacao();
+  carregarRespostas(true);
 }
 </script>
 </body>

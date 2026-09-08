@@ -52,10 +52,6 @@ button{ font:inherit }
 .tit b{ display:block; font-size:14.5px; font-weight:800; color:var(--tinta);
   letter-spacing:-.015em; line-height:1.2 }
 .tit span{ display:block; font-size:11px; font-weight:600; color:var(--fraco) }
-.prazo{ flex:none; border-radius:999px; padding:4px 10px; font-size:10.5px;
-  font-weight:800; background:var(--carta); border:1px solid var(--linha-forte);
-  color:var(--fraco); white-space:nowrap }
-.prazo.perto{ border-color:#E0A106; background:rgba(251,191,36,.16); color:#A45B06 }
 
 /* ── faixa de abertura ── */
 .intro{ max-width:960px; margin:0 auto; padding:14px 14px 0 }
@@ -74,8 +70,7 @@ button{ font:inherit }
 
 .card{ background:var(--carta); border:1px solid var(--linha); border-radius:14px;
   overflow:hidden; display:flex; flex-direction:column }
-.card.quero{ border-color:var(--marca);
-  box-shadow:0 0 0 2px color-mix(in srgb,var(--marca) 18%,transparent) }
+.card.quero{ border-color:color-mix(in srgb,var(--pronta) 45%,transparent) }
 .foto{ position:relative; background:var(--carta); aspect-ratio:1/1;
   display:flex; align-items:center; justify-content:center; overflow:hidden }
 .foto img{ width:100%; height:100%; object-fit:contain }
@@ -117,14 +112,22 @@ button{ font:inherit }
 .mes b{ font-weight:800 }
 
 .quero-bar{ margin-top:auto; padding-top:10px; display:flex; align-items:flex-start; gap:8px }
-.btn-quero{ flex:1; border:1px solid var(--linha-forte); background:var(--carta);
-  color:var(--texto); border-radius:9px; padding:9px 8px; font-size:12px; font-weight:800;
-  cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px }
-.btn-quero:hover:not(:disabled){ border-color:var(--marca); color:var(--marca) }
+/* A cor conta em que passo o cliente está: apagado enquanto falta a
+   quantidade, azul pedindo o toque, verde quando já está no carrinho. */
+.btn-quero{ flex:1; border:1px solid transparent; border-radius:9px; padding:9px 8px;
+  font-size:12px; font-weight:800; cursor:pointer; color:#fff;
+  display:flex; align-items:center; justify-content:center; gap:6px;
+  background:linear-gradient(145deg,var(--marca-claro),var(--marca) 55%,var(--marca-escuro));
+  box-shadow:0 3px 10px color-mix(in srgb,var(--marca) 30%,transparent),
+             inset 0 1px 0 rgba(255,255,255,.26) }
+.btn-quero:hover:not(:disabled){ filter:brightness(1.06) }
+.card.quero .btn-quero{
+  background:linear-gradient(145deg,#34C77B 0%,#128A4F 55%,#0A5C35 100%);
+  box-shadow:0 3px 10px rgba(18,138,79,.32), inset 0 1px 0 rgba(255,255,255,.26) }
 /* Sem quantidade não há o que adicionar: o botão fica de fora até ter número. */
-.btn-quero:disabled{ opacity:.45; cursor:not-allowed; border-style:dashed }
-.card.quero .btn-quero{ border-color:transparent; color:#fff;
-  background:linear-gradient(145deg,var(--marca-claro),var(--marca) 55%,var(--marca-escuro)) }
+.btn-quero:disabled{ background:var(--carta); color:var(--tenue);
+  border-color:var(--linha-forte); border-style:dashed; box-shadow:none;
+  cursor:not-allowed }
 .qtd{ width:74px; flex:none }
 .qtd input{ width:100%; border:1px solid var(--linha); border-radius:9px; padding:8px 6px;
   text-align:center; font:inherit; font-size:12.5px; font-weight:800; color:var(--tinta);
@@ -170,7 +173,7 @@ button{ font:inherit }
 <header class="topo" id="topo" hidden>
   <span class="selo">CMS</span>
   <span class="tit"><b id="tMarca">—</b><span id="tVend">—</span></span>
-  <span class="prazo" id="tPrazo" hidden>—</span>
+
 </header>
 
 <div id="carregando" class="estado">
@@ -234,15 +237,6 @@ function mostrarErro(titulo, texto){
   $('erroTit').textContent = titulo;
   $('erroTxt').textContent = texto;
   $('erro').hidden = false;
-}
-
-// Quanto falta, em palavra de gente: "expira hoje" alarma mais que "em 6h".
-function textoPrazo(ms){
-  const h = Math.floor(ms / 36e5);
-  if(h < 1)  return 'expira em menos de 1 hora';
-  if(h < 24) return `expira em ${h} ${h === 1 ? 'hora' : 'horas'}`;
-  const d = Math.floor(h / 24);
-  return `expira em ${d} ${d === 1 ? 'dia' : 'dias'}`;
 }
 
 // O cliente vê produto, preço e nada mais: de onde a peça sai — estoque, lote
@@ -383,12 +377,6 @@ $('peEnviar').onclick = async () => {
     $('tMarca').textContent = MARCAS[LINK.marca] || 'CMS Representações';
     $('tVend').textContent = LINK.vendedorNome
       ? `Seleção de ${LINK.vendedorNome}` : 'CMS Representações';
-    const resta = Number(LINK.expiraEm || 0) - Date.now();
-    if(resta > 0){
-      $('tPrazo').textContent = textoPrazo(resta);
-      $('tPrazo').hidden = false;
-      $('tPrazo').classList.toggle('perto', resta < 24 * 36e5);
-    }
     $('iSub').textContent = `${nf(LINK.produtos.length)} ` +
       `${LINK.produtos.length === 1 ? 'produto' : 'produtos'} · diga quantos pares de ` +
       'cada um e adicione no carrinho.';
