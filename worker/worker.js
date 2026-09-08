@@ -1382,6 +1382,9 @@ export default {
             vendedor:     String(body.data.vendedor || ""),
             vendedorNome: String(body.data.vendedorNome || ""),
             cliente:      String(body.data.cliente || ""),
+            // O nome vem da carteira do vendedor; a pagina do cliente nao tem
+            // essa base, e precisa dele para nomear o PDF que ela emite.
+            clienteNome:  String(body.data.clienteNome || ""),
             marca:        String(body.data.marca || ""),
             produtos:     Array.isArray(body.data.produtos) ? body.data.produtos : [],
             criadoEm:     agora,

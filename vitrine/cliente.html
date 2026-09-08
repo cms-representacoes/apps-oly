@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
   --barra:#F1F2EF; --papel:#E9EBE7; --carta:#FFFFFF;
@@ -145,12 +146,49 @@ button{ font:inherit }
   display:flex; align-items:center; gap:11px }
 .pe .cont{ flex:1; font-size:12px; font-weight:700; color:var(--fraco) }
 .pe .cont b{ color:var(--tinta) }
+/* Laranja, e não a cor da marca: enviar é a única saída da página, e precisa
+   se destacar dos botões verdes dos cards. */
 .enviar{ flex:none; border:0; border-radius:999px; padding:11px 20px; color:#fff;
   font-size:13px; font-weight:800; cursor:pointer;
-  background:linear-gradient(145deg,var(--marca-claro),var(--marca) 55%,var(--marca-escuro));
-  box-shadow:0 4px 14px color-mix(in srgb,var(--marca) 34%,transparent),
-             inset 0 1px 0 rgba(255,255,255,.26) }
+  background:linear-gradient(145deg,#FDBA74 0%,#F97316 48%,#C2410C 100%);
+  box-shadow:0 4px 14px rgba(249,115,22,.42), inset 0 1px 0 rgba(255,255,255,.3) }
 .enviar:disabled{ opacity:.45; cursor:not-allowed; box-shadow:none }
+.pdf{ flex:none; display:inline-flex; align-items:center; gap:6px; cursor:pointer;
+  border:1px solid var(--linha-forte); background:var(--carta); color:var(--texto);
+  border-radius:999px; padding:10px 15px; font-size:12px; font-weight:800 }
+.pdf:hover{ border-color:var(--marca); color:var(--marca) }
+.pdf[hidden]{ display:none }
+.pdf:disabled{ opacity:.6; cursor:progress }
+
+/* Aviso de envio: a mesma caixa do resto do projeto, num arquivo que não tem
+   o modal de lá. */
+.cx-bg{ position:fixed; inset:0; z-index:60; background:rgba(16,18,20,.55);
+  backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center;
+  padding:18px }
+.cx-bg[hidden]{ display:none }
+.cx{ background:var(--carta); border:1px solid var(--linha); border-radius:16px;
+  width:100%; max-width:360px; padding:22px 20px 0; text-align:center;
+  box-shadow:0 24px 64px rgba(0,0,0,.22) }
+.cx-ico{ width:46px; height:46px; border-radius:50%; margin:0 auto 12px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--pronta-fundo); color:var(--pronta) }
+.cx h3{ margin:0 0 5px; font-size:16px; font-weight:800; color:var(--tinta) }
+.cx p{ margin:0 0 4px; font-size:12.5px; color:var(--fraco); line-height:1.5 }
+.cx-pe{ display:flex; gap:8px; margin:18px -20px 0; padding:13px 20px;
+  border-top:1px solid var(--linha) }
+.cx-pe > *{ flex:1; border-radius:9px; padding:9px; font:inherit; font-size:12px;
+  font-weight:800; cursor:pointer }
+.cx-nao{ border:1px solid var(--linha-forte); background:var(--carta); color:var(--texto) }
+.cx-sim{ border:0; color:#fff;
+  background:linear-gradient(145deg,var(--marca-claro),var(--marca) 55%,var(--marca-escuro)) }
+.cx-sim:disabled{ opacity:.6; cursor:progress }
+
+/* Já enviado: a seleção continua na tela até o link expirar, e a faixa diz
+   quando foi. Fechar a página no "Recebemos!" deixava o cliente sem conferir
+   o que tinha pedido. */
+.enviado{ display:flex; align-items:center; gap:7px; margin:6px 0 0;
+  font-size:12px; font-weight:700; color:var(--pronta) }
+.enviado svg{ flex:none }
 
 /* ── estados ── */
 .estado{ max-width:520px; margin:70px auto; padding:28px 22px; text-align:center;
@@ -172,7 +210,7 @@ button{ font:inherit }
 
 <header class="topo" id="topo" hidden>
   <span class="selo">CMS</span>
-  <span class="tit"><b id="tMarca">—</b><span id="tVend">—</span></span>
+  <span class="tit"><b>CMS Representações</b><span id="tMarca">—</span></span>
 
 </header>
 
@@ -195,15 +233,36 @@ button{ font:inherit }
 <div id="conteudo" hidden>
   <div class="intro">
     <h1 id="iTit">Separamos alguns produtos para você</h1>
-    <p id="iSub">—</p>
+    <p id="iEnviado" hidden>—</p>
   </div>
   <main class="grade" id="grade"></main>
 </div>
 
 <footer class="pe" id="pe" hidden>
   <span class="cont" id="peCont">—</span>
+  <button class="pdf" id="pePdf" hidden>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <path d="M14 2v6h6"/><path d="M12 18v-6M9 15l3 3 3-3"/></svg>
+    <span>PDF</span></button>
   <button class="enviar" id="peEnviar" disabled>Enviar</button>
 </footer>
+
+<div class="cx-bg" id="cxPdf" hidden>
+  <div class="cx" role="dialog" aria-modal="true" aria-labelledby="cxTit">
+    <span class="cx-ico">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 6 9 17l-5-5"/></svg></span>
+    <h3 id="cxTit">Pedido enviado</h3>
+    <p id="cxTxt">Quer guardar uma cópia em PDF?</p>
+    <div class="cx-pe">
+      <button class="cx-nao" id="cxNao">Agora não</button>
+      <button class="cx-sim" id="cxSim">Salvar PDF</button>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════════
@@ -324,6 +383,26 @@ $('grade').addEventListener('input', e => {
   pintarRodape();
 });
 
+// Enviado não fecha a página: a seleção fica de pé até o link expirar, para o
+// cliente conferir o que pediu e mudar de ideia enquanto o prazo corre.
+let ENVIADO_EM = null;
+
+function marcarEnviado(quando){
+  ENVIADO_EM = quando;
+  const d = new Date(quando);
+  const p2 = n => String(n).padStart(2, '0');
+  $('iEnviado').className = 'enviado';
+  $('iEnviado').innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 6 9 17l-5-5"/></svg>
+    Enviado em ${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${d.getFullYear()} às
+    ${p2(d.getHours())}:${p2(d.getMinutes())} — dá para ajustar e enviar de novo.`;
+  $('iEnviado').hidden = false;
+  $('pePdf').hidden = false;
+  $('peEnviar').textContent = 'Enviar de novo';
+  pintarRodape();
+}
+
 $('peEnviar').onclick = async () => {
   const btn = $('peEnviar');
   const antes = btn.textContent;
@@ -346,16 +425,186 @@ $('peEnviar').onclick = async () => {
         return mostrarErro('Link expirado', 'Peça um novo ao seu representante.');
       throw new Error((j && j.erro) || 'falhou');
     }
-    $('conteudo').hidden = true; $('pe').hidden = true;
-    $('erro').hidden = false;
-    $('erroTit').textContent = 'Recebemos!';
-    $('erroTxt').textContent = `Seu representante já foi avisado dos ` +
-      `${itens.length} ${itens.length === 1 ? 'produto' : 'produtos'} que você marcou.`;
+    marcarEnviado(Date.now());
+    $('cxTxt').innerHTML = `<b>${nf(itens.length)}</b> ` +
+      `${itens.length === 1 ? 'produto' : 'produtos'} · ` +
+      `<b>${nf(itens.reduce((a, i) => a + i.pares, 0))}</b> pares.<br>` +
+      'Quer guardar uma cópia em PDF?';
+    $('cxPdf').hidden = false;
   }catch(_){
-    btn.disabled = false; btn.textContent = antes;
     alert('Não deu para enviar agora. Tente de novo em alguns instantes.');
+  }finally{
+    btn.disabled = false;
+    if(btn.textContent === 'Enviando…') btn.textContent = antes;
   }
 };
+
+$('cxNao').onclick = () => { $('cxPdf').hidden = true; };
+$('cxSim').onclick = async () => {
+  const b = $('cxSim');
+  b.disabled = true; b.textContent = 'Gerando…';
+  await gerarPdf();
+  b.disabled = false; b.textContent = 'Salvar PDF';
+  $('cxPdf').hidden = true;
+};
+$('pePdf').onclick = async () => {
+  const b = $('pePdf');
+  b.disabled = true;
+  await gerarPdf();
+  b.disabled = false;
+};
+$('cxPdf').onclick = e => { if(e.target.id === 'cxPdf') $('cxPdf').hidden = true; };
+
+// ── comprovante em PDF ─────────────────────────────────────────────────
+// O mesmo que está na tela, com a hora do envio: é o comprovante do cliente,
+// não um catálogo. Sem preço total, porque a negociação ainda vai acontecer.
+async function gerarPdf(){
+  try{
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'pt', format:'a4', orientation:'portrait', compress:true });
+    const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
+    const M = 34, L = W - M * 2;
+    const marca = LINK.marca === 'ua' ? [229,33,37] : [44,57,226];
+    const C = { marca, texto:[22,24,26], fraco:[109,115,122], linha:[226,228,224],
+                papel:[233,235,231], branco:[255,255,255] };
+    const cor = c => doc.setTextColor(c[0], c[1], c[2]);
+    const fill = c => doc.setFillColor(c[0], c[1], c[2]);
+    const traco = c => doc.setDrawColor(c[0], c[1], c[2]);
+    const p2 = n => String(n).padStart(2, '0');
+    const d = new Date(ENVIADO_EM || Date.now());
+    const quando = `${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${d.getFullYear()} ` +
+                   `${p2(d.getHours())}:${p2(d.getMinutes())}`;
+    const corta = (t, n) => { t = String(t == null ? '' : t);
+      return t.length > n ? t.slice(0, n - 1) + '…' : t; };
+    // Cortar por numero de letras invadia a coluna vizinha: razao social longa
+    // escrevia por cima de "REPRESENTANTE". Aqui o corte e pela largura real.
+    const cabeEm = (t, larg) => {
+      t = String(t == null ? '' : t);
+      if(doc.getTextWidth(t) <= larg) return t;
+      while(t.length > 1 && doc.getTextWidth(t + '…') > larg) t = t.slice(0, -1);
+      return t + '…';
+    };
+
+    const escolhidos = LINK.produtos.filter(p => ESCOLHA.has(chave(p)));
+    let pag = 0, y = 0;
+
+    function cabecalho(){
+      pag++;
+      fill(C.marca); doc.rect(0, 0, W, 4, 'F');
+      let t = 34;
+      fill(C.marca); doc.roundedRect(M, t, 42, 42, 8, 8, 'F');
+      cor(C.branco); doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+      doc.text('CMS', M + 21, t + 26, { align:'center' });
+      cor(C.texto); doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+      doc.text('CMS Representações', M + 52, t + 15);
+      cor(C.fraco); doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+      doc.text(MARCAS[LINK.marca] || '', M + 52, t + 29);
+      cor(C.texto); doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+      doc.text('SUA SELEÇÃO', W - M, t + 15, { align:'right' });
+      cor(C.fraco); doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+      doc.text(`Enviado em ${quando}`, W - M, t + 29, { align:'right' });
+      return t + 62;
+    }
+
+    function dados(yi){
+      const h = 46;
+      fill(C.papel); doc.roundedRect(M, yi, L, h, 7, 7, 'F');
+      const campos = [
+        ['CLIENTE', LINK.clienteNome || ('Código ' + LINK.cliente)],
+        ['REPRESENTANTE', LINK.vendedorNome || 'CMS'],
+        ['PRODUTOS', `${nf(escolhidos.length)} · ${nf(escolhidos.reduce((a, p) =>
+          a + (Number(ESCOLHA.get(chave(p)).pares) || 0), 0))} pares`]
+      ];
+      const colW = L / campos.length;
+      campos.forEach((c, i) => {
+        const x = M + i * colW + 12;
+        cor(C.fraco); doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5);
+        doc.text(c[0], x, yi + 17);
+        cor(C.texto); doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5);
+        doc.text(cabeEm(c[1], colW - 22), x, yi + 31);
+      });
+      return yi + h + 16;
+    }
+
+    async function linha(p, yi){
+      const alt = 62;
+      traco(C.linha); doc.setLineWidth(.5); doc.line(M, yi, M + L, yi);
+      const img = 48, ix = M, iy = yi + 7;
+      fill(C.branco); doc.roundedRect(ix, iy, img, img, 5, 5, 'F');
+      traco(C.linha); doc.roundedRect(ix, iy, img, img, 5, 5, 'S');
+      const dataUrl = await comoDataUrl(foto(p));
+      if(dataUrl) doc.addImage(dataUrl, 'JPEG', ix + 2, iy + 2, img - 4, img - 4, undefined, 'FAST');
+
+      const tx = ix + img + 12;
+      cor(C.texto); doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5);
+      doc.text(corta(p.descricao || p.artigo, 44), tx, yi + 22);
+      cor(C.fraco); doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
+      doc.text(`${p.artigo} · ${String(p.cor || '').replace(/_/g, '/')}`, tx, yi + 35);
+      if(p.pdv){
+        cor(C.marca); doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+        doc.text(brl(p.pdv), tx, yi + 49);
+      }
+      const pares = Number(ESCOLHA.get(chave(p)).pares) || 0;
+      cor(C.fraco); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+      doc.text('QUANTIDADE', M + L, yi + 24, { align:'right' });
+      cor(C.texto); doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
+      doc.text(`${nf(pares)} pares`, M + L, yi + 43, { align:'right' });
+      return yi + alt;
+    }
+
+    function rodape(){
+      traco(C.linha); doc.setLineWidth(.5); doc.line(M, H - 34, W - M, H - 34);
+      cor(C.fraco); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+      doc.text('Isto é o que você selecionou, não um pedido fechado. ' +
+        'Seu representante confirma disponibilidade, grade e prazo.', M, H - 21);
+      doc.text('pág. ' + pag, W - M, H - 21, { align:'right' });
+    }
+
+    y = cabecalho();
+    y = dados(y);
+    cor(C.fraco); doc.setFont('helvetica', 'bold'); doc.setFontSize(7);
+    doc.text('PRODUTOS SELECIONADOS', M, y);
+    y += 8;
+    for(const p of escolhidos){
+      if(y + 62 > H - 56){ rodape(); doc.addPage(); y = cabecalho(); }
+      y = await linha(p, y);
+    }
+    rodape();
+
+    const nome = (LINK.clienteNome || LINK.cliente || 'cliente')
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30);
+    doc.save(`selecao_${nome}_${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}` +
+      `_${p2(d.getHours())}${p2(d.getMinutes())}.pdf`);
+  }catch(e){
+    console.error(e);
+    alert('Não deu para gerar o PDF agora. Tente de novo.');
+  }
+}
+
+// Mesma origem, então o canvas não fica manchado e o PDF consegue ler de volta.
+function comoDataUrl(src){
+  return new Promise(resolve => {
+    let pronto = false;
+    const fim = v => { if(!pronto){ pronto = true; clearTimeout(t); resolve(v); } };
+    const t = setTimeout(() => fim(null), 6000);
+    try{
+      const img = new Image();
+      img.onload = () => {
+        try{
+          const c = document.createElement('canvas');
+          c.width = img.naturalWidth; c.height = img.naturalHeight;
+          const ctx = c.getContext('2d');
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+          ctx.drawImage(img, 0, 0);
+          fim(c.toDataURL('image/jpeg', 0.82));
+        }catch(_){ fim(null); }
+      };
+      img.onerror = () => fim(null);
+      img.src = src;
+    }catch(_){ fim(null); }
+  });
+}
 
 (async function abrir(){
   if(!CODIGO) return mostrarErro('Link inválido', 'O endereço está incompleto.');
@@ -374,13 +623,9 @@ $('peEnviar').onclick = async () => {
       return mostrarErro('Seleção vazia', 'Este link não tem produto nenhum.');
 
     document.body.dataset.marca = LINK.marca === 'ua' ? 'ua' : 'oly';
-    $('tMarca').textContent = MARCAS[LINK.marca] || 'CMS Representações';
-    $('tVend').textContent = LINK.vendedorNome
-      ? `Seleção de ${LINK.vendedorNome}` : 'CMS Representações';
-    $('iSub').textContent = `${nf(LINK.produtos.length)} ` +
-      `${LINK.produtos.length === 1 ? 'produto' : 'produtos'} · diga quantos pares de ` +
-      'cada um e adicione no carrinho.';
-    // Já respondeu antes: volta com o que marcou, para poder ajustar.
+    $('tMarca').textContent = MARCAS[LINK.marca] || '';
+    // Já respondeu antes: volta com o que marcou, para poder ajustar, reemitir
+    // o comprovante ou mandar de novo.
     if(LINK.resposta && Array.isArray(LINK.resposta.itens)){
       for(const it of LINK.resposta.itens)
         ESCOLHA.set(it.artigo + '|' + it.cor, { pares:it.pares || '' });
@@ -390,6 +635,7 @@ $('peEnviar').onclick = async () => {
     $('conteudo').hidden = false;
     $('pe').hidden = false;
     pintar();
+    if(LINK.respondidoEm) marcarEnviado(LINK.respondidoEm);
   }catch(e){
     mostrarErro('Não deu para abrir', 'Verifique a conexão e tente de novo.');
   }
