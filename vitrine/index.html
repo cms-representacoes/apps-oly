@@ -631,6 +631,26 @@ button{font:inherit}
 .sc-pe .depois:hover{background:var(--carta)}
 .sc-resumo{display:flex;justify-content:space-between;font-size:11.5px;color:var(--fraco)}
 .sc-resumo b{color:var(--tinta);font-weight:700;font-variant-numeric:tabular-nums}
+
+/* Seis campos que quase nunca mudam nao podem ocupar meia tela de pedido:
+   ficam atras de um resumo que mostra o valor de cada um sem abrir. */
+.sc-ebm-abre{display:flex;align-items:center;gap:9px;width:100%;margin-top:11px;
+  cursor:pointer;border:1px solid var(--linha);background:var(--carta);
+  border-radius:10px;padding:9px 11px;font:inherit;text-align:left}
+.sc-ebm-abre:hover{border-color:var(--linha-forte)}
+.sc-ebm-abre .ico{width:26px;height:26px;flex:none;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--papel);color:var(--fraco)}
+.sc-ebm-abre .txt{flex:1;min-width:0}
+.sc-ebm-abre b{display:block;font-size:11.5px;font-weight:800;color:var(--tinta)}
+/* Quebra em vez de cortar: um resumo que termina em "Ant..." esconde
+   justamente o campo que o vendedor foi conferir. */
+.sc-ebm-abre .txt span{display:block;font-size:10.5px;font-weight:600;
+  color:var(--tenue);line-height:1.35}
+.sc-ebm-abre .seta{flex:none;color:var(--tenue);transition:transform .16s}
+.sc-ebm-abre[aria-expanded="true"] .seta{transform:rotate(180deg)}
+.sc-ebm{margin-top:9px}
+.sc-ebm[hidden]{display:none}
 .sc-falta{display:flex;align-items:center;gap:5px;margin:6px 0 0;
   font-size:11px;font-weight:700;color:#A45B06}
 .sc-falta svg{flex:none}
@@ -1444,7 +1464,56 @@ const FORM_HTML = `<p class="sc-form-tit">Dados do pedido</p>
         <label class="largo"><span>Data para os itens sem data</span>
           <input id="scData" type="date">
           <em class="ajuda">Preenche só quem ainda está sem data. Cada item pode
-            ter a sua, pelo chip no card.</em></label>`;
+            ter a sua, pelo chip no card.</em></label>
+        <label class="largo"><span>Pedido do cliente</span>
+          <input id="scPedidoCli" placeholder="número ou referência do cliente"
+                 autocomplete="off"></label>
+      </div>
+
+      <button type="button" class="sc-ebm-abre" id="scEbmAbre" aria-expanded="false">
+        <span class="ico">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></span>
+        <span class="txt"><b>Layout do EBM</b><span id="scEbmResumo">—</span></span>
+        <svg class="seta" width="13" height="13" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.4" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="sc-campos sc-ebm" id="scEbm" hidden>
+        <label><span>Tabela de preço <i>*</i></span>
+          <input id="scTabela" list="scTabelas" autocomplete="off" placeholder="OL026">
+          <datalist id="scTabelas">
+            <option value="OL026"></option><option value="OL025"></option>
+            <option value="OL024"></option><option value="UA037"></option>
+          </datalist></label>
+        <label><span>Forma de embalar</span>
+          <select id="scEmbalar">
+            <option value="M: Musical">M: Musical</option>
+            <option value="P: Padrão">P: Padrão</option>
+            <option value="S: Sólida">S: Sólida</option>
+          </select></label>
+        <label><span>Tipo de entrega</span>
+          <select id="scEntrega">
+            <option value="3: Total Artigo/Cor">3: Total Artigo/Cor</option>
+            <option value="2: Total Artigo">2: Total Artigo</option>
+            <option value="1: Total Encomenda">1: Total Encomenda</option>
+          </select></label>
+        <label><span>Data firme</span>
+          <select id="scFirme">
+            <option value="S: Sim">S: Sim</option>
+            <option value="N: Não">N: Não</option>
+          </select></label>
+        <label><span>Pedido mãe</span>
+          <select id="scMae">
+            <option value="N: Não">N: Não</option>
+            <option value="S: Sim">S: Sim</option>
+          </select></label>
+        <label><span>Aceita antecipação</span>
+          <select id="scAntec">
+            <option value="N: Não">N: Não</option>
+            <option value="S: Sim">S: Sim</option>
+          </select></label>`;
 
 /* ── sacola ─────────────────────────────────────────────────────── */
 // Uma sacola por vendedor E por marca: misturar Oly com UA geraria um pedido
@@ -2343,7 +2412,26 @@ function montarFormulario(){
   $f('scCampanha').innerHTML = '<option value="">Sem campanha</option>' +
     CAMPANHAS.filter(c => c.endsWith(suf))
       .map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  for(const [id, v] of Object.entries(PADRAO_EBM)){ const c = $f(id); if(c) c.value = v; }
+  $f('scTabela').value = TABELA_PRECO[MARCA] || '';
   carregarForm();
+  pintarResumoEbm();
+}
+
+// O resumo diz o valor de cada campo sem precisar abrir: aberto ou fechado, o
+// vendedor sabe o que vai na planilha.
+function pintarResumoEbm(){
+  const r = $f('scEbmResumo');
+  if(!r) return;
+  const v = id => ($f(id) || {}).value || '';
+  r.textContent = [
+    v('scTabela') || 'sem tabela',
+    'Embalar ' + soCodigo(v('scEmbalar')),
+    'Entrega ' + soCodigo(v('scEntrega')),
+    'Firme ' + soCodigo(v('scFirme')),
+    'Mãe ' + soCodigo(v('scMae')),
+    'Antec. ' + soCodigo(v('scAntec'))
+  ].join(' · ');
 }
 
 // Os itens da sacola sobreviviam a um F5, o cliente não. Quem monta um pedido
@@ -2351,7 +2439,8 @@ function montarFormulario(){
 // atrito que faz o vendedor desistir da tela.
 const chaveForm = () =>
   `vitrine_form_v1_${(SESSAO && SESSAO.codigo) || 'anon'}_${MARCA}`;
-const CAMPOS_FORM = ['scCliente', 'scPrazo', 'scCampanha'];
+const CAMPOS_FORM = ['scCliente', 'scPrazo', 'scCampanha', 'scPedidoCli',
+  'scTabela', 'scEmbalar', 'scEntrega', 'scFirme', 'scMae', 'scAntec'];
 
 function salvarForm(){
   try{
@@ -2380,10 +2469,18 @@ function carregarForm(){
 }
 // Um ouvinte no fragmento inteiro: os campos são recriados a cada marca.
 FORM_PEDIDO.addEventListener('change', e => {
-  if(CAMPOS_FORM.includes(e.target.id)) salvarForm();
+  if(CAMPOS_FORM.includes(e.target.id)){ salvarForm(); pintarResumoEbm(); }
 });
 FORM_PEDIDO.addEventListener('input', e => {
-  if(e.target.id === 'scCliente') salvarForm();
+  if(e.target.id === 'scCliente' || e.target.id === 'scPedidoCli') salvarForm();
+  if(e.target.id === 'scTabela'){ salvarForm(); pintarResumoEbm(); }
+});
+FORM_PEDIDO.addEventListener('click', e => {
+  const b = e.target.closest('#scEbmAbre');
+  if(!b) return;
+  const aberto = $f('scEbm').hidden;
+  $f('scEbm').hidden = !aberto;
+  b.setAttribute('aria-expanded', String(aberto));
 });
 
 // Atalho para o caso comum, um pedido com data unica: preenche so as linhas
@@ -2469,7 +2566,10 @@ function snapshotPedido(itens, cfg){
     clienteNome: cfg.clienteNome || '',
     prazo: cfg.prazo || '',
     campanha: cfg.campanha || '',
-    tabelaPreco: TABELA_PRECO[cfg.marca] || '',
+    tabelaPreco: cfg.tabela || TABELA_PRECO[cfg.marca] || '',
+    pedidoCliente: cfg.pedidoCliente || '',
+    ebm: { embalar:cfg.embalar, entrega:cfg.entrega, firme:cfg.firme,
+           mae:cfg.mae, antec:cfg.antec },
     itens: linhas,
     totalItens: linhas.length,
     totalPares: linhas.reduce((a, l) => a + l.total, 0),
@@ -2770,7 +2870,8 @@ $('pedXlsx').onclick = () => {
   for(const p of alvos){
     const { aoa, foraDoLayout } = montarPlanilha(p.itens || [], {
       comissionista:p.comissionista, cliente:p.cliente, prazo:p.prazo,
-      campanha:p.campanha, marca:p.marca });
+      campanha:p.campanha, marca:p.marca, tabela:p.tabelaPreco,
+      pedidoCliente:p.pedidoCliente, ...(p.ebm || {}) });
     corpo.push(...aoa.slice(1));
     for(const t of foraDoLayout) fora.add(t);
   }
@@ -3878,7 +3979,16 @@ const XLS_COLS = [
   "33/38","39/44",
   "Total"
 ];
-const TABELA_PRECO = { oly:'OL025', ua:'' };
+// Mesma tabela que o catálogo digital usa. O campo aceita edição: quando a
+// fábrica troca a tabela, o vendedor digita a nova sem esperar release.
+const TABELA_PRECO = { oly:'OL026', ua:'UA037' };
+// Os seis do bloco do EBM quase nunca mudam — o padrão é o mesmo do catálogo.
+const PADRAO_EBM = {
+  scEmbalar:'M: Musical', scEntrega:'3: Total Artigo/Cor',
+  scFirme:'S: Sim', scMae:'N: Não', scAntec:'N: Não'
+};
+// A planilha quer o código, não o rótulo: "3: Total Artigo/Cor" vira 3.
+const soCodigo = v => String(v || '').split(':')[0].trim();
 
 // "Z24 - 63/91 D" vira prazo médio 77 em 2 parcelas — a planilha quer os
 // números, não o rótulo. Mesma conta do app de disponibilidades.
@@ -3939,7 +4049,14 @@ function exportarXlsx(){
     clienteNome: nomeDoCliente(cliente),
     prazo,
     campanha: $f('scCampanha').value || '',
-    marca: MARCA
+    marca: MARCA,
+    tabela: $f('scTabela').value.trim(),
+    pedidoCliente: $f('scPedidoCli').value.trim(),
+    embalar: $f('scEmbalar').value,
+    entrega: $f('scEntrega').value,
+    firme: $f('scFirme').value,
+    mae: $f('scMae').value,
+    antec: $f('scAntec').value
   };
   const linhas = [...STATE.sacola.values()].filter(it => it.origem !== 'repasse');
   if(!baixarPlanilha(linhas, cfg)) return;
@@ -3975,7 +4092,20 @@ function montarPlanilha(itens, cfg){
       l[idx['Data Desejada']] = br;
       l[idx['Data de Faturamento']] = br;
     }
-    l[idx['Tabela de Preço']] = TABELA_PRECO[cfg.marca || MARCA] || '';
+    // Digitada ganha da padrão: a tabela muda por decisão da fábrica, e o
+    // vendedor não pode ficar esperando alguém alterar o código.
+    l[idx['Tabela de Preço']] = cfg.tabela || TABELA_PRECO[cfg.marca || MARCA] || '';
+    l[idx['Forma de Embalar']]     = soCodigo(cfg.embalar || PADRAO_EBM.scEmbalar);
+    l[idx['Tipo de Entrega']]      = Number(soCodigo(cfg.entrega || PADRAO_EBM.scEntrega)) ||
+                                     soCodigo(cfg.entrega || PADRAO_EBM.scEntrega);
+    l[idx['Data Firme']]           = soCodigo(cfg.firme || PADRAO_EBM.scFirme);
+    l[idx['Pedido Mãe']]           = soCodigo(cfg.mae || PADRAO_EBM.scMae);
+    l[idx['Aceita Antecipação?']]  = soCodigo(cfg.antec || PADRAO_EBM.scAntec);
+    if(cfg.pedidoCliente) l[idx['Pedido do Cliente']] = cfg.pedidoCliente;
+    // Aqui a caixa não é deduzida da soma: o vendedor digitou a grade de uma
+    // e disse quantas quer. É o número certo, não um palpite.
+    if(it.origem !== 'repasse' && caixasDe(it) > 0)
+      l[idx['Quantidade de Caixas']] = caixasDe(it);
     l[idx['Artigo']] = it.artigo;
     l[idx['Descrição']] = it.nome;
     // No sistema a cor vai com barra; aqui ela é guardada como veio da base.
