@@ -136,6 +136,15 @@ export default {
     // resumo à parte evita baixar 1 MB só para perguntar "mudou?".
     const GITHUB_GRADE_CORRE      = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/grade-corre.json`;
     const GITHUB_GRADE_CORRE_INFO = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/grade-corre-info.json`;
+    // Segunda família de grade: tudo que não é CORRE (tênis e chinelo, Oly e
+    // UA). Arquivo separado de propósito — cada importação substitui só a sua
+    // família, e uma não tem como apagar a outra por engano.
+    const GITHUB_GRADE_GERAL      = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/grade-geral.json`;
+    const GITHUB_GRADE_GERAL_INFO = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/grade-geral-info.json`;
+    const GRADE_ARQ = {
+      corre: { base: GITHUB_GRADE_CORRE, info: GITHUB_GRADE_CORRE_INFO },
+      geral: { base: GITHUB_GRADE_GERAL, info: GITHUB_GRADE_GERAL_INFO }
+    };
     // Repositório onde ficam as imagens de produto (pode ser diferente do repo de dados)
     const GITHUB_IMG_REPO = env.GITHUB_IMG_REPO || "apps-oly-v2";
     // Painel de TV — os dois arquivos vivem no repo do painel (apps-oly-v2),
@@ -1142,6 +1151,107 @@ export default {
           try {
             const { sha: shaInfo } = await getFile(GITHUB_GRADE_CORRE_INFO);
             await saveFile(GITHUB_GRADE_CORRE_INFO, info, shaInfo, "grade corre: resumo");
+          } catch (_) { /* o resumo é conveniência, não bloqueia a publicação */ }
+
+          return new Response(JSON.stringify({ success: true, ...info }),
+            { status: 200, headers: corsHeaders });
+        }
+
+        // ── GRADE POR FAMÍLIA ─────────────────────────────────────────────
+        // As três de cima ficam como estão: a versão publicada da Detalhada
+        // ainda as chama, e renomear derrubaria a grade de quem não recarregou.
+        // Estas atendem as duas famílias pelo campo `familia`, e aceitam tanto
+        // o formato antigo ({cab,l}, uma aba) quanto o novo ({blocos:[...]}),
+        // porque a planilha geral vem com quatro abas em dois layouts.
+        if (body.action === "getGradeInfo" || body.action === "getGrade" ||
+            body.action === "saveGrade") {
+          const fam = String(body.familia || "corre").toLowerCase();
+          const arq = GRADE_ARQ[fam];
+          if (!arq) {
+            return new Response(JSON.stringify({
+              success: false, error: `Família desconhecida: ${fam}` }),
+              { status: 400, headers: corsHeaders });
+          }
+
+          if (body.action === "getGradeInfo") {
+            try {
+              const { content } = await getFile(arq.info);
+              return new Response(JSON.stringify(content || { gerado: null }),
+                { status: 200, headers: corsHeaders });
+            } catch (_) {
+              return new Response(JSON.stringify({ gerado: null }),
+                { status: 200, headers: corsHeaders });
+            }
+          }
+
+          if (body.action === "getGrade") {
+            try {
+              const { content } = await getFile(arq.base);
+              return new Response(JSON.stringify(content || null),
+                { status: 200, headers: corsHeaders });
+            } catch (_) {
+              return new Response(JSON.stringify(null),
+                { status: 200, headers: corsHeaders });
+            }
+          }
+
+          // saveGrade — mesma proteção da saveGradeCorre: sem token, porque
+          // quem publica é uma tela de navegador, e a defesa é recusar lixo.
+          // Uma planilha torta entraria calada e daria o tamanho errado a
+          // quem for montar a caixa.
+          const g = body.data;
+          if (!g || typeof g !== "object") {
+            return new Response(JSON.stringify({
+              success: false, error: "Grade inválida: nada recebido." }),
+              { status: 400, headers: corsHeaders });
+          }
+          const blocos = Array.isArray(g.blocos) ? g.blocos
+                       : (Array.isArray(g.cab) && Array.isArray(g.l) ? [{ cab: g.cab, l: g.l }] : null);
+          if (!blocos || !blocos.length) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: "Grade inválida: esperado { blocos:[{cab:[...], l:[[...]]}] }." }),
+              { status: 400, headers: corsHeaders });
+          }
+          let total = 0;
+          for (let i = 0; i < blocos.length; i++) {
+            const b = blocos[i];
+            if (!b || !Array.isArray(b.cab) || !b.cab.length || !Array.isArray(b.l) || !b.l.length) {
+              return new Response(JSON.stringify({
+                success: false,
+                error: `Grade inválida: o bloco ${i + 1} está sem cabeçalho ou sem linha.` }),
+                { status: 400, headers: corsHeaders });
+            }
+            const largura = b.cab.length;
+            const torta = b.l.findIndex(l => !Array.isArray(l) || l.length !== largura);
+            if (torta !== -1) {
+              return new Response(JSON.stringify({
+                success: false,
+                error: `Grade inválida: no bloco ${i + 1} (${b.aba || "?"}), a linha ${torta + 1} ` +
+                       `tem largura diferente do cabeçalho (${largura}).` }),
+                { status: 400, headers: corsHeaders });
+            }
+            total += b.l.length;
+          }
+
+          const { sha } = await getFile(arq.base);
+          const payload = { ...g, blocos, publicadoEm: new Date().toISOString(),
+                            familia: fam, por: String(body.por || "") };
+          await saveFile(arq.base, payload, sha,
+            `grade ${fam}: ${total} linhas por ${payload.por || "?"}`, true);
+
+          const info = {
+            gerado: g.gerado || payload.publicadoEm,
+            publicadoEm: payload.publicadoEm,
+            origem: g.origem || "",
+            familia: fam,
+            abas: blocos.map(b => b.aba || ""),
+            linhas: total,
+            por: payload.por
+          };
+          try {
+            const { sha: shaInfo } = await getFile(arq.info);
+            await saveFile(arq.info, info, shaInfo, `grade ${fam}: resumo`);
           } catch (_) { /* o resumo é conveniência, não bloqueia a publicação */ }
 
           return new Response(JSON.stringify({ success: true, ...info }),
