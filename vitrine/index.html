@@ -92,7 +92,8 @@ button{font:inherit}
 .marca-btn:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
 
 .tit{min-width:0;flex:1}
-.tit{min-width:0}
+/* Nome espremido a 12px nao e nome: a fila de botoes que encolhe, nao ele. */
+.tit{min-width:86px}
 .tit b{display:block;font-size:14.5px;font-weight:800;color:var(--tinta);
   line-height:1.15;letter-spacing:-.015em;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
@@ -151,23 +152,31 @@ button{font:inherit}
 
 .linha2{display:flex;align-items:center;gap:10px;flex:0 1 auto;min-width:0;
   margin-left:auto;overflow-x:auto;scrollbar-width:none;padding:1px 0}
+/* Os botões da direita numa fila só: sem isto o "voltar" caía para uma
+   terceira linha e o nome do vendedor sumia, espremido a 12px. */
+.topo-acoes{display:flex;align-items:center;gap:9px;flex:0 1 auto;min-width:0;
+  overflow-x:auto;scrollbar-width:none;padding:1px 0}
+.topo-acoes::-webkit-scrollbar{display:none}
+.topo-acoes > *{flex:none}
 .linha2::-webkit-scrollbar{display:none}
 /* Enquanto arrasta, o cursor conta o que esta acontecendo e o texto para de
    ser selecionado no meio do movimento. */
-.linha2.puxando{cursor:grabbing;user-select:none}
+.puxando{cursor:grabbing;user-select:none}
 .tit{flex:none}
 @media(max-width:767px){
   /* order manda os filtros pro fim; a base de 100% os quebra pra linha de baixo,
      e busca e voltar continuam em cima. */
   .topo-l1{flex-wrap:wrap;gap:7px}
   .linha2{order:10;flex-basis:100%;margin-left:0}
-  .tit{flex:1}
+  /* base zero: com a largura natural da fila, o navegador a jogava para a
+     linha de baixo em vez de encolher. Assim ela fica e rola por dentro. */
+  .topo-acoes{flex:1 1 0}
+  .tit{flex:0 1 auto}
 }
 /* O botão da sacola custa 32px numa linha que já estava cheia, e quem cedia
    era o nome do vendedor. O selo roxo sai: a marca está no botão ao lado e o
    "CMS" continua escrito no título — era ele o repetido. */
 @media(max-width:430px){ .selo-cms{display:none} }
-.linha2::-webkit-scrollbar{display:none}
 .risco{width:1px;align-self:stretch;background:var(--linha);flex:none;margin:2px 1px}
 
 .seg{display:inline-flex;flex:none;background:var(--papel);border:1px solid var(--linha);
@@ -647,7 +656,12 @@ button{font:inherit}
 .ped-atualizar:hover{border-color:var(--marca);color:var(--marca)}
 .ped-atualizar[disabled]{opacity:.55;cursor:progress}
 
-.ped-filtros{display:flex;flex-wrap:wrap;gap:8px;flex:none;padding:12px 16px 0}
+/* Uma linha so, que rola: quebrados, os quatro filtros comiam 172px de altura
+   no celular e empurravam o primeiro pedido para fora da tela. */
+.ped-filtros{display:flex;gap:8px;flex:none;padding:12px 16px 0;
+  overflow-x:auto;scrollbar-width:none}
+.ped-filtros::-webkit-scrollbar{display:none}
+.ped-filtros > *{flex:none}
 .ped-campo{display:flex;align-items:center;gap:6px;
   border:1px solid var(--linha);background:var(--carta);border-radius:10px;
   padding:7px 10px;font-size:11.5px;font-weight:700;color:var(--fraco)}
@@ -753,10 +767,7 @@ button{font:inherit}
   .ped-lista,.ped-filtros,.ped-barra,.ped-topo,.ped-pe{padding-left:12px;padding-right:12px}
   .ped-acao span{display:none}
   .ped-acao{padding:10px 13px}
-  /* Dois por linha: em quatro linhas os filtros empurravam a lista para fora
-     da tela antes do primeiro pedido. */
-  .ped-campo{flex:1 1 44%}
-  .ped-busca{flex-basis:100%}
+  .ped-busca{min-width:150px}
 }
 
 /* ── link para o cliente ──────────────────────────────────────────── */
@@ -1026,6 +1037,7 @@ body.trava{overflow:hidden}
       <span class="risco" id="riscoCat" hidden></span>
       <span class="cat" id="catFiltros"></span>
     </div>
+    <span class="topo-acoes" id="topoAcoes">
       <button class="limpa-tudo" id="btnLimparTudo" hidden
               aria-label="Limpar todos os filtros">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1066,6 +1078,7 @@ body.trava{overflow:hidden}
       <span class="badge" id="badgeSacola" hidden></span>
     </button>
     <a class="icone" id="linkPortal" href="../" title="Voltar ao Portal" aria-label="Voltar ao Portal">←</a>
+    </span>
   </div>
 </header>
 
@@ -1161,7 +1174,7 @@ body.trava{overflow:hidden}
       <button class="icone" id="pedFechar" aria-label="Fechar">✕</button>
     </header>
 
-    <div class="ped-filtros">
+    <div class="ped-filtros" id="pedFiltros">
       <label class="ped-campo ped-busca">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
@@ -4726,8 +4739,7 @@ function escolherMarca(id){
 // No celular a fila se puxa com o dedo; no desktop ela transbordava sem jeito
 // de mover — a barra some no Chrome e ninguém adivinha shift+roda. Aqui o
 // arrasto do mouse move, e a roda vertical vira horizontal.
-(function arrastavel(){
-  const fila = $('linha2');
+function arrastavel(fila){
   if(!fila) return;
   let pegando = false, x0 = 0, s0 = 0, andou = 0;
 
@@ -4763,7 +4775,12 @@ function escolherMarca(id){
     e.preventDefault();
     fila.scrollLeft += e.deltaY;
   }, { passive:false });
-})();
+}
+// Toda fila de botoes se move igual: dedo no celular, arrasto e roda no
+// desktop. Valem as barras de navegacao e acao — os chips dentro de um card
+// continuam quebrando linha, porque ali esconder opcao seria pior.
+for(const sel of ['#linha2', '#topoAcoes', '#selBarra', '#pedFiltros', '#pedPe'])
+  arrastavel(document.querySelector(sel));
 
 /* ── busca ──────────────────────────────────────────────────────── */
 const _busca = $('busca'), _campo = $('campoBusca'), _x = $('limpaBusca');
