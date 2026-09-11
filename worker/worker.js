@@ -171,6 +171,24 @@ export default {
       return new TextDecoder("utf-8").decode(bytes);
     }
 
+    /** Devolve o arquivo do GitHub como veio, sem abrir.
+     *
+     *  A base da Detalhada tem 3,7 MB. Lendo pelo getFile(), cada pedido
+     *  decodificava ~5 MB de base64 caractere a caractere, fazia JSON.parse
+     *  e JSON.stringify de novo — três passadas no arquivo inteiro. Isso
+     *  estourava o limite de CPU do Cloudflare e uma em cada cinco respostas
+     *  voltava 503 ("Worker exceeded resource limits"), jogando o app na
+     *  cópia de reserva, que vive atrasada. Pedindo o formato cru e
+     *  devolvendo o corpo em fluxo, o worker não toca no conteúdo. */
+    async function streamFile(url) {
+      const res = await fetch(url, {
+        headers: { ...githubHeaders, Accept: "application/vnd.github.raw" }
+      });
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error(`GET cru GitHub falhou (${res.status})`);
+      return res;
+    }
+
     async function getFile(url) {
       const res = await fetch(url, { headers: githubHeaders });
       if (res.status === 404) return { content: null, sha: null };
@@ -1036,9 +1054,9 @@ export default {
 
         // getDetalhada → a base inteira. Pública, como o resto das leituras.
         if (body.action === "getDetalhada") {
-          const { content } = await getFile(GITHUB_DETALHADA);
-          return new Response(JSON.stringify(content || null),
-            { status: 200, headers: corsHeaders });
+          const res = await streamFile(GITHUB_DETALHADA);
+          if (!res) return new Response("null", { status: 200, headers: corsHeaders });
+          return new Response(res.body, { status: 200, headers: corsHeaders });
         }
 
         // saveDetalhada → publica a base.
@@ -1186,12 +1204,11 @@ export default {
 
           if (body.action === "getGrade") {
             try {
-              const { content } = await getFile(arq.base);
-              return new Response(JSON.stringify(content || null),
-                { status: 200, headers: corsHeaders });
+              const res = await streamFile(arq.base);
+              if (!res) return new Response("null", { status: 200, headers: corsHeaders });
+              return new Response(res.body, { status: 200, headers: corsHeaders });
             } catch (_) {
-              return new Response(JSON.stringify(null),
-                { status: 200, headers: corsHeaders });
+              return new Response("null", { status: 200, headers: corsHeaders });
             }
           }
 
@@ -2004,11 +2021,11 @@ export default {
         // PATCH action:"getRfv" → retorna os dados publicados do RFV. Público (leitura).
         if (body.action === "getRfv") {
           try {
-            const { content } = await getFile(GITHUB_RFV);
-            const data = (content && typeof content === "object") ? content : {};
-            return new Response(JSON.stringify(data), { status: 200, headers: corsHeaders });
+            const res = await streamFile(GITHUB_RFV);
+            if (!res) return new Response("{}", { status: 200, headers: corsHeaders });
+            return new Response(res.body, { status: 200, headers: corsHeaders });
           } catch (_) {
-            return new Response(JSON.stringify({}), { status: 200, headers: corsHeaders });
+            return new Response("{}", { status: 200, headers: corsHeaders });
           }
         }
 
