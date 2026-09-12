@@ -159,6 +159,25 @@ button{font:inherit}
 .topo-acoes::-webkit-scrollbar{display:none}
 .topo-acoes > *{flex:none}
 .linha2::-webkit-scrollbar{display:none}
+/* ── um trilho só ──
+   Tablet e celular tinham duas filas rolando por conta própria: mexer numa
+   deixava a outra parada, e o cabeçalho parecia quebrado. Agora nome,
+   filtros e botões viajam juntos neste trilho; fora dele ficam apenas o
+   selo da CMS e a marca, que são o ponto fixo da tela. */
+.topo-rolo{display:flex;align-items:center;gap:9px;flex:1 1 0;min-width:0;
+  overflow-x:auto;scrollbar-width:none;padding:1px 0}
+.topo-rolo::-webkit-scrollbar{display:none}
+.topo-rolo:empty{display:none}
+.topo-rolo > *{flex:none}
+/* dentro do trilho ninguém mais rola sozinho nem se encolhe */
+.topo-rolo .linha2,.topo-rolo .topo-acoes{overflow:visible;flex:none;margin-left:0;padding:0}
+/* o nome do preposto aparece inteiro: quem corta agora é o trilho */
+.topo-rolo .tit{flex:none}
+.topo-rolo .tit b{overflow:visible;text-overflow:clip}
+/* busca aberta: ela toma a largura e o trilho para de rolar */
+.topo-rolo:has(.busca.aberta){overflow:visible}
+.topo-rolo:has(.busca.aberta) .topo-acoes{flex:1 1 auto;min-width:0}
+.topo-acoes .busca.aberta{flex:1 1 180px}
 /* Enquanto arrasta, o cursor conta o que esta acontecendo e o texto para de
    ser selecionado no meio do movimento. */
 .puxando{cursor:grabbing;user-select:none}
@@ -1039,10 +1058,10 @@ body.trava{overflow:hidden}
 <body>
 
 <header class="topo">
-  <div class="topo-l1">
+  <div class="topo-l1" id="topoL1">
     <span class="selo-cms">CMS</span>
     <button class="marca-btn" id="btnMarca"></button>
-    <span class="tit"><b id="titMarca">—</b></span>
+    <span class="tit" id="titTopo"><b id="titMarca">—</b></span>
     <span class="busca" id="busca">
       <button class="lupa" id="btnBusca" aria-label="Buscar" aria-expanded="false">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1052,6 +1071,9 @@ body.trava{overflow:hidden}
       <input id="campoBusca" aria-label="Buscar produto">
       <button class="x" id="limpaBusca" hidden aria-label="Limpar busca">✕</button>
     </span>
+    <!-- O trilho: nome, filtros e botões entram aqui pelo JS quando a tela
+         é estreita, para rolarem juntos. Só o selo e a marca ficam fora. -->
+    <div class="topo-rolo" id="topoRolo"></div>
     <div class="linha2" id="linha2">
       <span class="seg" id="segOrigem"></span>
       <span class="risco" id="riscoCat" hidden></span>
@@ -4909,8 +4931,40 @@ function arrastavel(fila){
 // Toda fila de botoes se move igual: dedo no celular, arrasto e roda no
 // desktop. Valem as barras de navegacao e acao — os chips dentro de um card
 // continuam quebrando linha, porque ali esconder opcao seria pior.
-for(const sel of ['#linha2', '#topoAcoes', '#selBarra', '#pedFiltros', '#pedPe'])
+for(const sel of ['#linha2', '#topoAcoes', '#selBarra', '#pedFiltros', '#pedPe', '#topoRolo'])
   arrastavel(document.querySelector(sel));
+
+/* ── o cabeçalho em telas estreitas ──────────────────────────────────
+   Três arrumações, e a diferença entre elas é o que vai para o trilho:
+
+   · computador  nome, busca, filtros e botões soltos na linha, como sempre;
+   · tablet      tudo no trilho, numa linha só que rola inteira;
+   · celular     nome e botões no trilho; os filtros continuam na linha de
+                 baixo, que já é uma fila à parte.
+
+   E a busca muda de lugar: no estreito ela fica entre a sacola e o voltar,
+   onde o polegar alcança sem atravessar o cabeçalho. */
+const _mqEstreito = matchMedia('(max-width:1099px)');
+const _mqTablet   = matchMedia('(min-width:768px) and (max-width:1099px)');
+
+function arrumarTopo(){
+  const l1 = $('topoL1'), rolo = $('topoRolo'), tit = $('titTopo');
+  const filtros = $('linha2'), acoes = $('topoAcoes'), busca = $('busca'), voltar = $('linkPortal');
+  if(!l1 || !rolo) return;
+  if(_mqEstreito.matches){
+    acoes.insertBefore(busca, voltar);
+    rolo.append(tit);
+    if(_mqTablet.matches) rolo.append(filtros);
+    rolo.append(acoes);
+    l1.append(rolo);
+    if(!_mqTablet.matches) l1.append(filtros);
+  }else{
+    l1.append(tit, busca, filtros, acoes);
+  }
+}
+arrumarTopo();
+_mqEstreito.addEventListener('change', arrumarTopo);
+_mqTablet.addEventListener('change', arrumarTopo);
 
 /* ── busca ──────────────────────────────────────────────────────── */
 const _busca = $('busca'), _campo = $('campoBusca'), _x = $('limpaBusca');
