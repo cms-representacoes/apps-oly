@@ -4528,6 +4528,34 @@ function conferirTeto(){
   $('mgAgora').disabled = estourou;
 }
 $('mgTam').addEventListener('input', conferirTeto);
+
+/* As setas andam pelos campos: a grade se digita inteira sem tirar a mão do
+   teclado. Campo de número não conta onde está o cursor (selectionStart é
+   nulo nele), e são caixas de um ou dois dígitos — então esquerda e direita
+   sempre trocam de campo. Cima e baixo vão para a linha vizinha, na coluna
+   mais próxima, e param o passo do type=number, que mexeria no valor. */
+$('mgTam').addEventListener('keydown', e => {
+  if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) return;
+  if(!(e.target instanceof HTMLInputElement)) return;
+  const campos = [...$('mgTam').querySelectorAll('input')];
+  const i = campos.indexOf(e.target);
+  const linha = c => Math.round(c.getBoundingClientRect().top);
+  let alvo;
+  if(e.key === 'ArrowLeft')  alvo = campos[i - 1];
+  else if(e.key === 'ArrowRight') alvo = campos[i + 1];
+  else{
+    const acima = e.key === 'ArrowUp';
+    const y = linha(e.target), x = e.target.getBoundingClientRect().left;
+    const vizinhos = campos.filter(c => acima ? linha(c) < y : linha(c) > y);
+    if(vizinhos.length){
+      const yAlvo = acima ? Math.max(...vizinhos.map(linha)) : Math.min(...vizinhos.map(linha));
+      const perto = (m, c) => Math.abs(c.getBoundingClientRect().left - x) < Math.abs(m.getBoundingClientRect().left - x) ? c : m;
+      alvo = vizinhos.filter(c => linha(c) === yAlvo).reduce(perto);
+    }
+  }
+  e.preventDefault();
+  if(alvo){ alvo.focus(); alvo.select(); }
+});
 function fecharGrade(){
   $('modalGrade').hidden = true;
   _gradeItem = null;
