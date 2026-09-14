@@ -130,6 +130,7 @@ export default {
     // pergunta "mudou?" gastando alguns bytes, em vez de baixar 3 MB a cada abertura.
     const GITHUB_DETALHADA      = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/detalhada.json`;
     const GITHUB_DETALHADA_INFO = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/detalhada-info.json`;
+    const GITHUB_CLI_FANTASIA   = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/clientes-fantasia.json`;
     // Grade da carteira CORRE — planilha importada pela tela de admin da
     // Detalhada. Não é diária: entra quando a CMS resolve atualizar. Guarda a
     // planilha inteira (todas as colunas), porque o envio à fábrica vai
@@ -1095,6 +1096,29 @@ export default {
             const { sha: shaInfo } = await getFile(GITHUB_DETALHADA_INFO);
             await saveFile(GITHUB_DETALHADA_INFO, info, shaInfo, "detalhada: resumo");
           } catch (_) { /* o resumo é conveniência, não bloqueia a publicação */ }
+
+          // Nome fantasia por código, para o Catálogo Digital mostrar nos
+          // pedidos. ACUMULA: cliente que sai da carteira continua na lista,
+          // e um nome que mudou fica com o mais novo. Grava só se mudou algo.
+          // Arquivo pequeno (~30 KB) para o app não baixar a base de 3 MB.
+          try {
+            const pares = Array.isArray(base.dic.cli) ? base.dic.cli : [];
+            const { content: atual, sha: shaCli } = await getFile(GITHUB_CLI_FANTASIA);
+            const clientes = (atual && atual.clientes && typeof atual.clientes === "object") ? { ...atual.clientes } : {};
+            let mudou = !atual;
+            for (const par of pares) {
+              if (!Array.isArray(par)) continue;
+              const cod = String(par[0] ?? "").trim();
+              const nome = String(par[1] ?? "").trim();
+              if (!cod || !nome || clientes[cod] === nome) continue;
+              clientes[cod] = nome;
+              mudou = true;
+            }
+            if (mudou) {
+              await saveFile(GITHUB_CLI_FANTASIA, { atualizadoEm: payload.publicadoEm, clientes }, shaCli,
+                `clientes: nome fantasia (${Object.keys(clientes).length})`);
+            }
+          } catch (_) { /* conveniência do catálogo; não bloqueia a publicação */ }
 
           return new Response(JSON.stringify({ success: true, ...info }),
             { status: 200, headers: corsHeaders });
