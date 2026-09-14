@@ -29,6 +29,7 @@ export default {
       "saveOcultosDisp",
       "saveOcultos",
       "saveCategoryImage",
+      "saveHeroImage",
       "saveTabelaEspecial",
       "saveStatus",
       "setStatusVitrine",
@@ -104,6 +105,7 @@ export default {
     const GITHUB_CAT_RASC_BASE = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/catalogo-rascunhos`;
     // Imagens das categorias da home do Catálogo Digital
     const GITHUB_CAT_IMG_BASE  = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/imagens_olympikus/categorias`;
+    const GITHUB_HERO_IMG_BASE = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/imagens_olympikus/hero`;
     // Listagem de clientes — 1 arquivo por vendedor (código)
     const GITHUB_CLIENTES_BASE = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/clientes`;
     // Desejos do vendedor (watchlist de produtos)
@@ -1986,6 +1988,39 @@ export default {
           return new Response(JSON.stringify({ success: true, categoria: safeCat }), { status: 200, headers: corsHeaders });
         }
 
+
+        // PATCH com action:"saveHeroImage" + slot (1-3) + base64 → foto do banner
+        // da tela inicial do Catálogo Digital. Foto, e não ícone: vai em JPG, que
+        // o app já comprime (em PNG ficaria de 3 a 5 vezes mais pesada).
+        // Olympikus em hero/heroN.jpg; Under Armour em hero/ua/heroN.jpg.
+        if (body.action === "saveHeroImage" && body.base64) {
+          const slot = Number(body.slot);
+          if (![1, 2, 3].includes(slot)) {
+            return new Response(JSON.stringify({ success: false, error: "Posição inválida (1 a 3)" }), { status: 400, headers: corsHeaders });
+          }
+          // ~2 MB de base64 é folga para um JPG de 1400px; acima disso não é o que o app manda
+          if (String(body.base64).length > 2_800_000) {
+            return new Response(JSON.stringify({ success: false, error: "Imagem grande demais" }), { status: 413, headers: corsHeaders });
+          }
+          const marca = String(body.marca || "oly").toLowerCase();
+          const subPasta = (marca === "ua") ? "/ua" : "";
+          const url = `${GITHUB_HERO_IMG_BASE}${subPasta}/hero${slot}.jpg`;
+          const existing = await fetch(url, { headers: githubHeaders });
+          const sha = existing.ok ? (await existing.json()).sha : undefined;
+          const uploadBody = {
+            message: `banner catalogo: ${marca} foto ${slot}`,
+            content: body.base64,
+            branch: env.GITHUB_BRANCH
+          };
+          if (sha) uploadBody.sha = sha;
+          const res = await fetch(url, {
+            method: "PUT",
+            headers: { ...githubHeaders, "Content-Type": "application/json" },
+            body: JSON.stringify(uploadBody)
+          });
+          if (!res.ok) throw new Error(`Upload banner falhou (${res.status}): ${await res.text()}`);
+          return new Response(JSON.stringify({ success: true, slot, marca }), { status: 200, headers: corsHeaders });
+        }
 
         // PATCH action:"getPerformance" → retorna a planilha (base64). Público (leitura).
         if (body.action === "getPerformance") {
