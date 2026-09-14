@@ -1846,7 +1846,14 @@ async function refreshStockFromSource(options = {}){
   try{
     await refreshOrdersFromRemote();
     STATE.lastStockRefreshAt = Date.now();
-    renderCatalog();
+    // Refaz a lista, não só os cards: com renderCatalog() o produto que outro
+    // vendedor esgotou continuava na tela, com o botão "Esgotado", até alguém
+    // recarregar, buscar ou mexer num filtro. applyFilters() tira o esgotado
+    // e atualiza as opções dos filtros e os números do topo. Com um filtro
+    // aberto na mão do vendedor, só redesenha: refazer as opções fecharia a
+    // lista; o próximo ciclo tira o esgotado.
+    if(document.activeElement && document.activeElement.tagName === 'SELECT') renderCatalog();
+    else applyFilters();
     if(!silent){
       const msg = reason === 'manual' ? 'Saldo atualizado' : 'Saldo sincronizado';
       toast(msg);

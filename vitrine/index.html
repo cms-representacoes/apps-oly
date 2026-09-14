@@ -1732,6 +1732,7 @@ document.addEventListener('visibilitychange', () => {
   if(document.hidden) return;
   carregarAtualizacao();
   carregarRespostas();
+  atualizarSaldoRepasse(true);
 });
 
 /* ── carga ──────────────────────────────────────────────────────── */
@@ -1792,7 +1793,9 @@ async function carregar(){
       json('produtos.json'), json('pedidos.json').catch(() => []),
       bloqueios()
     ]);
+    STATE.fontes = { dispo, disponib, produtos, pedidos, oculto };
     STATE.produtos = montar(dispo, disponib, produtos, pedidos, oculto);
+    STATE.assinatura = assinaturaRepasse(STATE.produtos);
     $('estado').innerHTML = '';
     aplicar();
   }catch(e){
@@ -1802,6 +1805,62 @@ async function carregar(){
       '. Recarregue a página; se continuar, avise o suporte.</p></div>';
   }
 }
+
+/* ── saldo do repasse ao vivo ────────────────────────────────────── */
+// Os lotes só eram lidos ao abrir a página: o que outro vendedor esgotava
+// continuava na vitrine até recarregar. A cada minuto (e ao voltar para o
+// app) relê pedidos e lotes pelo Worker — que lê o GitHub na hora, sem
+// esperar a publicação do site — e remonta. Estoque e produção mudam uma vez
+// por dia e ficam como estavam.
+const SALDO = { buscaEm:0, rodando:false, pendente:null };
+const assinaturaRepasse = lista => lista.map(o => o.k + ':' +
+  (o.repasse ? o.repasse.lotes.map(l => l.num + '=' + l.saldo).join(',') : '')).join('|');
+
+async function doWorkerComPrazo(opcoes, ms = 8000){
+  const corta = new AbortController();
+  const t = setTimeout(() => corta.abort(), ms);
+  try{
+    const r = await fetch(WORKER_URL, { ...opcoes, signal:corta.signal });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  }finally{ clearTimeout(t); }
+}
+
+async function atualizarSaldoRepasse(forcar){
+  if(!STATE.fontes || SALDO.rodando || document.hidden) return;
+  if(!forcar && Date.now() - SALDO.buscaEm < 45000) return;
+  SALDO.rodando = true;
+  SALDO.buscaEm = Date.now();
+  try{
+    const [pedidos, dispo] = await Promise.all([
+      doWorkerComPrazo({ method:'GET' }).catch(() => json('pedidos.json')),
+      doWorkerComPrazo({ method:'PATCH', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ action:'getDispo' }) }).catch(() => json('dispo.json'))
+    ]);
+    if(!Array.isArray(pedidos) || !Array.isArray(dispo)) return;
+    const f = STATE.fontes;
+    const novos = montar(dispo, f.disponib, f.produtos, pedidos, f.oculto);
+    const assinatura = assinaturaRepasse(novos);
+    f.pedidos = pedidos; f.dispo = dispo;
+    if(assinatura === STATE.assinatura){ SALDO.pendente = null; return; }
+    SALDO.pendente = { novos, assinatura };
+    aplicarSaldoPendente();
+  }catch(e){
+    console.warn('Saldo do repasse não atualizou agora:', e);
+  }finally{
+    SALDO.rodando = false;
+  }
+}
+// Com um produto aberto (modal ou foto ampliada) a troca espera: os dois
+// guardam a posição do card na lista, e remontar por baixo trocaria o produto.
+function aplicarSaldoPendente(){
+  if(!SALDO.pendente || !$('modal').hidden || !$('zoom').hidden) return;
+  STATE.produtos = SALDO.pendente.novos;
+  STATE.assinatura = SALDO.pendente.assinatura;
+  SALDO.pendente = null;
+  aplicar();
+}
+setInterval(() => atualizarSaldoRepasse(false), 60000);
 
 /* ── normalização ───────────────────────────────────────────────── */
 // Quanto de cada Nº de repasse já está comprometido por pedido em aberto.
@@ -4273,7 +4332,7 @@ function abrirModal(i){
   });
   $('modal').hidden = false;
 }
-function fecharModal(){ $('modal').hidden = true; }
+function fecharModal(){ $('modal').hidden = true; aplicarSaldoPendente(); }
 
 function porNaSacola(item){
   if(STATE.sacola.has(item.key)) return;
@@ -4814,7 +4873,7 @@ function abrirZoom(i){
   $('zoomLegenda').textContent = `${o.nome || o.artigo} · ${o.artigo} · ${o.cor}`;
   $('zoom').hidden = false;
 }
-function fecharZoom(){ $('zoom').hidden = true; }
+function fecharZoom(){ $('zoom').hidden = true; aplicarSaldoPendente(); }
 $('zoom').onclick = fecharZoom;
 
 // Marcar não filtra a vitrine: o vendedor vai juntando produtos enquanto
