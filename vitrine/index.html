@@ -1389,6 +1389,13 @@ body:has(#sacola:not([hidden])) .aviso-desfazer.on{ transform:translate(50%, 0);
   .zc-fav{ width:38px; height:38px; }
 }
 
+/* a foto inteira do card abre o zoom (sem a lupa); o coração fica por cima */
+.foto-zoom{ position:absolute; inset:0; z-index:1; border:0; padding:0; margin:0; background:transparent; cursor:zoom-in; }
+.foto-zoom:focus-visible{ outline:3px solid color-mix(in srgb,var(--marca) 55%,transparent); outline-offset:-3px; border-radius:inherit; }
+.card .foto img{ transition:transform .25s ease; }
+@media (hover:hover){ .card .foto:hover img{ transform:scale(1.03); } }
+@media (prefers-reduced-motion:reduce){ .card .foto img{ transition:none; } }
+
 /* ── botão flutuante da sacola ──
    Era do mesmo azul dos "Ver detalhes" e sumia no meio dos cartões. Agora
    é grafite, a única peça escura da tela, com o número num selo azul. */
@@ -2730,8 +2737,8 @@ function cardHtml(o, i){
     <div class="foto">
       <img src="${esc(foto(o))}" alt="${esc(o.nome)}" loading="lazy"
            onerror="this.style.visibility='hidden'">
-      <button class="canto cz" onclick="abrirZoom(${i})" title="Ampliar foto"
-              aria-label="Ampliar foto de ${quem}">${SVG_ZOOM}</button>
+      <button class="foto-zoom" onclick="abrirZoom(${i})" title="Ampliar foto"
+              aria-label="Ampliar foto de ${quem}"></button>
       <button class="canto cf${STATE.marcados.has(o.k) ? ' on' : ''}"
               onclick="alternarMarcado('${esc(o.k)}')" title="Marcar para PDF e planilha"
               aria-label="Marcar ${quem} para o catálogo"
