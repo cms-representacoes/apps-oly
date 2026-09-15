@@ -1314,6 +1314,81 @@ body:has(#sacola:not([hidden])) .aviso-desfazer{
 body:has(#sacola:not([hidden])) .aviso-desfazer.on{ transform:translate(50%, 0); }
 @media (prefers-reduced-motion:reduce){ .aviso-desfazer{ transition:none; } }
 
+/* ── foto ampliada com as cores ── */
+#zoom{ cursor:default; background:rgba(15,23,42,.45); backdrop-filter:blur(4px); padding:8px; }
+.zc-caixa{ position:relative; display:flex; gap:14px; padding:12px; width:min(1240px,100%); height:min(96vh,860px);
+  background:#fff; border-radius:22px; overflow:hidden; box-shadow:0 24px 60px rgba(15,23,42,.35); }
+.zc-palco{ flex:1 1 auto; min-width:0; display:flex; align-items:center; justify-content:center; gap:12px; container-type:size; }
+.zc-foto{ position:relative; flex:none; overflow:hidden; background:#fff; width:calc(100cqw - 104px); height:100cqh; }
+.zc-foto img{ position:absolute; left:0; top:0; max-width:none; max-height:none; }
+.zc-foto img.carregando{ visibility:hidden; }
+.zc-seta{ flex:none; width:40px; height:40px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center;
+  background:#F1F5F9; color:var(--tinta); border:1px solid var(--linha); font-size:16px; cursor:pointer; }
+.zc-seta:hover{ background:#E2E8F0; }
+.zc-painel{ flex:none; width:260px; min-height:0; display:flex; flex-direction:column; gap:12px; padding:14px;
+  background:#F8FAFC; border:1px solid #EEF2F6; border-radius:16px; }
+.zc-cab{ display:flex; align-items:flex-start; gap:8px; }
+.zc-cab > div{ flex:1; min-width:0; }
+.zc-nome{ font-size:15px; font-weight:800; color:var(--tinta); line-height:1.25; }
+.zc-pdv{ font-size:20px; font-weight:800; color:var(--marca); letter-spacing:-.01em; font-variant-numeric:tabular-nums; }
+.zc-fechar{ flex:none; width:34px; height:34px; border-radius:999px; border:1px solid var(--linha); background:#fff; color:var(--tinta); cursor:pointer; }
+.zc-artcor{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:12px; font-weight:700; color:#334155; }
+.zc-muted{ color:var(--fraco); font-weight:600; }
+.zc-chip{ display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:3px 9px; font-size:11px; font-weight:800;
+  background:#fff; border:1px solid var(--linha); color:var(--tinta); white-space:nowrap; font-variant-numeric:tabular-nums; }
+.zc-pt{ width:8px; height:8px; border-radius:50%; background:var(--marca); }
+.zc-origens{ display:flex; flex-wrap:wrap; gap:5px; }
+.zc-origens:empty{ display:none; }
+.zc-chip.o-est{ color:var(--pronta); background:var(--pronta-fundo); border-color:color-mix(in srgb,var(--pronta) 28%,transparent); }
+.zc-chip.o-rep{ color:var(--repasse); background:var(--repasse-fundo); border-color:color-mix(in srgb,var(--repasse) 28%,transparent); }
+.zc-chip.o-pro{ color:var(--plano); background:var(--plano-fundo); border-color:color-mix(in srgb,var(--plano) 30%,transparent); }
+.zc-rotulo{ font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--fraco); }
+.zc-minis{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px; overflow-y:auto; min-height:0; padding:2px; align-content:start; }
+.zc-mini{ width:100%; aspect-ratio:1; border-radius:10px; background:#fff; border:2px solid #E5E7EB; padding:0; overflow:hidden; cursor:pointer; }
+.zc-mini img{ width:100%; height:100%; object-fit:contain; display:block; }
+.zc-mini:hover{ border-color:color-mix(in srgb,var(--marca) 45%,transparent); }
+.zc-mini.on{ border-color:var(--marca); box-shadow:0 0 0 2px color-mix(in srgb,var(--marca) 20%,transparent); }
+.zc-acoes{ margin-top:auto; display:flex; align-items:center; gap:8px; }
+.zc-ver{ flex:1; margin-top:0; min-height:40px; }
+.zc-fav{ flex:none; width:40px; height:40px; border-radius:12px; border:0; background:#EEF1F6; color:var(--tinta);
+  display:inline-flex; align-items:center; justify-content:center; cursor:pointer; }
+.zc-fav.on{ color:#E0245E; }
+.zc-fav.on svg{ fill:#E0245E; }
+.zc-nav-mob{ display:none; }
+/* produto de uma cor só: sem setas nem miniaturas */
+#zoom.uma-cor .zc-seta,#zoom.uma-cor .zc-rotulo,#zoom.uma-cor .zc-minis,#zoom.uma-cor .zc-nav-mob{ display:none !important; }
+#zoom.uma-cor .zc-foto{ width:100cqw; }
+
+@media (max-width:899.98px), (orientation:portrait){
+  .zc-caixa{ flex-direction:column; height:auto; max-height:100%; overflow-y:auto; padding:14px; gap:10px; }
+  .zc-painel{ display:contents; }
+  .zc-cab{ order:1; }
+  .zc-nome{ font-size:17px; }
+  .zc-pdv{ font-size:22px; }
+  .zc-artcor{ order:2; margin-top:-4px; }
+  .zc-origens{ order:3; }
+  .zc-palco{ order:4; flex:none; height:min(78vw,58vh); }
+  .zc-rotulo{ display:none; }
+  .zc-minis{ order:5; display:flex; overflow-x:auto; overflow-y:hidden; gap:8px; }
+  .zc-mini{ flex:none; width:64px; }
+  .zc-acoes{ order:6; margin-top:2px; }
+}
+@media (max-width:639.98px){
+  #zoom{ padding:6px; }
+  .zc-caixa{ padding:12px; gap:8px; border-radius:18px; }
+  .zc-nome{ font-size:14.5px; }
+  .zc-pdv{ font-size:18px; }
+  .zc-palco{ height:min(86vw,52vh); gap:0; }
+  .zc-palco .zc-seta{ display:none; }
+  .zc-foto{ width:100cqw; }
+  .zc-mini{ width:52px; border-radius:9px; }
+  .zc-nav-mob{ display:flex; align-items:center; gap:4px; flex:none; }
+  .zc-nav-mob .zc-seta{ width:34px; height:34px; font-size:14px; }
+  .zc-pos{ min-width:30px; text-align:center; font-size:11px; font-weight:800; color:var(--fraco); font-variant-numeric:tabular-nums; }
+  .zc-ver{ min-height:38px; font-size:12.5px; }
+  .zc-fav{ width:38px; height:38px; }
+}
+
 /* ── botão flutuante da sacola ──
    Era do mesmo azul dos "Ver detalhes" e sumia no meio dos cartões. Agora
    é grafite, a única peça escura da tela, com o número num selo azul. */
@@ -1696,11 +1771,40 @@ body:has(#sacola:not([hidden])) .aviso-desfazer.on{ transform:translate(50%, 0);
   </aside>
 </div>
 
+<!-- Foto ampliada com as cores do produto: foto grande e um painel com
+     preço, artigo, a disponibilidade da cor e as outras cores. No celular e
+     no tablet em pé vira uma coluna. -->
 <div class="fundo" id="zoom" hidden>
-  <figure class="zoom-cx" role="dialog" aria-modal="true" aria-label="Foto ampliada">
-    <img id="zoomImg" alt="">
-    <figcaption id="zoomLegenda"></figcaption>
-  </figure>
+  <div class="zc-caixa" role="dialog" aria-modal="true" aria-label="Foto ampliada">
+    <div class="zc-palco">
+      <button class="zc-seta" data-zc-nav="-1" aria-label="Cor anterior">←</button>
+      <div class="zc-foto"><img id="zoomImg" alt=""></div>
+      <button class="zc-seta" data-zc-nav="1" aria-label="Próxima cor">→</button>
+    </div>
+    <div class="zc-painel">
+      <div class="zc-cab">
+        <div>
+          <div class="zc-nome" id="zcNome">—</div>
+          <div class="zc-pdv" id="zcPdv">—</div>
+        </div>
+        <button class="zc-fechar" onclick="fecharZoom()" aria-label="Fechar">✕</button>
+      </div>
+      <div class="zc-artcor"><span><span class="zc-muted">Art.</span> <span id="zcArt">—</span></span>
+        <span class="zc-chip"><span class="zc-pt"></span><span id="zcCor">—</span></span></div>
+      <div class="zc-origens" id="zcOrigens"></div>
+      <div class="zc-rotulo" id="zcRotulo">Cores · <span id="zcPos">—</span></div>
+      <div class="zc-minis" id="zcMinis"></div>
+      <div class="zc-acoes">
+        <div class="zc-nav-mob" id="zcNavMob">
+          <button class="zc-seta" data-zc-nav="-1" aria-label="Cor anterior">←</button>
+          <span class="zc-pos" id="zcPosMob">—</span>
+          <button class="zc-seta" data-zc-nav="1" aria-label="Próxima cor">→</button>
+        </div>
+        <button class="zc-fav" id="zcFav" aria-label="Marcar" aria-pressed="false"></button>
+        <button class="acao forte zc-ver" id="zcVer">Ver detalhes</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="fundo" id="modal" hidden>
@@ -4566,9 +4670,11 @@ const celulas = (g, cls = '') => `<div class="celulas ${cls}">${Object.entries(g
 
 let _abertoEm = -1;
 function abrirModal(i){
-  const o = STATE.filtrados[i];
+  // Aceita o índice na lista ou o próprio produto: a cor escolhida no zoom
+  // pode estar fora dos filtros.
+  const o = typeof i === 'object' ? i : STATE.filtrados[i];
   if(!o) return;
-  _abertoEm = i;
+  _abertoEm = typeof i === 'object' ? STATE.filtrados.indexOf(o) : i;
   $('mImg').src = foto(o);
   $('mImg').alt = o.nome;
   $('mTit').textContent = o.nome || o.artigo;
@@ -5272,16 +5378,120 @@ $('scCorpo').addEventListener('change', e => {
   if(dt) mudarData(dt.dataset.data, dt.value);
 });
 
+/* ── foto ampliada com as cores ────────────────────────────────────── */
+// As cores são os outros produtos do mesmo artigo na marca ativa, sem olhar
+// os filtros: quem amplia a foto quer comparar as cores que existem.
+const ZC = { cores:[], i:0 };
 function abrirZoom(i){
   const o = STATE.filtrados[i];
   if(!o) return;
-  $('zoomImg').src = foto(o);
-  $('zoomImg').alt = o.nome;
-  $('zoomLegenda').textContent = `${o.nome || o.artigo} · ${o.artigo} · ${o.cor}`;
+  ZC.cores = STATE.produtos.filter(x => daMarca(x) && x.artigo === o.artigo);
+  if(!ZC.cores.includes(o)) ZC.cores.unshift(o);
+  ZC.i = ZC.cores.indexOf(o);
+  $('zoom').classList.toggle('uma-cor', ZC.cores.length < 2);
+  $('zcMinis').innerHTML = ZC.cores.map((c, n) =>
+    `<button class="zc-mini" data-zc-i="${n}" title="${esc(c.cor)}" aria-label="Ver cor ${esc(c.cor)}">` +
+    `<img src="${esc(foto(c))}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"></button>`).join('');
+  pintarZoom();
   $('zoom').hidden = false;
 }
+function pintarZoom(){
+  const c = ZC.cores[ZC.i];
+  if(!c) return;
+  const img = $('zoomImg');
+  img.classList.add('carregando');
+  img.src = foto(c);
+  img.alt = c.nome || c.artigo;
+  $('zcNome').textContent = c.nome || c.artigo;
+  $('zcPdv').textContent = c.pdv ? brl(c.pdv) : '';
+  $('zcArt').textContent = c.artigo;
+  $('zcCor').textContent = String(c.cor || '').replace(/_/g, '/');
+  // a disponibilidade é da cor escolhida: cada cor tem o seu saldo
+  $('zcOrigens').innerHTML = [
+    c.pronta ? `<span class="zc-chip o-est">${svgIcone('c-pronta', 11)}Estoque · ${nf(c.pronta.total)} un</span>` : '',
+    c.repasse ? `<span class="zc-chip o-rep">${svgIcone('c-repasse', 11)}Repasse · ${nf(c.repasse.total)} un</span>` : '',
+    c.meta ? `<span class="zc-chip o-pro">${svgIcone('c-plano', 11)}Produção · ${esc(c.meta.quinzenas[0].mes)}</span>` : ''
+  ].join('');
+  const pos = `${ZC.i + 1}/${ZC.cores.length}`;
+  $('zcPos').textContent = pos;
+  $('zcPosMob').textContent = pos;
+  $('zcMinis').querySelectorAll('.zc-mini').forEach((m, n) => m.classList.toggle('on', n === ZC.i));
+  const fav = $('zcFav'), on = STATE.marcados.has(c.k);
+  fav.innerHTML = SVG_CORACAO;
+  fav.classList.toggle('on', on);
+  fav.setAttribute('aria-pressed', String(on));
+  const mini = $('zcMinis').querySelector('.zc-mini.on');
+  if(mini) mini.scrollIntoView({ block:'nearest', inline:'nearest' });
+}
+function andarZoom(d){
+  if(ZC.cores.length < 2) return;
+  ZC.i = (ZC.i + d + ZC.cores.length) % ZC.cores.length;
+  pintarZoom();
+}
 function fecharZoom(){ $('zoom').hidden = true; aplicarSaldoPendente(); }
-$('zoom').onclick = fecharZoom;
+
+// Amplia a foto pelo contorno do produto (o que não é branco), cortando só o
+// branco em volta — o mesmo do Catálogo Digital. Roupa de corpo inteiro já
+// ocupa a altura e fica inteira.
+const _zcContorno = new Map();
+function zcContorno(im){
+  if(_zcContorno.has(im.src)) return _zcContorno.get(im.src);
+  let r = { x0:0, y0:0, x1:1, y1:1 };
+  try{
+    const N = 160, cv = document.createElement('canvas'); cv.width = cv.height = N;
+    const g = cv.getContext('2d', { willReadFrequently:true });
+    g.drawImage(im, 0, 0, N, N);
+    const d = g.getImageData(0, 0, N, N).data;
+    let x0 = N, y0 = N, x1 = -1, y1 = -1;
+    for(let y = 0; y < N; y++) for(let x = 0; x < N; x++){
+      const k = (y * N + x) * 4;
+      if(d[k] < 240 || d[k+1] < 240 || d[k+2] < 240){
+        if(x < x0) x0 = x; if(x > x1) x1 = x; if(y < y0) y0 = y; if(y > y1) y1 = y;
+      }
+    }
+    if(x1 >= 0) r = { x0:x0/N, y0:y0/N, x1:(x1+1)/N, y1:(y1+1)/N };
+  }catch(_){ /* sem leitura dos pixels: mostra a foto inteira */ }
+  _zcContorno.set(im.src, r);
+  return r;
+}
+function enquadrarZoom(){
+  const img = $('zoomImg'), m = img.parentElement;
+  const W = m.clientWidth, H = m.clientHeight;
+  if(!img.complete || !img.naturalWidth || !W || !H) return;
+  const prop = img.naturalHeight / img.naturalWidth, b = zcContorno(img);
+  const bw = b.x1 - b.x0, bh = (b.y1 - b.y0) * prop;
+  const larg = Math.max(Math.min(W, H / prop), Math.min(W * .88 / bw, H * .92 / bh));
+  img.style.width = larg + 'px';
+  img.style.height = (larg * prop) + 'px';
+  img.style.left = (W / 2 - (b.x0 + bw / 2) * larg) + 'px';
+  img.style.top = (H / 2 - (b.y0 + (b.y1 - b.y0) / 2) * larg * prop) + 'px';
+  img.classList.remove('carregando');
+}
+$('zoomImg').addEventListener('load', enquadrarZoom);
+if(window.ResizeObserver) new ResizeObserver(enquadrarZoom).observe($('zoomImg').parentElement);
+
+$('zoom').addEventListener('click', e => {
+  if(e.target.id === 'zoom') return fecharZoom();
+  const nav = e.target.closest('[data-zc-nav]');
+  if(nav) return andarZoom(Number(nav.dataset.zcNav));
+  const mi = e.target.closest('[data-zc-i]');
+  if(mi){ ZC.i = Number(mi.dataset.zcI); return pintarZoom(); }
+  if(e.target.closest('#zcFav')){
+    const c = ZC.cores[ZC.i];
+    if(c){ alternarMarcado(c.k); pintarZoom(); }
+    return;
+  }
+  if(e.target.closest('#zcVer')){
+    const c = ZC.cores[ZC.i];
+    fecharZoom();
+    if(c) abrirModal(c);
+  }
+});
+document.addEventListener('keydown', e => {
+  if($('zoom').hidden) return;
+  if(e.key === 'ArrowRight') andarZoom(1);
+  else if(e.key === 'ArrowLeft') andarZoom(-1);
+});
 
 // Marcar não filtra a vitrine: o vendedor vai juntando produtos enquanto
 // navega e só depois decide o que fazer com eles.
