@@ -1994,6 +1994,7 @@ const chaveSacola = () =>
 function salvarSacola(){
   try{ localStorage.setItem(chaveSacola(), JSON.stringify([...STATE.sacola.values()])); }
   catch(_){ /* cota cheia ou modo privado: a sacola segue só em memória */ }
+  agendarEnvioSacola();
 }
 function carregarSacola(){
   STATE.sacola.clear();
@@ -2001,7 +2002,122 @@ function carregarSacola(){
     const arr = JSON.parse(localStorage.getItem(chaveSacola()) || '[]');
     for(const it of arr) if(it && it.key) STATE.sacola.set(it.key, it);
   }catch(_){ /* ignora sacola corrompida */ }
+  NUVEM.enviada = (() => { try{ return localStorage.getItem(chaveSacola() + '_nuvem'); }catch(_){ return null; } })();
+  NUVEM.em = null;
 }
+
+/* ── a sacola acompanha o vendedor ────────────────────────────────
+   Montada no celular, ela ficava só naquele aparelho: trocar de telefone,
+   limpar o navegador ou continuar no computador significava remontar tudo.
+   Agora uma cópia fica no servidor, por vendedor e marca. O aparelho
+   continua mandando na tela — a rede pode faltar e a sacola tem de estar
+   lá do mesmo jeito; o servidor é a cópia que viaja junto.
+   NUVEM.enviada guarda a última versão que este aparelho e o servidor
+   tinham iguais: é ela que diz, sem precisar perguntar, quem mudou. */
+const NUVEM = { enviada:null, em:null, t:null, indo:false };
+const sacolaEmTexto = () => JSON.stringify([...STATE.sacola.values()]);
+const ondeEstou = () => matchMedia('(min-width:1100px)').matches ? 'computador'
+  : (matchMedia('(min-width:768px)').matches ? 'tablet' : 'celular');
+
+function marcarEnviada(txt, em){
+  NUVEM.enviada = txt; NUVEM.em = em || NUVEM.em;
+  try{ localStorage.setItem(chaveSacola() + '_nuvem', txt); }catch(_){}
+}
+
+function agendarEnvioSacola(){
+  if(!SESSAO) return;
+  clearTimeout(NUVEM.t);
+  // Digitar uma grade dispara muitos salvamentos seguidos; o envio espera a
+  // mão parar.
+  NUVEM.t = setTimeout(enviarSacola, 4000);
+}
+
+async function enviarSacola(){
+  if(!SESSAO || NUVEM.indo) return;
+  const txt = sacolaEmTexto();
+  if(txt === NUVEM.enviada) return;
+  NUVEM.indo = true;
+  try{
+    const r = await doWorkerComPrazo({ method:'PATCH',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ action:'saveSacola', codigo:SESSAO.codigo, marca:MARCA,
+                             itens:[...STATE.sacola.values()], de:ondeEstou() }) }, 10000);
+    if(r && r.success) marcarEnviada(txt, r.em);
+  }catch(e){
+    // Sem rede ou servidor fora: a sacola segue no aparelho e tenta de novo
+    // na próxima mexida ou quando o vendedor voltar ao app.
+    console.warn('Sacola não subiu agora:', e);
+  }finally{ NUVEM.indo = false; }
+}
+
+function adotarSacola(itens){
+  STATE.sacola.clear();
+  for(const it of itens) if(it && it.key) STATE.sacola.set(it.key, it);
+  try{ localStorage.setItem(chaveSacola(), JSON.stringify([...STATE.sacola.values()])); }catch(_){}
+  marcarEnviada(sacolaEmTexto());
+  pintarSacola();
+  if(!$('sacola').hidden) abrirSacola();
+}
+
+const quandoFoi = iso => {
+  const t = Date.parse(iso || '');
+  if(!t) return 'há pouco';
+  const min = Math.round((Date.now() - t) / 60000);
+  if(min < 2)    return 'agora há pouco';
+  if(min < 60)   return `há ${min} minutos`;
+  if(min < 48*60) return `há ${Math.round(min/60)} horas`;
+  return `em ${dataBR(new Date(t).toISOString().slice(0,10))}`;
+};
+
+async function trazerSacolaDoServidor(){
+  if(!SESSAO) return;
+  let r;
+  try{
+    r = await doWorkerComPrazo({ method:'PATCH',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ action:'getSacola', codigo:SESSAO.codigo, marca:MARCA }) }, 8000);
+  }catch(_){ return; }        // servidor fora: segue com a sacola do aparelho
+  const itens = r && Array.isArray(r.itens) ? r.itens.filter(x => x && x.key) : null;
+  const daqui = sacolaEmTexto();
+  const dela  = itens ? JSON.stringify(itens) : null;
+  if(dela === daqui){ marcarEnviada(daqui, r.em); return; }
+  // Servidor vazio: nunca apaga a sacola de quem está com ela na mão — o
+  // aparelho sobe a dele e o servidor volta a ter uma cópia.
+  if(!dela){ if(STATE.sacola.size) enviarSacola(); return; }
+  // Lá está igual à última vez que as duas bateram: quem mexeu fui eu.
+  if(dela === NUVEM.enviada){ enviarSacola(); return; }
+  // Aqui é que nada mudou desde então: o que veio é mais novo e entra sem
+  // perguntar.
+  if(daqui === NUVEM.enviada || !STATE.sacola.size){
+    const n = itens.length;
+    adotarSacola(itens); NUVEM.em = r.em;
+    if(n) avisar('Sacola trazida de outro aparelho',
+      `<b>${nf(n)} ${n === 1 ? 'produto' : 'produtos'}</b> que você montou no ` +
+      `${esc(r.de || 'outro aparelho')} ${quandoFoi(r.em)}.`);
+    return;
+  }
+  // Mexeram dos dois lados: quem decide é o vendedor.
+  const aqui = STATE.sacola.size, la = itens.length;
+  mostrarDialogo({
+    titulo:'Duas sacolas diferentes',
+    texto:`Neste aparelho há <b>${nf(aqui)} ${aqui === 1 ? 'produto' : 'produtos'}</b>. ` +
+          `No ${esc(r.de || 'outro aparelho')} há <b>${nf(la)} ${la === 1 ? 'produto' : 'produtos'}</b>, ` +
+          `de ${quandoFoi(r.em)}. Qual delas você quer usar?`,
+    ok:'Usar a de lá', cancelar:'Manter esta',
+    aoConfirmar: () => { adotarSacola(itens); NUVEM.em = r.em; }
+  });
+  // "Manter esta" só fecha o aviso; a daqui sobe no próximo salvamento.
+  $('cfNao').addEventListener('click', () => enviarSacola(), { once:true });
+}
+
+// Voltar ao app é a hora certa de conferir: o vendedor pode ter mexido na
+// sacola no outro aparelho enquanto este estava de lado.
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden){ clearTimeout(NUVEM.t); enviarSacola(); return; }
+  // Sempre olhar o servidor antes de mandar: se ele também mudou, quem
+  // decide o que fica é o vendedor, não quem chegou por último.
+  trazerSacolaDoServidor();
+});
 
 // O item já nasce com os campos dos dois destinos. O XLSX usa artigo/cor/
 // gradePedido; o pedido do Repasses usa num/gci/ebm/packSize/amount/grade.
@@ -5735,6 +5851,7 @@ function escolherMarca(id){
   for(const g of GRUPOS) STATE.sel[g.id].clear();
   STATE.marcados.clear();
   carregarSacola();
+  trazerSacolaDoServidor();
   history.replaceState(null, '', '?marca=' + id);
   pintarMarca();
   aplicar();
@@ -5923,6 +6040,7 @@ if(!SESSAO){
   pintarMarca();
   carregarSacola();
   pintarSacola();
+  trazerSacolaDoServidor();
   carregar();
   carregarAtualizacao();
   carregarRespostas(true);

@@ -891,6 +891,57 @@ export default {
           return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
         }
 
+        // ── sacola do vendedor (CMS PASS) ──────────────────────────────
+        // A sacola vivia so no aparelho: trocar de celular ou limpar o
+        // navegador jogava fora a grade montada. Aqui ela fica no KV, uma
+        // chave por vendedor e marca. Nao vai para o GitHub porque cada
+        // ajuste de grade viraria um commit.
+        // Publica como o resto das leituras do app: a vitrine roda no
+        // navegador do vendedor e nao tem onde guardar segredo.
+        if (body.action === "getSacola" || body.action === "saveSacola") {
+          if (!env.SACOLAS) {
+            return new Response(JSON.stringify({ success: false, error: "Sacola no servidor nao configurada." }),
+              { status: 501, headers: corsHeaders });
+          }
+          const codigo = String(body.codigo || "").trim();
+          const marca  = String(body.marca || "").trim().toLowerCase();
+          if (!/^[0-9A-Za-z_-]{1,32}$/.test(codigo) || !/^[a-z]{1,12}$/.test(marca)) {
+            return new Response(JSON.stringify({ success: false, error: "Vendedor ou marca invalidos." }),
+              { status: 400, headers: corsHeaders });
+          }
+          const chave = `sacola:${codigo}:${marca}`;
+
+          if (body.action === "getSacola") {
+            const guardado = await env.SACOLAS.get(chave, { type: "json" });
+            return new Response(JSON.stringify(guardado || { itens: null, em: null }),
+              { status: 200, headers: corsHeaders });
+          }
+
+          // saveSacola: sacola vazia apaga a chave, para nao guardar lixo.
+          const itens = Array.isArray(body.itens) ? body.itens : null;
+          if (!itens) {
+            return new Response(JSON.stringify({ success: false, error: "Itens ausentes." }),
+              { status: 400, headers: corsHeaders });
+          }
+          if (itens.length > 400) {
+            return new Response(JSON.stringify({ success: false, error: "Sacola grande demais (max 400 itens)." }),
+              { status: 413, headers: corsHeaders });
+          }
+          if (!itens.length) {
+            await env.SACOLAS.delete(chave);
+            return new Response(JSON.stringify({ success: true, em: null }), { status: 200, headers: corsHeaders });
+          }
+          const em = new Date().toISOString();
+          const valor = JSON.stringify({ itens, em, de: String(body.de || "").slice(0, 40) });
+          if (valor.length > 2e6) {
+            return new Response(JSON.stringify({ success: false, error: "Sacola grande demais." }),
+              { status: 413, headers: corsHeaders });
+          }
+          // 90 dias sem mexer e a sacola se apaga sozinha.
+          await env.SACOLAS.put(chave, valor, { expirationTtl: 60 * 60 * 24 * 90 });
+          return new Response(JSON.stringify({ success: true, em }), { status: 200, headers: corsHeaders });
+        }
+
         // PATCH com action:"getDispo" → retorna dispo.json
         if (body.action === "getDispo") {
           const { content } = await getFile(GITHUB_DISPO);
