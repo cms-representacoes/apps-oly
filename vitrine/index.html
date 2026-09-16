@@ -612,6 +612,7 @@ button{font:inherit}
   display:flex;align-items:center;justify-content:center;
   background:rgba(251,191,36,.16);color:#A45B06}
 .cf-ico.perigo{background:rgba(224,36,94,.10);color:#C2183F}
+.cf-ico.ok{background:#E7F6EE;color:#12A150}
 .cf-corpo h3{margin:0 0 6px;font-size:16px;font-weight:800;color:var(--tinta);
   letter-spacing:-.015em}
 .cf-corpo p{margin:0;font-size:12.5px;line-height:1.5;color:var(--fraco)}
@@ -1264,7 +1265,41 @@ body::before{
 /* ── modal "Gerar planilha do EBM" ──
    Acima da sacola (80) e abaixo do diálogo de confirmação (90). O formulário
    vem da sacola sem a moldura cinza: aqui a folha já é a moldura. */
-#modalPedido{ z-index:86; }
+#modalPedido, #modalRepasse{ z-index:86; }
+/* o pedido de repasse fala na cor do repasse, não no verde da planilha */
+#modalRepasse .mp-ico.rp-ico{ background:var(--repasse-fundo); color:var(--repasse); }
+#modalRepasse .mp-gerar{
+  background:linear-gradient(145deg,#5B67F0 0%,var(--repasse) 55%,#1C25A8 100%) !important;
+  box-shadow:0 6px 16px -6px color-mix(in srgb,var(--repasse) 60%,transparent), inset 0 1px 0 rgba(255,255,255,.26) !important; }
+#rpCorpo .sc-campos{ gap:12px 10px; }
+#rpCorpo .sc-campos span{ font-size:11.5px; font-weight:700; color:var(--fraco); }
+#rpCorpo .sc-campos input,#rpCorpo .sc-campos select,#rpCorpo .sc-campos textarea{
+  min-height:42px; padding:8px 12px; border-radius:12px; font-size:14px;
+  border:1px solid var(--linha); background:var(--carta); color:var(--tinta); font-family:inherit; min-width:0; }
+#rpCorpo .sc-campos select{ font-size:13.5px; }
+#rpCorpo .sc-campos textarea{ resize:vertical; line-height:1.35; }
+#rpCorpo .sc-campos textarea:focus{ outline:2px solid var(--marca); outline-offset:-1px; }
+.rp-tit{ margin:18px 0 8px; font-size:10px; font-weight:800; letter-spacing:.13em;
+  text-transform:uppercase; color:var(--fraco); }
+.rp-itens{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+.rp-itens li{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:12px;
+  border:1px solid color-mix(in srgb,var(--repasse) 22%,transparent);
+  background:color-mix(in srgb,var(--repasse) 5%,var(--carta)); }
+.rp-itens .mini{ width:40px; height:40px; flex:none; border-radius:9px; background:#fff; overflow:hidden; }
+.rp-itens .mini img{ width:100%; height:100%; object-fit:contain; }
+.rp-itens .tx{ flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; }
+.rp-itens .tx b{ font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rp-itens .tx small{ font-size:11px; color:var(--fraco); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rp-itens .q{ flex:none; text-align:right; font-size:11px; color:var(--fraco); line-height:1.25; }
+.rp-itens .q b{ display:block; font-size:13px; color:var(--repasse); }
+.rp-itens li.fora{ opacity:.55; border-style:dashed; }
+.dlg-lista{ margin:8px 0; padding-left:18px; text-align:left; font-size:12.5px; line-height:1.45; }
+.rp-total{ display:flex; justify-content:space-between; padding:8px 4px 0; font-size:12.5px; }
+.rp-total b{ color:var(--repasse); }
+@media(max-width:640px){
+  #rpCorpo .sc-campos{ grid-template-columns:1fr; }
+  #rpCorpo .sc-campos label.largo{ grid-column:auto; }
+}
 .mp-folha{ max-width:520px; }
 .mp-ico{ width:44px; height:44px; flex:none; border-radius:14px; display:flex; align-items:center; justify-content:center;
   background:#E7F6EE; color:#12A150; }
@@ -1644,6 +1679,48 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
         Gerar planilha</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pedido de repasse: o mesmo pedido que o app Repasses grava, para o admin
+     receber igual. Sai direto da aba Repasse da sacola. -->
+<div class="fundo" id="modalRepasse" hidden>
+  <div class="folha mp-folha" role="dialog" aria-modal="true" aria-labelledby="rpTit">
+    <div class="folha-topo">
+      <span class="mp-ico rp-ico" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/>
+          <path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg></span>
+      <span style="flex:1;min-width:0"><h3 id="rpTit">Enviar pedido de repasse</h3>
+        <p id="rpSub"></p></span>
+      <button class="icone" onclick="fecharModalRepasse()" aria-label="Fechar">✕</button>
+    </div>
+    <div class="folha-corpo" id="rpCorpo">
+      <div class="sc-campos">
+        <label class="largo" id="rpVendCampo"><span>Vendedor <i>*</i></span>
+          <select id="rpPreposto"></select></label>
+        <label class="largo sc-busca-cli"><span>Cliente <i>*</i></span>
+          <input id="rpCliente" placeholder="código ou nome" autocomplete="off" inputmode="search"
+                 role="combobox" aria-expanded="false" aria-autocomplete="list">
+          <div class="cli-sug" id="rpCliSug" role="listbox" hidden></div>
+          <span class="cli-dica" id="rpCliDica"></span></label>
+        <label><span>Condição de pagamento <i>*</i></span>
+          <select id="rpPrazo"></select></label>
+        <label><span>Campanha</span>
+          <select id="rpCampanha"></select></label>
+        <label class="largo"><span>Observações</span>
+          <textarea id="rpObs" rows="2" placeholder="opcional"></textarea></label>
+      </div>
+      <p class="rp-tit">O que vai no pedido</p>
+      <ul class="rp-itens" id="rpItens"></ul>
+    </div>
+    <div class="folha-pe">
+      <button class="acao" onclick="fecharModalRepasse()">Cancelar</button>
+      <button class="acao forte mp-gerar" id="rpEnviar">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg>
+        <span>Enviar pedido</span></button>
     </div>
   </div>
 </div>
@@ -2628,7 +2705,8 @@ setInterval(() => atualizarSaldoRepasse(false), 60000);
 // Sem isso o saldo mostrado seria maior do que o que o vendedor consegue.
 function reservasPorNum(pedidos){
   const r = new Map();
-  const contam = new Set(['PENDENTE','EM ANÁLISE','APROVADO','ATENDIDO PARCIALMENTE']);
+  // norm() tira o acento: com 'EM ANÁLISE' aqui, esse status nunca reservava.
+  const contam = new Set(['PENDENTE','EM ANALISE','APROVADO','ATENDIDO PARCIALMENTE']);
   for(const p of (pedidos||[])){
     if(p && p.archived) continue;
     if(!contam.has(norm(p && p.status || 'Pendente'))) continue;
@@ -5302,6 +5380,7 @@ function duplicarItem(k){
 // Todo recado passa por aqui. O alert() do navegador não se parece com o resto
 // da tela e, quando vêm dois seguidos, empilha caixas cinzas uma sobre a outra
 // — foi assim que a primeira versão apareceu.
+const SVG_OK = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>`;
 const SVG_ALERTA = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>
@@ -5325,8 +5404,8 @@ function proximoDialogo(){
   _dlgAcao = null;
   if(!op){ _dlgAberto = false; $('confirma').hidden = true; return; }
   _dlgAberto = true;
-  $('cfIco').className = 'cf-ico' + (op.perigo ? ' perigo' : '');
-  $('cfIco').innerHTML = op.perigo ? SVG_LIXO : SVG_ALERTA;
+  $('cfIco').className = 'cf-ico' + (op.perigo ? ' perigo' : op.sucesso ? ' ok' : '');
+  $('cfIco').innerHTML = op.perigo ? SVG_LIXO : op.sucesso ? SVG_OK : SVG_ALERTA;
   $('cfTit').textContent = op.titulo;
   $('cfTxt').innerHTML = op.texto || '';
   $('cfNao').hidden = !op.cancelar;
@@ -5728,8 +5807,13 @@ function pintarRodapeSacola(){
           Gerar planilha do EBM</button>` : '')
     : (rep.length ? `<div class="sc-resumo"><span>Total do repasse</span>
           <b>${nf(unRep)} un</b></div>
-        <button class="acao depois" disabled
-          title="Próxima etapa: enviar direto daqui">Enviar repasse · em breve</button>` : '');
+        ${rep.some(i => !Number(i.amount)) ? `<p class="sc-falta">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>
+            <path d="M12 9v4M12 17h.01"/></svg>
+          ${rep.filter(i => !Number(i.amount)).length} sem caixa — fica fora do pedido</p>` : ''}
+        <button class="acao forte" id="scRepEnviar">Enviar pedido de repasse</button>` : '');
 }
 
 function trocarAba(qual){
@@ -5739,7 +5823,333 @@ function trocarAba(qual){
 }
 $('scPe').addEventListener('click', e => {
   if(e.target.closest('#scXlsx')) abrirModalPedido();
+  if(e.target.closest('#scRepEnviar')) abrirModalRepasse();
 });
+
+/* ── pedido de repasse ──────────────────────────────────────────────
+   É o mesmo pedido que o app Repasses grava em pedidos.json: mesmo formato,
+   mesmas regras. O admin, o dispo e a reserva de saldo dos outros apps leem
+   esse arquivo, então nada aqui pode inventar campo ou status próprio. */
+const PREPOSTOS_REP = [['114611','JORGE'], ['109839','MARIANA'], ['1333497','RAFAEL'],
+  ['25471','WILLAME'], ['25745','LEANDRO'], ['4322318','CHRISTIAN LUCAS'], ['25846','CMS']];
+const ehSessaoCms = () => !!SESSAO && String(SESSAO.codigo).trim() === '25846';
+const chaveFormRep = () => `vitrine_form_rep_v1_${(SESSAO && SESSAO.codigo) || 'anon'}`;
+// Os status que seguram saldo — os mesmos do Repasses (isReservedStatus).
+const RESERVA_STATUS = new Set(['PENDENTE','EM ANALISE','APROVADO','ATENDIDO PARCIALMENTE']);
+const reservaSaldo = p => p && !p.archived && RESERVA_STATUS.has(norm(p.status || 'Pendente'));
+const unidadesDoItem = it => Number(it.totalUnits) ||
+  (it.mode === 'boxed' ? Number(it.amount || 0) * Number(it.packSize || 12) : Number(it.amount || 0));
+// Data como o Repasses compara duplicata: dd/mm/aaaa.
+const dataCurta = v => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v || ''));
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : String(v || '').trim();
+};
+
+function repassesDaSacola(){
+  return [...STATE.sacola.values()].filter(i => i.origem === 'repasse');
+}
+
+function abrirModalRepasse(){
+  const rep = repassesDaSacola();
+  const vao = rep.filter(i => Number(i.amount) > 0);
+  if(!vao.length){
+    avisar('Nada para enviar', 'Escolha quantas caixas de cada repasse na sacola, pelo − e +.');
+    return;
+  }
+  // vendedor: o CMS lança em nome de qualquer um; o vendedor, só no dele
+  const cms = ehSessaoCms();
+  $('rpVendCampo').hidden = !cms;
+  $('rpPreposto').innerHTML = (cms ? '<option value="">Escolha o vendedor</option>' : '') +
+    PREPOSTOS_REP.filter(([c]) => cms || c === String(SESSAO.codigo).trim())
+      .map(([c, n]) => `<option value="${c}">${esc(n)} · ${c}</option>`).join('');
+  $('rpPrazo').innerHTML = '<option value="">Escolha</option>' +
+    PRAZOS.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  $('rpCampanha').innerHTML = '<option value="">Sem campanha</option>' +
+    CAMPANHAS.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  // Vendedor, prazo e campanha costumam se repetir; o cliente não — lembrar o
+  // cliente é o caminho mais curto para mandar pedido na conta errada.
+  try{
+    const d = JSON.parse(localStorage.getItem(chaveFormRep()) || '{}');
+    for(const id of ['rpPreposto', 'rpPrazo', 'rpCampanha'])
+      if(d[id] && [...$(id).options].some(o => o.value === d[id])) $(id).value = d[id];
+  }catch(_){}
+  if(!cms) $('rpPreposto').value = String(SESSAO.codigo).trim();
+  $('rpCliente').value = ''; $('rpObs').value = '';
+  $('rpCliDica').textContent = ''; $('rpCliDica').className = 'cli-dica';
+  for(const id of ['rpPreposto', 'rpCliente', 'rpPrazo']) $(id).classList.remove('erro');
+  pintarItensRepasse();
+  CLI_ALVO = { campo:'rpCliente', lista:'rpCliSug', dica:'rpCliDica' };
+  $('modalRepasse').hidden = false;
+  carregarClientes();
+  setTimeout(() => $(cms && !$('rpPreposto').value ? 'rpPreposto' : 'rpCliente').focus(), 60);
+}
+function fecharModalRepasse(){
+  $('modalRepasse').hidden = true;
+  $('rpCliSug').hidden = true;
+}
+$('modalRepasse').addEventListener('click', e => { if(e.target.id === 'modalRepasse') fecharModalRepasse(); });
+$('rpEnviar').addEventListener('click', () => enviarRepasse());
+for(const id of ['rpPreposto', 'rpPrazo', 'rpCampanha'])
+  $(id).addEventListener('change', () => {
+    $(id).classList.remove('erro');
+    try{
+      const d = JSON.parse(localStorage.getItem(chaveFormRep()) || '{}');
+      d[id] = $(id).value;
+      localStorage.setItem(chaveFormRep(), JSON.stringify(d));
+    }catch(_){}
+  });
+$('rpCliente').addEventListener('input', () => $('rpCliente').classList.remove('erro'));
+ligarCampoCliente('rpCliente', 'rpCliSug', 'rpCliDica');
+
+function pintarItensRepasse(){
+  const rep = repassesDaSacola();
+  const vao = rep.filter(i => Number(i.amount) > 0);
+  const cx = vao.reduce((a, i) => a + Number(i.amount), 0);
+  const un = vao.reduce((a, i) => a + totalUnidades(i), 0);
+  $('rpSub').textContent = `${nf(vao.length)} ${vao.length === 1 ? 'produto' : 'produtos'} · ` +
+    `${nf(cx)} ${cx === 1 ? 'caixa' : 'caixas'} · ${nf(un)} pares`;
+  $('rpItens').innerHTML = rep.map(it => {
+    const n = Number(it.amount || 0);
+    return `<li class="${n ? '' : 'fora'}">
+      <span class="mini"><img src="${esc(fotoMini(it))}" data-cheia="${esc(foto(it))}" alt=""
+        loading="lazy" onerror="semMiniatura(this)"></span>
+      <span class="tx"><b>${esc(it.nome || it.artigo)}</b>
+        <small>${esc(it.artigo)} · ${esc(it.cor)} · Nº ${esc(it.num)} · fatura ${esc(it.prevFaturamento || '—')}</small></span>
+      <span class="q">${n ? `<b>${nf(n)} cx</b>${nf(totalUnidades(it))} pares`
+                         : '<b>—</b>fica fora'}</span></li>`;
+  }).join('') + `<li class="rp-total" style="border:0;background:none;padding:6px 4px 0">
+      <span>Total</span><b>${nf(cx)} caixas · ${nf(un)} pares</b></li>`;
+}
+
+// Sempre o arquivo do servidor, sem cópia guardada: é daqui que sai a
+// conferência de saldo na hora de enviar.
+async function lerDoWorker(opcoes, ms = 12000){
+  const corta = new AbortController();
+  const t = setTimeout(() => corta.abort(), ms);
+  try{
+    const r = await fetch(WORKER_URL, { cache:'no-store', ...opcoes, signal:corta.signal });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  }finally{ clearTimeout(t); }
+}
+const patchLeitura = action => lerDoWorker({ method:'PATCH',
+  headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ action }) });
+
+function idPedido(){
+  const d = new Date(), z = n => String(n).padStart(2, '0');
+  const stamp = `${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}` +
+                `${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}`;
+  return `PED-${stamp}-${100 + Math.floor(Math.random() * 900)}`;
+}
+
+async function enviarRepasse(op = {}){
+  const btn = $('rpEnviar');
+  const preposto = $('rpPreposto').value.trim();
+  const cliente  = $('rpCliente').value.trim();
+  const prazo    = $('rpPrazo').value;
+  // o que falta aparece tudo de uma vez, marcado no campo
+  const faltas = [];
+  if(!preposto){ $('rpPreposto').classList.add('erro'); faltas.push('o vendedor'); }
+  if(!/^\d+$/.test(cliente)){ $('rpCliente').classList.add('erro');
+    faltas.push(cliente ? 'o código do cliente (só números)' : 'o cliente'); }
+  if(!prazo){ $('rpPrazo').classList.add('erro'); faltas.push('a condição de pagamento'); }
+  if(faltas.length){
+    avisar('Falta preencher', 'Preencha ' + faltas.join(', ').replace(/, ([^,]*)$/, ' e $1') + '.');
+    return;
+  }
+  const itens = repassesDaSacola().filter(i => Number(i.amount) > 0);
+  if(!itens.length){ fecharModalRepasse(); abrirModalRepasse(); return; }
+
+  ocupado(btn, 'Conferindo saldo…');
+  let pedidos, dispo, rateio;
+  try{
+    [pedidos, dispo, rateio] = await Promise.all([
+      lerDoWorker({ method:'GET' }),
+      patchLeitura('getDispo'),
+      patchLeitura('getRateio').catch(() => ({}))
+    ]);
+    if(!Array.isArray(pedidos) || !Array.isArray(dispo)) throw new Error('resposta inesperada');
+  }catch(e){
+    liberado(btn);
+    avisar('Pedido não enviado',
+      'Não deu para conferir o saldo com o servidor agora (' + esc(e.message) + '). ' +
+      'Nada foi enviado; a sacola continua como estava. Tente de novo em instantes.');
+    return;
+  }
+
+  // ── 1) saldo e cota de cada lote, com os pedidos de agora ──
+  const porNum = new Map(dispo.map(r => [String(r.num || '').trim(), r]));
+  const reservado = new Map(), doVendedor = new Map();
+  for(const p of pedidos){
+    if(!reservaSaldo(p)) continue;
+    const dele = String(p.preposto && p.preposto.codigo || '').trim() === preposto;
+    for(const it of (p.items || [])){
+      const num = String(it && it.num || '').trim();
+      if(!num) continue;
+      const u = unidadesDoItem(it);
+      reservado.set(num, (reservado.get(num) || 0) + u);
+      if(dele) doVendedor.set(num, (doVendedor.get(num) || 0) + u);
+    }
+  }
+  const conflitos = [];
+  const linhas = itens.map(it => {
+    const row = porNum.get(String(it.num).trim());
+    const [cod, nome] = row ? desinverte(row.codigo, row.produto) : ['', ''];
+    // O Nº é a chave; se o lote daquele Nº agora é outro produto, esgotou.
+    const mesmo = row && norm(cod) === norm(it.artigo);
+    const pack = Math.max(1, Number(it.packSize || 12));
+    let livre = mesmo ? Math.max(0, Number(row.saldo || 0) - (reservado.get(String(it.num)) || 0)) : 0;
+    let porCota = false;
+    const cota = rateio && typeof rateio === 'object' ? rateio[String(it.num).trim()] : null;
+    if(mesmo && cota && typeof cota === 'object'){
+      const teto = Math.max(0, Number(cota[preposto] || 0) - (doVendedor.get(String(it.num)) || 0));
+      if(teto < livre){ livre = teto; porCota = true; }
+    }
+    const cabe = Math.floor(livre / pack);
+    if(cabe < Number(it.amount)) conflitos.push({ it, cabe, porCota });
+    return { it, row, cod, nome, pack };
+  });
+
+  if(conflitos.length && !op.aceitouSaldo){
+    liberado(btn);
+    const sobra = itens.reduce((a, it) => {
+      const c = conflitos.find(x => x.it === it);
+      return a + (c ? c.cabe : Number(it.amount));
+    }, 0);
+    const lista = conflitos.map(({ it, cabe, porCota }) =>
+      `<li><b>${esc(it.nome || it.artigo)}</b> ${esc(it.cor)} · Nº ${esc(it.num)} — ` +
+      (cabe ? `pediu ${nf(it.amount)}, cabem <b>${nf(cabe)}</b>` : '<b>esgotou</b>') +
+      (porCota ? ' (cota do vendedor)' : '') + '</li>').join('');
+    const ajustar = () => {
+      for(const { it, cabe } of conflitos){
+        const s = STATE.sacola.get(it.key);
+        if(s) s.amount = cabe;
+      }
+      salvarSacola(); pintarSacola();
+      pintarItensRepasse();
+    };
+    if(!sobra){
+      ajustar();
+      avisar('Nada disponível', `Não sobrou nada para este vendedor:<ul class="dlg-lista">${lista}</ul>` +
+        'Nada foi enviado.');
+      return;
+    }
+    const soCota = conflitos.every(c => c.porCota);
+    mostrarDialogo({
+      titulo: soCota ? 'Passa da cota do vendedor' : 'O saldo mudou',
+      texto:(soCota ? 'Esses lotes têm rateio e a cota deste vendedor não cobre tudo:'
+                    : 'Outros pedidos entraram enquanto você montava:') +
+            `<ul class="dlg-lista">${lista}</ul>Dá para enviar com o que cabe.`,
+      ok:'Enviar com o que tem', cancelar:'Voltar',
+      aoConfirmar: () => { ajustar(); enviarRepasse({ ...op, aceitouSaldo:true }); }
+    });
+    return;
+  }
+
+  // Aceitou o saldo novo: manda só o que cabe.
+  const vao = linhas.map(l => {
+    const c = conflitos.find(x => x.it === l.it);
+    return { ...l, amount: c ? c.cabe : Number(l.it.amount) };
+  }).filter(l => l.amount > 0);
+
+  // ── 2) pedido parecido para o mesmo cliente ──
+  if(!op.aceitouDuplicata){
+    const chaves = new Set(vao.map(l =>
+      `${norm(l.cod)}|${norm(l.row.cor)}|${dataCurta(l.row.dataEntrega)}`));
+    const achados = [];
+    for(const p of pedidos){
+      if(norm(p && p.clienteCodigo) !== norm(cliente)) continue;
+      for(const it of (p.items || [])){
+        if(chaves.has(`${norm(it.codigo)}|${norm(it.cor)}|${dataCurta(it.prevFaturamento)}`))
+          achados.push(`<li><b>${esc(it.produto || it.codigo)}</b> ${esc(it.cor)} · fatura ` +
+            `${esc(dataCurta(it.prevFaturamento))} — pedido ${esc(p.id)} (${esc(p.status || 'Pendente')})</li>`);
+      }
+    }
+    if(achados.length){
+      liberado(btn);
+      mostrarDialogo({
+        titulo:'Esse cliente já tem pedido parecido',
+        texto:`Já existe pedido do cliente <b>${esc(cliente)}</b> com:` +
+              `<ul class="dlg-lista">${[...new Set(achados)].join('')}</ul>Enviar mesmo assim?`,
+        ok:'Enviar mesmo assim', cancelar:'Voltar',
+        aoConfirmar: () => enviarRepasse({ ...op, aceitouDuplicata:true })
+      });
+      return;
+    }
+  }
+
+  // ── 3) o pedido, no formato do Repasses ──
+  const nomeVend = (PREPOSTOS_REP.find(([c]) => c === preposto) || [preposto, ''])[1];
+  const achado = CLI.lista.find(c => String(c.codigo).trim() === cliente);
+  const agora = new Date().toISOString();
+  const items = vao.map(({ it, row, cod, nome, pack, amount }) => ({
+    codigo: cod,
+    produto: nome || it.nome || cod,
+    cor: String(row.cor || '').trim().toUpperCase(),
+    num: String(row.num || '').trim(),
+    gci: String(row.gci || '').trim(),
+    ebm: String(row.ebm || '').trim(),
+    amount,
+    mode: 'boxed',
+    packSize: pack,
+    totalUnits: amount * pack,
+    grade: Object.entries(row.grade || {}).filter(([, q]) => Number(q) > 0)
+      .map(([size, qty]) => ({ size, qty:Number(qty) })),
+    prevFaturamento: String(row.dataEntrega || '').trim()
+  }));
+  const pedido = {
+    id: idPedido(),
+    createdAt: agora, updatedAt: agora,
+    status: 'Pendente',
+    archived: false,
+    isDuplicate: !!op.aceitouDuplicata,
+    preposto: { codigo: preposto, nome: nomeVend },
+    clienteCodigo: cliente,
+    clienteNome: achado ? String(achado.nome || '').trim() : '',
+    prazo,
+    campanha: $('rpCampanha').value,
+    observacoes: $('rpObs').value.trim(),
+    totals: { packs: items.reduce((a, i) => a + i.amount, 0),
+              units: items.reduce((a, i) => a + i.totalUnits, 0) },
+    items
+  };
+
+  passo(btn, 'Enviando…');
+  let foi = false, erro = '';
+  try{
+    const r = await fetch(WORKER_URL, { method:'POST',
+      headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(pedido) });
+    const j = await r.json().catch(() => null);
+    foi = r.ok && !!(j && j.success);
+    if(!foi) erro = (j && j.error) || ('HTTP ' + r.status);
+  }catch(e){ erro = e.message; }
+  // A resposta pode se perder depois de gravado: antes de dizer que falhou,
+  // confere no servidor — reenviar criaria o pedido em dobro.
+  if(!foi){
+    try{
+      const l = await lerDoWorker({ method:'GET' });
+      foi = Array.isArray(l) && l.some(p => p && p.id === pedido.id);
+    }catch(_){}
+  }
+  liberado(btn);
+  if(!foi){
+    avisar('Pedido não enviado',
+      `O servidor não confirmou o pedido (${esc(erro)}). A sacola continua como estava; ` +
+      'confira a conexão e tente de novo.');
+    return;
+  }
+
+  // ── 4) deu certo ──
+  for(const l of vao) STATE.sacola.delete(l.it.key);
+  salvarSacola(); pintarSacola();
+  if(!$('sacola').hidden) abrirSacola();
+  fecharModalRepasse();
+  atualizarSaldoRepasse(true);
+  mostrarDialogo({ titulo:'Pedido de repasse enviado', sucesso:true, texto:
+    `<b>${esc(pedido.id)}</b><br>Cliente ${esc(cliente)}${pedido.clienteNome ? ' · ' + esc(pedido.clienteNome) : ''}` +
+    ` · ${esc(nomeVend)}<br>${nf(pedido.totals.packs)} ${pedido.totals.packs === 1 ? 'caixa' : 'caixas'} · ` +
+    `${nf(pedido.totals.units)} pares.<br>Ele já está no admin como <b>Pendente</b>, e o saldo ficou reservado.` });
+}
 
 /* ── modal dos dados do pedido ──────────────────────────────────── */
 // Antes de abrir confere o que só se resolve na sacola: item sem grade. Item
@@ -6031,6 +6441,7 @@ document.addEventListener('keydown', e => {
   if(e.key !== 'Escape') return;
   if(!$('confirma').hidden) fecharConfirma();
   else if(!$('modalPedido').hidden) fecharModalPedido();
+  else if(!$('modalRepasse').hidden) fecharModalRepasse();
   else if(!$('modalGrade').hidden) fecharGrade();
   else if(!$('zoom').hidden) fecharZoom();
   else if(!$('modal').hidden) fecharModal();
