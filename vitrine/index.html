@@ -1416,13 +1416,6 @@ body:has(#sacola:not([hidden])) .aviso-desfazer.on{ transform:translate(50%, 0);
 .upd-novos[hidden]{ display:none; }
 .upd-novos:hover{ background:rgba(22,163,74,.2); }
 .upd-novos.on{ background:#16A34A; color:#fff; }
-.cat .novidades{ display:inline-flex; align-items:center; gap:7px; }
-.cat .novidades .pt{ width:7px; height:7px; border-radius:50%; background:#16A34A; flex:none; }
-.cat .novidades.on{ background:#16A34A; border-color:#16A34A; color:#fff; }
-.cat .novidades.on .pt{ background:#fff; }
-.cat .novidades .n{ font-size:11px; font-weight:800; color:#16A34A;
-  background:rgba(22,163,74,.12); border-radius:999px; padding:1px 7px; }
-.cat .novidades.on .n{ color:#fff; background:rgba(255,255,255,.25); }
 .selo-novo{ position:absolute; top:8px; left:8px; z-index:2; pointer-events:none;
   font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
   color:#fff; background:#16A34A; border-radius:999px; padding:3px 9px;
@@ -1454,6 +1447,26 @@ body:has(#sacola:not([hidden])) .aviso-desfazer.on{ transform:translate(50%, 0);
   .vt-item{ width:120px; }
   .vt-foto{ height:74px; }
 }
+
+/* ── voltar ao topo ── acima da sacola, do mesmo lado; sobe mais quando
+   a sacola ou a barra de seleção ocupam o rodapé */
+.topo-fab{ position:fixed; z-index:54; right:14px;
+  bottom:calc(14px + env(safe-area-inset-bottom,0px));
+  width:46px; height:46px; border-radius:50%; border:0; color:#fff; cursor:pointer;
+  background:linear-gradient(145deg,var(--marca-claro),var(--marca) 55%,var(--marca-escuro));
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 10px 24px color-mix(in srgb,var(--marca) 45%,transparent),
+             0 0 0 3px rgba(255,255,255,.9), inset 0 1px 0 rgba(255,255,255,.25);
+  opacity:0; transform:translateY(10px); transition:opacity .2s, transform .2s; }
+.topo-fab[hidden]{ display:none; }
+.topo-fab.on{ opacity:1; transform:none; }
+.topo-fab:hover{ filter:brightness(1.08); }
+body.com-fab .topo-fab{ bottom:calc(14px + 54px + 12px + env(safe-area-inset-bottom,0px)); right:18px; }
+body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + env(safe-area-inset-bottom,0px)); }
+@media(min-width:641px){
+  body.com-fab .topo-fab{ right:22px; bottom:calc(14px + 48px + 12px + env(safe-area-inset-bottom,0px)); }
+}
+@media (prefers-reduced-motion:reduce){ .topo-fab{ transition:none; } }
 
 /* ── carregando o resto da lista ── */
 .fim-grade{ display:flex; justify-content:center; padding:18px 0 26px; }
@@ -1551,6 +1564,11 @@ body:has(#sacola:not([hidden])) .aviso-desfazer.on{ transform:translate(50%, 0);
   <button type="button" class="upd-novos" id="updNovos" hidden onclick="alternarNovidades()"></button>
 </div>
 
+<button type="button" class="topo-fab" id="topoFab" hidden aria-label="Voltar ao topo" title="Voltar ao topo"
+        onclick="window.scrollTo({ top:0, behavior: matchMedia('(prefers-reduced-motion:reduce)').matches ? 'auto' : 'smooth' })">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+</button>
 <div class="contagem" id="contagem" hidden></div>
 <section class="tira-vistos" id="tiraVistos" aria-label="Vistos há pouco" hidden></section>
 <main class="grade" id="grade" aria-live="polite"></main>
@@ -2903,7 +2921,13 @@ function ordenar(lista){
     case 'menor': return l.sort((a, b) => (a.pdv || Infinity) - (b.pdv || Infinity));
     case 'maior': return l.sort((a, b) => (b.pdv || 0) - (a.pdv || 0));
     case 'qtd':   return l.sort((a, b) => disponivel(b) - disponivel(a));
-    default:      return l;
+    // Na ordem padrão o que acabou de entrar abre a vitrine, a mais recente
+    // primeiro; o resto segue como sempre foi. Quem escolheu nome ou preço
+    // pediu aquela ordem e ela vale inteira.
+    default: {
+      const dia = o => ehNovo(o) ? NOVIDADES[o.k] : '';
+      return l.sort((a, b) => dia(b).localeCompare(dia(a)));
+    }
   }
 }
 function setOrdem(id){
@@ -2955,16 +2979,7 @@ function pintarFiltros(){
   // agora. A primeira lista manda no que aparece, a segunda no que e clicavel.
   const catsDaMarca = CATEGORIAS.filter(([id]) => daMarcaAtual.some(o => o.categoria === id));
   $('riscoCat').hidden = catsDaMarca.length === 0;
-  // Novidades é um recorte de tempo, não uma categoria: entra na frente da
-  // fila e só existe quando há o que mostrar.
-  const novos = contarNovos(daMarcaAtual);
-  $('catFiltros').innerHTML =
-    (novos || STATE.soNovos
-      ? `<button class="novidades${STATE.soNovos ? ' on' : ''}" onclick="alternarNovidades()"
-           aria-pressed="${STATE.soNovos}" title="Produtos que entraram nos últimos ${NOVO_DIAS} dias">
-           <span class="pt"></span>Novidades<span class="n">${nf(novos)}</span></button>`
-      : '') +
-    catsDaMarca.map(([id, rot]) => {
+  $('catFiltros').innerHTML = catsDaMarca.map(([id, rot]) => {
     const ativo = STATE.categoria === id;
     const vazia = !ativo && !paraCategoria.some(o => o.categoria === id);
     return `<button class="${ativo ? 'on' : ''}${vazia ? ' vazia' : ''}"
@@ -3192,6 +3207,22 @@ function desenharLote(recomecar){
   }
   $('fimGrade').hidden = _mostrados >= lista.length;
 }
+// Botão de voltar ao topo: só depois de uma tela e meia rolada, que é quando
+// subir no dedo começa a cansar.
+(function(){
+  const b = $('topoFab');
+  let t = null;
+  const ver = () => {
+    const mostra = window.scrollY > innerHeight * 1.5;
+    if(mostra === b.classList.contains('on')) return;
+    clearTimeout(t);
+    if(mostra){ b.hidden = false; requestAnimationFrame(() => b.classList.add('on')); }
+    else{ b.classList.remove('on'); t = setTimeout(() => { if(!b.classList.contains('on')) b.hidden = true; }, 220); }
+  };
+  addEventListener('scroll', ver, { passive:true });
+  ver();
+})();
+
 // Sentinela logo abaixo da grade: assim que ela chega perto da tela, vem
 // mais um lote — sem botão para o vendedor apertar. Enquanto ela continuar
 // à vista, o próximo lote vem em seguida: o observador só avisa quando a
@@ -5751,6 +5782,7 @@ function pintarSacola(){
   const est = itens.filter(i => i.origem !== 'repasse');
   const rep = itens.filter(i => i.origem === 'repasse');
   $('fabSacola').hidden = !itens.length || !$('sacola').hidden || marcadosVisiveis().length > 0;
+  document.body.classList.toggle('com-fab', !$('fabSacola').hidden);
   document.body.classList.toggle('com-sacola', itens.length > 0);
   $('fabSacolaN').textContent = nf(itens.length);
   // O mesmo número no cabeçalho: quem rolou a vitrine até o fim não precisa
