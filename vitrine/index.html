@@ -236,23 +236,6 @@ button{font:inherit}
 .limpa-tudo .n{background:rgba(255,255,255,.26);border-radius:999px;padding:0 6px;
   font-size:10.5px;font-variant-numeric:tabular-nums}
 
-@media(min-width:768px) and (max-width:1099px){
-  .limpa-tudo{padding:5px 9px}
-  .limpa-tudo > span:not(.n){display:none}
-}
-
-/* No celular ele sai da linha e vira flutuante — no canto oposto à sacola,
-   para os dois nunca disputarem o mesmo lugar. */
-@media(max-width:767px){
-  .limpa-tudo{position:fixed;z-index:56;left:14px;
-    bottom:calc(14px + env(safe-area-inset-bottom,0px));
-    padding:11px 15px 11px 13px;font-size:12.5px;border-radius:32px;
-    box-shadow:0 8px 24px rgba(249,115,22,.45), inset 0 1px 0 rgba(255,255,255,.30)}
-  .limpa-tudo svg{width:16px;height:16px}
-  /* Fixo, ele cobriria o último card; a folga só existe quando ele aparece. */
-  body.com-limpar .grade{padding-bottom:88px}
-}
-
 .contagem{display:flex;align-items:center;justify-content:space-between;gap:10px;
   padding:11px 13px 0;font-size:12px;color:var(--fraco);max-width:1180px;margin:0 auto}
 /* display:flex numa classe empata com o [hidden] e vence pela ordem: escondida,
@@ -1177,7 +1160,33 @@ body{ font-family:'Plus Jakarta Sans', Inter, system-ui, -apple-system, 'Segoe U
   background:color-mix(in srgb,var(--marca) 10%,var(--carta)); }
 .cat button.vazia:hover{ border-style:solid; }
 .limpa-tudo{ height:var(--pilula); padding:0 15px 0 13px; font-size:13px; }
-@media(max-width:767px){ .limpa-tudo{ height:auto; } }
+/* No celular e no tablet ele sai da fila do topo e vira flutuante — no canto
+   oposto à sacola, para os dois nunca disputarem o mesmo lugar. A fila de
+   cima já está cheia nesses tamanhos, e é lá embaixo que a mão está. */
+@media(max-width:1099px), (pointer:coarse){
+  .limpa-tudo{ position:fixed; z-index:56; height:auto; left:14px;
+    bottom:calc(14px + env(safe-area-inset-bottom,0px));
+    padding:12px 17px 12px 14px; font-size:13px; border-radius:32px;
+    box-shadow:0 10px 26px rgba(249,115,22,.45), inset 0 1px 0 rgba(255,255,255,.30); }
+  .limpa-tudo svg{ width:16px; height:16px; }
+  /* Fixo, ele cobriria o último card; a folga só existe quando ele aparece. */
+  body.com-limpar .grade{ padding-bottom:88px; }
+}
+/* no tablet ele tem mais folga que no celular — e só ali: no computador o
+   botão continua sendo a pílula da fila de cima */
+@media(min-width:768px) and (max-width:1099px),
+       (min-width:768px) and (pointer:coarse){
+  .limpa-tudo{ left:18px; bottom:calc(18px + env(safe-area-inset-bottom,0px));
+    padding:13px 20px 13px 17px; font-size:14px; }
+  .limpa-tudo svg{ width:17px; height:17px; }
+}
+/* Com produtos marcados, a barra de seleção toma o rodapé inteiro no celular.
+   O botão sobe para cima dela em vez de tapar a contagem. */
+@media(max-width:1099px), (pointer:coarse){
+  body.com-selecao .limpa-tudo{
+    bottom:calc(14px + var(--h-selbarra, 56px) + 10px + env(safe-area-inset-bottom,0px)); }
+  body.com-selecao.com-limpar .grade{ padding-bottom:150px; }
+}
 .faixa-upd .upd{ font-size:11px; color:var(--fraco); }
 
 /* ── cartões de produto ── */
@@ -5678,6 +5687,10 @@ function pintarSelecao(){
   btn.title = `${todosJa ? 'Desmarcar' : 'Marcar'} os ${nf(vis.length)} produtos da tela`;
   btn.setAttribute('aria-label', btn.title);
   document.body.classList.toggle('com-selecao', n > 0);
+  // O "Limpar filtros" flutua no mesmo canto no celular e no tablet: para
+  // subir na medida certa, ele precisa saber a altura real desta barra.
+  document.documentElement.style.setProperty('--h-selbarra',
+    (n > 0 ? Math.round($('selBarra').getBoundingClientRect().height) : 0) + 'px');
   // A sacola sai de cena enquanto há seleção: são dois fluxos diferentes e
   // eles disputariam o mesmo canto.
   pintarSacola();
@@ -5785,6 +5798,16 @@ for(const sel of ['#linha2', '#topoAcoes', '#selBarra', '#pedFiltros', '#pedPe',
    E a busca muda de lugar: no estreito ela fica entre a sacola e o voltar,
    onde o polegar alcança sem atravessar o cabeçalho. */
 const _mqEstreito = matchMedia('(max-width:1099px)');
+// O cabeçalho é desfocado, e desfoque prende quem está fixo lá dentro: o
+// botão de limpar ficava colado embaixo da fila de cima em vez de ir para o
+// rodapé. Fora do cabeçalho ele volta a se prender à tela.
+const _mqLimparSolto = matchMedia('(max-width:1099px), (pointer:coarse)');
+function poeLimparNoLugar(){
+  const b = $('btnLimparTudo'), acoes = $('topoAcoes');
+  if(!b || !acoes) return;
+  if(_mqLimparSolto.matches){ if(b.parentElement !== document.body) document.body.append(b); }
+  else if(b.parentElement !== acoes) acoes.prepend(b);
+}
 const _mqTablet   = matchMedia('(min-width:768px) and (max-width:1099px)');
 
 function arrumarTopo(){
@@ -5804,8 +5827,10 @@ function arrumarTopo(){
     rolo.append(tit, busca, filtros, acoes);
     l1.append(rolo);
   }
+  poeLimparNoLugar();
 }
 arrumarTopo();
+_mqLimparSolto.addEventListener('change', poeLimparNoLugar);
 _mqEstreito.addEventListener('change', arrumarTopo);
 // esmaece a ponta da fila só quando ainda há botão para a direita
 (function(){
