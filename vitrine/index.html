@@ -1396,6 +1396,14 @@ body:has(#sacola:not([hidden])) .aviso-desfazer.on{ transform:translate(50%, 0);
 @media (hover:hover){ .card .foto:hover img{ transform:scale(1.03); } }
 @media (prefers-reduced-motion:reduce){ .card .foto img{ transition:none; } }
 
+/* ── ordem da lista, no painel de filtros ── */
+.pn .ops.ordem button{ font-weight:700; }
+.pn .ops.ordem button.on{ font-weight:800; }
+
+/* ── carregando o resto da lista ── */
+.fim-grade{ display:flex; justify-content:center; padding:18px 0 26px; }
+.fim-grade[hidden]{ display:none; }
+
 /* ── botão flutuante da sacola ──
    Era do mesmo azul dos "Ver detalhes" e sumia no meio dos cartões. Agora
    é grafite, a única peça escura da tela, com o número num selo azul. */
@@ -1489,6 +1497,7 @@ body:has(#sacola:not([hidden])) .aviso-desfazer.on{ transform:translate(50%, 0);
 
 <div class="contagem" id="contagem" hidden></div>
 <main class="grade" id="grade" aria-live="polite"></main>
+<div class="fim-grade" id="fimGrade" aria-hidden="true" hidden><span class="girando"></span></div>
 <div id="estado"></div>
 
 <div class="sel-barra" id="selBarra" hidden>
@@ -1884,7 +1893,9 @@ const STATE = { produtos:[], filtrados:[], origem:'tudo', categoria:'', busca:''
                 termos:[], termosIgnorados:0,
                 sel:{ chega:new Set(), genero:new Set(), sub:new Set(),
                       fabrica:new Set(), camp:new Set() },
-                sacola:new Map(), aba:'estoque', marcados:new Set() };
+                sacola:new Map(), aba:'estoque', marcados:new Set(),
+                ordem:(() => { try{ return localStorage.getItem('cmspass.ordem') || 'padrao'; }
+                               catch(_){ return 'padrao'; } })() };
 
 const FORM_HTML = `<p class="sc-form-tit">Dados do pedido</p>
       <div class="sc-campos">
@@ -2063,7 +2074,18 @@ const esc  = v => String(v==null?'':v).replace(/[&<>"']/g, c =>
 // Cor no nome do arquivo de imagem: / e - viram _
 const corArquivo = c => norm(c).replace(/[\/\-]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
 const chave = (artigo, cor) => norm(artigo) + '|' + corArquivo(cor);
-const foto = o => IMG + (o.imagem || (o.artigo + '_' + corArquivo(o.cor))) + '.jpg';
+const arquivoFoto = o => (o.imagem || (o.artigo + '_' + corArquivo(o.cor))) + '.jpg';
+const foto = o => IMG + arquivoFoto(o);
+// As fotos do catálogo têm até 3000 px e meio MB cada — numa lista de 500
+// produtos isso é o carregamento inteiro. Em lista vai a miniatura de 420 px
+// (≈12 KB); a foto grande fica para o zoom e a ficha do produto.
+const fotoMini = o => IMG + 'mini/' + arquivoFoto(o);
+// Foto nova ainda sem miniatura publicada: cai para a grande em vez de sumir.
+function semMiniatura(img){
+  const cheia = img.getAttribute('data-cheia');
+  if(cheia && img.src.includes('/mini/')){ img.src = cheia; return; }
+  img.style.visibility = 'hidden';
+}
 
 // Algumas planilhas chegam com Código e Produto trocados: o código traz o nome
 // e o produto traz a referência. A referência é sempre numérica e o nome nunca.
@@ -2150,8 +2172,12 @@ document.addEventListener('visibilitychange', () => {
 });
 
 /* ── carga ──────────────────────────────────────────────────────── */
+// Abrir a vitrine baixava ~3 MB de JSON toda vez, porque o ?t= mudava a
+// cada visita e nada podia ser reaproveitado. Com no-cache o navegador
+// pergunta ao servidor se o arquivo mudou: mudou, baixa; não mudou, responde
+// 304 e a cópia guardada serve. Continua sempre atual, sem o download.
 async function json(arquivo){
-  const r = await fetch(DADOS + arquivo + '?t=' + Date.now(), { cache:'no-store' });
+  const r = await fetch(DADOS + arquivo, { cache:'no-cache' });
   if(!r.ok) throw new Error(arquivo + ' (' + r.status + ')');
   return r.json();
 }
@@ -2240,19 +2266,43 @@ async function doWorkerComPrazo(opcoes, ms = 8000){
   }finally{ clearTimeout(t); }
 }
 
+// pedidos.json passa de 900 KB. Perguntar de minuto em minuto "mudou algo?"
+// não pode custar esse download toda vez: o app guarda a marca da versão que
+// já tem e o Worker responde 304, sem corpo, enquanto ninguém fizer pedido.
+let _marcaPedidos = null;
+async function pedidosDoWorker(ms = 8000){
+  const corta = new AbortController();
+  const t = setTimeout(() => corta.abort(), ms);
+  try{
+    const r = await fetch(WORKER_URL, { signal:corta.signal,
+      headers: _marcaPedidos ? { 'If-None-Match': _marcaPedidos } : {} });
+    if(r.status === 304) return null;          // nada de novo desde a última vez
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const marca = r.headers.get('ETag');
+    if(marca) _marcaPedidos = marca;
+    return await r.json();
+  }finally{ clearTimeout(t); }
+}
+
 async function atualizarSaldoRepasse(forcar){
   if(!STATE.fontes || SALDO.rodando || document.hidden) return;
   if(!forcar && Date.now() - SALDO.buscaEm < 45000) return;
   SALDO.rodando = true;
   SALDO.buscaEm = Date.now();
   try{
-    const [pedidos, dispo] = await Promise.all([
-      doWorkerComPrazo({ method:'GET' }).catch(() => json('pedidos.json')),
+    const [novosPedidos, dispo] = await Promise.all([
+      pedidosDoWorker().catch(() => json('pedidos.json')),
       doWorkerComPrazo({ method:'PATCH', headers:{ 'Content-Type':'application/json' },
         body: JSON.stringify({ action:'getDispo' }) }).catch(() => json('dispo.json'))
     ]);
-    if(!Array.isArray(pedidos) || !Array.isArray(dispo)) return;
     const f = STATE.fontes;
+    const pedidos = novosPedidos === null ? f.pedidos : novosPedidos;
+    if(!Array.isArray(pedidos) || !Array.isArray(dispo)) return;
+    // Nem pedidos nem lotes mudaram: não há por que remontar a vitrine
+    // inteira no celular do vendedor.
+    const dispoTxt = JSON.stringify(dispo);
+    if(novosPedidos === null && dispoTxt === f._dispoTxt) return;
+    f._dispoTxt = dispoTxt;
     const novos = montar(dispo, f.disponib, f.produtos, pedidos, f.oculto);
     const assinatura = assinaturaRepasse(novos);
     f.pedidos = pedidos; f.dispo = dispo;
@@ -2272,7 +2322,9 @@ function aplicarSaldoPendente(){
   STATE.produtos = SALDO.pendente.novos;
   STATE.assinatura = SALDO.pendente.assinatura;
   SALDO.pendente = null;
+  const tinha = _mostrados;
   aplicar();
+  while(_mostrados < Math.min(tinha, STATE.filtrados.length)) desenharLote(false);
 }
 setInterval(() => atualizarSaldoRepasse(false), 60000);
 
@@ -2555,11 +2607,39 @@ function passa(o, ignorar){
 }
 const nSelecionados = () => GRUPOS.reduce((n, g) => n + STATE.sel[g.id].size, 0);
 
+/* ── ordem da lista ───────────────────────────────────────────────
+   A vitrine sempre saiu na ordem em que os produtos são montados. Quem
+   procura o mais barato para fechar uma grade, ou o que tem mais peça
+   disponível, tinha de rolar tudo. A escolha fica guardada no aparelho. */
+const ORDENS = [['padrao','Padrão'], ['nome','Nome (A–Z)'], ['menor','Menor preço'],
+                ['maior','Maior preço'], ['qtd','Mais disponível']];
+const rotuloOrdem = id => (ORDENS.find(o => o[0] === id) || ORDENS[0])[1];
+const disponivel = o => (o.pronta ? o.pronta.total : 0) + (o.repasse ? o.repasse.total : 0);
+function ordenar(lista){
+  const l = lista.slice();
+  const nome = o => String(o.nome || o.artigo) + ' ' + String(o.cor || '');
+  switch(STATE.ordem){
+    // Sem preço na tabela o produto vai para o fim, nas duas direções: ele
+    // não é nem o mais barato nem o mais caro.
+    case 'nome':  return l.sort((a, b) => nome(a).localeCompare(nome(b), 'pt-BR'));
+    case 'menor': return l.sort((a, b) => (a.pdv || Infinity) - (b.pdv || Infinity));
+    case 'maior': return l.sort((a, b) => (b.pdv || 0) - (a.pdv || 0));
+    case 'qtd':   return l.sort((a, b) => disponivel(b) - disponivel(a));
+    default:      return l;
+  }
+}
+function setOrdem(id){
+  STATE.ordem = id;
+  try{ localStorage.setItem('cmspass.ordem', id); }catch(_){}
+  aplicar();
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
 function aplicar(){
   const { usados, total } = termosDe(STATE.busca);
   STATE.termos = usados;
   STATE.termosIgnorados = Math.max(0, total - usados.length);
-  STATE.filtrados = STATE.produtos.filter(o => passa(o, null));
+  STATE.filtrados = ordenar(STATE.produtos.filter(o => passa(o, null)));
   pintarFiltros();
   pintarPainel();
   pintarLimparTudo();
@@ -2638,7 +2718,10 @@ function pintarPainel(){
   $('pnAtivos').hidden = !chips.length;
   $('pnAtivos').innerHTML = chips.join('');
 
-  $('pnCorpo').innerHTML = GRUPOS.map(g => {
+  $('pnCorpo').innerHTML = `<section class="gr"><h3>Ordenar</h3><div class="ops ordem">` +
+    ORDENS.map(([id, rot]) => `<button class="${STATE.ordem === id ? 'on' : ''}"
+      data-ord="${id}" aria-pressed="${STATE.ordem === id}">${esc(rot)}</button>`).join('') +
+    `</div></section>` + GRUPOS.map(g => {
     const c = new Map();
     for(const o of STATE.produtos){
       if(!passa(o, g.id)) continue;
@@ -2674,6 +2757,8 @@ function alternarFiltro(id, v){
 // atributo de codigo, entao aspas e acento no nome da opcao nao quebram nada.
 function ligarCliques(el){
   el.addEventListener('click', e => {
+    const o = e.target.closest('button[data-ord]');
+    if(o){ setOrdem(o.dataset.ord); return; }
     const b = e.target.closest('button[data-g]');
     if(b) alternarFiltro(b.dataset.g, b.dataset.v);
   });
@@ -2735,8 +2820,8 @@ function cardHtml(o, i){
   const quem = esc(o.nome || o.artigo) + ' ' + esc(o.cor);
   return `<article class="card">
     <div class="foto">
-      <img src="${esc(foto(o))}" alt="${esc(o.nome)}" loading="lazy"
-           onerror="this.style.visibility='hidden'">
+      <img src="${esc(fotoMini(o))}" data-cheia="${esc(foto(o))}" alt="${esc(o.nome)}"
+           loading="lazy" decoding="async" onerror="semMiniatura(this)">
       <button class="foto-zoom" onclick="abrirZoom(${i})" title="Ampliar foto"
               aria-label="Ampliar foto de ${quem}"></button>
       <button class="canto cf${STATE.marcados.has(o.k) ? ' on' : ''}"
@@ -2778,7 +2863,49 @@ function pintarGrade(){
     return;
   }
   $('estado').innerHTML = '';
-  $('grade').innerHTML = lista.map(cardHtml).join('');
+  desenharLote(true);
+}
+
+/* ── a lista entra por partes ─────────────────────────────────────
+   Com 500 produtos, montar tudo de uma vez trava o celular por segundos e
+   manda o navegador buscar 500 fotos. Entram 48 por vez, e o resto conforme
+   o vendedor rola. Os índices continuam sendo os de STATE.filtrados, então
+   nada muda para o zoom, a ficha e os corações. */
+const LOTE = 48;
+let _mostrados = 0;
+function desenharLote(recomecar){
+  const lista = STATE.filtrados;
+  const g = $('grade');
+  if(recomecar){ g.innerHTML = ''; _mostrados = 0; }
+  const ate = Math.min(_mostrados + LOTE, lista.length);
+  if(ate > _mostrados){
+    g.insertAdjacentHTML('beforeend',
+      lista.slice(_mostrados, ate).map((o, j) => cardHtml(o, _mostrados + j)).join(''));
+    _mostrados = ate;
+  }
+  $('fimGrade').hidden = _mostrados >= lista.length;
+}
+// Sentinela logo abaixo da grade: assim que ela chega perto da tela, vem
+// mais um lote — sem botão para o vendedor apertar. Enquanto ela continuar
+// à vista, o próximo lote vem em seguida: o observador só avisa quando a
+// sentinela entra na tela, e ela entra uma vez só.
+function conferirFimDaGrade(){
+  const el = $('fimGrade');
+  if(el.hidden) return;
+  if(el.getBoundingClientRect().top < innerHeight + 800){
+    desenharLote(false);
+    requestAnimationFrame(conferirFimDaGrade);
+  }
+}
+new IntersectionObserver(es => {
+  if(es.some(e => e.isIntersecting)) conferirFimDaGrade();
+}, { rootMargin: '800px 0px' }).observe($('fimGrade'));
+// Repintar por conta do saldo não pode jogar o vendedor de volta ao começo:
+// a lista volta com o mesmo tanto de cards que estava na tela.
+function repintarMantendoLista(){
+  const tinha = _mostrados;
+  pintarGrade();
+  while(_mostrados < Math.min(tinha, STATE.filtrados.length)) desenharLote(false);
 }
 
 /* ── cliente, prazo e campanha ──────────────────────────────────── */
@@ -2806,7 +2933,7 @@ async function carregarClientes(){
   const bases = BASES_CLIENTE[cod] ? [cod] : Object.keys(BASES_CLIENTE);
   const partes = await Promise.all(bases.map(async c => {
     try{
-      const r = await fetch(`${DADOS}clientes/${c}.json`, { cache:'no-store' });
+      const r = await fetch(`${DADOS}clientes/${c}.json`, { cache:'no-cache' });
       if(!r.ok) return [];
       const l = await r.json();
       return (Array.isArray(l) ? l : []).map(x => ({ ...x, _vend:BASES_CLIENTE[c] }));
@@ -3269,8 +3396,8 @@ function pedidoHtml(p){
         <span>Vendedor <b>${esc(nomeCurto(p.comissionistaNome || p.comissionista))}</b></span>
       </p>
       ${itens.map(i => `<div class="ped-prod">
-        <span class="mini"><img src="${esc(foto(i))}" alt="" loading="lazy"
-          onerror="this.style.visibility='hidden'"></span>
+        <span class="mini"><img src="${esc(fotoMini(i))}" data-cheia="${esc(foto(i))}" alt=""
+          loading="lazy" decoding="async" onerror="semMiniatura(this)"></span>
         <span class="txt">
           <span class="nm">${esc(i.nome || i.artigo)}</span>
           <span class="sb">${esc(i.artigo)} · ${esc(i.cor)} · ${nf(i.total)} un${
@@ -5149,8 +5276,8 @@ function chipGradeRepasse(it){
 function itemHtml(it){
   const un = totalUnidades(it);
   const cab = `<div class="sc-item-topo">
-      <span class="mini"><img src="${esc(foto(it))}" alt="" loading="lazy"
-        onerror="this.style.visibility='hidden'"></span>
+      <span class="mini"><img src="${esc(fotoMini(it))}" data-cheia="${esc(foto(it))}" alt=""
+        loading="lazy" decoding="async" onerror="semMiniatura(this)"></span>
       <span class="txt"><span class="nm-linha"><span class="nm">${esc(it.nome || it.artigo)}</span>
         <span class="sb sb-art">${esc(it.artigo)} · ${esc(it.cor)}</span></span>
         <span class="sb">` +
@@ -5398,7 +5525,8 @@ function abrirZoom(i){
   $('zoom').classList.toggle('uma-cor', ZC.cores.length < 2);
   $('zcMinis').innerHTML = ZC.cores.map((c, n) =>
     `<button class="zc-mini" data-zc-i="${n}" title="${esc(c.cor)}" aria-label="Ver cor ${esc(c.cor)}">` +
-    `<img src="${esc(foto(c))}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"></button>`).join('');
+    `<img src="${esc(fotoMini(c))}" data-cheia="${esc(foto(c))}" alt="" loading="lazy"
+       decoding="async" onerror="semMiniatura(this)"></button>`).join('');
   pintarZoom();
   $('zoom').hidden = false;
 }
@@ -5521,7 +5649,7 @@ function marcarTodosVisiveis(){
   for(const o of vis){
     if(todosJa) STATE.marcados.delete(o.k); else STATE.marcados.add(o.k);
   }
-  pintarGrade();     // repinta os corações de uma vez
+  repintarMantendoLista();   // repinta os corações de uma vez
   pintarSelecao();
 }
 function limparMarcados(){

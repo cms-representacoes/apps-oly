@@ -13,7 +13,8 @@ export default {
     const corsHeaders = {
       "Access-Control-Allow-Origin": isAllowedOrigin ? origin : ALLOWED_ORIGINS[0],
       "Vary": "Origin",
-      "Access-Control-Allow-Headers": "Content-Type, X-Admin-Token",
+      "Access-Control-Allow-Headers": "Content-Type, X-Admin-Token, If-None-Match",
+      "Access-Control-Expose-Headers": "ETag",
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
       "Content-Type": "application/json; charset=utf-8"
     };
@@ -240,20 +241,37 @@ export default {
     // matava a requisicao com erro 1102 e derrubava vendedor e admin em
     // horario de movimento. O media type "raw" entrega o arquivo direto,
     // entao o corpo so atravessa — custo de CPU praticamente zero.
-    async function streamFile(url, vazio = "[]") {
+    // pedidos.json passa de 900 KB e cada vitrine aberta pede o arquivo a cada
+    // minuto para saber o que esgotou. Com a marca da versao (ETag) devolvida
+    // aqui e reenviada pelo app, quase sempre a resposta e 304 sem corpo: o
+    // app so baixa o arquivo quando alguem fez um pedido de verdade.
+    async function streamFile(url, vazio = "[]", usarMarca = false) {
       const { owner, repo, path } = parseRepoUrl(url);
       const branch = env.GITHUB_BRANCH || "main";
       const rawUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${encodeURIComponent(branch)}`;
+      const marca = usarMarca ? request.headers.get("If-None-Match") : null;
       const res = await fetch(rawUrl, {
-        headers: { ...githubHeaders, Accept: "application/vnd.github.raw" }
+        headers: {
+          ...githubHeaders,
+          Accept: "application/vnd.github.raw",
+          ...(marca ? { "If-None-Match": marca } : {})
+        }
       });
+      if (res.status === 304) {
+        return new Response(null, { status: 304, headers: { ...corsHeaders, ETag: marca } });
+      }
       if (res.status === 404) {
         return new Response(vazio, { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       if (!res.ok) throw new Error(`GET raw falhou (${res.status}): ${await res.text()}`);
+      const etag = res.headers.get("ETag");
       return new Response(res.body, {
         status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          ...(etag ? { ETag: etag } : {})
+        }
       });
     }
 
@@ -702,7 +720,7 @@ export default {
       // É de longe a chamada mais frequente: cada vendedor consulta a cada
       // 30s. Por isso vai por repasse direto, sem parsear nada.
       if (request.method === "GET") {
-        return await streamFile(GITHUB_PEDIDOS, "[]");
+        return await streamFile(GITHUB_PEDIDOS, "[]", true);
       }
 
       // POST — novo pedido (público — vendedor cria pedidos sem login)
