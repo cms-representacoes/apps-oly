@@ -2126,6 +2126,7 @@ async function trazerSacolaDoServidor(){
       body: JSON.stringify({ action:'getSacola', codigo:SESSAO.codigo, marca:MARCA }) }, 8000);
   }catch(_){ return; }        // servidor fora: segue com a sacola do aparelho
   const itens = r && Array.isArray(r.itens) ? r.itens.filter(x => x && x.key) : null;
+  // itens null = o servidor nunca teve sacola; [] = alguém esvaziou.
   const daqui = sacolaEmTexto();
   const dela  = itens ? JSON.stringify(itens) : null;
   if(dela === daqui){ marcarEnviada(daqui, r.em); return; }
@@ -2137,11 +2138,13 @@ async function trazerSacolaDoServidor(){
   // Aqui é que nada mudou desde então: o que veio é mais novo e entra sem
   // perguntar.
   if(daqui === NUVEM.enviada || !STATE.sacola.size){
-    const n = itens.length;
+    const n = itens.length, tinha = STATE.sacola.size;
     adotarSacola(itens); NUVEM.em = r.em;
     if(n) avisar('Sacola trazida de outro aparelho',
       `<b>${nf(n)} ${n === 1 ? 'produto' : 'produtos'}</b> que você montou no ` +
       `${esc(r.de || 'outro aparelho')} ${quandoFoi(r.em)}.`);
+    else if(tinha) avisar('Sacola esvaziada',
+      `Você esvaziou a sacola no ${esc(r.de || 'outro aparelho')} ${quandoFoi(r.em)}.`);
     return;
   }
   // Mexeram dos dois lados: quem decide é o vendedor.
@@ -2149,8 +2152,10 @@ async function trazerSacolaDoServidor(){
   mostrarDialogo({
     titulo:'Duas sacolas diferentes',
     texto:`Neste aparelho há <b>${nf(aqui)} ${aqui === 1 ? 'produto' : 'produtos'}</b>. ` +
-          `No ${esc(r.de || 'outro aparelho')} há <b>${nf(la)} ${la === 1 ? 'produto' : 'produtos'}</b>, ` +
-          `de ${quandoFoi(r.em)}. Qual delas você quer usar?`,
+          (la ? `No ${esc(r.de || 'outro aparelho')} há <b>${nf(la)} ${la === 1 ? 'produto' : 'produtos'}</b>, ` +
+                `de ${quandoFoi(r.em)}.`
+              : `No ${esc(r.de || 'outro aparelho')} ela foi <b>esvaziada</b> ${quandoFoi(r.em)}.`) +
+          ` Qual delas você quer usar?`,
     ok:'Usar a de lá', cancelar:'Manter esta',
     aoConfirmar: () => { adotarSacola(itens); NUVEM.em = r.em; }
   });

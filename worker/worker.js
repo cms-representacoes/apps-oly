@@ -917,7 +917,9 @@ export default {
               { status: 200, headers: corsHeaders });
           }
 
-          // saveSacola: sacola vazia apaga a chave, para nao guardar lixo.
+          // saveSacola. Sacola vazia tambem fica gravada, com a data: apagar a
+          // chave fazia o outro aparelho achar que o servidor tinha perdido a
+          // sacola e mandar a dele de volta — o esvaziar nao se espalhava.
           const itens = Array.isArray(body.itens) ? body.itens : null;
           if (!itens) {
             return new Response(JSON.stringify({ success: false, error: "Itens ausentes." }),
@@ -926,10 +928,6 @@ export default {
           if (itens.length > 400) {
             return new Response(JSON.stringify({ success: false, error: "Sacola grande demais (max 400 itens)." }),
               { status: 413, headers: corsHeaders });
-          }
-          if (!itens.length) {
-            await env.SACOLAS.delete(chave);
-            return new Response(JSON.stringify({ success: true, em: null }), { status: 200, headers: corsHeaders });
           }
           const em = new Date().toISOString();
           const valor = JSON.stringify({ itens, em, de: String(body.de || "").slice(0, 40) });
