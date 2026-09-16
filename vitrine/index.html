@@ -1409,6 +1409,52 @@ body:has(#sacola:not([hidden])) .aviso-desfazer.on{ transform:translate(50%, 0);
 .pn .ops.ordem button{ font-weight:700; }
 .pn .ops.ordem button.on{ font-weight:800; }
 
+/* ── novidades ── */
+.upd-novos{ margin-left:10px; border:0; cursor:pointer; padding:2px 10px; border-radius:999px;
+  font:inherit; font-size:10.5px; font-weight:800; white-space:nowrap;
+  color:#15803D; background:rgba(22,163,74,.13); }
+.upd-novos[hidden]{ display:none; }
+.upd-novos:hover{ background:rgba(22,163,74,.2); }
+.upd-novos.on{ background:#16A34A; color:#fff; }
+.cat .novidades{ display:inline-flex; align-items:center; gap:7px; }
+.cat .novidades .pt{ width:7px; height:7px; border-radius:50%; background:#16A34A; flex:none; }
+.cat .novidades.on{ background:#16A34A; border-color:#16A34A; color:#fff; }
+.cat .novidades.on .pt{ background:#fff; }
+.cat .novidades .n{ font-size:11px; font-weight:800; color:#16A34A;
+  background:rgba(22,163,74,.12); border-radius:999px; padding:1px 7px; }
+.cat .novidades.on .n{ color:#fff; background:rgba(255,255,255,.25); }
+.selo-novo{ position:absolute; top:8px; left:8px; z-index:2; pointer-events:none;
+  font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+  color:#fff; background:#16A34A; border-radius:999px; padding:3px 9px;
+  box-shadow:0 4px 10px rgba(22,163,74,.35); }
+
+/* ── vistos há pouco ── */
+.tira-vistos{ max-width:1180px; margin:0 auto; padding:10px 13px 0; }
+.tira-vistos[hidden]{ display:none; }
+.vt-cab{ display:flex; align-items:baseline; gap:10px; padding:0 2px 7px; }
+.vt-cab b{ font-size:12px; font-weight:800; color:var(--fraco);
+  text-transform:uppercase; letter-spacing:.06em; }
+.vt-limpar{ margin-left:auto; border:0; background:none; cursor:pointer;
+  font-size:12px; font-weight:700; color:var(--marca); padding:2px 4px; }
+.vt-fila{ display:flex; gap:10px; overflow-x:auto; scrollbar-width:none;
+  padding:2px 2px 4px; scroll-snap-type:x proximity; }
+.vt-fila::-webkit-scrollbar{ display:none; }
+.vt-item{ flex:none; width:104px; border:1px solid var(--linha); background:var(--carta);
+  border-radius:14px; padding:8px; cursor:pointer; text-align:left; scroll-snap-align:start;
+  display:flex; flex-direction:column; gap:4px; transition:border-color .14s, box-shadow .14s; }
+.vt-item:hover{ border-color:var(--linha-forte); box-shadow:0 6px 16px -10px rgba(15,23,42,.4); }
+.vt-foto{ display:block; height:64px; border-radius:10px; background:#fff; overflow:hidden; }
+.vt-foto img{ width:100%; height:100%; object-fit:contain; }
+.vt-nome{ font-size:11.5px; font-weight:800; color:var(--tinta); line-height:1.2;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.vt-cor{ font-size:10.5px; color:var(--fraco); white-space:nowrap; overflow:hidden;
+  text-overflow:ellipsis; }
+@media(min-width:768px){
+  .tira-vistos{ padding:12px 18px 0; }
+  .vt-item{ width:120px; }
+  .vt-foto{ height:74px; }
+}
+
 /* ── carregando o resto da lista ── */
 .fim-grade{ display:flex; justify-content:center; padding:18px 0 26px; }
 .fim-grade[hidden]{ display:none; }
@@ -1502,9 +1548,11 @@ body:has(#sacola:not([hidden])) .aviso-desfazer.on{ transform:translate(50%, 0);
          stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
     <span class="pal">atualizado&nbsp;</span><span id="updTxt"></span></span>
+  <button type="button" class="upd-novos" id="updNovos" hidden onclick="alternarNovidades()"></button>
 </div>
 
 <div class="contagem" id="contagem" hidden></div>
+<section class="tira-vistos" id="tiraVistos" aria-label="Vistos há pouco" hidden></section>
 <main class="grade" id="grade" aria-live="polite"></main>
 <div class="fim-grade" id="fimGrade" aria-hidden="true" hidden><span class="girando"></span></div>
 <div id="estado"></div>
@@ -1902,7 +1950,7 @@ const STATE = { produtos:[], filtrados:[], origem:'tudo', categoria:'', busca:''
                 termos:[], termosIgnorados:0,
                 sel:{ chega:new Set(), genero:new Set(), sub:new Set(),
                       fabrica:new Set(), camp:new Set() },
-                sacola:new Map(), aba:'estoque', marcados:new Set(),
+                sacola:new Map(), aba:'estoque', marcados:new Set(), soNovos:false,
                 ordem:(() => { try{ return localStorage.getItem('cmspass.ordem') || 'padrao'; }
                                catch(_){ return 'padrao'; } })() };
 
@@ -2270,6 +2318,7 @@ async function carregarAtualizacao(){
 function pintarAtualizacao(){
   const chip = $('updChip');
   chip.hidden = !_updQuando;
+  pintarAtalhoNovidades();
   if(!_updQuando) return;
   $('updTxt').textContent = faQuanto(_updQuando);
   chip.title = 'Estoque e produção atualizados em ' +
@@ -2361,14 +2410,112 @@ async function carregar(){
     STATE.fontes = { dispo, disponib, produtos, pedidos, oculto };
     STATE.produtos = montar(dispo, disponib, produtos, pedidos, oculto);
     STATE.assinatura = assinaturaRepasse(STATE.produtos);
+    await carregarNovidades();
+    carregarVistos();
     $('estado').innerHTML = '';
     aplicar();
+    pintarVistos();
   }catch(e){
     console.error(e);
     $('estado').innerHTML =
       '<div class="aviso"><h2>Não foi possível carregar</h2><p>' + esc(e.message) +
       '. Recarregue a página; se continuar, avise o suporte.</p></div>';
   }
+}
+
+/* ── o que entrou na vitrine ──────────────────────────────────────
+   A vitrine muda quase todo dia e nada avisava o que era novo. O arquivo
+   novidades.json traz o dia em que cada produto apareceu, remontado do
+   histórico das publicações; daí para a frente é o próprio aparelho que
+   anota o que viu, então o selo continua certo mesmo que o arquivo pare. */
+const NOVO_DIAS = 7;
+const CH_VISTAS = 'cmspass.produtos_vistos_v1';
+let NOVIDADES = {};
+
+function diaDeHoje(){ return new Date().toISOString().slice(0, 10); }
+function diasAte(dia){
+  const t = Date.parse(dia + 'T12:00:00');
+  return t ? Math.floor((Date.now() - t) / 86400000) : 999;
+}
+const ehNovo = o => { const d = NOVIDADES[o.k]; return !!d && diasAte(d) <= NOVO_DIAS; };
+const contarNovos = lista => lista.reduce((n, o) => n + (ehNovo(o) ? 1 : 0), 0);
+
+async function carregarNovidades(){
+  try{ const d = await json('novidades.json'); if(d && typeof d === 'object') NOVIDADES = d; }
+  catch(_){ NOVIDADES = {}; }   // sem o arquivo, vale só o que este aparelho viu
+  anotarOQueEsteAparelhoViu();
+}
+
+// Primeira vez neste aparelho: nada é novo — marcar 500 produtos de uma vez
+// seria o mesmo que não marcar nada.
+function anotarOQueEsteAparelhoViu(){
+  const hoje = diaDeHoje();
+  let mapa = null;
+  try{ mapa = JSON.parse(localStorage.getItem(CH_VISTAS) || 'null'); }catch(_){}
+  const primeira = !mapa || typeof mapa !== 'object';
+  if(primeira) mapa = {};
+  const agora = new Set();
+  for(const o of STATE.produtos){
+    agora.add(o.k);
+    if(!mapa[o.k]){
+      mapa[o.k] = primeira ? 'ja-estava' : hoje;
+      if(!primeira && !NOVIDADES[o.k]) NOVIDADES[o.k] = hoje;
+    }else if(mapa[o.k] !== 'ja-estava' && !NOVIDADES[o.k]){
+      NOVIDADES[o.k] = mapa[o.k];
+    }
+  }
+  for(const k of Object.keys(mapa)) if(!agora.has(k)) delete mapa[k];
+  try{ localStorage.setItem(CH_VISTAS, JSON.stringify(mapa)); }catch(_){}
+}
+
+/* ── últimos vistos ───────────────────────────────────────────────
+   Com o cliente na frente, o vendedor abre três ou quatro produtos e quer
+   voltar ao segundo. A tira guarda os últimos que ele abriu, neste
+   aparelho, e some quando ele limpa. */
+const VISTOS_MAX = 12;
+let VISTOS = [];
+const chaveVistos = () => `cmspass.ultimos_vistos_${(SESSAO && SESSAO.codigo) || 'anon'}_${MARCA}`;
+function carregarVistos(){
+  try{ const v = JSON.parse(localStorage.getItem(chaveVistos()) || '[]');
+       VISTOS = Array.isArray(v) ? v.filter(k => typeof k === 'string') : []; }
+  catch(_){ VISTOS = []; }
+}
+function anotarVisto(o){
+  if(!o || !o.k) return;
+  VISTOS = [o.k, ...VISTOS.filter(k => k !== o.k)].slice(0, VISTOS_MAX);
+  try{ localStorage.setItem(chaveVistos(), JSON.stringify(VISTOS)); }catch(_){}
+  // A tira vive acima da lista. Mexer nela com a ficha aberta mudaria a
+  // altura da página por baixo do modal; ela espera a ficha fechar.
+  if($('modal').hidden && $('zoom').hidden) pintarVistos();
+}
+function limparVistos(){
+  VISTOS = [];
+  try{ localStorage.removeItem(chaveVistos()); }catch(_){}
+  pintarVistos();
+}
+function pintarVistos(){
+  const tira = $('tiraVistos');
+  if(!tira) return;
+  const achar = k => STATE.produtos.find(o => o.k === k && daMarca(o));
+  const itens = VISTOS.map(achar).filter(Boolean);
+  // Com um só não vale o espaço: a tira existe para comparar.
+  tira.hidden = itens.length < 2;
+  if(tira.hidden){ tira.innerHTML = ''; return; }
+  tira.innerHTML =
+    `<div class="vt-cab"><b>Vistos há pouco</b>
+       <button type="button" class="vt-limpar" onclick="limparVistos()">Limpar</button></div>
+     <div class="vt-fila">` +
+    itens.map(o => `<button type="button" class="vt-item" onclick="abrirVisto('${esc(o.k)}')"
+        title="${esc(o.nome || o.artigo)} · ${esc(o.cor)}">
+        <span class="vt-foto"><img src="${esc(fotoMini(o))}" data-cheia="${esc(foto(o))}" alt=""
+          loading="lazy" decoding="async" onerror="semMiniatura(this)"></span>
+        <span class="vt-nome">${esc(o.nome || o.artigo)}</span>
+        <span class="vt-cor">${esc(o.cor)}</span>
+      </button>`).join('') + `</div>`;
+}
+function abrirVisto(k){
+  const o = STATE.produtos.find(x => x.k === k);
+  if(o) abrirModal(o);
 }
 
 /* ── saldo do repasse ao vivo ────────────────────────────────────── */
@@ -2724,6 +2871,7 @@ function casaGrupo(o, id){
 // faz cada grupo mostrar contagens que nunca levam a uma lista vazia.
 function passa(o, ignorar){
   if(!daMarca(o)) return false;
+  if(STATE.soNovos && !ehNovo(o)) return false;
   if(ignorar !== 'origem'    && !temOrigem(o, STATE.origem)) return false;
   if(ignorar !== 'categoria' && STATE.categoria && o.categoria !== STATE.categoria) return false;
   if(!combina(o, STATE.termos)) return false;
@@ -2765,6 +2913,8 @@ function aplicar(){
   STATE.termos = usados;
   STATE.termosIgnorados = Math.max(0, total - usados.length);
   STATE.filtrados = ordenar(STATE.produtos.filter(o => passa(o, null)));
+  pintarAtalhoNovidades();
+  pintarVistos();
   pintarFiltros();
   pintarPainel();
   pintarLimparTudo();
@@ -2800,7 +2950,16 @@ function pintarFiltros(){
   // agora. A primeira lista manda no que aparece, a segunda no que e clicavel.
   const catsDaMarca = CATEGORIAS.filter(([id]) => daMarcaAtual.some(o => o.categoria === id));
   $('riscoCat').hidden = catsDaMarca.length === 0;
-  $('catFiltros').innerHTML = catsDaMarca.map(([id, rot]) => {
+  // Novidades é um recorte de tempo, não uma categoria: entra na frente da
+  // fila e só existe quando há o que mostrar.
+  const novos = contarNovos(daMarcaAtual);
+  $('catFiltros').innerHTML =
+    (novos || STATE.soNovos
+      ? `<button class="novidades${STATE.soNovos ? ' on' : ''}" onclick="alternarNovidades()"
+           aria-pressed="${STATE.soNovos}" title="Produtos que entraram nos últimos ${NOVO_DIAS} dias">
+           <span class="pt"></span>Novidades<span class="n">${nf(novos)}</span></button>`
+      : '') +
+    catsDaMarca.map(([id, rot]) => {
     const ativo = STATE.categoria === id;
     const vazia = !ativo && !paraCategoria.some(o => o.categoria === id);
     return `<button class="${ativo ? 'on' : ''}${vazia ? ' vazia' : ''}"
@@ -2892,6 +3051,7 @@ ligarCliques($('pnCorpo'));
 ligarCliques($('pnAtivos'));
 function limparFiltros(){
   for(const g of GRUPOS) STATE.sel[g.id].clear();
+  STATE.soNovos = false;
   aplicar();
 }
 
@@ -2901,11 +3061,13 @@ function limparFiltros(){
 // navegar, não filtrar, e o botão apareceria o tempo todo sem nada a desfazer.
 function contarFiltros(){
   return (STATE.categoria ? 1 : 0)
+       + (STATE.soNovos ? 1 : 0)
        + (STATE.busca.trim() ? 1 : 0)
        + nSelecionados();
 }
 function limparTudo(){
   STATE.categoria = '';
+  STATE.soNovos = false;
   for(const g of GRUPOS) STATE.sel[g.id].clear();
   STATE.busca = '';
   _campo.value = '';
@@ -2931,6 +3093,20 @@ $('painel').onclick = e => { if(e.target.id === 'painel') fecharPainel(); };
 
 function setOrigem(id){ STATE.origem = id; aplicar(); }
 function setCategoria(id){ STATE.categoria = (STATE.categoria === id) ? '' : id; aplicar(); }
+function alternarNovidades(){ STATE.soNovos = !STATE.soNovos; aplicar(); window.scrollTo({ top:0, behavior:'smooth' }); }
+// O chip de Novidades fica no fim da fila de categorias, fora da tela no
+// celular. Este atalho anuncia a novidade onde já se lê a hora da base.
+function pintarAtalhoNovidades(){
+  const b = $('updNovos');
+  if(!b) return;
+  const n = contarNovos(STATE.produtos.filter(daMarca));
+  b.hidden = !n && !STATE.soNovos;
+  b.classList.toggle('on', STATE.soNovos);
+  b.textContent = STATE.soNovos ? 'vendo as novidades ✕'
+    : `${nf(n)} ${n === 1 ? 'novidade' : 'novidades'}`;
+  b.title = STATE.soNovos ? 'Voltar a ver a vitrine inteira'
+    : `Ver só o que entrou nos últimos ${NOVO_DIAS} dias`;
+}
 
 /* ── grade ──────────────────────────────────────────────────────── */
 function cardHtml(o, i){
@@ -2949,6 +3125,7 @@ function cardHtml(o, i){
            loading="lazy" decoding="async" onerror="semMiniatura(this)">
       <button class="foto-zoom" onclick="abrirZoom(${i})" title="Ampliar foto"
               aria-label="Ampliar foto de ${quem}"></button>
+      ${ehNovo(o) ? '<span class="selo-novo">Novo</span>' : ''}
       <button class="canto cf${STATE.marcados.has(o.k) ? ' on' : ''}"
               onclick="alternarMarcado('${esc(o.k)}')" title="Marcar para PDF e planilha"
               aria-label="Marcar ${quem} para o catálogo"
@@ -4934,6 +5111,7 @@ function abrirModal(i){
   const o = typeof i === 'object' ? i : STATE.filtrados[i];
   if(!o) return;
   _abertoEm = typeof i === 'object' ? STATE.filtrados.indexOf(o) : i;
+  anotarVisto(o);
   $('mImg').src = foto(o);
   $('mImg').alt = o.nome;
   $('mTit').textContent = o.nome || o.artigo;
@@ -5005,7 +5183,7 @@ function abrirModal(i){
   });
   $('modal').hidden = false;
 }
-function fecharModal(){ $('modal').hidden = true; aplicarSaldoPendente(); }
+function fecharModal(){ $('modal').hidden = true; pintarVistos(); aplicarSaldoPendente(); }
 
 function porNaSacola(item){
   if(STATE.sacola.has(item.key)) return;
@@ -5688,7 +5866,7 @@ function andarZoom(d){
   ZC.i = (ZC.i + d + ZC.cores.length) % ZC.cores.length;
   pintarZoom();
 }
-function fecharZoom(){ $('zoom').hidden = true; aplicarSaldoPendente(); }
+function fecharZoom(){ $('zoom').hidden = true; pintarVistos(); aplicarSaldoPendente(); }
 
 // Amplia a foto pelo contorno do produto (o que não é branco), cortando só o
 // branco em volta — o mesmo do Catálogo Digital. Roupa de corpo inteiro já
@@ -5851,6 +6029,7 @@ function escolherMarca(id){
   for(const g of GRUPOS) STATE.sel[g.id].clear();
   STATE.marcados.clear();
   carregarSacola();
+  carregarVistos();
   trazerSacolaDoServidor();
   history.replaceState(null, '', '?marca=' + id);
   pintarMarca();
