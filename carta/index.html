@@ -1,0 +1,1029 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<title>Minha Carta Campanha · CMS PASS</title>
+<link rel="icon" href="../icon-192.png">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=Inter+Tight:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ── Tokens ────────────────────────────────────────────────────────────
+   Marinho do portal CMS PASS como chão; o roxo do selo CMS só nos
+   controles. As quatro cores de status são reservadas: nunca decoram. */
+:root{
+  --bg:#0f172a; --bg-fundo:#0a1020;
+  --sf:#141e34; --sf2:#1a2640; --sf3:#22304d;
+  --linha:rgba(160,178,210,.13); --linha-forte:rgba(160,178,210,.24);
+  --tinta:#eef2f8; --tinta2:#a8b4c8; --tinta3:#74829a;
+  --roxo:#8b5cf6; --roxo-claro:#c4b5fd;
+  --verde:#34d399; --amarelo:#fbbf24; --vermelho:#f87171; --cinza:#64748b;
+  --verde-f:rgba(52,211,153,.16); --amarelo-f:rgba(251,191,36,.16);
+  --vermelho-f:rgba(248,113,113,.16); --cinza-f:rgba(100,116,139,.18);
+  --cartao-bg:linear-gradient(180deg,rgba(26,38,64,.82),rgba(20,30,52,.82));
+  --cartao-sombra:0 1px 0 rgba(255,255,255,.04) inset,0 18px 40px -24px rgba(0,0,0,.6);
+  --caixa-bg:rgba(10,16,32,.35); --regras-bg:rgba(20,30,52,.6);
+  --luz:rgba(139,92,246,.13); --grao:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .055 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --seta:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a8b4c8' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  --tick:rgba(238,242,248,.22); --tick-forte:rgba(238,242,248,.55);
+  --dot-glifo:#0b1220; --selo-bg:#fbbf24; --selo-tinta:#1a1300;
+  --roxo-borda:rgba(196,181,253,.45); --aviso-bg:rgba(139,92,246,.08);
+  --logo-filtro:none;
+  --r-hero:26px; --r-cartao:20px; --r-linha:12px;
+  --sans:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --display:'Inter Tight','Inter',system-ui,sans-serif;
+  color-scheme:dark;
+}
+
+/* ── Modo claro ────────────────────────────────────────────────────────
+   A página vira papel; o cartão da carta continua profundo, porque é ele
+   a carta em si. Só os valores dos tokens mudam: nenhuma regra abaixo
+   precisa saber em que tema está. */
+.tema-claro{
+  --bg:#f3f6fb; --bg-fundo:#e7ecf6;
+  --sf:#ffffff; --sf2:#f7f9fd; --sf3:#eef2f9;
+  --linha:rgba(15,23,42,.11); --linha-forte:rgba(15,23,42,.22);
+  --tinta:#101a2e; --tinta2:#4a5870; --tinta3:#78849b;
+  --roxo:#7c3aed; --roxo-claro:#6d28d9;
+  --verde:#0e9f6e; --amarelo:#bf7407; --vermelho:#d92d20; --cinza:#7a8699;
+  --verde-f:rgba(14,159,110,.15); --amarelo-f:rgba(191,116,7,.16);
+  --vermelho-f:rgba(217,45,32,.14); --cinza-f:rgba(122,134,153,.2);
+  --cartao-bg:linear-gradient(180deg,#ffffff,#fbfcff);
+  --cartao-sombra:0 1px 0 #fff inset,0 14px 34px -24px rgba(15,23,42,.4);
+  --caixa-bg:rgba(15,23,42,.035); --regras-bg:#ffffff;
+  --luz:rgba(124,58,237,.10); --grao:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --seta:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a5870' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  --tick:rgba(15,23,42,.16); --tick-forte:rgba(15,23,42,.45);
+  --dot-glifo:#ffffff; --selo-bg:#eba100; --selo-tinta:#241800;
+  --roxo-borda:rgba(124,58,237,.38); --aviso-bg:rgba(124,58,237,.06);
+  /* as logos das marcas são brancas: no papel elas viram tinta */
+  --logo-filtro:invert(1) brightness(.3);
+  color-scheme:light;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--sans); font-size:14px; line-height:1.45; color:var(--tinta);
+  font-feature-settings:"tnum" 1,"cv11" 1,"ss01" 1;
+  background-color:var(--bg);
+  /* grão fino por cima de um degradê: tira o aspecto de tela chapada */
+  background-image:
+    var(--grao),
+    radial-gradient(1100px 520px at 85% -8%, var(--luz), transparent 60%),
+    linear-gradient(180deg,var(--bg) 0%,var(--bg-fundo) 100%);
+  background-attachment:fixed;
+  min-height:100vh; min-height:100dvh;
+  padding-inline:max(16px,env(safe-area-inset-left)) max(16px,env(safe-area-inset-right));
+  padding-block:max(12px,env(safe-area-inset-top)) max(28px,env(safe-area-inset-bottom));
+}
+button,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--roxo-claro);outline-offset:2px;border-radius:8px}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+/* Número nenhum pode empurrar a página para os lados no celular: o que
+   não couber quebra, e o que sobrar fica preso aqui dentro. */
+.pagina{max-width:1120px;margin:0 auto;overflow-x:clip}
+
+/* ── Barra do portal ─────────────────────────────────────────────────── */
+.topo{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.marca-cms{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--tinta)}
+.cms-badge{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;
+  background:linear-gradient(145deg,#a970ff 0%,#8b5cf6 48%,#7439e0 100%);
+  box-shadow:0 6px 18px rgba(124,58,237,.38),inset 0 1px 0 rgba(255,255,255,.24);
+  font:900 11.5px/1 var(--sans);letter-spacing:.02em;color:#fff}
+.cms-pass{font:800 15px/1 var(--sans);letter-spacing:.06em}
+.topo-acoes{display:flex;align-items:center;gap:8px}
+.btn-tema{width:34px;height:34px;border-radius:999px;border:1px solid var(--linha);
+  background:transparent;color:var(--tinta2);display:grid;place-items:center;cursor:pointer}
+.btn-tema:hover{color:var(--tinta);border-color:var(--linha-forte)}
+.btn-tema:active{transform:scale(.95)}
+.btn-tema svg[hidden]{display:none}
+.voltar{display:inline-flex;align-items:center;gap:6px;color:var(--tinta2);text-decoration:none;
+  font-size:13px;font-weight:600;padding:7px 12px;border-radius:999px;border:1px solid var(--linha)}
+.voltar:hover{color:var(--tinta);border-color:var(--linha-forte)}
+
+/* ── Cabeçalho da carta ──────────────────────────────────────────────── */
+.cab{display:grid;gap:14px;margin-bottom:18px}
+.cab-linha1{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 16px}
+.titulo{font:700 13px/1.2 var(--sans);color:var(--tinta2);margin-bottom:4px}
+.vendedor{font:800 clamp(22px,5.6vw,30px)/1.1 var(--display);letter-spacing:-.02em}
+.vendedor-sel{appearance:none;background:transparent;border:0;cursor:pointer;
+  font:800 clamp(22px,5.6vw,30px)/1.1 var(--display);letter-spacing:-.02em;color:var(--tinta);
+  padding-right:26px;max-width:100%;
+  background-image:var(--seta);
+  background-repeat:no-repeat;background-position:right 2px center;background-size:18px}
+.vendedor-sel option{background:var(--sf);color:var(--tinta);font-size:15px}
+.atualizado{font-size:12.5px;color:var(--tinta3)}
+.atualizado b{color:var(--tinta2);font-weight:600}
+
+.cab-controles{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.abas,.seg{display:inline-flex;background:var(--sf);border:1px solid var(--linha);border-radius:999px;padding:3px}
+.abas button,.seg button{border:0;background:transparent;cursor:pointer;border-radius:999px;
+  padding:7px 14px;font-size:13px;font-weight:600;color:var(--tinta2);display:inline-flex;align-items:center;gap:7px}
+.abas button[aria-pressed="true"],.seg button[aria-pressed="true"]{background:var(--sf3);color:var(--tinta);
+  box-shadow:inset 0 0 0 1px var(--roxo-borda)}
+.abas img{height:13px;width:auto;opacity:.9;filter:var(--logo-filtro)}
+.mesnav{display:inline-flex;align-items:center;background:var(--sf);border:1px solid var(--linha);border-radius:999px;padding:3px}
+.mesnav button{width:32px;height:32px;border:0;border-radius:999px;background:transparent;cursor:pointer;
+  display:grid;place-items:center;color:var(--tinta2)}
+.mesnav button:disabled{opacity:.3;cursor:default}
+.mesnav button:not(:disabled):hover{background:var(--sf3);color:var(--tinta)}
+.mesnav .mes{padding:0 8px;min-width:128px;text-align:center;line-height:1.1}
+.mesnav .mes b{display:block;font-size:13.5px;font-weight:700}
+.mesnav .mes span{font-size:11px;color:var(--tinta3)}
+.seg-wrap{margin-left:auto}
+
+.aviso{display:flex;gap:10px;align-items:flex-start;border:1px dashed var(--roxo-borda);
+  background:var(--aviso-bg);border-radius:14px;padding:10px 13px;font-size:12.5px;color:var(--tinta2);margin-bottom:16px}
+.aviso b{color:var(--roxo-claro)}
+.aviso svg{flex:none;margin-top:2px;color:var(--roxo-claro)}
+
+/* ── Grade da página ─────────────────────────────────────────────────── */
+.grade{display:grid;gap:16px}
+.cartao{background:var(--cartao-bg);
+  border:1px solid var(--linha);border-radius:var(--r-cartao);padding:18px;
+  box-shadow:var(--cartao-sombra)}
+.cartao h2{font:700 16.5px/1.25 var(--display);letter-spacing:-.01em}
+.cartao-cab{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px}
+.cartao-cab .apoio{font-size:12.5px;color:var(--tinta3);text-align:right}
+@media (min-width:1024px){
+  .grade{grid-template-columns:repeat(12,minmax(0,1fr));gap:18px}
+  .s-hero{grid-column:1 / span 7}
+  .s-gatilhos{grid-column:8 / span 5}
+  .s-faixas{grid-column:1 / -1}
+  .s-familias{grid-column:1 / span 7}
+  .s-tri{grid-column:8 / span 5}
+  .s-hist{grid-column:1 / -1}
+}
+
+/* ── (2) Cartão da carta: o guilhochê é a assinatura da página ────────── */
+.hero{position:relative;overflow:hidden;border-radius:var(--r-hero);padding:22px 20px 20px;
+  min-height:250px;display:flex;flex-direction:column;isolation:isolate;color:#eef2f8;
+  border:1px solid var(--hero-borda);
+  background:
+    radial-gradient(120% 90% at 100% 0%, var(--hero-luz), transparent 60%),
+    linear-gradient(155deg,var(--hero-a) 0%,var(--hero-b) 55%,#0d1528 100%);
+  box-shadow:0 28px 60px -30px var(--hero-sombra),inset 0 1px 0 rgba(255,255,255,.07)}
+.hero[data-status="destravada"]{--hero-a:#0e3d35;--hero-b:#0c2a33;--hero-luz:rgba(52,211,153,.22);--hero-borda:rgba(52,211,153,.30);--hero-sombra:rgba(16,120,90,.55);--hero-cor:#34d399}
+.hero[data-status="risco"]{--hero-a:#3d2d0b;--hero-b:#26211a;--hero-luz:rgba(251,191,36,.20);--hero-borda:rgba(251,191,36,.30);--hero-sombra:rgba(150,100,10,.5);--hero-cor:#fbbf24}
+.hero[data-status="travada"]{--hero-a:#3d151b;--hero-b:#241624;--hero-luz:rgba(248,113,113,.18);--hero-borda:rgba(248,113,113,.28);--hero-sombra:rgba(140,30,40,.5);--hero-cor:#f87171}
+.hero[data-status="vazio"]{--hero-a:#1b2640;--hero-b:#141e34;--hero-luz:rgba(148,163,184,.12);--hero-borda:var(--linha);--hero-sombra:rgba(0,0,0,.5);--hero-cor:#94a3b8}
+.guilloche{position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.85;
+  -webkit-mask-image:linear-gradient(105deg,transparent 2%,#000 38%);mask-image:linear-gradient(105deg,transparent 2%,#000 38%)}
+.guilloche svg{width:100%;height:100%;display:block}
+.guilloche path{fill:none;stroke:var(--hero-cor);stroke-width:.6;stroke-opacity:.42}
+.hero-topo{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:auto}
+.hero-rotulo{font-size:13px;font-weight:600;color:rgba(238,242,248,.78)}
+.selo{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:6px 12px 6px 9px;
+  font:800 13px/1 var(--display);letter-spacing:.01em;color:var(--hero-cor);
+  background:rgba(8,12,24,.45);border:1px solid color-mix(in srgb,var(--hero-cor) 55%,transparent);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.hero-valor{font:800 clamp(44px,13vw,66px)/1 var(--display);letter-spacing:-.035em;margin:26px 0 10px;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.hero-valor .rs{font-size:.42em;font-weight:700;letter-spacing:0;margin-right:.18em;vertical-align:.62em;color:rgba(238,242,248,.72)}
+.hero-valor .cent{font-size:.46em;letter-spacing:-.01em;color:rgba(238,242,248,.72)}
+.hero-frase{font-size:15px;line-height:1.45;color:rgba(238,242,248,.92);max-width:46ch}
+.hero-extra{margin-top:12px;display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:rgba(238,242,248,.66)}
+.hero-extra b{color:#fff;font-weight:700}
+@media (prefers-reduced-motion:no-preference){
+  .hero .selo{animation:carimbo .55s cubic-bezier(.2,1.4,.4,1) .15s both}
+  @keyframes carimbo{from{transform:scale(1.35) rotate(-6deg);opacity:0}to{transform:none;opacity:1}}
+}
+
+/* ── Bolinha de status: cor + ícone, nunca só cor ─────────────────────── */
+.dot{width:16px;height:16px;border-radius:50%;display:inline-grid;place-items:center;flex:none;color:var(--dot-glifo)}
+.dot svg{width:10px;height:10px}
+.dot.verde{background:var(--verde)} .dot.amarelo{background:var(--amarelo)}
+.dot.vermelho{background:var(--vermelho)} .dot.cinza{background:var(--cinza)}
+.dot.p{width:12px;height:12px}.dot.p svg{width:8px;height:8px}
+
+/* ── (3) Gatilhos ────────────────────────────────────────────────────── */
+.gatilhos{list-style:none;display:grid;gap:4px}
+.gat{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:2px 10px;align-items:start;padding:11px 4px;border-top:1px solid var(--linha)}
+.gat:first-child{border-top:0;padding-top:2px}
+.gat-id{font:700 11.5px/1 var(--display);color:var(--tinta3);border:1px solid var(--linha-forte);
+  border-radius:7px;height:22px;display:grid;place-items:center;margin-top:1px}
+.gat-nome{font-weight:650;font-size:14px;display:flex;align-items:center;gap:8px}
+.gat-desc{font-size:12px;color:var(--tinta3);margin-top:1px}
+.gat-num{text-align:right;font-size:12.5px;color:var(--tinta2)}
+.gat-num b{display:block;font:700 15px/1.2 var(--display);color:var(--tinta)}
+.gat-falta{grid-column:2 / -1;font-size:12.5px;color:var(--tinta2);margin-top:6px}
+.gat-falta.ok{color:var(--tinta3)}
+.gat-mini{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.medidor{grid-column:2 / -1;position:relative;height:6px;border-radius:999px;margin-top:8px;background:var(--m-trilho,var(--cinza-f))}
+.medidor i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--m-cor,var(--cinza))}
+.medidor::after{content:"";position:absolute;top:-3px;bottom:-3px;left:calc(90% / 1.2);width:1px;background:var(--tick)}
+.medidor::before{content:"";position:absolute;top:-4px;bottom:-4px;left:calc(100% / 1.2);width:2px;border-radius:2px;background:var(--tick-forte)}
+.medidor.verde{--m-cor:var(--verde);--m-trilho:var(--verde-f)}
+.medidor.amarelo{--m-cor:var(--amarelo);--m-trilho:var(--amarelo-f)}
+.medidor.vermelho{--m-cor:var(--vermelho);--m-trilho:var(--vermelho-f)}
+@media (prefers-reduced-motion:no-preference){ .medidor i{transition:width .7s cubic-bezier(.2,.8,.2,1)} }
+
+/* ── (4)(5) Tabelas ──────────────────────────────────────────────────── */
+.tabela-rolo{overflow-x:auto;margin:0 -4px}
+table.t{width:100%;border-collapse:collapse;font-size:13.5px}
+.t th{font-size:12px;font-weight:600;color:var(--tinta3);text-align:right;padding:0 10px 8px;white-space:nowrap}
+.t th:first-child,.t td:first-child{text-align:left;padding-left:4px}
+.t td{padding:11px 10px;border-top:1px solid var(--linha);text-align:right;vertical-align:middle}
+.t td.nome{font-weight:650}
+.t td.nome .n{display:flex;align-items:center;gap:9px}
+.t td.cms{text-align:center}
+.t th.cms{text-align:center}
+.t .pctv{display:inline-flex;align-items:center;gap:7px;justify-content:flex-end}
+.t .gerado{font-weight:700}
+.t .gerado.zero{color:var(--tinta3);font-weight:500}
+.t .gerado.travado{color:var(--tinta3);font-weight:600}
+.t .gerado.travado svg{vertical-align:-2px;margin-right:4px}
+.t tfoot td{border-top:1px solid var(--linha-forte);font-weight:700;color:var(--tinta)}
+.t tfoot td.rot{color:var(--tinta2);font-weight:600}
+.meio{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--tinta2)}
+.t .mob{display:none}
+.selo50{display:inline-flex;align-items:center;border-radius:999px;padding:2px 8px;margin-left:8px;
+  font:800 11px/1.5 var(--display);color:var(--selo-tinta);background:var(--selo-bg);vertical-align:1px}
+.porque{font-size:11.5px;color:var(--tinta3);font-weight:500;display:block;margin-top:2px}
+
+@media (max-width:719px){
+  .t thead{display:none}
+  .t, .t tbody, .t tfoot{display:block}
+  .t tr{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:12px 2px;border-top:1px solid var(--linha)}
+  .t td{display:none;border:0;padding:0}
+  .t td.nome{display:block;grid-column:1}
+  .t td.gerado{display:block;grid-column:2;align-self:start}
+  .t td.mob{display:flex;flex-wrap:wrap;gap:4px 12px;grid-column:1 / -1;font-size:12.5px;color:var(--tinta2);padding-left:25px}
+  .t tfoot tr{border-top:1px solid var(--linha-forte)}
+  .t tfoot td.rot{display:block}
+  .tabela-rolo{overflow:visible;margin:0}
+}
+
+/* ── (6) Trimestre ───────────────────────────────────────────────────── */
+.tri-meses{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.tri-mes{border:1px solid var(--linha);border-radius:14px;padding:11px 10px;background:var(--caixa-bg);min-width:0}
+.tri-mes.atual{border-color:var(--roxo-borda);box-shadow:inset 0 0 0 1px rgba(196,181,253,.14)}
+.tri-mes .m{font-size:12px;color:var(--tinta3);font-weight:600}
+.tri-mes .st{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:650;margin:7px 0 4px}
+.tri-mes .v{font:700 13.5px/1.2 var(--display);letter-spacing:-.01em}
+.tri-mes.futuro .st,.tri-mes.futuro .v{color:var(--tinta3);font-weight:500}
+.tri-total{display:flex;justify-content:space-between;align-items:baseline;margin:16px 2px 10px;gap:10px}
+.tri-total span{color:var(--tinta2);font-size:13px}
+.tri-total b{font:800 22px/1 var(--display);letter-spacing:-.02em}
+.parcelas{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.parcela{border-radius:14px;padding:11px 12px;background:var(--sf3);border:1px solid var(--linha)}
+.parcela .r{font-size:12px;color:var(--tinta2)}
+.parcela .v{font:700 16px/1.25 var(--display);margin:3px 0 2px}
+.parcela .d{font-size:11.5px;color:var(--tinta3)}
+
+/* ── (7) Histórico ───────────────────────────────────────────────────── */
+.hist{list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media (min-width:640px){ .hist{grid-template-columns:repeat(3,minmax(0,1fr))} }
+@media (min-width:1024px){ .hist{grid-template-columns:repeat(6,minmax(0,1fr))} }
+.hist li{border:1px solid var(--linha);border-radius:14px;padding:11px 12px;background:var(--caixa-bg)}
+.hist li.atual{border-color:var(--roxo-borda)}
+.hist .m{font-size:12px;color:var(--tinta3);font-weight:600}
+.hist .st{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:650;margin:7px 0 3px}
+.hist .v{font:700 14px/1.2 var(--display);letter-spacing:-.01em}
+.hist li.sem .st,.hist li.sem .v{color:var(--tinta3);font-weight:500}
+
+/* ── Regras e rodapé ─────────────────────────────────────────────────── */
+details.regras{margin-top:16px;border:1px solid var(--linha);border-radius:var(--r-cartao);background:var(--regras-bg)}
+details.regras summary{cursor:pointer;padding:14px 18px;font-weight:650;list-style:none;display:flex;justify-content:space-between;align-items:center}
+details.regras summary::-webkit-details-marker{display:none}
+details.regras summary svg{transition:transform .2s}
+details.regras[open] summary svg{transform:rotate(180deg)}
+.regras-corpo{padding:0 18px 16px;color:var(--tinta2);font-size:13px;display:grid;gap:8px;max-width:78ch}
+.regras-corpo b{color:var(--tinta)}
+.legenda{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:4px}
+.legenda span{display:inline-flex;align-items:center;gap:6px}
+.rodape{margin-top:18px;text-align:center;font-size:12px;color:var(--tinta3)}
+
+/* ── Estados ─────────────────────────────────────────────────────────── */
+.estado{padding:40px 18px;text-align:center;color:var(--tinta2)}
+.estado h2{font:700 18px/1.3 var(--display);color:var(--tinta);margin-bottom:6px}
+.carregando{height:250px;border-radius:var(--r-hero);background:linear-gradient(100deg,var(--sf) 30%,var(--sf2) 50%,var(--sf) 70%);background-size:300% 100%}
+@media (prefers-reduced-motion:no-preference){ .carregando{animation:brilho 1.4s linear infinite} @keyframes brilho{from{background-position:100% 0}to{background-position:0 0}} }
+
+@media (max-width:639px){
+  .cartao{padding:16px 14px;border-radius:18px}
+  .hero{padding:18px 16px 16px;min-height:236px}
+  .seg-wrap{margin-left:0}
+  .cab-controles{gap:8px}
+  .abas button,.seg button{padding:7px 12px;font-size:12.5px}
+  .mesnav .mes{min-width:104px}
+  .gat{grid-template-columns:24px minmax(0,1fr) auto;gap:2px 8px}
+  .gat-nome{font-size:13.5px}
+  .tri-meses{gap:6px}
+  .tri-mes{padding:9px 8px}
+  .tri-mes .m,.hist .m{font-size:11.5px}
+  .tri-mes .st,.hist .st{font-size:12.5px;gap:5px}
+  .parcela{padding:10px}
+}
+@media (max-width:400px){ .abas .txt-ua{display:none} .abas button,.seg button{padding:7px 10px} }
+</style>
+<script>
+(function(){
+  try{
+    var t = (/[?&]tema=(claro|escuro)/.exec(location.search) || [])[1]
+            || localStorage.getItem('cms_carta_tema');
+    if(t === 'claro' || (!t && window.matchMedia('(prefers-color-scheme: light)').matches)){
+      document.documentElement.className = 'tema-claro';
+      var m = document.querySelector('meta[name="theme-color"]');
+      if(m) m.setAttribute('content', '#f3f6fb');
+    }
+  }catch(_){}
+})();
+</script>
+</head>
+<body>
+<div class="pagina">
+
+  <nav class="topo" aria-label="Portal">
+    <a class="marca-cms" href="../index.html" aria-label="Voltar ao CMS PASS">
+      <span class="cms-badge">CMS</span><span class="cms-pass">PASS</span>
+    </a>
+    <div class="topo-acoes">
+      <button class="btn-tema" id="btnTema" type="button">
+        <svg id="icoSol" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/></svg>
+        <svg id="icoLua" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M20.5 14.3A8.6 8.6 0 1 1 9.7 3.5a7 7 0 0 0 10.8 10.8z"/></svg>
+      </button>
+      <a class="voltar" href="../index.html">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        Portal
+      </a>
+    </div>
+  </nav>
+
+  <!-- (1) Cabeçalho -->
+  <header class="cab" id="cab">
+    <div class="cab-linha1">
+      <div>
+        <div class="titulo">Minha Carta Campanha</div>
+        <div id="vendedorBox"><span class="vendedor">&nbsp;</span></div>
+      </div>
+      <div class="atualizado" id="atualizado"></div>
+    </div>
+    <div class="cab-controles">
+      <div class="abas" role="group" aria-label="Marca" id="abas">
+        <button type="button" data-marca="OLY" aria-pressed="true"><img src="../logo-oly-branca.png" alt="">Olympikus</button>
+        <button type="button" data-marca="UA" aria-pressed="false"><img src="../logo-ua-branca.png" alt=""><span class="txt-ua">Under Armour</span></button>
+      </div>
+      <div class="mesnav" aria-label="Mês">
+        <button type="button" id="mesAnt" aria-label="Mês anterior"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="mes" id="mesRot" aria-live="polite"><b>&nbsp;</b><span>&nbsp;</span></div>
+        <button type="button" id="mesProx" aria-label="Próximo mês"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+      </div>
+      <div class="seg-wrap">
+        <div class="seg" role="group" aria-label="Base do cálculo" id="modo">
+          <button type="button" data-modo="faturado" aria-pressed="true" title="Só o que já foi faturado">Faturado</button>
+          <button type="button" data-modo="potencial" aria-pressed="false" title="Faturado mais a carteira em aberto">Potencial</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div id="aviso"></div>
+  <main id="conteudo" aria-live="polite"><div class="carregando"></div></main>
+
+  <details class="regras">
+    <summary>Como a carta é calculada
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="regras-corpo">
+      <p>A carta só paga com os gatilhos gerais verdes: <b>G1</b> escritório com 100% dos pares de calçados, <b>G2</b> você com 100% dos seus pares e <b>G5</b> regra 360 (outras famílias mais Under Armour valendo pelo menos 15% do que você faturou em tênis Olympikus no trimestre).</p>
+      <p><b>G3</b> e <b>G4</b> valem faixa por faixa: uma faixa de calçados ou uma família só paga quando o escritório e você passam de 100% nela. Se só você bate e o escritório não, ninguém recebe nela.</p>
+      <p><b>Benefício de 50%:</b> com o escritório batido (100% em pares de tênis e em R$ das outras famílias), você com 100% no total e a regra 360 verde, cada faixa que o escritório bateu e você não paga metade do valor.</p>
+      <p>Valor de cada faixa ou família: R$ faturado × percentual da carta. <b>Potencial</b> soma a carteira em aberto ao faturado.</p>
+      <div class="legenda" id="legenda"></div>
+    </div>
+  </details>
+  <p class="rodape" id="rodape">CMS Representações</p>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+// ── Parâmetros das regras (o JSON pode sobrescrever em "regras") ─────────
+var PADRAO = { gatilho: 100, zona: 10, regra360: 15, beneficio: 50 };
+var SESSION_KEY = 'cms_portal_session_v1';
+var MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+var MESES_C = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+var MARCAS = { OLY: 'Olympikus', UA: 'Under Armour' };
+
+// ── Formatação brasileira ─────────────────────────────────────────────────
+var fInt = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
+var fRS = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+var fRS0 = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+var fP1 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+var fP2 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+function pares(n){ return fInt.format(Math.round(n)) + (Math.abs(Math.round(n)) === 1 ? ' par' : ' pares'); }
+function rs(n){ return fRS.format(n || 0); }
+function rsCurto(n){ return Math.abs(n) >= 10000 ? fRS0.format(n) : fRS.format(n || 0); }
+function pct(n){ return n == null ? '—' : fP1.format(n) + '%'; }
+function pctCarta(n){ return fP2.format(n) + '%'; }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); }
+function nomeProprio(s){
+  var minus = { de:1, da:1, das:1, do:1, dos:1, e:1 };
+  if(/^c ?m ?s$/i.test(String(s).trim())) return 'CMS';
+  return String(s || '').toLowerCase().split(/\s+/).map(function(w, i){
+    return (i > 0 && minus[w]) ? w : (w ? w[0].toUpperCase() + w.slice(1) : w);
+  }).join(' ');
+}
+function mesLongo(m){ var p = m.split('-'); return MESES[+p[1] - 1] + ' de ' + p[0]; }
+function mesCurto(m){ var p = m.split('-'); return MESES_C[+p[1] - 1] + '/' + p[0].slice(2); }
+function trimestreDe(m){ var p = m.split('-'); return { ano: +p[0], t: Math.floor((+p[1] - 1) / 3) + 1 }; }
+function somaMes(m, d){ var p = m.split('-'); var x = new Date(+p[0], +p[1] - 1 + d, 1); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0'); }
+function mesesDoTrimestre(m){ var q = trimestreDe(m); var ini = (q.t - 1) * 3 + 1; return [0,1,2].map(function(i){ return q.ano + '-' + String(ini + i).padStart(2, '0'); }); }
+function dataHora(iso){
+  if(!iso) return '';
+  var d = new Date(iso); if(isNaN(d)) return '';
+  return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + ' às ' +
+         String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+function dataCurta(iso){ if(!iso) return ''; var p = iso.split('-'); return p[2] + '/' + p[1]; }
+
+// ── Ícones ────────────────────────────────────────────────────────────────
+var ICO = {
+  verde: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  amarelo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"><path d="M12 5v9"/><path d="M12 19.5v.01"/></svg>',
+  vermelho: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>',
+  cinza: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"><path d="M6 12h12"/></svg>',
+  aberto: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 7.8-1.2"/></svg>',
+  fechado: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  alerta: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
+  cadeado: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>'
+};
+var ROT_COR = { verde: 'Batido', amarelo: 'Perto', vermelho: 'Longe', cinza: 'Sem meta' };
+function dot(cor, rotulo, pequeno){
+  return '<span class="dot ' + cor + (pequeno ? ' p' : '') + '" role="img" aria-label="' + esc(rotulo || ROT_COR[cor]) + '" title="' + esc(rotulo || ROT_COR[cor]) + '">' + ICO[cor] + '</span>';
+}
+var STATUS = {
+  destravada: { palavra: 'Destravada', cor: 'verde', ico: ICO.aberto },
+  risco: { palavra: 'Em risco', cor: 'amarelo', ico: ICO.alerta },
+  travada: { palavra: 'Travada', cor: 'vermelho', ico: ICO.fechado }
+};
+
+// ═════════════════════════════════════════════════════════════════════════
+//  CÁLCULO — tudo sai do JSON cru; nenhuma cor ou valor vem pronto
+// ═════════════════════════════════════════════════════════════════════════
+//  real(bloco)   = faturado            (modo Faturado)
+//                = faturado + carteira (modo Potencial)
+//  pct           = real / meta × 100   (sem meta → null → cinza)
+//  cor(pct)      = verde se ≥ 100; amarelo se faltam menos de 10 pontos;
+//                  vermelho se faltam 10 ou mais; cinza sem meta
+//  G1  escritório: Σ pares das faixas ≥ 100% da Σ meta
+//  G2  vendedor:   idem, com os números dele
+//  G3  por faixa:  escritório ≥ 100% E vendedor ≥ 100% na faixa
+//  G4  por família (R$): escritório ≥ 100% E vendedor ≥ 100%
+//  G5  regra 360:  (R$ outras famílias + R$ Under Armour) ≥ 15% do R$ de
+//                  tênis Olympikus, somando o trimestre até o mês visto
+//  gerais = G1 e G2 e G5
+//  escritório batido = G1 e (Σ R$ outras famílias do escritório ≥ Σ meta)
+//  benefício = escritório batido e G2 e G5
+//  faixa paga 100% quando G3; 50% quando o escritório bateu a faixa, o
+//  vendedor não, e há benefício; senão 0.  Família paga 100% com G4.
+//  valor = R$ do vendedor na linha × % da carta × fator
+//  carta do mês = gerais ? Σ valores : 0
+function regrasDe(doc){ var r = {}; for(var k in PADRAO) r[k] = (doc.regras && doc.regras[k] != null) ? doc.regras[k] : PADRAO[k]; return r; }
+function real(b, campo, modo){ b = b || {}; return (b[campo] || 0) + (modo === 'potencial' ? (b['carteira_' + campo] || 0) : 0); }
+function porc(r, m){ return m > 0 ? r / m * 100 : null; }
+function corDe(p, R){ if(p == null) return 'cinza'; if(p >= R.gatilho) return 'verde'; return (R.gatilho - p) < R.zona ? 'amarelo' : 'vermelho'; }
+function temCarteira(doc){
+  var t = 0;
+  (doc.faixas || []).concat(doc.familias || []).forEach(function(l){
+    ['escritorio','vendedor'].forEach(function(q){ t += Math.abs((l[q] || {}).carteira_qtd || 0) + Math.abs((l[q] || {}).carteira_rs || 0); });
+  });
+  return t + Math.abs((doc.under_armour || {}).carteira_rs || 0) > 0;
+}
+
+// G5 é do trimestre: soma os meses do mesmo trimestre até o mês visto.
+function regra360(docs, modo, R){
+  var outras = 0, ua = 0, tenis = 0;
+  docs.forEach(function(d){
+    (d.familias || []).forEach(function(f){ outras += real(f.vendedor, 'rs', modo); });
+    (d.faixas || []).forEach(function(f){ tenis += real(f.vendedor, 'rs', modo); });
+    ua += real(d.under_armour, 'rs', modo);
+  });
+  var alvo = tenis * R.regra360 / 100;
+  var atual = outras + ua;
+  var p = alvo > 0 ? atual / alvo * 100 : null;
+  return { outras: outras, ua: ua, tenis: tenis, alvo: alvo, atual: atual,
+           proporcao: tenis > 0 ? atual / tenis * 100 : null,
+           pct: p, cor: corDe(p, R), ok: p != null && p >= R.gatilho, falta: Math.max(0, alvo - atual), meses: docs.length };
+}
+
+function calcular(doc, modo, g5){
+  var R = regrasDe(doc);
+  var linhasF = (doc.faixas || []).map(function(f){
+    var eReal = real(f.escritorio, 'qtd', modo), eMeta = (f.escritorio || {}).meta_qtd || 0;
+    var vReal = real(f.vendedor, 'qtd', modo), vMeta = (f.vendedor || {}).meta_qtd || 0;
+    var pe = porc(eReal, eMeta), pv = porc(vReal, vMeta);
+    return { f: f, eReal: eReal, eMeta: eMeta, vReal: vReal, vMeta: vMeta, pe: pe, pv: pv,
+             corE: corDe(pe, R), corV: corDe(pv, R), rsV: real(f.vendedor, 'rs', modo) };
+  });
+  var linhasM = (doc.familias || []).map(function(f){
+    var eReal = real(f.escritorio, 'rs', modo), eMeta = (f.escritorio || {}).meta_rs || 0;
+    var vReal = real(f.vendedor, 'rs', modo), vMeta = (f.vendedor || {}).meta_rs || 0;
+    var pe = porc(eReal, eMeta), pv = porc(vReal, vMeta);
+    return { f: f, eReal: eReal, eMeta: eMeta, vReal: vReal, vMeta: vMeta, pe: pe, pv: pv,
+             corE: corDe(pe, R), corV: corDe(pv, R), rsV: vReal };
+  });
+  function soma(ls, k){ return ls.reduce(function(a, l){ return a + l[k]; }, 0); }
+
+  var g1 = { real: soma(linhasF, 'eReal'), meta: soma(linhasF, 'eMeta') };
+  var g2 = { real: soma(linhasF, 'vReal'), meta: soma(linhasF, 'vMeta') };
+  [g1, g2].forEach(function(g){ g.pct = porc(g.real, g.meta); g.cor = corDe(g.pct, R); g.ok = g.pct != null && g.pct >= R.gatilho; g.falta = Math.max(0, g.meta - g.real); });
+  var eOutras = { real: soma(linhasM, 'eReal'), meta: soma(linhasM, 'eMeta') };
+  eOutras.pct = porc(eOutras.real, eOutras.meta);
+
+  var gerais = g1.ok && g2.ok && g5.ok;
+  var escritorioBatido = g1.ok && eOutras.pct != null && eOutras.pct >= R.gatilho;
+  var beneficio = escritorioBatido && g2.ok && g5.ok;
+
+  linhasF.forEach(function(l){
+    l.semMeta = !(l.vMeta > 0);
+    l.base = l.rsV * (l.f.pct_carta || 0) / 100;
+    var eOk = l.pe != null && l.pe >= R.gatilho, vOk = l.pv != null && l.pv >= R.gatilho;
+    l.fator = 0; l.meio = false;
+    if(!l.semMeta && eOk && vOk) l.fator = 1;
+    else if(!l.semMeta && eOk && !vOk && beneficio){ l.fator = R.beneficio / 100; l.meio = true; }
+    l.liberada = l.fator > 0;
+    l.porque = l.semMeta ? 'sem meta sua' : (!eOk && vOk) ? 'escritório não bateu' : (eOk && !vOk && !l.meio) ? 'falta você bater' : (!eOk && !vOk) ? 'faltam os dois' : '';
+    l.possivel = Math.max(0, l.base * l.fator);
+    l.valor = gerais ? l.possivel : 0;
+    l.cor = l.semMeta ? 'cinza' : l.meio ? 'amarelo' : l.corV;
+  });
+  linhasM.forEach(function(l){
+    l.semMeta = !(l.vMeta > 0);
+    l.base = l.rsV * (l.f.pct_carta || 0) / 100;
+    var eOk = l.pe != null && l.pe >= R.gatilho, vOk = l.pv != null && l.pv >= R.gatilho;
+    l.fator = (!l.semMeta && eOk && vOk) ? 1 : 0;
+    l.liberada = l.fator > 0;
+    l.porque = l.semMeta ? 'sem meta sua' : (!eOk && vOk) ? 'escritório não bateu' : (eOk && !vOk) ? 'falta você bater' : (!eOk && !vOk) ? 'faltam os dois' : '';
+    l.possivel = Math.max(0, l.base * l.fator);
+    l.valor = gerais ? l.possivel : 0;
+    l.cor = l.semMeta ? 'cinza' : l.corV;
+  });
+
+  function resumoGrupo(ls){
+    var comMeta = ls.filter(function(l){ return !l.semMeta; });
+    var lib = comMeta.filter(function(l){ return l.liberada; }).length;
+    var cor = comMeta.length === 0 ? 'cinza' : lib === comMeta.length ? 'verde' : lib === 0 ? 'vermelho' : 'amarelo';
+    return { total: comMeta.length, liberadas: lib, cor: cor, ok: comMeta.length > 0 && lib === comMeta.length };
+  }
+  var g3 = resumoGrupo(linhasF), g4 = resumoGrupo(linhasM);
+
+  var possivel = soma(linhasF, 'possivel') + soma(linhasM, 'possivel');
+  var carta = gerais ? possivel : 0;
+  var status;
+  if(gerais && carta > 0) status = 'destravada';
+  else {
+    var falhas = [g1, g2, g5].filter(function(g){ return !g.ok; });
+    status = (falhas.length && falhas.every(function(g){ return g.cor === 'amarelo'; })) || (gerais && carta === 0) ? 'risco' : 'travada';
+  }
+  return { R: R, faixas: linhasF, familias: linhasM, g1: g1, g2: g2, g3: g3, g4: g4, g5: g5,
+           eOutras: eOutras, gerais: gerais, beneficio: beneficio, escritorioBatido: escritorioBatido,
+           possivel: possivel, carta: carta, status: status };
+}
+
+// O que falta, em uma frase, seguindo a ordem dos gatilhos.
+function frase(c){
+  var pend = [];
+  if(!c.g1.ok) pend.push('o escritório precisa de mais ' + pares(c.g1.falta) + ' de calçados');
+  if(!c.g2.ok) pend.push('faltam ' + pares(c.g2.falta) + ' seus para o total de calçados');
+  if(!c.g5.ok) pend.push('faltam ' + rs(c.g5.falta) + ' em outras famílias ou Under Armour para a regra 360');
+  if(pend.length){
+    var f = pend[0].charAt(0).toUpperCase() + pend[0].slice(1);
+    if(pend.length === 2) f += ', e ' + pend[1];
+    if(pend.length === 3) f += ', e os outros dois gatilhos gerais também estão abertos';
+    return f + '.';
+  }
+  // Destravada ou sem faixa liberada: aponta a faixa mais perto de pagar inteira
+  var cand = c.faixas.filter(function(l){ return !l.semMeta && l.fator < 1 && l.pv != null && l.pv < c.R.gatilho && l.pe >= c.R.gatilho; })
+    .map(function(l){ return { nome: l.f.nome, falta: l.vMeta * c.R.gatilho / 100 - l.vReal, ganho: l.base * (1 - l.fator) }; })
+    .sort(function(a, b){ return a.falta - b.falta; });
+  if(cand.length){
+    var x = cand[0];
+    return 'Faltam ' + pares(Math.ceil(x.falta)) + ' em ' + x.nome.toLowerCase() + ' para receber a faixa inteira' + (x.ganho > 0 ? ' (mais ' + rs(x.ganho) + ').' : '.');
+  }
+  if(c.carta === 0) return 'Os gatilhos gerais estão verdes, mas nenhuma faixa ou família foi liberada ainda.';
+  return 'Todos os gatilhos que dependem de você estão batidos neste mês.';
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+//  DADOS
+// ═════════════════════════════════════════════════════════════════════════
+var estado = { indice: null, vendedor: null, marca: 'OLY', mes: null, modo: 'faturado', docs: {} };
+
+function sessao(){
+  try{
+    var s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+    if(s && s.expiraEm && new Date(s.expiraEm).getTime() > Date.now()) return s;
+  }catch(_){}
+  return null;
+}
+function buscar(url){
+  return fetch(url, { cache: 'no-store' }).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); });
+}
+function arquivo(v, marca, mes){ return 'dados/' + encodeURIComponent(v) + '/' + marca + '/' + mes + '.json'; }
+function carregarMes(v, marca, mes){
+  var k = v + '|' + marca + '|' + mes;
+  if(!(k in estado.docs)) estado.docs[k] = buscar(arquivo(v, marca, mes)).catch(function(){ return null; });
+  return estado.docs[k];
+}
+function vendInfo(){ return (estado.indice.vendedores || []).filter(function(v){ return v.codigo === estado.vendedor; })[0] || null; }
+function mesesDisponiveis(){ var v = vendInfo(); return (v && v.marcas && v.marcas[estado.marca]) ? v.marcas[estado.marca].slice().sort() : []; }
+
+function lerURL(){
+  var q = new URLSearchParams(location.search);
+  var s = sessao();
+  estado.vendedor = q.get('vendedor') || (s && s.codigo) || null;
+  estado.marca = (q.get('marca') || 'OLY').toUpperCase();
+  estado.mes = q.get('mes');
+  estado.modo = q.get('modo') === 'potencial' ? 'potencial' : 'faturado';
+}
+function gravarURL(){
+  var q = new URLSearchParams();
+  q.set('vendedor', estado.vendedor); q.set('marca', estado.marca);
+  if(estado.mes) q.set('mes', estado.mes);
+  if(estado.modo === 'potencial') q.set('modo', 'potencial');
+  history.replaceState(null, '', '?' + q.toString());
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+//  DESENHO
+// ═════════════════════════════════════════════════════════════════════════
+var $ = function(id){ return document.getElementById(id); };
+
+// Guilhochê: a mesma trama fina das cédulas e certificados. Hipotrocoide
+// com razão 10/7 fecha em 7 voltas e dá 17 pétalas; as ondas embaixo são
+// senoides moduladas. Gerado uma vez só.
+var _gui = null;
+function guilloche(){
+  if(_gui) return _gui;
+  var W = 640, H = 360, cx = 520, cy = 110, p = '';
+  [ [170, .41, .33], [205, .41, .30], [240, .41, .27] ].forEach(function(a){
+    var R = a[0], r = R * 7 / 17, d = R * a[2], k = (R - r) / r, s = '';
+    for(var t = 0; t <= Math.PI * 14 + .001; t += .028){
+      var x = cx + (R - r) * Math.cos(t) + d * Math.cos(k * t);
+      var y = cy + (R - r) * Math.sin(t) - d * Math.sin(k * t);
+      s += (s ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+    }
+    p += '<path d="' + s + '"/>';
+  });
+  for(var i = 0; i < 16; i++){
+    var s2 = '';
+    for(var x = -10; x <= W + 10; x += 5){
+      var y = 250 + i * 5.2 + Math.sin(x / 34 + i * .45) * 9 * Math.sin(x / 210 + .6);
+      s2 += (s2 ? 'L' : 'M') + x + ' ' + y.toFixed(1);
+    }
+    p += '<path d="' + s2 + '"/>';
+  }
+  _gui = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid slice" aria-hidden="true">' + p + '</svg>';
+  return _gui;
+}
+
+function desenharCabecalho(doc){
+  var s = sessao();
+  var podeTrocar = !s || /^c ?m ?s$/i.test(String(s.nome || '').trim());
+  var vs = estado.indice.vendedores || [];
+  var info = vendInfo();
+  var nome = info ? nomeProprio(info.nome) : (doc ? nomeProprio(doc.vendedor.nome) : estado.vendedor);
+  if(podeTrocar && vs.length > 1){
+    $('vendedorBox').innerHTML = '<label class="sr" style="position:absolute;left:-9999px" for="selVend">Vendedor</label>' +
+      '<select id="selVend" class="vendedor-sel">' + vs.map(function(v){
+        return '<option value="' + esc(v.codigo) + '"' + (v.codigo === estado.vendedor ? ' selected' : '') + '>' + esc(nomeProprio(v.nome)) + '</option>';
+      }).join('') + (info ? '' : '<option selected value="' + esc(estado.vendedor) + '">Código ' + esc(estado.vendedor) + '</option>') + '</select>';
+    $('selVend').addEventListener('change', function(e){ estado.vendedor = e.target.value; estado.mes = null; iniciar(); });
+  } else {
+    $('vendedorBox').innerHTML = '<span class="vendedor">' + esc(nome) + '</span>';
+  }
+  document.title = 'Carta de ' + nome.split(' ')[0] + ' · CMS PASS';
+
+  Array.prototype.forEach.call($('abas').querySelectorAll('button'), function(b){ b.setAttribute('aria-pressed', String(b.dataset.marca === estado.marca)); });
+  Array.prototype.forEach.call($('modo').querySelectorAll('button'), function(b){ b.setAttribute('aria-pressed', String(b.dataset.modo === estado.modo)); });
+
+  var disp = mesesDisponiveis();
+  var i = disp.indexOf(estado.mes);
+  $('mesAnt').disabled = i <= 0;
+  $('mesProx').disabled = i < 0 || i >= disp.length - 1;
+  if(estado.mes){
+    var q = trimestreDe(estado.mes);
+    $('mesRot').innerHTML = '<b>' + esc(mesLongo(estado.mes).replace(/^./, function(c){ return c.toUpperCase(); })) + '</b><span>' + q.t + 'º trimestre de ' + q.ano + '</span>';
+  } else {
+    $('mesRot').innerHTML = '<b>Sem mês</b><span>&nbsp;</span>';
+  }
+  var quando = doc ? dataHora(doc.atualizado_em) : dataHora(estado.indice.atualizado_em);
+  var fech = doc && doc.carta && doc.carta.fechamento;
+  $('atualizado').innerHTML = (quando ? 'Atualizado em <b>' + quando + '</b>' : '') +
+    (doc ? '<br>' + (fech ? 'Apuração fechada em ' + dataCurta(fech) : 'Apuração em andamento') : '');
+}
+
+function desenharAviso(doc){
+  var partes = [];
+  if(doc && doc.exemplo) partes.push('<b>Dados de exemplo.</b> ' + esc(doc.nota || 'Números montados para teste.'));
+  if(doc && estado.modo === 'potencial' && !temCarteira(doc)) partes.push('<b>Sem carteira neste mês.</b> O potencial ficou igual ao faturado.');
+  $('aviso').innerHTML = partes.map(function(t){
+    return '<div class="aviso"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v5.5M12 7.5v.01"/></svg><div>' + t + '</div></div>';
+  }).join('');
+}
+
+function heroHTML(doc, c){
+  var st = STATUS[c.status];
+  var mes = mesCurto(doc.mes);
+  var partes = rs(c.carta).replace(/ /g, ' ').match(/^(-?)R\$\s?([\d.]+),(\d{2})$/);
+  var valor = partes ? '<span class="rs">R$</span>' + partes[1] + partes[2] + '<span class="cent">,' + partes[3] + '</span>' : esc(rs(c.carta));
+  var extra = [];
+  if(!c.gerais && c.possivel > 0) extra.push('Se destravar: <b class="num">' + rs(c.possivel) + '</b>');
+  if(c.beneficio && c.faixas.some(function(l){ return l.meio; })) extra.push('Inclui faixas com <b>50%</b>');
+  extra.push('Base: <b>' + (estado.modo === 'potencial' ? 'faturado + carteira' : 'faturado') + '</b>');
+  return '<section class="hero s-hero" data-status="' + c.status + '" aria-label="Carta do mês">' +
+    '<div class="guilloche">' + guilloche() + '</div>' +
+    '<div class="hero-topo"><span class="hero-rotulo">Carta de ' + esc(mes) + '</span>' +
+    '<span class="selo">' + st.ico + st.palavra + '</span></div>' +
+    '<div class="hero-valor num" aria-label="' + esc(rs(c.carta)) + '">' + valor + '</div>' +
+    '<p class="hero-frase">' + esc(frase(c)) + '</p>' +
+    '<div class="hero-extra">' + extra.map(function(e){ return '<span>' + e + '</span>'; }).join('') + '</div>' +
+  '</section>';
+}
+
+function medidor(p, cor){
+  var w = p == null ? 0 : Math.max(0, Math.min(p, 120)) / 1.2;
+  return '<div class="medidor ' + cor + '" role="img" aria-label="' + esc(pct(p)) + ' de 100%"><i style="width:' + w.toFixed(1) + '%"></i></div>';
+}
+
+function gatilhosHTML(c){
+  function linhaMedida(id, nome, desc, g, un){
+    var fmt = un === 'rs' ? rsCurto : function(n){ return fInt.format(Math.round(n)); };
+    var falta = g.ok ? (un === 'rs' ? 'Batido, ' + rs(g.real - g.meta) + ' acima' : 'Batido, ' + pares(g.real - g.meta) + ' acima')
+                     : 'Falta ' + (un === 'rs' ? rs(g.falta) : pares(g.falta));
+    if(g.meta <= 0) falta = 'Sem meta neste mês';
+    return '<li class="gat"><span class="gat-id">' + id + '</span>' +
+      '<div><div class="gat-nome">' + dot(g.cor) + esc(nome) + '</div><div class="gat-desc">' + esc(desc) + '</div></div>' +
+      '<div class="gat-num num"><b>' + pct(g.pct) + '</b>' + fmt(g.real) + ' / ' + fmt(g.meta) + '</div>' +
+      medidor(g.pct, g.cor) +
+      '<div class="gat-falta' + (g.ok ? ' ok' : '') + '">' + falta + '</div></li>';
+  }
+  function linhaGrupo(id, nome, desc, g, todas, un){
+    var ls = todas.filter(visivel);
+    var mini = ls.map(function(l){ return dot(l.liberada ? (l.meio ? 'amarelo' : 'verde') : (l.semMeta ? 'cinza' : 'vermelho'), l.f.nome + ': ' + (l.liberada ? (l.meio ? 'paga 50%' : 'liberada') : (l.semMeta ? 'sem meta' : l.porque)), true); }).join('');
+    // a pendência mais perto de resolver
+    var pend = ls.filter(function(l){ return !l.semMeta && !l.liberada; }).map(function(l){
+      var fv = Math.max(0, l.vMeta - l.vReal), fe = Math.max(0, l.eMeta - l.eReal);
+      var txt = fv > 0 && fe > 0 ? l.f.nome + ': faltam ' + (un === 'rs' ? rs(fv) : pares(fv)) + ' seus e ' + (un === 'rs' ? rs(fe) : pares(fe)) + ' do escritório'
+              : fv > 0 ? l.f.nome + ': faltam ' + (un === 'rs' ? rs(fv) : pares(fv)) + ' seus'
+              : l.f.nome + ': o escritório precisa de ' + (un === 'rs' ? rs(fe) : pares(fe));
+      return { txt: txt, dist: Math.min(l.pv == null ? 999 : 100 - l.pv, 999) + Math.max(0, l.pe == null ? 999 : 100 - l.pe) };
+    }).sort(function(a, b){ return a.dist - b.dist; });
+    var falta = g.total === 0 ? 'Sem meta neste mês' : g.ok ? 'Todas liberadas' : pend.length ? pend[0].txt : '';
+    return '<li class="gat"><span class="gat-id">' + id + '</span>' +
+      '<div><div class="gat-nome">' + dot(g.cor, g.cor === 'amarelo' ? 'Parte liberada' : null) + esc(nome) + '</div><div class="gat-desc">' + esc(desc) + '</div>' +
+      '<div class="gat-mini">' + mini + '</div></div>' +
+      '<div class="gat-num num"><b>' + g.liberadas + ' de ' + g.total + '</b>liberadas</div>' +
+      '<div class="gat-falta' + (g.ok ? ' ok' : '') + '">' + esc(falta) + '</div></li>';
+  }
+  var g5 = c.g5;
+  var g5falta = g5.tenis <= 0 ? 'Sem venda de tênis no trimestre' : g5.ok ? 'Batida, ' + rs(g5.atual - g5.alvo) + ' acima' : 'Falta ' + rs(g5.falta);
+  var g5html = '<li class="gat"><span class="gat-id">G5</span>' +
+    '<div><div class="gat-nome">' + dot(g5.cor) + 'Regra 360</div><div class="gat-desc">Outras famílias + Under Armour sobre tênis, no trimestre</div></div>' +
+    '<div class="gat-num num"><b>' + pct(g5.proporcao) + '</b>meta ' + fP1.format(c.R.regra360) + '%</div>' +
+    medidor(g5.pct, g5.cor) +
+    '<div class="gat-falta' + (g5.ok ? ' ok' : '') + '">' + g5falta + '</div></li>';
+  return '<section class="cartao s-gatilhos" aria-label="Gatilhos">' +
+    '<div class="cartao-cab"><h2>Gatilhos</h2><span class="apoio">todos em 100%</span></div>' +
+    '<ol class="gatilhos">' +
+      linhaMedida('G1', 'Escritório em calçados', 'Pares da CMS no total', c.g1, 'qtd') +
+      linhaMedida('G2', 'Você em calçados', 'Seus pares no total', c.g2, 'qtd') +
+      linhaGrupo('G3', 'Faixas de calçados', 'Escritório e você na mesma faixa', c.g3, c.faixas, 'qtd') +
+      linhaGrupo('G4', 'Outras famílias', 'Meias, chinelos, acessórios e vestuário em R$', c.g4, c.familias, 'rs') +
+      g5html +
+    '</ol></section>';
+}
+
+function celulaGerado(l, c){
+  var selo = l.meio ? '<span class="selo50" title="Benefício: o escritório bateu a faixa e você bateu o total. Paga metade.">50%</span>' : '';
+  if(l.semMeta) return '<td class="gerado zero num">—</td>';
+  if(!l.liberada) return '<td class="gerado zero num" title="' + esc(l.porque) + '">' + rs(0) + '</td>';
+  if(!c.gerais) return '<td class="gerado travado num" title="Travado pelos gatilhos gerais">' + ICO.cadeado + rs(l.possivel) + selo + '</td>';
+  return '<td class="gerado num">' + rs(l.valor) + selo + '</td>';
+}
+
+// Linha sem meta dos dois lados e sem venda sua não entra na tela; ela
+// continua nos totais, porque o realizado do escritório conta no G1.
+function visivel(l){ return l.vMeta > 0 || l.eMeta > 0 || l.vReal !== 0; }
+
+function faixasHTML(c){
+  var ls = c.faixas.filter(visivel);
+  var linhas = ls.map(function(l){
+    return '<tr>' +
+      '<td class="nome"><span class="n">' + dot(l.cor, l.meio ? 'Paga 50%' : null) + esc(l.f.nome) + '</span>' + (l.porque && !l.semMeta ? '<span class="porque" style="padding-left:25px">' + esc(l.porque) + '</span>' : '') + '</td>' +
+      '<td class="num">' + (l.vMeta > 0 ? fInt.format(l.vMeta) : '—') + '</td>' +
+      '<td class="num">' + fInt.format(Math.round(l.vReal)) + '</td>' +
+      '<td class="num">' + pct(l.pv) + '</td>' +
+      '<td class="cms"><span class="meio">' + dot(l.corE, 'Escritório: ' + pct(l.pe)) + '<span class="num">' + pct(l.pe) + '</span></span></td>' +
+      '<td class="num">' + pctCarta(l.f.pct_carta || 0) + '</td>' +
+      celulaGerado(l, c) +
+      '<td class="mob"><span class="num">' + fInt.format(Math.round(l.vReal)) + ' de ' + (l.vMeta > 0 ? fInt.format(l.vMeta) : '—') + ' pares</span><span class="num"><b style="color:var(--tinta)">' + pct(l.pv) + '</b></span>' +
+        '<span class="meio">CMS ' + dot(l.corE, 'Escritório: ' + pct(l.pe), true) + '<span class="num">' + pct(l.pe) + '</span></span><span class="num">carta ' + pctCarta(l.f.pct_carta || 0) + '</span></td>' +
+    '</tr>';
+  }).join('');
+  var tv = c.g2, soma = ls.reduce(function(a, l){ return a + (c.gerais ? l.valor : 0); }, 0);
+  return '<section class="cartao s-faixas" aria-label="Faixas de calçados">' +
+    '<div class="cartao-cab"><h2>Faixas de calçados</h2><span class="apoio">em pares</span></div>' +
+    '<div class="tabela-rolo"><table class="t"><thead><tr><th>Faixa</th><th>Meta</th><th>Real</th><th>%</th><th class="cms">CMS na faixa</th><th>% carta</th><th>R$ gerado</th></tr></thead>' +
+    '<tbody>' + linhas + '</tbody>' +
+    '<tfoot><tr><td class="rot">Total</td><td class="num">' + fInt.format(tv.meta) + '</td><td class="num">' + fInt.format(Math.round(tv.real)) + '</td><td class="num">' + pct(tv.pct) + '</td><td class="cms"><span class="meio">' + dot(c.g1.cor) + '<span class="num">' + pct(c.g1.pct) + '</span></span></td><td></td><td class="gerado num">' + rs(soma) + '</td></tr></tfoot>' +
+    '</table></div></section>';
+}
+
+function familiasHTML(c){
+  var linhas = c.familias.map(function(l){
+    return '<tr>' +
+      '<td class="nome"><span class="n">' + dot(l.cor) + esc(l.f.nome) + '</span>' + (l.porque && !l.semMeta ? '<span class="porque" style="padding-left:25px">' + esc(l.porque) + '</span>' : '') + '</td>' +
+      '<td class="num">' + (l.vMeta > 0 ? rsCurto(l.vMeta) : '—') + '</td>' +
+      '<td class="num">' + rsCurto(l.vReal) + '</td>' +
+      '<td class="num">' + pct(l.pv) + '</td>' +
+      '<td class="cms"><span class="meio">' + dot(l.corE, 'Escritório: ' + pct(l.pe)) + '<span class="num">' + pct(l.pe) + '</span></span></td>' +
+      celulaGerado(l, c) +
+      '<td class="mob"><span class="num">' + rsCurto(l.vReal) + ' de ' + (l.vMeta > 0 ? rsCurto(l.vMeta) : '—') + '</span><span class="num"><b style="color:var(--tinta)">' + pct(l.pv) + '</b></span>' +
+        '<span class="meio">CMS ' + dot(l.corE, 'Escritório: ' + pct(l.pe), true) + '<span class="num">' + pct(l.pe) + '</span></span><span class="num">carta ' + pctCarta(l.f.pct_carta || 0) + '</span></td>' +
+    '</tr>';
+  }).join('');
+  var mv = c.familias.reduce(function(a, l){ return a + l.vMeta; }, 0), rv = c.familias.reduce(function(a, l){ return a + l.vReal; }, 0);
+  var soma = c.familias.reduce(function(a, l){ return a + (c.gerais ? l.valor : 0); }, 0);
+  return '<section class="cartao s-familias" aria-label="Outras famílias">' +
+    '<div class="cartao-cab"><h2>Outras famílias</h2><span class="apoio">em R$</span></div>' +
+    '<div class="tabela-rolo"><table class="t"><thead><tr><th>Família</th><th>Meta</th><th>Real</th><th>%</th><th class="cms">CMS</th><th>R$ gerado</th></tr></thead>' +
+    '<tbody>' + linhas + '</tbody>' +
+    '<tfoot><tr><td class="rot">Total</td><td class="num">' + rsCurto(mv) + '</td><td class="num">' + rsCurto(rv) + '</td><td class="num">' + pct(porc(rv, mv)) + '</td><td class="cms"><span class="meio">' + dot(corDe(c.eOutras.pct, c.R), 'Escritório: ' + pct(c.eOutras.pct)) + '<span class="num">' + pct(c.eOutras.pct) + '</span></span></td><td class="gerado num">' + rs(soma) + '</td></tr></tfoot>' +
+    '</table></div></section>';
+}
+
+function trimestreHTML(doc, porMes){
+  var q = trimestreDe(doc.mes);
+  var total = 0;
+  var cols = mesesDoTrimestre(doc.mes).map(function(m){
+    var r = porMes[m];
+    var atual = m === doc.mes ? ' atual' : '';
+    if(m > doc.mes) return '<div class="tri-mes futuro' + atual + '"><div class="m">' + mesCurto(m) + '</div><div class="st">' + dot('cinza', 'A apurar', true) + 'A apurar</div><div class="v">—</div></div>';
+    if(!r) return '<div class="tri-mes futuro' + atual + '"><div class="m">' + mesCurto(m) + '</div><div class="st">' + dot('cinza', 'Sem apuração', true) + 'Sem dados</div><div class="v">—</div></div>';
+    total += r.carta;
+    var st = STATUS[r.status];
+    return '<div class="tri-mes' + atual + '"><div class="m">' + mesCurto(m) + '</div><div class="st">' + dot(st.cor, st.palavra, true) + st.palavra + '</div><div class="v num">' + rs(r.carta) + '</div></div>';
+  }).join('');
+  var parc = (doc.parcelas && doc.parcelas.length ? doc.parcelas : [{ rotulo: '1ª parcela', fator: .5 }, { rotulo: '2ª parcela', fator: .5 }]);
+  return '<section class="cartao s-tri" aria-label="Trimestre">' +
+    '<div class="cartao-cab"><h2>' + q.t + 'º trimestre</h2><span class="apoio">' + (estado.modo === 'potencial' ? 'com carteira' : 'faturado') + '</span></div>' +
+    '<div class="tri-meses">' + cols + '</div>' +
+    '<div class="tri-total"><span>Acumulado no trimestre</span><b class="num">' + rs(total) + '</b></div>' +
+    '<div class="parcelas">' + parc.map(function(p){
+      return '<div class="parcela"><div class="r">' + esc(p.rotulo) + '</div><div class="v num">' + rs(total * (p.fator || 0)) + '</div><div class="d">' + (p.previsao ? 'previsão ' + esc(p.previsao) : 'data a confirmar') + '</div></div>';
+    }).join('') + '</div></section>';
+}
+
+function historicoHTML(doc, porMes){
+  var itens = [];
+  for(var i = 5; i >= 0; i--){
+    var m = somaMes(doc.mes, -i), r = porMes[m];
+    var atual = m === doc.mes ? ' atual' : '';
+    if(!r){ itens.push('<li class="sem' + atual + '"><div class="m">' + mesCurto(m) + '</div><div class="st">' + dot('cinza', 'Sem apuração', true) + 'Sem apuração</div><div class="v">—</div></li>'); continue; }
+    var st = STATUS[r.status];
+    itens.push('<li class="' + atual.trim() + '"><div class="m">' + mesCurto(m) + '</div><div class="st">' + dot(st.cor, st.palavra, true) + st.palavra + '</div><div class="v num">' + rs(r.carta) + '</div></li>');
+  }
+  return '<section class="cartao s-hist" aria-label="Últimos seis meses">' +
+    '<div class="cartao-cab"><h2>Últimos seis meses</h2><span class="apoio">status e valor da carta</span></div>' +
+    '<ol class="hist">' + itens.join('') + '</ol></section>';
+}
+
+function desenharLegenda(){
+  $('legenda').innerHTML = [['verde','Batido (100% ou mais)'],['amarelo','Perto: menos de 10 pontos, ou faixa com 50%'],['vermelho','Longe: 10 pontos ou mais'],['cinza','Sem meta']]
+    .map(function(x){ return '<span>' + dot(x[0], x[1], true) + x[1] + '</span>'; }).join('');
+}
+
+function vazio(titulo, texto){
+  $('conteudo').innerHTML = '<div class="grade"><section class="cartao estado" style="grid-column:1/-1"><h2>' + esc(titulo) + '</h2><p>' + texto + '</p></section></div>';
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+//  FLUXO
+// ═════════════════════════════════════════════════════════════════════════
+function desenhar(){
+  var disp = mesesDisponiveis();
+  // sem mês no endereço, abre o mais recente; um mês pedido que não existe
+  // fica, para a tela dizer isso em vez de trocar por outro calada
+  if(!estado.mes) estado.mes = disp[disp.length - 1] || null;
+  gravarURL();
+  if(!vendInfo()){
+    desenharCabecalho(null); desenharAviso(null);
+    return vazio('Vendedor não encontrado', 'Não há carta para o código <b>' + esc(estado.vendedor || '(vazio)') + '</b>. Escolha um vendedor acima ou confira o endereço, por exemplo <b>?vendedor=25745&amp;marca=OLY&amp;mes=2026-09</b>.');
+  }
+  if(!disp.length){
+    desenharCabecalho(null); desenharAviso(null);
+    return vazio('Sem carta de ' + (MARCAS[estado.marca] || estado.marca), 'Ainda não chegou meta de ' + esc(MARCAS[estado.marca] || estado.marca) + ' para este vendedor. Quando o escritório publicar, ela aparece nesta aba.');
+  }
+  if(disp.indexOf(estado.mes) < 0){
+    desenharCabecalho(null); desenharAviso(null);
+    return vazio('Mês sem apuração', 'Não há carta de ' + esc(mesLongo(estado.mes)) + '. Os meses disponíveis vão de ' + esc(mesCurto(disp[0])) + ' a ' + esc(mesCurto(disp[disp.length - 1])) + '.');
+  }
+
+  // meses necessários: os 6 do histórico e o trimestre inteiro de cada um
+  // (até o mês visto), por causa da regra 360
+  var precisa = {};
+  for(var i = 0; i < 6; i++){
+    mesesDoTrimestre(somaMes(estado.mes, -i)).forEach(function(x){ if(x <= estado.mes && disp.indexOf(x) >= 0) precisa[x] = 1; });
+  }
+  var lista = Object.keys(precisa).sort();
+  var pedido = [estado.vendedor, estado.marca, estado.mes, estado.modo].join('|');
+  Promise.all(lista.map(function(m){ return carregarMes(estado.vendedor, estado.marca, m); })).then(function(docs){
+    if(pedido !== [estado.vendedor, estado.marca, estado.mes, estado.modo].join('|')) return; // trocou no meio
+    var porDoc = {};
+    lista.forEach(function(m, k){ if(docs[k]) porDoc[m] = docs[k]; });
+    var doc = porDoc[estado.mes];
+    desenharCabecalho(doc);
+    desenharAviso(doc);
+    if(!doc) return vazio('Não consegui abrir este mês', 'O arquivo de ' + esc(mesLongo(estado.mes)) + ' não respondeu. Tente de novo em instantes.');
+
+    // A regra 360 é uma só por trimestre: soma os meses dele até o mês
+    // visto (ou até o fim, se o trimestre já passou). Assim o mesmo mês
+    // mostra o mesmo valor no trimestre e no histórico.
+    function calcMes(m){
+      var d = porDoc[m]; if(!d) return null;
+      var R = regrasDe(d);
+      var tri = mesesDoTrimestre(m).filter(function(x){ return x <= estado.mes && porDoc[x]; }).map(function(x){ return porDoc[x]; });
+      return calcular(d, estado.modo, regra360(tri, estado.modo, R));
+    }
+    var porMes = {};
+    Object.keys(porDoc).forEach(function(m){ porMes[m] = calcMes(m); });
+    var c = porMes[estado.mes];
+
+    $('conteudo').innerHTML = '<div class="grade">' +
+      heroHTML(doc, c) + gatilhosHTML(c) + faixasHTML(c) + familiasHTML(c) +
+      trimestreHTML(doc, porMes) + historicoHTML(doc, porMes) + '</div>';
+    $('rodape').textContent = 'CMS Representações · fonte: ' + (doc.origem || 'escritório') + (doc.carta && doc.carta.codigo ? ' · carta ' + doc.carta.codigo : '');
+  });
+}
+
+function iniciar(){
+  $('conteudo').innerHTML = '<div class="carregando"></div>';
+  (estado.indice ? Promise.resolve(estado.indice) : buscar('dados/indice.json')).then(function(ind){
+    estado.indice = ind;
+    if(!estado.vendedor){ var v = (ind.vendedores || [])[0]; estado.vendedor = v ? v.codigo : null; }
+    desenhar();
+  }).catch(function(){
+    vazio('Sem dados publicados', 'Não encontrei o índice das cartas (dados/indice.json). O escritório precisa publicar os arquivos antes.');
+  });
+}
+
+// ── Controles ────────────────────────────────────────────────────────────
+$('abas').addEventListener('click', function(e){
+  var b = e.target.closest('button'); if(!b || b.dataset.marca === estado.marca) return;
+  estado.marca = b.dataset.marca; desenhar();
+});
+$('modo').addEventListener('click', function(e){
+  var b = e.target.closest('button'); if(!b || b.dataset.modo === estado.modo) return;
+  estado.modo = b.dataset.modo; desenhar();
+});
+function andarMes(d){
+  var disp = mesesDisponiveis(), i = disp.indexOf(estado.mes);
+  if(i < 0) return; var j = i + d; if(j < 0 || j >= disp.length) return;
+  estado.mes = disp[j]; desenhar();
+}
+$('mesAnt').addEventListener('click', function(){ andarMes(-1); });
+$('mesProx').addEventListener('click', function(){ andarMes(1); });
+window.addEventListener('popstate', function(){ lerURL(); desenhar(); });
+
+// ── Tema ─────────────────────────────────────────────────────────────────
+// Sem escolha gravada, a tela segue o sistema; o botão grava a escolha e
+// ela vale para as próximas visitas.
+var TEMA_KEY = 'cms_carta_tema';
+var sistemaClaro = window.matchMedia('(prefers-color-scheme: light)');
+function temaGravado(){ try{ return localStorage.getItem(TEMA_KEY) || ''; }catch(_){ return ''; } }
+function aplicarTema(escolha){
+  var claro = escolha === 'claro' || (!escolha && sistemaClaro.matches);
+  document.documentElement.classList.toggle('tema-claro', claro);
+  // SVG não tem a propriedade hidden do HTML: aqui o atributo é no braço
+  $('icoSol').toggleAttribute('hidden', claro);
+  $('icoLua').toggleAttribute('hidden', !claro);
+  var rotulo = claro ? 'Mudar para o modo escuro' : 'Mudar para o modo claro';
+  $('btnTema').setAttribute('aria-label', rotulo);
+  $('btnTema').title = rotulo;
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.setAttribute('content', claro ? '#f3f6fb' : '#0f172a');
+}
+$('btnTema').addEventListener('click', function(){
+  var novo = document.documentElement.classList.contains('tema-claro') ? 'escuro' : 'claro';
+  try{ localStorage.setItem(TEMA_KEY, novo); }catch(_){}
+  aplicarTema(novo);
+});
+if(sistemaClaro.addEventListener) sistemaClaro.addEventListener('change', function(){ if(!temaGravado()) aplicarTema(''); });
+// ?tema=claro (ou escuro) manda nesta visita, sem gravar nada
+var temaURL = (new URLSearchParams(location.search)).get('tema');
+aplicarTema(temaURL === 'claro' || temaURL === 'escuro' ? temaURL : temaGravado());
+
+desenharLegenda();
+lerURL();
+iniciar();
+})();
+</script>
+</body>
+</html>
