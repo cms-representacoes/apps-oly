@@ -1335,6 +1335,7 @@ const PREPOSTO_NAME_BY_CODE = {
   '25471':'WILLAME',
   '25745':'LEANDRO',
   '4322318':'CHRISTIAN LUCAS',
+  '3616654':'MARCOS',
   '25846':'CMS'
 };
 function splitPrepostoParts(value){
@@ -2004,11 +2005,25 @@ function getOwnOrderedUnitsForNum(num, code){
   }
   return total;
 }
+// O CMS acompanha: vê todo lote rateado, com o saldo total do lote, mas não
+// pede — quem pede é o vendedor com cota.
+function sessaoCms(){
+  const s = getVendedorSession();
+  return !!(s && s.nome === 'CMS');
+}
+function loteRateado(item){
+  const num = sanitizeDisplayText(String(item?.num || ''));
+  const r = (STATE.rateio && num) ? STATE.rateio[num] : null;
+  return !!(r && typeof r === 'object' && Object.keys(r).some(k => k !== '_selo' && Number(r[k]) > 0));
+}
+const AVISO_RATEIO_CMS = 'Lote rateado: só acompanhamento — o pedido é do vendedor com cota';
+
 // Cota do vendedor logado para um produto (rateio por Nº). limited=true quando há rateio.
 function getSellerRateioCap(item){
   const num = sanitizeDisplayText(String(item?.num || ''));
   const r = (STATE.rateio && num) ? STATE.rateio[num] : null;
   if(!r || typeof r !== 'object') return { limited:false, cap:Infinity };
+  if(sessaoCms()) return { limited:false, cap:Infinity };
   const code = getLoggedSellerCode();
   const quota = Number(r[code] || 0);
   if(quota <= 0) return { limited:true, cap:0 };
@@ -2021,6 +2036,7 @@ function getBaseAvailableUnits(item){
 }
 function getMaxCartAmount(item){
   if(!item) return 0;
+  if(sessaoCms() && loteRateado(item)) return 0;
   const baseUnits = getBaseAvailableUnits(item);
   return item.mode === 'boxed'
     ? Math.floor(baseUnits / item.packSize)
@@ -2313,6 +2329,7 @@ function ehExclusivo(item){
   const num = sanitizeDisplayText(String(item?.num || ''));
   const r = (STATE.rateio && num) ? STATE.rateio[num] : null;
   if(!r || typeof r !== 'object') return false;
+  if(sessaoCms()) return loteRateado(item);
   const code = getLoggedSellerCode();
   return !!code && Number(r[code] || 0) > 0;
 }
@@ -2498,7 +2515,7 @@ function renderKpis(){
   const saldo = saldoPorGrupo();
   const porNome = new Map();
   for(const item of STATE.raw){
-    if(!ehExclusivo(item) || getSellerRateioCap(item).cap <= 0) continue;
+    if(!ehExclusivo(item) || (!sessaoCms() && getSellerRateioCap(item).cap <= 0)) continue;
     if((saldo.get(grupoProdutoCor(item)) || 0) <= 0) continue;
     const nome = seloDe(item);
     if(!porNome.has(nome)) porNome.set(nome, new Set());
@@ -2585,7 +2602,7 @@ function quickAdd(item){
   const maxAmount = getMaxCartAmount(item);
   const reservedUnits = item.mode === 'boxed' ? nextAmount * item.packSize : nextAmount;
   if(nextAmount > maxAmount){
-    toast(maxAmount <= 0 ? 'Produto esgotado no momento' : 'Saldo insuficiente');
+    toast(sessaoCms() && loteRateado(item) ? AVISO_RATEIO_CMS : maxAmount <= 0 ? 'Produto esgotado no momento' : 'Saldo insuficiente');
     return;
   }
   STATE.cart.set(item.key, { ...item, amount: nextAmount, totalUnits: reservedUnits });
@@ -2629,7 +2646,11 @@ function renderCatalog(){
     const grupoExc = (isMulti ? siblings : [displayItem]).filter(ehExclusivo);
     const nomeSelo = grupoExc.length ? seloDe(grupoExc[0]) : '';
     const exclusivo = grupoExc.length > 0;
-    const cotaCx = grupoExc.reduce((s, x) => s + cotaExclusivo(x), 0);
+    const cotaCx = sessaoCms() ? 0 : grupoExc.reduce((s, x) => s + cotaExclusivo(x), 0);
+    const quemTemCota = sessaoCms() ? [...new Set(grupoExc.flatMap(x => {
+      const r = STATE.rateio[sanitizeDisplayText(String(x.num || ''))] || {};
+      return Object.keys(r).filter(k => k !== '_selo' && Number(r[k]) > 0).map(k => (PREPOSTO_NAME_BY_CODE[k] || k));
+    }))].join(', ') : '';
     const card = document.createElement('article');
     card.className = 'rounded-[28px] border border-slate-200 bg-white shadow-soft overflow-hidden flex flex-col' + (exclusivo ? ' card-exclusivo' : '');
     card.innerHTML = `
@@ -2640,7 +2661,7 @@ function renderCatalog(){
           : remainingUnits(displayItem)} pares</span>
         ${img ? `<button class="btn-zoom" type="button" title="Ampliar imagem" aria-label="Ampliar imagem"><i class="fa-solid fa-magnifying-glass-plus"></i></button>` : ''}
         <button type="button" class="card-sel focus-ring${STATE.selecionados.has(displayItem.key) ? ' marcado' : ''}" title="Marcar para PDF/XLSX" aria-label="Marcar produto"><i class="fa-solid fa-heart cheio"></i><i class="fa-regular fa-heart vazio"></i></button>
-        ${exclusivo ? `<span class="selo-exclusivo" title="${safeHtml(nomeSelo)} · lote separado para você no rateio${cotaCx ? ' · sua cota: ' + cotaCx + (displayItem.mode === 'boxed' ? ' cx' : ' un') : ''}"><i class="fa-solid fa-star"></i><span class="exc-rot">${safeHtml(nomeSelo)}</span></span>` : ''}
+        ${exclusivo ? `<span class="selo-exclusivo" title="${safeHtml(nomeSelo)} · ${quemTemCota ? 'rateado para ' + safeHtml(quemTemCota) + ' · só acompanhamento' : 'lote separado para você no rateio'}${cotaCx ? ' · sua cota: ' + cotaCx + (displayItem.mode === 'boxed' ? ' cx' : ' un') : ''}"><i class="fa-solid fa-star"></i><span class="exc-rot">${safeHtml(nomeSelo)}</span></span>` : ''}
         ${img ? `<img src="${img}" data-srcs="${productImageCandidates(item).join('|')}" data-src-idx="0" alt="${safeHtml(item.produto)}" class="h-full w-full object-contain bg-white" onerror="(function(el){var srcs=el.dataset.srcs.split('|'),idx=parseInt(el.dataset.srcIdx||0)+1;if(idx<srcs.length){el.dataset.srcIdx=idx;el.src=srcs[idx];}else{el.style.display='none';el.parentElement.querySelector('.img-fallback').classList.remove('hidden');}})(this)">` : ''}
         <div class="img-fallback ${img ? 'hidden' : ''} flex flex-col items-center justify-center text-slate-400">
           <i class="fa-solid fa-image text-3xl"></i>
@@ -3617,6 +3638,7 @@ function confirmMultiGrade(){
     const key = cb.dataset.key;
     const item = siblings.find(s => s.key === key);
     if(!item) return;
+    if(sessaoCms() && loteRateado(item)){ toast(`Nº ${item.num} · ${AVISO_RATEIO_CMS}`); return; }
     const packs = remainingPacks(item);
     if(packs <= 0){ toast(`Nº ${item.num} esgotado`); return; }
     const existing = STATE.cart.get(key);
