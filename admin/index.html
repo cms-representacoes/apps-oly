@@ -328,7 +328,7 @@
     .dark .kpi-op:hover{ box-shadow:0 8px 24px rgba(0,0,0,.3)!important; border-color:#475569!important; }
     /* Checkbox nos cards */
     .card-chk{ width:16px; height:16px; cursor:pointer; accent-color:var(--brand); flex-shrink:0; }
-    .chk-select-all-wrap{ display:flex; align-items:center; gap:8px; padding:8px 4px 6px; }
+    .chk-select-all-wrap{ display:flex; align-items:center; gap:8px; padding:2px 4px 3px; flex-wrap:wrap; }
     .chk-select-all-lbl{ font-size:12px; font-weight:700; color:var(--muted); cursor:pointer; user-select:none; }
     .order-card-compact{ background:var(--card); border:1px solid #c8d0dc; border-radius:24px; overflow:hidden; transition:border-color .12s, box-shadow .12s; box-shadow:0 2px 8px rgba(15,23,42,.10); }
     .order-card-compact:hover{ border-color:var(--brand); box-shadow:0 4px 16px rgba(15,23,42,.13); }
@@ -893,13 +893,9 @@
       </section>
 
       <section class="mt-4" id="secaoPedidos">
-        <div class="rounded-[28px] p-4 shadow-card secao-pedidos-bg">
-          <div class="flex items-center justify-end gap-3 mb-2">
-            <div class="text-xs font-bold text-slate-400" id="ordersCountBadge">0 pedidos</div>
-          </div>
-
-          <!-- Controles de seleção -->
-          <div id="selecaoControles" class="hidden chk-select-all-wrap mb-2">
+        <div class="rounded-[28px] px-4 pt-2.5 pb-4 shadow-card secao-pedidos-bg">
+          <!-- Controles de seleção (a contagem vem junto, na mesma fileira) -->
+          <div id="selecaoControles" class="hidden chk-select-all-wrap mb-1.5">
             <input type="checkbox" id="chkSelecionarTodos" class="card-chk" title="Selecionar todos">
             <label for="chkSelecionarTodos" class="chk-select-all-lbl">Selecionar todos</label>
             <span id="selecaoCount" class="text-xs font-bold text-slate-400 ml-2"></span>
@@ -909,8 +905,9 @@
               <option value="antigos">Mais antigos (chegada)</option>
               <option value="alterados">Alterados por último</option>
             </select>
+            <div class="text-xs font-bold text-slate-400 ml-auto" id="ordersCountBadge">0 pedidos</div>
             <button id="btnExportarSelecionados" onclick="exportarSelecionados()"
-              class="hidden focus-ring ml-auto rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 flex items-center gap-1.5 hover:bg-emerald-100 transition-colors">
+              class="hidden focus-ring rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 flex items-center gap-1.5 hover:bg-emerald-100 transition-colors">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
               Exportar selecionados <span id="badgeSelecionados" class="bg-emerald-600 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
             </button>
