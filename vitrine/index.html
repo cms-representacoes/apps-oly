@@ -5757,21 +5757,32 @@ function pularTamanho(campo){
 $('mgTam').addEventListener('input', e => {
   if(e.target.matches('input') && e.target.value !== '') pularTamanho(e.target);
 });
+// Apagar em série: com o campo já vazio, o Backspace volta um tamanho e apaga
+// ele também. Sem isso era preciso tocar em cada campo para limpar a grade —
+// é o mesmo caminho da digitação, ao contrário.
+function voltarApagando(campo){
+  const campos = [...$('mgTam').querySelectorAll('input')];
+  const ant = campos[campos.indexOf(campo) - 1];
+  if(!ant) return false;
+  ant.value = '';
+  ant.focus();
+  ant.dispatchEvent(new Event('input', { bubbles:true }));
+  return true;
+}
 $('mgTam').addEventListener('keydown', e => {
   if(!e.target.matches('input')) return;
   if(e.key === 'Enter'){ e.preventDefault(); pularTamanho(e.target); return; }
-  // Apagar em série: com o campo já vazio, o Backspace volta um tamanho e
-  // apaga ele também. Sem isso era preciso clicar em cada campo para limpar a
-  // grade — o mesmo caminho da digitação, ao contrário.
   if(e.key === 'Backspace' && e.target.value === ''){
-    const campos = [...$('mgTam').querySelectorAll('input')];
-    const ant = campos[campos.indexOf(e.target) - 1];
-    if(!ant) return;
-    e.preventDefault();
-    ant.value = '';
-    ant.focus();
-    ant.dispatchEvent(new Event('input', { bubbles:true }));
+    if(voltarApagando(e.target)) e.preventDefault();
   }
+});
+// O teclado do celular e do tablet não manda Backspace em campo vazio: só
+// avisa que apagou, por beforeinput. É por aqui que o pulo funciona neles.
+$('mgTam').addEventListener('beforeinput', e => {
+  if(!e.target.matches('input')) return;
+  if(e.inputType !== 'deleteContentBackward') return;
+  if(e.target.value !== '') return;
+  if(voltarApagando(e.target)) e.preventDefault();
 });
 // Ao voltar a um tamanho que já tem número, o conteúdo vem selecionado: digitar
 // troca a quantidade, em vez de grudar no que já estava (2 + 7 = 27).
