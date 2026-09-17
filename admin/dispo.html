@@ -470,6 +470,16 @@
     .dark .filter-pill.active{ background:linear-gradient(135deg,#5b8cff,#4f7bff) !important; border-color:transparent !important; color:#fff !important; box-shadow:0 8px 18px -10px rgba(91,140,255,.8) !important; }
     .dispo-chk, .dispo-chk-all{ width:15px; height:15px; cursor:pointer; accent-color:var(--brand,#4f46e5); }
     .th-chk, .td-chk{ text-align:center; }
+    button.badge-rateio{ border:0; cursor:pointer; font-family:inherit; }
+    button.badge-rateio:hover{ filter:brightness(1.08); }
+    .rateio-resumo{ display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; margin-top:3px;
+      font-size:10.5px; font-weight:700; color:#6d28d9; }
+    .rateio-resumo .rateio-selo{ font-weight:600; color:#7c3aed; background:#f5f3ff; border:1px dashed #c4b5fd;
+      border-radius:999px; padding:0 7px; }
+    .dark .rateio-resumo{ color:#c4b5fd; }
+    .dark .rateio-resumo .rateio-selo{ background:rgba(124,58,237,.18); color:#ddd6fe; border-color:rgba(196,181,253,.4); }
+    body.theme-premium .rateio-resumo{ color:#3f3f46; }
+    body.theme-premium .rateio-resumo .rateio-selo{ background:#fafafa; color:#3f3f46; border-color:#d4d4d8; }
     .badge-rateio{ display:inline-block; font-size:9px; font-weight:800; background:linear-gradient(135deg,#a78bfa,#7c3aed); color:#fff; border-radius:999px; padding:1px 7px; vertical-align:middle; box-shadow:0 2px 6px rgba(124,58,237,.3); }
     .dark .badge-rateio{ background:rgba(124,58,237,.30); color:#c4b5fd; }
     .rateio-inp{ -moz-appearance:textfield; }
@@ -534,7 +544,7 @@
     body.theme-premium .badge-nova{ background:#f4f4f5!important; color:#3f3f46!important; box-shadow:none!important; }
     body.theme-premium .badge-parcial{ background:#f4f4f5!important; color:#3f3f46!important; box-shadow:none!important; }
     body.theme-premium .badge-total{ background:#f4f4f5!important; color:#3f3f46!important; box-shadow:none!important; }
-    body.theme-premium .badge-rateio{ background:#f4f4f5!important; color:#3f3f46!important; box-shadow:none!important; }
+    body.theme-premium .badge-rateio{ background:#ede9fe!important; color:#5b21b6!important; box-shadow:none!important; border:1px solid #ddd6fe!important; }
 
     /* Barra de progresso: neutra, só vermelho em perigo real */
     body.theme-premium .progress-ok{ background:#d4d4d8!important; }
@@ -714,6 +724,9 @@
             </button>
             <button class="filter-pill" data-filter="critico">
               <i class="fa-solid fa-triangle-exclamation text-rose-500 mr-1 badge-ruptura"></i>Críticos
+            </button>
+            <button class="filter-pill" data-filter="rateados" id="pillRateados" style="border-color:#ddd6fe;color:#6d28d9;background:#f5f3ff" data-tip="Lotes divididos por vendedor — abra para ver as cotas e o nome do selo">
+              <i class="fa-solid fa-users mr-1"></i>Rateados <span id="rateadosBadge" class="ml-1 hidden bg-[#7c3aed] text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
             </button>
             <button class="filter-pill" data-filter="ocultos" id="pillOcultos" style="border-color:#AFA9EC;color:#3C3489;background:#EEEDFE">
               <i class="fa-solid fa-eye-slash mr-1"></i>Ocultos <span id="ocultosBadge" class="ml-1 hidden bg-[#3C3489] text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
@@ -1183,6 +1196,11 @@ function computeRows(){
 
   return computeAllRows().filter(row => {
     const f = STATE.activeFilter;
+    if(f === 'rateados'){
+      if(!rateioDaLinha(row)) return false;
+      if(!q) return true;
+      return `${row.codigo} ${row.produto} ${row.cor}`.toLowerCase().includes(q);
+    }
     if(f === 'ocultos') return isOculto(row);
     if(f === 'finalizados') return isDispoFinalizado(row);
     if(isOculto(row)) return false;
@@ -1437,6 +1455,29 @@ const PREPOSTOS_RATEIO = [
   {codigo:'25846', nome:'CMS'}
 ];
 let _rateioNum = null, _rateioPack = 12, _rateioMaxPares = 0;
+// O rateio de uma linha da DISPO (null se não tiver cota nenhuma).
+function rateioDaLinha(row){
+  const r = STATE.rateio && STATE.rateio[String(row && row.num || '')];
+  if(!r || typeof r !== 'object') return null;
+  return Object.keys(r).some(k => k !== '_selo' && Number(r[k]) > 0) ? r : null;
+}
+// "JORGE 4 cx · RAFAEL 3 cx": quem tem cota, em caixas, na linha da tabela.
+function resumoRateio(row){
+  const r = rateioDaLinha(row);
+  if(!r) return '';
+  const pack = _paresPorCaixa(row);
+  const nome = cod => (PREPOSTOS_RATEIO.find(p => p.codigo === cod) || {}).nome || cod;
+  return Object.keys(r).filter(k => k !== '_selo' && Number(r[k]) > 0)
+    .map(k => { const cx = Number(r[k]) / pack; return `${nome(k)} ${Number.isInteger(cx) ? cx : cx.toFixed(1)} cx`; })
+    .join(' · ');
+}
+function atualizarBadgeRateados(){
+  const badge = $('rateadosBadge');
+  if(!badge || !STATE.dispoRows?.length) return;
+  const n = STATE.dispoRows.filter(r => rateioDaLinha(r)).length;
+  badge.textContent = n;
+  badge.classList.toggle('hidden', n === 0);
+}
 function _paresPorCaixa(row){
   const g = row.grade || {};
   const tot = Object.values(g).reduce((s,v)=>s+(Number(v)||0),0);
@@ -1668,6 +1709,7 @@ function renderDispo(){
   const sorted = sortRows(rows);
 
   renderKpis(rows);
+  atualizarBadgeRateados();
   updateSortHeaders();
   renderBannerAntecipacao(computeAllRows());
 
@@ -1708,7 +1750,8 @@ function renderDispo(){
         <td>
           <span class="font-extrabold text-slate-800">${safeHtml(row.produto)}</span>
           <span class="text-xs text-slate-400 font-semibold ml-1">${safeHtml(row.codigo||'')}</span>
-          ${desmBadge}${(STATE.rateio&&STATE.rateio[String(row.num||'')])?`<span class="badge-rateio ml-1" title="Rateado${STATE.rateio[String(row.num||'')]._selo ? ' · selo: ' + safeHtml(STATE.rateio[String(row.num||'')]._selo) : ''}">Rateado${STATE.rateio[String(row.num||'')]._selo ? ' · ' + safeHtml(STATE.rateio[String(row.num||'')]._selo) : ''}</span>`:''}
+          ${desmBadge}${rateioDaLinha(row) ? `<button type="button" class="badge-rateio ml-1" onclick="abrirRateio('${safeHtml(String(row.num||''))}')" title="Ver e alterar o rateio">Rateado <i class="fa-solid fa-pen" style="font-size:8px"></i></button>
+          <div class="rateio-resumo"><i class="fa-solid fa-users"></i> ${safeHtml(resumoRateio(row))}<span class="rateio-selo">${rateioDaLinha(row)._selo ? '<i class="fa-solid fa-star"></i> ' + safeHtml(rateioDaLinha(row)._selo) : 'sem nome de selo · vale "Exclusivo para você"'}</span></div>` : ''}
         </td>
         <td class="text-slate-500 font-semibold">${safeHtml(row.cor)}</td>
         <td class="tabular-nums font-semibold ${row._antecipavel ? 'text-[#3C3489]' : 'text-slate-600'}">
@@ -1731,7 +1774,8 @@ function renderDispo(){
           <div class="btn-group">
             <button class="icon-btn btn-editar-dispo" title="Editar dados do produto" onclick="abrirEditarProduto('${safeHtml(String(row.num||''))}')" style="color:var(--brand);border-color:var(--brand-soft)"><i class="fa-solid fa-pen" style="font-size:12px"></i></button>
             ${STATE.activeFilter === 'ocultos'
-              ? `<button class="icon-btn reexibir btn-reexibir" data-gci="${safeHtml(String(row.gci||''))}" title="Reexibir"><i class="fa-solid fa-eye" style="font-size:12px"></i></button>`
+              ? `<button class="icon-btn reexibir btn-reexibir" data-gci="${safeHtml(String(row.gci||''))}" title="Reexibir"><i class="fa-solid fa-eye" style="font-size:12px"></i></button>
+                 <button class="icon-btn btn-ratear" title="Ratear por vendedor" onclick="abrirRateio('${safeHtml(String(row.num||''))}')" style="color:#7c3aed;border-color:#ddd6fe"><i class="fa-solid fa-users" style="font-size:12px"></i></button>`
               : STATE.activeFilter === 'finalizados'
               ? `<button class="icon-btn btn-excluir-dispo" data-idx="${idx}" title="Excluir da DISPO" style="color:#b91c1c;border-color:#fca5a5" onclick="excluirDaDispoJson(STATE.dispoRows.find(r=>String(r.num)===String('${safeHtml(String(row.num||''))}')))"><i class="fa-solid fa-trash-can" style="font-size:12px"></i></button>`
               : `<button class="icon-btn desm btn-desmembrar" data-idx="${idx}" title="Desmembrar"><i class="fa-solid fa-table-list" style="font-size:12px"></i></button>
