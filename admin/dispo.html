@@ -1751,7 +1751,7 @@ function renderDispo(){
           <span class="font-extrabold text-slate-800">${safeHtml(row.produto)}</span>
           <span class="text-xs text-slate-400 font-semibold ml-1">${safeHtml(row.codigo||'')}</span>
           ${desmBadge}${rateioDaLinha(row) ? `<button type="button" class="badge-rateio ml-1" onclick="abrirRateio('${safeHtml(String(row.num||''))}')" title="Ver e alterar o rateio">Rateado <i class="fa-solid fa-pen" style="font-size:8px"></i></button>
-          <div class="rateio-resumo"><i class="fa-solid fa-users"></i> ${safeHtml(resumoRateio(row))}<span class="rateio-selo">${rateioDaLinha(row)._selo ? '<i class="fa-solid fa-star"></i> ' + safeHtml(rateioDaLinha(row)._selo) : 'sem nome de selo · vale "Exclusivo para você"'}</span></div>` : ''}
+          <div class="rateio-resumo"><i class="fa-solid fa-users"></i> ${safeHtml(resumoRateio(row))}<span class="rateio-selo">${rateioDaLinha(row)._selo ? '<i class="fa-solid fa-star"></i> ' + safeHtml(rateioDaLinha(row)._selo) : '<i class="fa-solid fa-star"></i> Forecast <span style="opacity:.7">(padrão)</span>'}</span></div>` : ''}
         </td>
         <td class="text-slate-500 font-semibold">${safeHtml(row.cor)}</td>
         <td class="tabular-nums font-semibold ${row._antecipavel ? 'text-[#3C3489]' : 'text-slate-600'}">
@@ -2531,9 +2531,9 @@ loadDispo();
       <span id="rateioRestante" style="font-weight:900;font-size:15px;color:var(--brand)"></span>
     </div>
     <label for="rateioSelo" style="display:block;font-size:11px;font-weight:800;color:var(--text);margin-bottom:4px">Nome no selo da vitrine</label>
-    <input id="rateioSelo" type="text" maxlength="28" autocomplete="off" placeholder="Exclusivo para você"
+    <input id="rateioSelo" type="text" maxlength="28" autocomplete="off" placeholder="Forecast"
            style="width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-weight:700;font-size:13px;background:var(--card);color:var(--text);margin-bottom:4px">
-    <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Aparece no card do vendedor que tem cota e vira o nome do filtro na vitrine. Em branco, fica "Exclusivo para você".</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Aparece no card do vendedor que tem cota e vira o nome do filtro na vitrine. Em branco, fica "Forecast".</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Quantidade em <b>caixas</b> (os pares aparecem ao lado). Quem ficar com 0 não vê o produto.</div>
     <div id="rateioLista" style="display:flex;flex-direction:column;gap:8px"></div>
     <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
