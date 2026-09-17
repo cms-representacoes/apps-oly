@@ -692,6 +692,20 @@ button{font:inherit}
 .ped-campo select,.ped-campo input{border:0;background:none;font:inherit;font-size:12px;
   font-weight:700;color:var(--tinta);outline:none;min-width:0}
 .ped-busca{flex:1;min-width:180px}
+/* tipos: mesma leitura das origens da vitrine, cada uma na sua cor */
+.ped-tipos{display:flex;gap:6px;flex:none;padding:10px 16px 0;overflow-x:auto;
+  scrollbar-width:none}
+.ped-tipos::-webkit-scrollbar{display:none}
+.ped-tipos button{flex:none;border:1px solid var(--linha);background:var(--carta);
+  border-radius:999px;padding:6px 12px;font-size:11.5px;font-weight:800;color:var(--fraco);
+  cursor:pointer;white-space:nowrap}
+.ped-tipos button:hover{border-color:var(--tenue)}
+.ped-tipos button.on{color:#fff;background:var(--marca);border-color:var(--marca)}
+.ped-tipos button.t-rep.on{background:var(--repasse);border-color:var(--repasse)}
+.ped-tipos button.t-pro.on{background:var(--plano);border-color:var(--plano)}
+.ped-tipos button.t-est.on{background:var(--pronta);border-color:var(--pronta)}
+.ped-tipos button .n{margin-left:5px;font-size:10px;opacity:.75}
+.ped-selo.rep{background:var(--repasse-fundo);color:var(--repasse)}
 .ped-busca input{flex:1;width:100%;font-weight:600}
 .ped-campo > svg{flex:none;color:var(--tenue)}
 
@@ -1022,6 +1036,11 @@ body.trava{overflow:hidden}
 .lote-d{font-size:10.5px;color:var(--fraco);margin-top:1px}
 .lote .celulas{margin-top:7px}
 .lote-add{margin-top:9px;padding:6px;font-size:11px}
+/* nome da ação dentro do lote rateado */
+.lote-selo{margin-top:7px;border-radius:999px;padding:3px 9px;font-size:10px;font-weight:800;
+  color:#fff;background:linear-gradient(145deg,#A78BFA,#7C3AED);width:fit-content;max-width:100%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lote-selo.cms{background:linear-gradient(145deg,#94A3B8,#475569)}
 /* Ja na sacola: perde o preenchimento e vira aviso, nao mais um convite.
    Vale para o lote, para o mes de producao e para o botao do rodape. */
 .acao.na-sacola:disabled{color:var(--tenue);border:1px dashed var(--linha-forte);
@@ -1451,10 +1470,20 @@ body:has(#sacola:not([hidden])) .aviso-desfazer.on{ transform:translate(50%, 0);
 .upd-novos[hidden]{ display:none; }
 .upd-novos:hover{ background:rgba(22,163,74,.2); }
 .upd-novos.on{ background:#16A34A; color:#fff; }
-.selo-novo{ position:absolute; top:8px; left:8px; z-index:2; pointer-events:none;
-  font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+.selos{ position:absolute; top:8px; left:8px; z-index:2; pointer-events:none;
+  display:flex; flex-direction:column; align-items:flex-start; gap:4px; max-width:78%; }
+.selo-novo{ font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
   color:#fff; background:#16A34A; border-radius:999px; padding:3px 9px;
   box-shadow:0 4px 10px rgba(22,163,74,.35); }
+/* Lote dividido por vendedor: o selo diz de qual ação ele é. Roxo, a mesma
+   cor que o rateio tem no admin e no Repasses. */
+.selo-rateio{ font-size:10px; font-weight:800; letter-spacing:.03em;
+  color:#fff; background:linear-gradient(145deg,#A78BFA,#7C3AED); border-radius:999px;
+  padding:3px 9px; box-shadow:0 4px 10px rgba(124,58,237,.35);
+  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* Para a CMS o selo é só acompanhamento: ela vê o total e não pede. */
+.selo-rateio.cms{ background:linear-gradient(145deg,#94A3B8,#475569);
+  box-shadow:0 4px 10px rgba(71,85,105,.32); }
 
 /* ── vistos há pouco ── */
 .tira-vistos{ max-width:1180px; margin:0 auto; padding:10px 13px 0; }
@@ -1787,6 +1816,15 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
         <select id="pedVendedor"></select></label>
     </div>
 
+    <!-- O que foi feito, por origem: o repasse vem do app de repasses; estoque
+         e produção vêm das planilhas do EBM geradas aqui. -->
+    <div class="ped-tipos" id="pedTipos">
+      <button data-tipo="" class="on">Tudo</button>
+      <button data-tipo="repasse" class="t-rep">Repasses</button>
+      <button data-tipo="producao" class="t-pro">Produção</button>
+      <button data-tipo="estoque" class="t-est">Estoque</button>
+    </div>
+
     <div class="ped-barra">
       <label class="ped-todos"><input type="checkbox" id="pedTodos"><span>Selecionar todos</span></label>
       <span class="ped-conta" id="pedConta">—</span>
@@ -2012,8 +2050,24 @@ function getSessao(){
   try{
     const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
     if(!s || !s.expiraEm || new Date(s.expiraEm).getTime() < Date.now()) return null;
-    return s;
+    return trocaLocal(s);
   }catch(_){ return null; }
+}
+
+// Só rodando na própria máquina: ?vendedor=JORGE abre a vitrine como aquele
+// vendedor, para conferir o que cada um enxerga — as cotas do rateio mudam a
+// tela toda. No endereço publicado isto nunca vale.
+const VENDEDORES_TESTE = { '25846':'CMS', '25745':'LEANDRO', '4322318':'CHRISTIAN LUCAS',
+  '114611':'JORGE', '109839':'MARIANA', '1333497':'RAFAEL', '25471':'WILLAME',
+  '3616654':'MARCOS' };
+function trocaLocal(s){
+  const h = location.hostname;
+  if(h !== 'localhost' && h !== '127.0.0.1' && h !== '') return s;
+  const q = (new URLSearchParams(location.search).get('vendedor') || '').trim().toUpperCase();
+  if(!q) return s;
+  const cod = VENDEDORES_TESTE[q] ? q
+    : Object.keys(VENDEDORES_TESTE).find(k => VENDEDORES_TESTE[k] === q);
+  return cod ? { ...s, codigo:cod, nome:VENDEDORES_TESTE[cod], _local:true } : s;
 }
 const SESSAO = getSessao();
 // CMS é sigla e fica como está; nomes de gente vão em caixa de título.
@@ -2043,7 +2097,7 @@ if(!MARCAS[MARCA]) MARCA = 'oly';
 /* ── estado ─────────────────────────────────────────────────────── */
 const STATE = { produtos:[], filtrados:[], origem:'tudo', categoria:'', busca:'',
                 termos:[], termosIgnorados:0,
-                sel:{ chega:new Set(), genero:new Set(), sub:new Set(),
+                sel:{ selo:new Set(), chega:new Set(), genero:new Set(), sub:new Set(),
                       fabrica:new Set(), camp:new Set() },
                 sacola:new Map(), aba:'estoque', marcados:new Set(), soNovos:false,
                 ordem:(() => { try{ return localStorage.getItem('cmspass.ordem') || 'padrao'; }
@@ -2296,6 +2350,7 @@ function itemRepasse(o, lote){
     artigo:o.artigo, cor:o.cor, corCodigo:o.cor, nome:o.nome, produto:o.nome,
     codigo:o.artigo, pdv:o.pdv, imagem:o.imagem, categoria:o.categoria,
     num:lote.num, gci:lote.gci, ebm:'', prevFaturamento:lote.data,
+    selo:lote.selo || '', soAcompanhar:!!lote.soAcompanhar,
     grade:{ ...lote.grade }, packSize, mode:'boxed', saldo:lote.saldo,
     amount: packSize > 0 && lote.saldo >= packSize ? 1 : 0 };
 }
@@ -2482,12 +2537,16 @@ async function bloqueios(){
     try{ return await doWorker(action); }
     catch(_){ try{ return await json(arquivo); }catch(__){ return null; } }
   };
-  const [oc, ocD, exc] = await Promise.all([
+  const [oc, ocD, exc, rat] = await Promise.all([
     pegar('getOcultos', 'ocultos.json'),
     pegar('getOcultosDisp', 'ocultos_disponibilidades.json'),
-    pegar('getExclusivos', 'exclusivos.json')
+    pegar('getExclusivos', 'exclusivos.json'),
+    pegar('getRateio', 'rateio.json')
   ]);
   return {
+    // Rateio: o lote dividido por vendedor. Cada Nº traz as cotas em pares e,
+    // opcionalmente, o nome do selo que aparece no card.
+    rateio: (rat && typeof rat === 'object' && !Array.isArray(rat)) ? rat : {},
     lotes: new Set(Array.isArray(oc) ? oc : []),
     // Exclusivo e oculto barram o mesmo produto: um conjunto só resolve os dois.
     produtos: new Set([
@@ -2662,17 +2721,22 @@ async function atualizarSaldoRepasse(forcar){
   SALDO.rodando = true;
   SALDO.buscaEm = Date.now();
   try{
-    const [novosPedidos, dispo] = await Promise.all([
+    const [novosPedidos, dispo, rateio] = await Promise.all([
       pedidosDoWorker().catch(() => json('pedidos.json')),
       doWorkerComPrazo({ method:'PATCH', headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify({ action:'getDispo' }) }).catch(() => json('dispo.json'))
+        body: JSON.stringify({ action:'getDispo' }) }).catch(() => json('dispo.json')),
+      // o rateio muda no admin durante o dia: cota nova tem de valer aqui sem
+      // o vendedor recarregar a página
+      doWorkerComPrazo({ method:'PATCH', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ action:'getRateio' }) }).catch(() => null)
     ]);
     const f = STATE.fontes;
+    if(rateio && typeof rateio === 'object' && !Array.isArray(rateio)) f.oculto.rateio = rateio;
     const pedidos = novosPedidos === null ? f.pedidos : novosPedidos;
     if(!Array.isArray(pedidos) || !Array.isArray(dispo)) return;
     // Nem pedidos nem lotes mudaram: não há por que remontar a vitrine
     // inteira no celular do vendedor.
-    const dispoTxt = JSON.stringify(dispo);
+    const dispoTxt = JSON.stringify(dispo) + '|' + JSON.stringify(f.oculto.rateio || {});
     if(novosPedidos === null && dispoTxt === f._dispoTxt) return;
     f._dispoTxt = dispoTxt;
     const novos = montar(dispo, f.disponib, f.produtos, pedidos, f.oculto);
@@ -2703,6 +2767,47 @@ setInterval(() => atualizarSaldoRepasse(false), 60000);
 /* ── normalização ───────────────────────────────────────────────── */
 // Quanto de cada Nº de repasse já está comprometido por pedido em aberto.
 // Sem isso o saldo mostrado seria maior do que o que o vendedor consegue.
+/* ── lotes rateados ────────────────────────────────────────────────
+   O admin divide um lote entre vendedores: cada um só enxerga a própria
+   cota, e o card ganha um selo com o nome da ação (Forecast, por padrão).
+   A CMS acompanha todos, com a quantidade cheia, mas não pede — quem pede é
+   o vendedor que tem cota. É a mesma regra do app Repasses. */
+const SELO_PADRAO = 'Forecast';
+const ehCmsSessao = () => String((SESSAO && SESSAO.nome) || '').toUpperCase() === 'CMS';
+const meuCodigo = () => String((SESSAO && SESSAO.codigo) || '').trim();
+
+function cotasDoLote(rateio, num){
+  const r = rateio && typeof rateio === 'object' ? rateio[String(num).trim()] : null;
+  return (r && typeof r === 'object') ? r : null;
+}
+function loteERateado(cotas){
+  return !!cotas && Object.keys(cotas).some(k => k !== '_selo' && Number(cotas[k]) > 0);
+}
+function nomeDoSelo(cotas){
+  const n = cotas && typeof cotas._selo === 'string' ? cotas._selo.trim() : '';
+  return n || SELO_PADRAO;
+}
+
+// Quanto o próprio vendedor já pediu de cada Nº: a cota desconta o que ele
+// mesmo já tirou, senão ele pediria a cota inteira de novo a cada pedido.
+function reservasDoVendedor(pedidos, codigo){
+  const r = new Map();
+  const cod = String(codigo || '').trim();
+  if(!cod) return r;
+  const contam = new Set(['PENDENTE','EM ANALISE','APROVADO','ATENDIDO PARCIALMENTE']);
+  for(const p of (pedidos || [])){
+    if(p && p.archived) continue;
+    if(!contam.has(norm(p && p.status || 'Pendente'))) continue;
+    if(String(p.preposto && p.preposto.codigo || '').trim() !== cod) continue;
+    for(const it of (p.items || [])){
+      const num = String(it && it.num || '').trim();
+      if(!num) continue;
+      r.set(num, (r.get(num) || 0) + (Number(it.totalUnits) || 0));
+    }
+  }
+  return r;
+}
+
 function reservasPorNum(pedidos){
   const r = new Map();
   // norm() tira o acento: com 'EM ANÁLISE' aqui, esse status nunca reservava.
@@ -2786,6 +2891,10 @@ function montar(dispo, disponib, produtos, pedidos, oculto){
 
   // 2) dispo: lotes de repasse, um por Nº
   const reservas = reservasPorNum(pedidos);
+  const rateio = (oculto && oculto.rateio) || {};
+  const souCms = ehCmsSessao();
+  const meu = meuCodigo();
+  const jaPedi = souCms ? new Map() : reservasDoVendedor(pedidos, meu);
   for(const r of (dispo || [])){
     const [cod, nome] = desinverte(r.codigo, r.produto);
     if(!cod) continue;
@@ -2808,14 +2917,33 @@ function montar(dispo, disponib, produtos, pedidos, oculto){
     o.marca = o.marca || 'oly';
 
     const num   = String(r.num || '').trim();
-    const saldo = Math.max(0, Number(r.saldo || 0) - (reservas.get(num) || 0));
+    let saldo = Math.max(0, Number(r.saldo || 0) - (reservas.get(num) || 0));
+
+    // Lote rateado: o vendedor vê só a própria cota (menos o que já pediu) e,
+    // sem cota, o lote nem aparece para ele. A CMS vê o total, só para
+    // acompanhar.
+    const cotas = cotasDoLote(rateio, num);
+    const rateado = loteERateado(cotas);
+    let soAcompanhar = false, selo = '';
+    if(rateado){
+      selo = nomeDoSelo(cotas);
+      if(souCms){
+        soAcompanhar = true;
+      }else{
+        const cota = Number(cotas[meu] || 0);
+        if(cota <= 0) continue;
+        saldo = Math.min(saldo, Math.max(0, cota - (jaPedi.get(num) || 0)));
+      }
+    }
     if(saldo <= 0) continue;
     const g = {};
     for(const [t,v] of Object.entries(r.grade || {})) if(Number(v) > 0) g[t] = Number(v);
     if(!o.repasse) o.repasse = { total:0, lotes:[], mes:'' };
     o.repasse.total += saldo;
     o.repasse.lotes.push({ num, gci:String(r.gci||'').trim(),
-                           data:String(r.dataEntrega||'').trim(), saldo, grade:g });
+                           data:String(r.dataEntrega||'').trim(), saldo, grade:g,
+                           rateado, selo, soAcompanhar });
+    if(rateado){ o.rateado = true; o.selo = o.selo || selo; o.soAcompanhar = soAcompanhar; }
   }
 
   // mês mais próximo entre os lotes, para a faixa do card
@@ -2954,6 +3082,8 @@ function combina(o, termos){
 
 // Origem e categoria ficam no topo; estes cinco vivem no painel.
 const GRUPOS = [
+  { id:'selo',    rot:'Ação',
+    ajuda:'Lotes rateados: só aparecem aqui os que têm cota para você.' },
   { id:'chega',   rot:'Chega em',
     ajuda:'Estoque sai agora; repasse e produção entram pelo mês.' },
   { id:'genero',  rot:'Gênero' },
@@ -2992,19 +3122,23 @@ const disponivel = o => (o.pronta ? o.pronta.total : 0) + (o.repasse ? o.repasse
 function ordenar(lista){
   const l = lista.slice();
   const nome = o => String(o.nome || o.artigo) + ' ' + String(o.cor || '');
+  // O que é do vendedor abre a vitrine, em qualquer ordenação: é o que ele
+  // não pode deixar passar. Dentro do grupo vale a ordem escolhida.
+  const porRateio = (a, b) => (b.rateado ? 1 : 0) - (a.rateado ? 1 : 0);
+  const comRateio = fn => (a, b) => porRateio(a, b) || fn(a, b);
   switch(STATE.ordem){
     // Sem preço na tabela o produto vai para o fim, nas duas direções: ele
     // não é nem o mais barato nem o mais caro.
-    case 'nome':  return l.sort((a, b) => nome(a).localeCompare(nome(b), 'pt-BR'));
-    case 'menor': return l.sort((a, b) => (a.pdv || Infinity) - (b.pdv || Infinity));
-    case 'maior': return l.sort((a, b) => (b.pdv || 0) - (a.pdv || 0));
-    case 'qtd':   return l.sort((a, b) => disponivel(b) - disponivel(a));
+    case 'nome':  return l.sort(comRateio((a, b) => nome(a).localeCompare(nome(b), 'pt-BR')));
+    case 'menor': return l.sort(comRateio((a, b) => (a.pdv || Infinity) - (b.pdv || Infinity)));
+    case 'maior': return l.sort(comRateio((a, b) => (b.pdv || 0) - (a.pdv || 0)));
+    case 'qtd':   return l.sort(comRateio((a, b) => disponivel(b) - disponivel(a)));
     // Na ordem padrão o que acabou de entrar abre a vitrine, a mais recente
     // primeiro; o resto segue como sempre foi. Quem escolheu nome ou preço
     // pediu aquela ordem e ela vale inteira.
     default: {
       const dia = o => ehNovo(o) ? NOVIDADES[o.k] : '';
-      return l.sort((a, b) => dia(b).localeCompare(dia(a)));
+      return l.sort(comRateio((a, b) => dia(b).localeCompare(dia(a))));
     }
   }
 }
@@ -3223,7 +3357,10 @@ function cardHtml(o, i){
            loading="lazy" decoding="async" onerror="semMiniatura(this)">
       <button class="foto-zoom" onclick="abrirZoom(${i})" title="Ampliar foto"
               aria-label="Ampliar foto de ${quem}"></button>
-      ${ehNovo(o) ? '<span class="selo-novo">Novo</span>' : ''}
+      <span class="selos">${ehNovo(o) ? '<span class="selo-novo">Novo</span>' : ''}${
+        o.rateado ? `<span class="selo-rateio${o.soAcompanhar ? ' cms' : ''}"
+          title="${o.soAcompanhar ? 'Lote rateado: só acompanhamento — quem pede é o vendedor com cota'
+            : 'Reservado para você nesta ação'}">${esc(o.selo)}</span>` : ''}</span>
       <button class="canto cf${STATE.marcados.has(o.k) ? ' on' : ''}"
               onclick="alternarMarcado('${esc(o.k)}')" title="Marcar para PDF e planilha"
               aria-label="Marcar ${quem} para o catálogo"
@@ -3664,6 +3801,64 @@ async function registrarPedido(itens, cfg){
   }
 }
 
+/* Repasses no mesmo lugar: eles são gravados pelo app de repasses, num
+   arquivo só, e chegam aqui pelo Worker. Ficam no mesmo formato dos pedidos
+   da vitrine para a tela não precisar saber de onde cada um veio. */
+function repasseComoPedido(p){
+  const itens = (p.items || []).map(it => {
+    const grade = {};
+    for(const g of (it.grade || [])){
+      const t = String(g.size || g.tamanho || '').trim();
+      const q = Number(g.qty || g.quantidade || 0);
+      if(t && q) grade[t] = q * Math.max(1, Number(it.amount || 1));
+    }
+    return {
+      artigo: norm(it.codigo || it.referencia || ''),
+      nome: it.produto || it.descricao || '',
+      cor: String(it.cor || '').trim().toUpperCase(),
+      corCodigo: String(it.cor || '').trim().toUpperCase(),
+      origem: 'repasse',
+      num: String(it.num || '').trim(),
+      caixas: Number(it.amount || 0),
+      total: Number(it.totalUnits || 0),
+      gradeSaida: grade,
+      dataDesejada: '',
+      mes: ''
+    };
+  });
+  return {
+    id: 'rep-' + String(p.id || ''),
+    criadoEm: p.createdAt || p.criadoEm || '',
+    tipo: 'repasse',
+    status: p.status || 'Pendente',
+    marca: 'oly',
+    marcaNome: 'Olympikus',
+    comissionista: String(p.preposto && p.preposto.codigo || ''),
+    comissionistaNome: String(p.preposto && p.preposto.nome || ''),
+    cliente: String(p.clienteCodigo || ''),
+    clienteNome: String(p.clienteNome || ''),
+    prazo: p.prazo || '',
+    campanha: p.campanha || '',
+    tabelaPreco: '',
+    itens,
+    totalItens: itens.length,
+    totalPares: itens.reduce((a, i) => a + Number(i.total || 0), 0)
+  };
+}
+
+async function repassesDoVendedor(codigo){
+  const cod = String(codigo || '').trim();
+  if(!cod) return [];
+  try{
+    const lista = await doWorkerComPrazo({ method:'GET' }, 9000);
+    if(!Array.isArray(lista)) return [];
+    return lista
+      .filter(p => p && !p.archived &&
+        String(p.preposto && p.preposto.codigo || '').trim() === cod)
+      .map(repasseComoPedido);
+  }catch(_){ return []; }   // sem repasse a tela ainda serve para o resto
+}
+
 // Servidor e aparelho juntos, sem repetir: o id é gerado na hora do pedido, e
 // é ele que diz que os dois lados falam do mesmo.
 async function buscarPedidos(codigo){
@@ -3684,6 +3879,7 @@ async function buscarPedidos(codigo){
   const porId = new Map();
   for(const p of remotos) if(p && p.id) porId.set(p.id, p);
   for(const p of locais)  if(p && p.id && !porId.has(p.id)) porId.set(p.id, p);
+  for(const p of await repassesDoVendedor(codigo)) if(p.id) porId.set(p.id, p);
   const juntos = [...porId.values()];
   PED.cache[chave] = juntos;
   PED.soLocal = falhou;
@@ -3692,7 +3888,7 @@ async function buscarPedidos(codigo){
 
 /* ── tela de Meus pedidos ───────────────────────────────────────── */
 const PED = { cache:{}, lista:[], filtrados:[], sel:new Set(), abertos:new Set(),
-              vendedor:'', carregando:false, erro:'' };
+              vendedor:'', carregando:false, erro:'', tipo:'' };
 
 // Vendedores conhecidos, para o CMS poder abrir o histórico de qualquer um.
 // A lista é a mesma do portal; um vendedor comum nem vê o campo.
@@ -3758,13 +3954,24 @@ function dentroDoPeriodo(iso, modo){
   return (Date.now() - d.getTime()) <= dias * 864e5;
 }
 
+// Um pedido da vitrine pode misturar estoque e produção; o de repasse é só
+// repasse. O filtro pergunta se o pedido tem aquilo dentro.
+function tiposDoPedido(p){
+  if(p.tipo === 'repasse') return ['repasse'];
+  const t = new Set();
+  for(const i of (p.itens || [])) t.add(i.origem === 'producao' ? 'producao' : 'estoque');
+  return [...t];
+}
+
 function filtrarPedidos(){
   const modo  = $('pedPeriodo').value;
   const marca = $('pedMarca').value;
+  const tipo  = PED.tipo || '';
   const busca = norm($('pedBusca').value.trim());
   PED.filtrados = PED.lista
     .filter(p => dentroDoPeriodo(p.criadoEm, modo))
     .filter(p => !marca || p.marca === marca)
+    .filter(p => !tipo || tiposDoPedido(p).includes(tipo))
     .filter(p => {
       if(!busca) return true;
       const alvo = norm([p.cliente, p.clienteNome, p.campanha,
@@ -3790,11 +3997,14 @@ function pedidoHtml(p){
   return `<article class="ped-item${sel ? ' sel' : ''}${aberto ? ' aberto' : ''}" data-id="${esc(p.id)}">
     <div class="ped-linha">
       <input type="checkbox" data-sel="${esc(p.id)}" ${sel ? 'checked' : ''}
+             ${p.tipo === 'repasse' ? 'disabled title="Pedido do app de repasses: aqui ele é só para consulta"' : ''}
              aria-label="Selecionar pedido de ${esc(q.dia)}">
       <span class="ped-quando">${esc(q.dia)}<small>${esc(q.hora)}</small></span>
       <span class="ped-cli"><b>${esc(p.clienteNome || 'Cliente ' + p.cliente)}</b>
         <span>${esc(p.cliente)}${p.prazo ? ' · ' + esc(p.prazo) : ''} · ${esc(q.dia)} ${esc(q.hora)}</span></span>
-      <span class="ped-marca" style="--m:${esc(MARCAS[p.marca] ? MARCAS[p.marca].marca : '#6D737A')}">${esc(curto)}</span>
+      <span class="ped-marca" style="--m:${esc(p.tipo === 'repasse' ? '#2C39E2'
+        : MARCAS[p.marca] ? MARCAS[p.marca].marca : '#6D737A')}">${
+        esc(p.tipo === 'repasse' ? 'Repasse · ' + (p.status || 'Pendente') : curto)}</span>
       <span class="ped-nums">${nf(p.totalPares)} pares
         <small>${nf(p.totalItens)} ${p.totalItens === 1 ? 'produto' : 'produtos'}</small></span>
       <button class="ped-abrir" data-abrir="${esc(p.id)}">
@@ -3819,9 +4029,11 @@ function pedidoHtml(p){
           <span class="sb">${esc(i.artigo)} · ${esc(i.cor)} · ${nf(i.total)} un${
             i.caixas > 1 ? ` · ${nf(i.caixas)} caixas` : ''}${
             i.dataDesejada ? ' · fat. ' + dataBR(i.dataDesejada) : ''}</span>
-          <span class="ped-selo ${i.origem === 'producao' ? 'pro' : 'est'}">${
-            i.origem === 'producao' ? 'Produção · ' + esc(i.mes || '') : 'Estoque'}</span>
-          ${celulas(i.gradeSaida || {}, i.origem === 'producao' ? 'g-pro' : 'g-est')}
+          <span class="ped-selo ${i.origem === 'repasse' ? 'rep' : i.origem === 'producao' ? 'pro' : 'est'}">${
+            i.origem === 'repasse' ? 'Repasse · Nº ' + esc(i.num || '—')
+            : i.origem === 'producao' ? 'Produção · ' + esc(i.mes || '') : 'Estoque'}</span>
+          ${celulas(i.gradeSaida || {}, i.origem === 'repasse' ? 'g-rep'
+            : i.origem === 'producao' ? 'g-pro' : 'g-est')}
         </span></div>`).join('')}
     </div>
   </article>`;
@@ -3837,6 +4049,7 @@ function pintarPedidos(){
     return;
   }
   filtrarPedidos();
+  pintarTipos();
   const n = PED.filtrados.length;
   const pares = PED.filtrados.reduce((a, p) => a + Number(p.totalPares || 0), 0);
   $('pedSub').textContent = PED.erro ||
@@ -3859,7 +4072,9 @@ function pintarPedidos(){
   // Só conta o que está na tela: marcar "todos" e exportar um pedido filtrado
   // fora seria uma surpresa.
   const selVis = PED.filtrados.filter(p => PED.sel.has(p.id));
-  $('pedTodos').checked = n > 0 && selVis.length === n;
+  const marcaveis = PED.filtrados.filter(p => p.tipo !== 'repasse').length;
+  $('pedTodos').checked = marcaveis > 0 && selVis.length === marcaveis;
+  $('pedTodos').disabled = marcaveis === 0;
   $('pedPe').hidden = !selVis.length;
   const selPares = selVis.reduce((a, p) => a + Number(p.totalPares || 0), 0);
   $('pedSel').textContent = `${nf(selVis.length)} ${selVis.length === 1 ? 'pedido' : 'pedidos'}` +
@@ -3875,6 +4090,27 @@ const selecionados = () => PED.filtrados.filter(p => PED.sel.has(p.id));
 
 $('pedFechar').onclick = fecharPedidos;
 $('pedAtualizar').onclick = () => carregarPedidos(true);
+function pintarTipos(){
+  // a contagem usa os outros filtros ligados, menos o próprio tipo
+  const modo = $('pedPeriodo').value, marca = $('pedMarca').value;
+  const base = PED.lista.filter(p => dentroDoPeriodo(p.criadoEm, modo))
+                        .filter(p => !marca || p.marca === marca);
+  for(const b of document.querySelectorAll('#pedTipos button')){
+    const t = b.dataset.tipo;
+    const n = t ? base.filter(p => tiposDoPedido(p).includes(t)).length : base.length;
+    b.classList.toggle('on', (PED.tipo || '') === t);
+    b.innerHTML = b.textContent.replace(/\s*\d+$/, '').trim() + (n ? `<span class="n">${nf(n)}</span>` : '');
+    b.disabled = n === 0 && !!t && (PED.tipo || '') !== t;
+    b.style.opacity = b.disabled ? '.45' : '';
+  }
+}
+$('pedTipos').addEventListener('click', e => {
+  const b = e.target.closest('button[data-tipo]');
+  if(!b || b.disabled) return;
+  PED.tipo = b.dataset.tipo;
+  pintarPedidos();
+});
+
 for(const id of ['pedPeriodo', 'pedMarca'])
   $(id).addEventListener('change', pintarPedidos);
 $('pedBusca').addEventListener('input', pintarPedidos);
@@ -3883,7 +4119,11 @@ $('pedVendedor').addEventListener('change', e => {
   carregarPedidos();
 });
 $('pedTodos').addEventListener('change', e => {
-  for(const p of PED.filtrados) e.target.checked ? PED.sel.add(p.id) : PED.sel.delete(p.id);
+  // o repasse fica de fora: apagar e exportar tratam do histórico da vitrine
+  for(const p of PED.filtrados){
+    if(p.tipo === 'repasse'){ PED.sel.delete(p.id); continue; }
+    e.target.checked ? PED.sel.add(p.id) : PED.sel.delete(p.id);
+  }
   pintarPedidos();
 });
 $('pedLista').addEventListener('change', e => {
@@ -5245,9 +5485,12 @@ function abrirModal(i){
           </div>
           <div class="lote-d">fat. ${esc(l.data||'—')}</div>
           ${Object.keys(l.grade).length ? celulas(l.grade, 'g-rep') : ''}
+          ${l.rateado ? `<div class="lote-selo${l.soAcompanhar ? ' cms' : ''}">${esc(l.selo)}${
+            l.soAcompanhar ? ' · só acompanhamento' : ' · reservado para você'}</div>` : ''}
           <button class="acao forte lote-add na-sacola" data-lote="${esc(l.num)}"
-            ${naSacola(`rep|${o.k}|${l.num}`) ? 'disabled' : ''}>
-            ${naSacola(`rep|${o.k}|${l.num}`) ? 'Já está na sacola' : 'Adicionar à sacola'}
+            ${(naSacola(`rep|${o.k}|${l.num}`) || l.soAcompanhar) ? 'disabled' : ''}>
+            ${l.soAcompanhar ? 'Só acompanhamento'
+              : naSacola(`rep|${o.k}|${l.num}`) ? 'Já está na sacola' : 'Adicionar à sacola'}
           </button>
         </div>`).join('')}</div></div>`;
   }
@@ -5299,7 +5542,10 @@ function abrirModal(i){
 }
 function fecharModal(){ $('modal').hidden = true; pintarVistos(); aplicarSaldoPendente(); }
 
+const AVISO_RATEIO_CMS = 'Lote rateado: a CMS acompanha a quantidade, mas quem faz o ' +
+  'pedido é o vendedor que tem cota nessa ação.';
 function porNaSacola(item){
+  if(item && item.soAcompanhar){ avisar('Só acompanhamento', AVISO_RATEIO_CMS); return; }
   if(STATE.sacola.has(item.key)) return;
   STATE.sacola.set(item.key, item);
   salvarSacola(); pintarSacola();
@@ -6659,7 +6905,7 @@ _x.addEventListener('click', () => { limparBusca(); _campo.focus(); });
 if(!SESSAO){
   barrar('Entre pelo Portal',
          'Esta vitrine usa o mesmo login dos outros aplicativos.', true);
-}else if(SO_ESTES.length && !SO_ESTES.includes(String(SESSAO.nome || '').toUpperCase())){
+}else if(SO_ESTES.length && !SESSAO._local && !SO_ESTES.includes(String(SESSAO.nome || '').toUpperCase())){
   barrar('Ainda em desenvolvimento',
          'A vitrine única está sendo montada e por enquanto só o acesso CMS entra. ' +
          'Use o Repasses e o Disponibilidades normalmente.', true);
