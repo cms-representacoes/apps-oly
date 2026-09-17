@@ -36,6 +36,26 @@
       font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:12px;letter-spacing:.02em;
       box-shadow:0 4px 12px rgba(40,54,212,.28);
     }
+
+    /* ── Cabeçalho enxuto ──────────────────────────────────────────────────
+       A busca fica colada na marca; os botões seguem a ordem de uso e o
+       resto mora em "Mais opções". Em tela estreita os rótulos somem e fica
+       só o ícone — todos têm dica (tooltip) dizendo o nome. */
+    #adminHeader .hdr-busca{ min-width:150px; max-width:420px; }
+    @media(max-width:1024px){
+      #adminHeader .hdr-lbl{ display:none; }
+      #adminHeader .hdr-busca{ max-width:none; }
+    }
+    @media(max-width:560px){
+      #adminHeader .hdr-esq{ flex-wrap:wrap; }
+      #adminHeader .hdr-busca{ flex:1 0 100%; order:3; }
+      #adminHeader .cms-badge{ width:32px;height:32px; }
+      /* os seis botões numa fileira só, espalhados pela largura */
+      #adminHeader .hdr-dir{ width:100%; gap:6px; justify-content:space-between; flex-wrap:nowrap; }
+      #adminHeader .hdr-dir > a,
+      #adminHeader #btnExportarTodosPendentes,
+      #adminHeader #btnManutencao{ padding-left:11px; padding-right:11px; }
+    }
       --danger:#b91c1c;
       --danger-soft:#fdeaea;
       --muted:#5c6675;
@@ -473,7 +493,7 @@
     .dark .order-card-compact:hover{ border-color:#5b8cff !important; box-shadow:0 10px 26px -10px rgba(0,0,0,.6) !important; }
 
     /* ── Cabeçalho + abas de filtro congelados ao rolar ── */
-    #secaoFiltros{ position:sticky; top:calc(var(--admin-header-h, 84px) + 22px); z-index:20; background:var(--bg); padding:8px 0; }
+    #secaoFiltros{ position:sticky; top:calc(var(--admin-header-h, 68px) + 14px); z-index:20; background:var(--bg); padding:4px 0; }
     #secaoFiltros > div{
       background:#ffffff; border:1px solid #e2e8f0; border-radius:16px;
       padding:10px 14px; margin-bottom:0;
@@ -522,64 +542,77 @@
     </section>
 
     <section id="adminApp" class="hidden mx-auto max-w-7xl">
-      <header id="adminHeader" class="rounded-[32px] border border-slate-200 bg-white p-4 sm:p-5 shadow-card sticky top-4 z-30">
+      <header id="adminHeader" class="rounded-[28px] border border-slate-200 bg-white px-4 sm:px-5 py-2.5 shadow-card sticky top-3 z-30">
         <div class="flex flex-wrap lg:flex-nowrap items-center justify-between gap-3">
-          <div class="flex items-center gap-3 flex-shrink-0">
+          <!-- Marca e busca juntas: a busca é o que mais se usa aqui -->
+          <div class="hdr-esq flex items-center gap-3 min-w-0 flex-1">
             <span class="cms-badge">CMS</span>
             <span class="text-lg font-extrabold text-slate-900">Repasses</span>
-          </div>
-
-          <div class="flex flex-wrap items-center gap-2">
-            <div class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 min-w-[180px]">
+            <div class="hdr-busca flex flex-1 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2"
+              title="Buscar por número do pedido, cliente ou preposto">
               <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
               <input id="adminSearch" class="focus-ring w-full bg-transparent text-sm outline-none" placeholder="Buscar pedido, cliente ou preposto" />
-              <button id="btnClearSearch" class="focus-ring hidden text-slate-400 hover:text-slate-600" title="Limpar (Esc)">
+              <button id="btnClearSearch" class="focus-ring hidden text-slate-400 hover:text-slate-600" title="Limpar a busca (Esc)">
                 <i class="fa-solid fa-xmark text-xs"></i>
               </button>
             </div>
+          </div>
 
-            <button id="btnRefresh" title="Atualizar" class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50">
-              <i class="fa-solid fa-rotate text-xs"></i>
-            </button>
-
-            <button id="btnNotifAdmin" class="focus-ring relative rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 flex items-center gap-2">
+          <!-- Ordem de uso: exportar, estoque, configurações, pausar, portal -->
+          <div class="hdr-dir flex flex-wrap items-center justify-end gap-2">
+            <button id="btnNotifAdmin" title="Pedidos que acabaram de chegar"
+              class="focus-ring relative rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 flex items-center gap-2 hover:bg-slate-50">
               <i class="fa-solid fa-bell"></i>
-              <span class="hidden sm:inline">Pedidos</span>
+              <span class="hdr-lbl">Pedidos</span>
               <span id="badgeNotifAdmin" class="hidden absolute -top-2 -right-2 min-w-[20px] h-[20px] px-1 bg-rose-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white" style="animation:pulse-badge 1s infinite">0</span>
             </button>
 
             <button id="btnExportarTodosPendentes"
-              class="focus-ring rounded-full px-4 py-2 text-sm font-bold text-white flex items-center gap-2 hidden" title="Exportar pedidos pendentes"
+              class="focus-ring rounded-full px-3.5 py-2 text-sm font-bold text-white flex items-center gap-2 hidden"
+              title="Exportar em XLSX os pedidos pendentes"
               style="background:linear-gradient(135deg,#34d399,#059669);border:none;box-shadow:0 4px 14px rgba(5,150,105,.35)">
               <i class="fa-solid fa-file-excel"></i>
-              Exportar
+              <i class="fa-solid fa-arrow-up-from-bracket text-xs"></i>
               <span id="badgePendentesExport" class="inline-flex items-center justify-center rounded-full text-[10px] font-extrabold min-w-[18px] h-[18px] px-1" style="background:rgba(255,255,255,.28)">0</span>
             </button>
 
-            <a href="./dispo.html"
+            <a href="./dispo.html" title="Estoque: disponibilidade dos lotes"
               class="focus-ring rounded-full px-4 py-2 text-sm font-bold text-white flex items-center gap-2 transition-transform hover:-translate-y-0.5"
               style="background:linear-gradient(135deg,#5B69E8,#2836D4);box-shadow:0 4px 14px rgba(40,54,212,.35)">
               <i class="fa-solid fa-boxes-stacked"></i>
-              Painel DISPO
+              <span class="hdr-lbl">Estoque</span>
             </a>
 
-            <button id="btnMaisOpcoes" class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-500 flex items-center gap-2 hover:bg-slate-50">
-              <i class="fa-solid fa-ellipsis"></i>
-              Mais opções
-              <i id="iconMaisOpcoes" class="fa-solid fa-chevron-down text-[10px]" style="transition:transform .15s"></i>
+            <button id="btnIrConfig" title="Configurações do painel"
+              class="focus-ring h-9 w-9 rounded-full flex items-center justify-center text-white transition-transform hover:-translate-y-0.5"
+              style="background:linear-gradient(135deg,#a78bfa,#7c3aed);box-shadow:0 4px 14px rgba(124,58,237,.35)">
+              <i class="fa-solid fa-gear text-sm"></i>
+            </button>
+
+            <button id="btnManutencao" onclick="toggleManutencao()" title="Pausar o app: os vendedores veem a tela de manutenção"
+              class="focus-ring rounded-full px-4 py-2 text-sm font-bold text-white flex items-center gap-2 transition-transform hover:-translate-y-0.5"
+              style="background:linear-gradient(135deg,#fbbf24,#d97706);box-shadow:0 4px 14px rgba(217,119,6,.35)">
+              <i id="iconManutencao" class="fa-solid fa-screwdriver-wrench text-xs"></i>
+              <span id="lblManutencao" class="hdr-lbl">Pausar</span>
             </button>
 
             <a href="https://cms-representacoes.github.io/apps-oly/" title="Voltar ao Portal"
               class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 flex items-center gap-2 hover:bg-slate-50 transition-colors">
               <i class="fa-solid fa-arrow-left text-xs"></i>
-              Portal
+              <span class="hdr-lbl">Portal</span>
             </a>
+
+            <button id="btnMaisOpcoes" title="Mais opções" aria-expanded="false"
+              class="focus-ring relative h-9 w-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50">
+              <i id="iconMaisOpcoes" class="fa-solid fa-chevron-down text-xs" style="transition:transform .15s"></i>
+            </button>
           </div>
         </div>
 
-        <div id="painelMaisOpcoes" class="hidden mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2">
-          <button id="btnFullscreen" onclick="toggleFullscreen()" class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 flex items-center gap-1.5 hover:bg-slate-50" title="Tela cheia">
-            <i id="iconFullscreen" class="fa-solid fa-expand text-xs"></i> Tela cheia
+        <div id="painelMaisOpcoes" class="hidden mt-2.5 pt-2.5 border-t border-slate-100 flex flex-wrap items-center gap-2">
+          <button id="btnRefresh" title="Atualizar a lista de pedidos"
+            class="focus-ring h-8 w-8 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50">
+            <i class="fa-solid fa-rotate text-xs"></i>
           </button>
 
           <button id="btnIrResumo" title="Resumo operacional"
@@ -588,22 +621,10 @@
             <i class="fa-solid fa-chart-line text-xs"></i> Resumo
           </button>
 
-          <button id="btnDarkMode" onclick="toggleDarkAdmin()" class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 flex items-center gap-1.5 hover:bg-slate-50" title="Modo escuro">
-            <i id="darkIconAdmin" class="fa-solid fa-moon text-xs"></i> Modo escuro
+          <button id="btnDarkMode" onclick="toggleDarkAdmin()" title="Alternar entre modo claro e escuro"
+            class="focus-ring h-8 w-8 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50">
+            <i id="darkIconAdmin" class="fa-solid fa-moon text-slate-400 text-xs"></i>
           </button>
-
-          <button id="btnIrConfig" title="Configurações"
-            class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 flex items-center gap-1.5 hover:bg-slate-50 transition-colors">
-            <i class="fa-solid fa-gear text-xs"></i> Configurações
-          </button>
-
-          <button id="btnManutencao" onclick="toggleManutencao()" title="Pausar app (manutenção)"
-            class="focus-ring rounded-full px-3 py-1.5 text-xs font-bold text-white flex items-center gap-1.5 transition-transform hover:-translate-y-0.5"
-            style="background:linear-gradient(135deg,#fbbf24,#d97706);box-shadow:0 3px 10px rgba(217,119,6,.35)">
-            <i id="iconManutencao" class="fa-solid fa-screwdriver-wrench text-xs"></i>
-            <span id="lblManutencao">Pausar app</span>
-          </button>
-
         </div>
       </header>
 
@@ -843,7 +864,7 @@
       </section>
       <!-- ────────────────────────────────────────────────────────────────────── -->
 
-      <section class="mt-4" id="secaoFiltros">
+      <section class="mt-2" id="secaoFiltros">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
 
 
@@ -2605,18 +2626,21 @@ async function loadManutencaoStatus(){
 function refreshManutencaoUI(){
   const btn = $('btnManutencao'); const lbl = $('lblManutencao');
   if(!btn) return;
+  const classe = 'focus-ring rounded-full px-4 py-2 text-sm font-bold text-white flex items-center gap-2 transition-transform hover:-translate-y-0.5';
   if(_appPausado){
-    btn.className = 'focus-ring rounded-full px-3 py-1.5 text-xs font-bold text-white flex items-center gap-1.5 transition-transform hover:-translate-y-0.5';
+    btn.className = classe;
     btn.style.background = 'linear-gradient(135deg,#f87171,#dc2626)';
-    btn.style.boxShadow = '0 3px 10px rgba(220,38,38,.35)';
+    btn.style.boxShadow = '0 4px 14px rgba(220,38,38,.35)';
     btn.style.border = 'none';
-    if(lbl) lbl.textContent = 'Pausado — retomar';
+    btn.title = 'App pausado — ativar para os vendedores voltarem a acessar';
+    if(lbl) lbl.textContent = 'Ativar';
   } else {
-    btn.className = 'focus-ring rounded-full px-3 py-1.5 text-xs font-bold text-white flex items-center gap-1.5 transition-transform hover:-translate-y-0.5';
+    btn.className = classe;
     btn.style.background = 'linear-gradient(135deg,#fbbf24,#d97706)';
-    btn.style.boxShadow = '0 3px 10px rgba(217,119,6,.35)';
+    btn.style.boxShadow = '0 4px 14px rgba(217,119,6,.35)';
     btn.style.border = 'none';
-    if(lbl) lbl.textContent = 'Pausar app';
+    btn.title = 'Pausar o app: os vendedores veem a tela de manutenção';
+    if(lbl) lbl.textContent = 'Pausar';
   }
 }
 async function toggleManutencao(){
@@ -4195,6 +4219,8 @@ $('btnRefresh').addEventListener('click', async ()=>{ await loadAdmin(); });
     const abrindo = painel.classList.contains('hidden');
     painel.classList.toggle('hidden');
     if(icon) icon.style.transform = abrindo ? 'rotate(180deg)' : '';
+    btn.setAttribute('aria-expanded', abrindo ? 'true' : 'false');
+    btn.title = abrindo ? 'Ocultar as outras opções' : 'Mais opções';
     // A altura do cabeçalho muda ao abrir/fechar — recalcula o offset da barra
     // de filtros sticky logo abaixo, senão o scroll "vaza" atrás dela.
     requestAnimationFrame(()=>{
@@ -4625,19 +4651,6 @@ function toggleDarkAdmin(){
 document.addEventListener('DOMContentLoaded', ()=>{
   const icon = $('darkIconAdmin');
   if(icon && localStorage.getItem('admin_dark') === '1') icon.className = 'fa-solid fa-sun text-amber-400 text-xs';
-});
-
-function toggleFullscreen(){
-  if(!document.fullscreenElement){
-    document.documentElement.requestFullscreen().catch(()=>{});
-  } else {
-    document.exitFullscreen();
-  }
-}
-document.addEventListener('fullscreenchange', ()=>{
-  const icon = $('iconFullscreen');
-  if(!icon) return;
-  icon.className = document.fullscreenElement ? 'fa-solid fa-compress text-xs' : 'fa-solid fa-expand text-xs';
 });
 
 // ── SELEÇÃO DE PEDIDOS ────────────────────────────────────────────────────────
