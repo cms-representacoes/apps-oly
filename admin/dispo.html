@@ -307,7 +307,9 @@
       white-space:nowrap;
       user-select:none;
     }
-    .table-wrap{ max-height:calc(100vh - 210px); min-height:280px; }
+    /* Chute inicial; logo depois o JS mede o espaço real e acerta, senão
+       sobra uma faixa vazia embaixo do cartão. */
+    .table-wrap{ max-height:calc(100vh - 210px); min-height:240px; }
 
     .table-wrap thead th.sortable{
       cursor:pointer;
@@ -1780,6 +1782,7 @@ function renderDispo(){
   atualizarFunilMes();
   atualizarFunilNum();
   atualizarFabLimpar();
+  requestAnimationFrame(ajustarAlturaTabela);
   renderBannerAntecipacao(computeAllRows());
 
   $('tableCount').textContent = `${sorted.length} ${sorted.length === 1 ? 'item' : 'itens'}`;
@@ -2318,6 +2321,29 @@ function fecharAntecPop(){
   document.addEventListener('keydown', (e) => { if(e.key === 'Escape') fecharAntecPop(); });
 })();
 
+// A altura da tabela é medida, não calculada no chute: o cabeçalho muda de
+// tamanho, a barra de filtros some e volta, e o zoom do navegador mexe em
+// tudo. Duas passadas bastam — a segunda usa a sobra que ficou embaixo.
+function ajustarAlturaTabela(){
+  const wrap = document.querySelector('.table-wrap');
+  if(!wrap || wrap.offsetParent === null) return;
+  // A tabela vai até onde a tela deixa: desconta o que existe abaixo dela
+  // (o fim do cartão e o respiro da página). A página inteira tem altura
+  // mínima de uma tela, então medir a rolagem não serve para nada aqui.
+  const cartao = wrap.parentElement;
+  const principal = document.querySelector('main');
+  const respiro = principal ? (parseFloat(getComputedStyle(principal).paddingBottom) || 0) : 16;
+  for(let i = 0; i < 2; i++){
+    const r = wrap.getBoundingClientRect();
+    const fimDoCartao = cartao.getBoundingClientRect().bottom - r.bottom;
+    const alvo = Math.max(240, Math.floor(window.innerHeight - r.top - fimDoCartao - respiro) - 1);
+    if(Math.abs(alvo - Math.round(r.height)) < 2) break;
+    wrap.style.maxHeight = `${alvo}px`;
+  }
+}
+window.addEventListener('resize', ajustarAlturaTabela);
+document.addEventListener('DOMContentLoaded', ajustarAlturaTabela);
+
 // ── BARRA DE FILTROS: esconder e limpar ──────────────────────────────────────
 const FILTROS_OCULTOS_KEY = 'dispo_filtros_ocultos';
 
@@ -2325,6 +2351,7 @@ function aplicarBarraFiltros(oculta){
   const barra = $('barraFiltros'), btn = $('btnToggleFiltros'), icone = $('iconToggleFiltros');
   if(!barra || !btn) return;
   barra.classList.toggle('hidden', oculta);
+  requestAnimationFrame(ajustarAlturaTabela);
   // recolhida, o botão pisca — senão ninguém lembra que a barra existe
   btn.classList.toggle('piscando', oculta);
   btn.title = oculta ? 'Exibir a barra de filtros' : 'Ocultar a barra de filtros';
