@@ -1452,6 +1452,7 @@ function abrirRateio(num){
   $('rateioTitulo').textContent = `${row.produto} — ${row.cor}`;
   $('rateioSub').textContent = `Nº ${row.num} · GCI ${row.gci||'—'} · total: ${_rateioMaxPares} pares (${maxCx} cx de ${_rateioPack})`;
   const atual = (STATE.rateio && STATE.rateio[_rateioNum]) || {};
+  $('rateioSelo').value = typeof atual._selo === 'string' ? atual._selo : '';
   $('rateioLista').innerHTML = PREPOSTOS_RATEIO.map(p=>{
     const pares = Number(atual[p.codigo]||0);
     const cx = pares ? pares/_rateioPack : 0;
@@ -1494,7 +1495,12 @@ async function salvarRateio(){
   });
   if(usado > _rateioMaxPares){ showToast('A soma passou do total disponível.', 'error'); return; }
   const novo = { ...(STATE.rateio||{}) };
-  if(Object.keys(cota).length) novo[_rateioNum] = cota; else delete novo[_rateioNum];
+  // O nome do selo mora junto das cotas, numa chave que não é código de
+  // vendedor: quem lê a cota pelo código nunca esbarra nela.
+  const selo = String($('rateioSelo').value || '').replace(/\s+/g, ' ').trim().slice(0, 28);
+  const temCota = Object.keys(cota).length > 0;
+  if(temCota && selo) cota._selo = selo;
+  if(temCota) novo[_rateioNum] = cota; else delete novo[_rateioNum];
   const btn = $('rateioBtnSalvar'); const prev = btn?btn.textContent:'';
   if(btn){ btn.disabled=true; btn.textContent='Salvando...'; }
   try{
@@ -1702,7 +1708,7 @@ function renderDispo(){
         <td>
           <span class="font-extrabold text-slate-800">${safeHtml(row.produto)}</span>
           <span class="text-xs text-slate-400 font-semibold ml-1">${safeHtml(row.codigo||'')}</span>
-          ${desmBadge}${(STATE.rateio&&STATE.rateio[String(row.num||'')])?'<span class="badge-rateio ml-1">Rateado</span>':''}
+          ${desmBadge}${(STATE.rateio&&STATE.rateio[String(row.num||'')])?`<span class="badge-rateio ml-1" title="Rateado${STATE.rateio[String(row.num||'')]._selo ? ' · selo: ' + safeHtml(STATE.rateio[String(row.num||'')]._selo) : ''}">Rateado${STATE.rateio[String(row.num||'')]._selo ? ' · ' + safeHtml(STATE.rateio[String(row.num||'')]._selo) : ''}</span>`:''}
         </td>
         <td class="text-slate-500 font-semibold">${safeHtml(row.cor)}</td>
         <td class="tabular-nums font-semibold ${row._antecipavel ? 'text-[#3C3489]' : 'text-slate-600'}">
@@ -2480,6 +2486,10 @@ loadDispo();
       <span style="font-weight:700;font-size:12px;color:var(--text)">Restante a distribuir</span>
       <span id="rateioRestante" style="font-weight:900;font-size:15px;color:var(--brand)"></span>
     </div>
+    <label for="rateioSelo" style="display:block;font-size:11px;font-weight:800;color:var(--text);margin-bottom:4px">Nome no selo da vitrine</label>
+    <input id="rateioSelo" type="text" maxlength="28" autocomplete="off" placeholder="Exclusivo para você"
+           style="width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-weight:700;font-size:13px;background:var(--card);color:var(--text);margin-bottom:4px">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Aparece no card do vendedor que tem cota e vira o nome do filtro na vitrine. Em branco, fica "Exclusivo para você".</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Quantidade em <b>caixas</b> (os pares aparecem ao lado). Quem ficar com 0 não vê o produto.</div>
     <div id="rateioLista" style="display:flex;flex-direction:column;gap:8px"></div>
     <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">

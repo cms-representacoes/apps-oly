@@ -474,6 +474,26 @@
     /* ── Seleção de produtos ─────────────────────────────────────────────
        Marcador no canto da foto; a barra de ações só aparece com algo
        marcado, como na vitrine de disponibilidades. */
+    /* ── Exclusivo para o vendedor (lote com cota dele no rateio) ── */
+    .selo-exclusivo{
+      position:absolute; left:10px; bottom:10px; z-index:3;
+      display:inline-flex; align-items:center; gap:3px; padding:4px 10px; border-radius:999px;
+      background:linear-gradient(135deg,#a78bfa,#7c3aed); color:#fff; font-size:11px; font-weight:800;
+      box-shadow:0 4px 12px rgba(124,58,237,.35); white-space:nowrap; pointer-events:auto;
+    }
+    .selo-exclusivo i{ font-size:10px; flex:none; }
+    .selo-exclusivo{ max-width:calc(100% - 60px); }
+    .selo-exclusivo .exc-rot{ overflow:hidden; text-overflow:ellipsis; margin-left:2px; }
+    .card-exclusivo{ border-color:#c4b5fd !important; box-shadow:0 0 0 2px rgba(124,58,237,.12), 0 10px 30px rgba(15,23,42,.06) !important; }
+    .chip-exc{ cursor:pointer; background:#f3e8ff; color:#6d28d9; border:1px solid #ddd6fe; }
+    .chip-exc.ligado{ background:#7c3aed; color:#fff; border-color:#7c3aed; }
+    .dark .chip-exc{ background:rgba(124,58,237,.22); color:#c4b5fd; border-color:rgba(124,58,237,.4); }
+    .dark .chip-exc.ligado{ background:#7c3aed; color:#fff; }
+    /* duas colunas no celular: selo menor, e o nome corta se não couber */
+    @media(max-width:640px){
+      body.cards-duo .selo-exclusivo{ left:6px; bottom:6px; padding:3px 7px; font-size:9.5px; max-width:calc(100% - 44px); }
+    }
+
     .card-sel{
       position:absolute; top:10px; right:10px; z-index:4;
       width:32px; height:32px; padding:0; border-radius:999px; cursor:pointer;
@@ -765,6 +785,7 @@
           <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-slate-200 bg-white px-4 py-2.5 shadow-soft">
             <div class="text-sm font-bold text-slate-500 flex items-center gap-1.5" title="Itens na vitrine"><i class="fa-solid fa-table-cells-large text-slate-400"></i><span id="visibleCount">0</span></div>
             <div class="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-bold">
+              <span id="chipsExclusivos" class="flex flex-wrap items-center gap-2"></span>
               <span class="chip chip-blue" title="Pares disponíveis"><i class="fa-solid fa-shoe-prints"></i> <span id="kpiUnits">0</span></span>
             </div>
           </div>
@@ -2285,6 +2306,31 @@ function buildFilters(){
   $('checkoutPrazo').innerHTML += PRAZOS.map(v=>`<option value="${safeHtml(v)}">${safeHtml(v)}</option>`).join('');
   $('checkoutCampanha').innerHTML += CAMPANHAS.map(v=>`<option value="${safeHtml(v)}">${safeHtml(v)}</option>`).join('');
 }
+// Exclusivo = lote com rateio em que o vendedor logado tem cota. Quem não
+// tem cota nem vê o lote (getSellerRateioCap), então, para quem vê o selo,
+// aquele lote foi separado para ele no admin.
+function ehExclusivo(item){
+  const num = sanitizeDisplayText(String(item?.num || ''));
+  const r = (STATE.rateio && num) ? STATE.rateio[num] : null;
+  if(!r || typeof r !== 'object') return false;
+  const code = getLoggedSellerCode();
+  return !!code && Number(r[code] || 0) > 0;
+}
+// O nome do selo vem do modal de rateio do admin; em branco, o padrão.
+const SELO_PADRAO = 'Exclusivo para você';
+function seloDe(item){
+  const num = sanitizeDisplayText(String(item?.num || ''));
+  const r = (STATE.rateio && num) ? STATE.rateio[num] : null;
+  const nome = r && typeof r._selo === 'string' ? r._selo.trim() : '';
+  return nome || SELO_PADRAO;
+}
+// O que ainda cabe da cota, na unidade do card (caixas ou unidades).
+function cotaExclusivo(item){
+  const rc = getSellerRateioCap(item);
+  if(!rc.limited) return 0;
+  return item.mode === 'boxed' ? Math.floor(rc.cap / (item.packSize || 12)) : rc.cap;
+}
+
 function sortView(items){
   const arr = [...items];
   switch(STATE.filters.sort){
@@ -2304,7 +2350,9 @@ function sortView(items){
     }); break;
     default: arr.sort((a,b)=>String(a.produto).localeCompare(String(b.produto), 'pt-BR', { sensitivity:'base' })); break;
   }
-  return arr;
+  // Os exclusivos do vendedor abrem a vitrine, na ordem escolhida entre eles;
+  // o resto vem depois, na mesma ordem de sempre.
+  return [...arr.filter(ehExclusivo), ...arr.filter(x => !ehExclusivo(x))];
 }
 // Valores normalizados ficam guardados no proprio item. STATE.raw e
 // reconstruido a cada carga, entao o cache morre junto e nao envelhece.
@@ -2350,6 +2398,7 @@ function itensParaOpcoes(campoIgnorado){
     if((saldo.get(grupoProdutoCor(item)) || 0) <= 0) return false;
     const rc = getSellerRateioCap(item);
     if(rc.limited && rc.cap <= 0) return false;
+    if(STATE.filters.exclusivos && !(ehExclusivo(item) && seloDe(item) === STATE.filters.exclusivos)) return false;
     if(q && !textoBusca(item).includes(q)) return false;
     const categoryLabel = CATEGORY_LABELS[item.categoria] || item.categoria;
     if(campoIgnorado !== 'categoria' && STATE.filters.categoria && categoryLabel !== STATE.filters.categoria) return false;
@@ -2434,7 +2483,8 @@ function applyFilters(){
     const hitSeg = !STATE.filters.segmento || item.segmento === STATE.filters.segmento;
     const hitGen = !STATE.filters.genero || item.genero === STATE.filters.genero;
     const hitMes = !STATE.filters.prevFat || (mesAnoFromPrevFat(item)?.key === STATE.filters.prevFat);
-    return hitQ && hitCat && hitSeg && hitGen && hitMes;
+    const hitExc = !STATE.filters.exclusivos || (ehExclusivo(item) && seloDe(item) === STATE.filters.exclusivos);
+    return hitQ && hitCat && hitSeg && hitGen && hitMes && hitExc;
   }));
   atualizarOpcoesFiltros();   // as listas acompanham o que sobrou
   renderCatalog();
@@ -2442,6 +2492,26 @@ function applyFilters(){
 }
 function renderKpis(){
   $('visibleCount').textContent = STATE.view.length;
+  // Um botão por nome de selo: só existe para quem tem lote separado no
+  // rateio, e cada um filtra os lotes daquele nome.
+  const saldo = saldoPorGrupo();
+  const porNome = new Map();
+  for(const item of STATE.raw){
+    if(!ehExclusivo(item) || getSellerRateioCap(item).cap <= 0) continue;
+    if((saldo.get(grupoProdutoCor(item)) || 0) <= 0) continue;
+    const nome = seloDe(item);
+    if(!porNome.has(nome)) porNome.set(nome, new Set());
+    porNome.get(nome).add(groupKey(item));
+  }
+  if(STATE.filters.exclusivos && !porNome.has(STATE.filters.exclusivos)) porNome.set(STATE.filters.exclusivos, new Set());
+  const cx = $('chipsExclusivos');
+  if(cx){
+    cx.innerHTML = [...porNome].map(([nome, grupos]) => {
+      const on = STATE.filters.exclusivos === nome;
+      return `<button type="button" class="chip chip-exc focus-ring${on ? ' ligado' : ''}" data-selo="${safeHtml(nome)}" aria-pressed="${on}"
+        title="Mostrar só os lotes com o selo ${safeHtml(nome)}"><i class="fa-solid fa-star"></i> ${safeHtml(nome)} <span>${grupos.size}</span></button>`;
+    }).join('');
+  }
   $('kpiUnits').textContent = STATE.view.reduce((sum, item)=>sum + remainingUnits(item), 0);
 }
 function gradeHtml(grade){
@@ -2555,8 +2625,12 @@ function renderCatalog(){
     const freeAmount = displayItem.mode === 'boxed' ? remainingPacks(displayItem) : remainingUnits(displayItem);
     const totalFree = isMulti ? siblings.reduce((s,x)=>s+remainingPacks(x),0) : freeAmount;
 
+    const grupoExc = (isMulti ? siblings : [displayItem]).filter(ehExclusivo);
+    const nomeSelo = grupoExc.length ? seloDe(grupoExc[0]) : '';
+    const exclusivo = grupoExc.length > 0;
+    const cotaCx = grupoExc.reduce((s, x) => s + cotaExclusivo(x), 0);
     const card = document.createElement('article');
-    card.className = 'rounded-[28px] border border-slate-200 bg-white shadow-soft overflow-hidden flex flex-col';
+    card.className = 'rounded-[28px] border border-slate-200 bg-white shadow-soft overflow-hidden flex flex-col' + (exclusivo ? ' card-exclusivo' : '');
     card.innerHTML = `
       <div class="aspect-[4/3] bg-white border-b border-slate-200 flex items-center justify-center overflow-hidden card-foto">
         <!-- Selo de saldo: só aparece no modo 2 colunas, onde os chips saem -->
@@ -2565,6 +2639,7 @@ function renderCatalog(){
           : remainingUnits(displayItem)} pares</span>
         ${img ? `<button class="btn-zoom" type="button" title="Ampliar imagem" aria-label="Ampliar imagem"><i class="fa-solid fa-magnifying-glass-plus"></i></button>` : ''}
         <button type="button" class="card-sel focus-ring${STATE.selecionados.has(displayItem.key) ? ' marcado' : ''}" title="Marcar para PDF/XLSX" aria-label="Marcar produto"><i class="fa-solid fa-heart cheio"></i><i class="fa-regular fa-heart vazio"></i></button>
+        ${exclusivo ? `<span class="selo-exclusivo" title="${safeHtml(nomeSelo)} · lote separado para você no rateio${cotaCx ? ' · sua cota: ' + cotaCx + (displayItem.mode === 'boxed' ? ' cx' : ' un') : ''}"><i class="fa-solid fa-star"></i><span class="exc-rot">${safeHtml(nomeSelo)}</span></span>` : ''}
         ${img ? `<img src="${img}" data-srcs="${productImageCandidates(item).join('|')}" data-src-idx="0" alt="${safeHtml(item.produto)}" class="h-full w-full object-contain bg-white" onerror="(function(el){var srcs=el.dataset.srcs.split('|'),idx=parseInt(el.dataset.srcIdx||0)+1;if(idx<srcs.length){el.dataset.srcIdx=idx;el.src=srcs[idx];}else{el.style.display='none';el.parentElement.querySelector('.img-fallback').classList.remove('hidden');}})(this)">` : ''}
         <div class="img-fallback ${img ? 'hidden' : ''} flex flex-col items-center justify-center text-slate-400">
           <i class="fa-solid fa-image text-3xl"></i>
@@ -4485,9 +4560,17 @@ function bindEvents(){
   $('filterPrevFat').addEventListener('change', e=>{ STATE.filters.prevFat = e.target.value; applyFilters(); });
   $('sortBy').addEventListener('change', e=>{ STATE.filters.sort = e.target.value; applyFilters(); });
 
+  $('chipsExclusivos').addEventListener('click', e=>{
+    const b = e.target.closest('[data-selo]');
+    if(!b) return;
+    STATE.filters.exclusivos = STATE.filters.exclusivos === b.dataset.selo ? '' : b.dataset.selo;
+    applyFilters();
+    window.scrollTo({ top:0, behavior:'smooth' });
+  });
+
   $('btnClearFilters').addEventListener('click', ()=>{
     STATE.search = '';
-    STATE.filters = { categoria:'', segmento:'', genero:'', prevFat:'', sort:'produto' };
+    STATE.filters = { categoria:'', segmento:'', genero:'', prevFat:'', sort:'produto', exclusivos:'' };
     $('searchInputTop').value = '';
     $('btnClearSearchTop').classList.add('hidden');
     $('searchShell').classList.remove('expanded');
