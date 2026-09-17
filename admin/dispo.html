@@ -41,6 +41,61 @@
       font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:12px;letter-spacing:.02em;
       box-shadow:0 4px 12px rgba(40,54,212,.28);
     }
+
+    /* ── Cabeçalho enxuto ──────────────────────────────────────────────────
+       A busca fica encostada nos botões, à direita; atualizar e
+       desmembramentos ficam só no ícone e o resto mora em "Mais opções".
+       Em tela estreita a busca ocupa uma fileira inteira. */
+    #dispoHeader .hdr-busca{ width:280px; }
+
+    /* Ordenar: mesma altura das abas, com cor própria para não se confundir
+       com um filtro ligado */
+    .btn-ordenar{
+      flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center;
+      width:34px; height:34px; border-radius:999px; border:none; cursor:pointer;
+      color:#fff; font-size:13px;
+      background:linear-gradient(135deg,#38bdf8,#0284c7);
+      box-shadow:0 3px 10px rgba(2,132,199,.32);
+      transition:transform .12s, filter .12s;
+    }
+    .btn-ordenar:hover{ filter:brightness(1.06); transform:translateY(-1px); }
+
+    /* Tabela: tudo centralizado e alinhado ao meio, cabeçalho junto */
+    .table-wrap thead th,
+    .table-wrap tbody td{ text-align:center !important; vertical-align:middle !important; }
+    .table-wrap tbody td .btn-group{ justify-content:center; }
+    .table-wrap tbody td .btn-antecipa-row{ margin-left:auto; margin-right:auto; }
+
+    /* funil do mês no cabeçalho da coluna Prev. Fat */
+    .th-filtro{
+      margin-left:6px; border:none; background:transparent; cursor:pointer;
+      color:#94a3b8; font-size:10px; padding:2px 3px; border-radius:6px;
+    }
+    .th-filtro:hover{ color:var(--brand); background:#eef0fe; }
+    .th-filtro.ativo{ color:#fff; background:var(--brand); }
+    .dark .th-filtro.ativo{ background:#5b8cff; }
+
+    /* sino de antecipação: vermelho enquanto houver produto para antecipar */
+    #btnAntecipacoes.sino-aceso{ background:#e11d48; border-color:#e11d48; color:#fff; }
+    #btnAntecipacoes.sino-aceso:hover{ background:#be123c; }
+
+    /* Tablet e celular: cabeçalho e barra de filtros rolam de lado em vez de
+       empilhar — assim tudo continua a um deslize de distância. */
+    @media(max-width:1024px){
+      #dispoHeader .hdr-busca{ width:200px; flex:0 0 200px; }
+      #dispoHeader > div:first-child{ flex-wrap:nowrap; overflow-x:auto; overflow-y:visible;
+        scrollbar-width:none; -ms-overflow-style:none; }
+      #dispoHeader > div:first-child::-webkit-scrollbar{ display:none; }
+      #dispoHeader .hdr-dir{ flex-wrap:nowrap; flex:0 0 auto; }
+      #dispoHeader .hdr-dir > *{ flex:0 0 auto; }
+      #filterPills{ flex-wrap:nowrap; overflow-x:auto; min-width:0; scrollbar-width:none; -ms-overflow-style:none; }
+      #filterPills::-webkit-scrollbar{ display:none; }
+      #filterPills > *{ flex:0 0 auto; }
+      #dispoHeader .cms-badge{ width:32px;height:32px; }
+      /* a fileira rola de lado, então os balões saem dela e ficam presos na
+         tela — dentro do que rola eles seriam cortados */
+      #antecPop, #colMenu{ position:fixed; top:78px; right:12px; left:auto; }
+    }
     .dark{
       --bg:#0f172a;
       --card:#1e293b;
@@ -111,11 +166,13 @@
       white-space:nowrap;
     }
 
-    .chip-blue{ background:linear-gradient(135deg,#5B69E8,#2836D4); color:#fff; box-shadow:0 2px 8px rgba(40,54,212,.3); }
-    .chip-gray{ background:#eef2f7; color:#334155; }
-    .chip-success{ background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border-color:transparent; box-shadow:0 2px 8px rgba(22,163,74,.3); }
-    .chip-warning{ background:linear-gradient(135deg,#fbbf24,#d97706); color:#fff; border-color:transparent; box-shadow:0 2px 8px rgba(217,119,6,.3); }
-    .chip-danger{ background:linear-gradient(135deg,#f87171,#dc2626); color:#fff; border-color:transparent; box-shadow:0 2px 8px rgba(220,38,38,.3); }
+    /* Um chip por situação, na cor dela: fundo claro, texto forte, sem
+       gradiente nem sombra — a tabela inteira ficava piscando de cor. */
+    .chip-blue{ background:#eef0fe; color:#2836D4; border-color:#c7cdfb; }
+    .chip-gray{ background:#eef2f7; color:#334155; border-color:#dbe2ec; }
+    .chip-success{ background:#dcfce7; color:#15803d; border-color:#bbf7d0; }
+    .chip-warning{ background:#fef3c7; color:#b45309; border-color:#fde68a; }
+    .chip-danger{ background:#fee2e2; color:#b91c1c; border-color:#fecaca; }
 
     .shadow-card{ box-shadow:var(--shadow); }
 
@@ -329,9 +386,8 @@
       50% { opacity:.55; }
     }
 
-    .badge-ruptura{
-      animation:pulse-danger 1.6s ease-in-out infinite;
-    }
+    /* o pisca-pisca saiu: a cor do chip já diz o que precisa ser visto */
+    .badge-ruptura{ animation:none; }
 
     /* EMPTY STATE */
     .empty-state{
@@ -577,134 +633,90 @@
     <div class="mx-auto max-w-[1400px]">
 
       <!-- HEADER -->
-      <header class="rounded-[32px] border border-slate-200 bg-white p-4 sm:p-5 shadow-card mb-4 sticky top-4 z-30">
+      <header id="dispoHeader" class="rounded-[28px] border border-slate-200 bg-white px-4 sm:px-5 py-2.5 shadow-card mb-4 sticky top-3 z-30">
         <div class="flex flex-wrap lg:flex-nowrap items-center justify-between gap-3">
           <div class="flex items-center gap-3 flex-shrink-0">
             <button onclick="voltarParaPedidos()"
-              class="focus-ring flex items-center justify-center h-10 w-10 rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
-              title="Voltar para pedidos">
+              class="focus-ring flex items-center justify-center h-9 w-9 rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
+              title="Voltar para os pedidos">
               <i class="fa-solid fa-arrow-left text-sm"></i>
             </button>
             <span class="cms-badge">CMS</span>
             <span class="text-lg font-extrabold text-slate-900">Estoque</span>
           </div>
 
-          <div class="flex flex-wrap items-center gap-2">
-            <!-- Busca -->
-            <div class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 min-w-[200px]">
+          <!-- Busca encostada nos botões, à direita; o resto mora em "mais opções" -->
+          <div class="hdr-dir flex flex-wrap items-center justify-end gap-2">
+            <div class="hdr-busca flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2"
+              title="Buscar por Nº, GCI, código, produto ou cor">
               <i class="fa-solid fa-magnifying-glass text-slate-400 text-sm"></i>
               <input id="dispoSearch"
                 class="focus-ring w-full bg-transparent text-sm outline-none"
-                placeholder="Buscar código, produto ou cor" />
-              <button id="btnClearSearchDispo" class="focus-ring hidden text-slate-400 hover:text-slate-600" title="Limpar (Esc)">
+                placeholder="Buscar Nº, GCI, produto ou cor" />
+              <button id="btnClearSearchDispo" class="focus-ring hidden text-slate-400 hover:text-slate-600" title="Limpar a busca (Esc)">
                 <i class="fa-solid fa-xmark text-xs"></i>
               </button>
             </div>
 
-            <!-- Consultar desmembramentos -->
             <a id="btnDesmembramentos" href="./dispo_consulta.html" title="Consultar desmembramentos"
-              class="focus-ring rounded-full px-4 py-2 text-sm font-bold text-white flex items-center gap-2 transition-transform hover:-translate-y-0.5"
+              class="focus-ring h-9 w-9 rounded-full flex items-center justify-center text-white transition-transform hover:-translate-y-0.5"
               style="background:linear-gradient(135deg,#5B69E8,#2836D4);box-shadow:0 4px 14px rgba(40,54,212,.35)">
-              <i class="fa-solid fa-list-check text-xs"></i>
-              <span class="hidden sm:inline">Desmembramentos</span>
+              <i class="fa-solid fa-list-check text-sm"></i>
             </a>
 
-            <!-- Tela cheia -->
-            <button id="btnFullscreen" onclick="toggleFullscreen()" title="Tela cheia"
-              class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
-              <i id="iconFullscreen" class="fa-solid fa-expand text-xs"></i>
+            <button id="btnRefreshDispo" title="Atualizar a DISPO"
+              class="focus-ring h-9 w-9 rounded-full flex items-center justify-center text-white transition-transform hover:-translate-y-0.5"
+              style="background:linear-gradient(135deg,#34d399,#059669);box-shadow:0 4px 14px rgba(5,150,105,.35)">
+              <i class="fa-solid fa-rotate-right text-sm"></i>
             </button>
 
-            <!-- Dark mode -->
-            <button id="btnDarkMode" onclick="toggleDark()" title="Modo escuro"
-              class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
-              <i class="fa-solid fa-moon text-xs" id="darkIcon"></i>
-            </button>
-
-            <button id="btnMaisOpcoesDispo" class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-500 flex items-center gap-2 hover:bg-slate-50">
-              <i class="fa-solid fa-ellipsis"></i>
-              Mais opções
-              <i id="iconMaisOpcoesDispo" class="fa-solid fa-chevron-down text-[10px]" style="transition:transform .15s"></i>
-            </button>
-          </div>
-        </div>
-
-        <div id="painelMaisOpcoesDispo" class="hidden mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2">
-          <button id="btnRefreshDispo"
-            class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-1.5">
-            <i class="fa-solid fa-rotate-right text-xs"></i>
-            Atualizar DISPO
-          </button>
-
-          <!-- Ocultar KPIs -->
-          <button id="btnToggleKpis" onclick="toggleKpis()" title="Ocultar/exibir KPIs"
-            class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-1.5">
-            <i class="fa-regular fa-eye-slash text-xs" id="kpiEyeIcon"></i>
-            KPIs
-          </button>
-
-          <!-- Ocultar colunas -->
-          <div class="relative" id="colToggleWrap">
-            <button onclick="toggleColMenu()" title="Colunas"
-              class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-1.5">
-              <i class="fa-solid fa-table-columns text-xs"></i>
-              Colunas
-            </button>
-            <div id="colMenu" class="hidden absolute left-0 top-10 bg-white border border-slate-200 rounded-2xl shadow-lg p-3 z-50 flex flex-col gap-2 min-w-[160px]">
-              <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colPendente" onchange="toggleCol('pendente',this.checked)"> Pendente</label>
-              <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colAprovado" onchange="toggleCol('aprovado',this.checked)"> Aprovado</label>
-              <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colPedidoMae" onchange="toggleCol('pedidoMae',this.checked)"> Pedido Mãe</label>
-              <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colDesmembrado" onchange="toggleCol('desmembrado',this.checked)"> Desmembrado</label>
+            <!-- Antecipações: o sino fica vermelho quando há produtos e o
+                 aviso só aparece se for clicado -->
+            <div class="relative" id="antecWrap">
+              <button id="btnAntecipacoes" title="Antecipações disponíveis"
+                class="focus-ring relative h-9 w-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
+                <i class="fa-solid fa-bell text-sm"></i>
+                <span id="antecBadge" class="hidden absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white">0</span>
+              </button>
+              <div id="antecPop" class="hidden absolute right-0 top-11 z-50 w-[360px] max-w-[calc(100vw-32px)] rounded-2xl border border-[#AFA9EC] bg-[#EEEDFE] shadow-lg p-4">
+                <div class="flex items-start gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-[#534AB7] flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-angles-up text-white text-sm"></i>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-extrabold text-[#26215C]" id="antecTitulo"></div>
+                    <div class="text-xs font-semibold text-[#3C3489] mt-0.5" id="antecTexto">Foram detectadas disponibilidades com data anterior. Clique na linha destacada para antecipar.</div>
+                    <div class="mt-2 flex flex-wrap gap-2 max-h-56 overflow-y-auto" id="antecChips"></div>
+                  </div>
+                  <button id="btnFecharAntec" title="Fechar" class="text-[#3C3489] text-sm flex-shrink-0 opacity-60 hover:opacity-100">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                </div>
+              </div>
             </div>
+
+            <!-- Colunas da tabela -->
+            <div class="relative" id="colToggleWrap">
+              <button onclick="toggleColMenu()" title="Escolher as colunas da tabela"
+                class="focus-ring h-9 w-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors">
+                <i class="fa-solid fa-table-columns text-sm"></i>
+              </button>
+              <div id="colMenu" class="hidden absolute right-0 top-11 bg-white border border-slate-200 rounded-2xl shadow-lg p-3 z-50 flex flex-col gap-2 min-w-[170px]">
+                <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colPendente" onchange="toggleCol('pendente',this.checked)"> Pendente</label>
+                <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colAprovado" onchange="toggleCol('aprovado',this.checked)"> Aprovado</label>
+                <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colPedidoMae" onchange="toggleCol('pedidoMae',this.checked)"> Pedido Mãe</label>
+                <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colDesmembrado" onchange="toggleCol('desmembrado',this.checked)"> Desmembrado</label>
+              </div>
+            </div>
+
+            <button id="btnDarkMode" onclick="toggleDark()" title="Alternar entre modo claro e escuro"
+              class="focus-ring h-9 w-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors">
+              <i class="fa-solid fa-moon text-slate-400 text-sm" id="darkIcon"></i>
+            </button>
           </div>
-
-          <!-- Tema Premium (visual neutro/minimalista, alternativo ao visual colorido padrão) -->
-          <button id="btnTemaPremium" onclick="toggleTemaPremium()" title="Alternar visual"
-            class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-1.5">
-            <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
-            <span id="lblTemaPremium">Tema Premium</span>
-          </button>
         </div>
+
       </header>
-
-      <!-- KPI CARDS -->
-      <div id="kpiBlock" class="hidden grid grid-cols-2 xl:grid-cols-6 gap-3 mb-4">
-        <div class="kpi-card">
-          <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Linhas na DISPO</div>
-          <div id="kpiLinhas" class="mt-2 text-3xl font-extrabold">—</div>
-          <div id="kpiLinhasAtualizado" class="mt-1 text-[11px] font-semibold text-slate-400">—</div>
-        </div>
-
-        <div class="kpi-card cursor-pointer hover:border-[var(--brand)]" onclick="setKpiFilter('com-pedido')" title="Filtrar: com pedidos">
-          <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Com pedidos</div>
-          <div id="kpiComPedido" class="mt-2 text-3xl font-extrabold text-[var(--brand)]">—</div>
-          <div class="mt-1 text-[11px] font-semibold text-slate-400">itens com movimento</div>
-        </div>
-
-        <div class="kpi-card cursor-pointer hover:border-[var(--brand)]" onclick="setKpiFilter('pendente')" title="Filtrar: pendentes">
-          <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Pendentes</div>
-          <div id="kpiPendente" class="mt-2 text-3xl font-extrabold text-amber-600">—</div>
-          <div class="mt-1 text-[11px] font-semibold text-slate-400">itens aguardando aprovação</div>
-        </div>
-
-        <div class="kpi-card cursor-pointer hover:border-[var(--brand)]" onclick="setKpiFilter('aprovado')" title="Filtrar: aprovados">
-          <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Aprovados</div>
-          <div id="kpiAprovado" class="mt-2 text-3xl font-extrabold text-emerald-600">—</div>
-          <div class="mt-1 text-[11px] font-semibold text-slate-400">itens confirmados</div>
-        </div>
-
-        <div class="kpi-card cursor-pointer hover:border-rose-400" onclick="setKpiFilter('critico')" title="Filtrar: críticos">
-          <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Críticos</div>
-          <div id="kpiCriticos" class="mt-2 text-3xl font-extrabold text-rose-600">—</div>
-          <div class="mt-1 text-[11px] font-semibold text-slate-400">saldo real ≤ 0</div>
-        </div>
-
-        <div class="kpi-card col-span-2 xl:col-span-1 cursor-pointer hover:border-emerald-400" onclick="setKpiFilter('saldo-positivo')" title="Filtrar: com saldo">
-          <div class="text-xs font-bold text-emerald-600 uppercase tracking-wide">Saldo Real Total</div>
-          <div id="kpiSaldoReal" class="mt-2 text-3xl font-extrabold text-emerald-600">—</div>
-          <div class="mt-1 text-[11px] font-semibold text-slate-400">pares disponíveis</div>
-        </div>
-      </div>
 
       <!-- FILTERS + TABLE -->
       <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-card">
@@ -734,32 +746,14 @@
             <button class="filter-pill" data-filter="finalizados" id="pillFinalizados" style="border-color:#bbf7d0;color:#14532d;background:#dcfce7" data-tip="Produtos com saldo zerado e desmembramentos finalizados">
               <i class="fa-solid fa-circle-check mr-1"></i>Finalizados <span id="finalizadosBadge" class="ml-1 hidden bg-[#14532d] text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
             </button>
+            <!-- Ordenar fica junto das abas e rola com elas; a dica diz a ordem em uso -->
+            <button id="btnOrdenar" onclick="toggleOrdenarMenu()" title="Ordenar a lista" class="btn-ordenar">
+              <i class="fa-solid fa-arrow-down-short-wide"></i>
+            </button>
           </div>
-          <div class="flex items-center gap-2">
-            <select id="dispoSortSelect" class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600">
-              <option value="saldoReal:asc">Saldo — menor primeiro</option>
-              <option value="saldoReal:desc">Saldo — maior primeiro</option>
-              <option value="dataEntrega:asc">Prev. Faturamento — mais próxima</option>
-              <option value="situacao:asc">Situação — mais crítico primeiro</option>
-              <option value="produto:asc">Produto (A-Z)</option>
-            </select>
-            <div class="text-xs font-bold text-slate-400" id="tableCount">— itens</div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <div class="text-xs font-bold text-slate-400 whitespace-nowrap" id="tableCount">— itens</div>
           </div>
-        </div>
-
-        <!-- BANNER ANTECIPAÇÃO -->
-        <div id="bannerAntecipacao" class="hidden rounded-2xl border border-[#AFA9EC] bg-[#EEEDFE] px-4 py-3 mb-4 flex items-start gap-3">
-          <div class="w-8 h-8 rounded-lg bg-[#534AB7] flex items-center justify-center flex-shrink-0 mt-0.5">
-            <i class="fa-solid fa-angles-up text-white text-sm"></i>
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="text-sm font-extrabold text-[#26215C]" id="bannerAntecipacaoTitle"></div>
-            <div class="text-xs font-semibold text-[#3C3489] mt-0.5">Foram detectadas disponibilidades com data anterior. Clique na linha destacada para antecipar.</div>
-            <div class="mt-2 flex flex-wrap gap-2" id="bannerAntecipacaoChips"></div>
-          </div>
-          <button onclick="$('bannerAntecipacao').classList.add('hidden')" class="text-[#3C3489] text-sm flex-shrink-0 opacity-60 hover:opacity-100">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
         </div>
 
         <!-- EMPTY / LOADING -->
@@ -780,6 +774,11 @@
           <button onclick="limparSelecaoDispo()" style="background:transparent;border:1px solid var(--line,#c7cdfb);color:var(--brand,#3730a3);border-radius:999px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer">Limpar</button>
         </div>
 
+        <div id="ordenarMenu" class="hidden fixed z-[120] bg-white border border-slate-200 rounded-2xl shadow-lg p-2 flex flex-col gap-1 min-w-[250px]"></div>
+
+        <!-- Menu do filtro de mês: fixo na tela, senão a rolagem da tabela o corta -->
+        <div id="menuFiltroMes" class="hidden fixed z-[120] bg-white border border-slate-200 rounded-2xl shadow-lg p-2 flex flex-col gap-1 min-w-[190px] max-h-[320px] overflow-y-auto"></div>
+
         <!-- TABLE -->
         <div id="tableWrap" class="table-wrap hidden">
           <table class="col-hide-pendente col-hide-aprovado col-hide-pedidoMae col-hide-desmembrado">
@@ -790,7 +789,7 @@
                 <th class="sortable" data-col="gci">GCI<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th class="sortable" data-col="produto">Produto<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th>Cor</th>
-                <th class="sortable" data-col="dataEntrega">Prev. Fat<i class="fa-solid fa-sort sort-icon"></i></th>
+                <th class="sortable" data-col="dataEntrega">Prev. Fat<i class="fa-solid fa-sort sort-icon"></i><button id="btnFiltroMes" class="th-filtro" title="Filtrar por mês"><i class="fa-solid fa-filter"></i></button></th>
                 <th class="sortable text-right" data-col="saldo">Saldo DISPO<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th class="sortable text-right col-pendente" data-col="pendente">Pendente<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th class="sortable text-right col-aprovado" data-col="aprovado">Aprovado<i class="fa-solid fa-sort sort-icon"></i></th>
@@ -936,6 +935,7 @@ const STATE = {
   sortDir: 'asc',
   activeFilter: 'all',
   searchQuery: '',
+  filtroMes: '',      // AAAA-MM da Prev. Fat, ou 'sem' para linhas sem data
   rateio: {}
 };
 
@@ -1140,7 +1140,8 @@ async function loadOrders(){
 async function loadDispo(){
   try{
     $('btnRefreshDispo').disabled = true;
-    $('btnRefreshDispo').innerHTML = '<i class="fa-solid fa-rotate-right fa-spin text-slate-400"></i> Carregando...';
+    $('btnRefreshDispo').title = 'Carregando a DISPO…';
+    $('btnRefreshDispo').innerHTML = '<i class="fa-solid fa-rotate-right fa-spin text-sm"></i>';
 
     await loadOrders();
 
@@ -1185,29 +1186,51 @@ async function loadDispo(){
     showToast('Não foi possível carregar a DISPO. Verifique se o dispo.json foi importado.', 'error');
   }finally{
     $('btnRefreshDispo').disabled = false;
-    $('btnRefreshDispo').innerHTML = '<i class="fa-solid fa-rotate-right text-slate-400"></i> Atualizar DISPO';
+    $('btnRefreshDispo').title = 'Atualizar a DISPO';
+    $('btnRefreshDispo').innerHTML = '<i class="fa-solid fa-rotate-right text-sm"></i>';
   }
 }
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
+
+// O que a busca varre: as mesmas colunas que aparecem na tabela — Nº, GCI,
+// produto (com o código ao lado) e cor.
+function textoDaLinha(row){
+  return `${row.num} ${row.gci} ${row.codigo} ${row.produto} ${row.cor}`.toLowerCase();
+}
+
+// Mês da Prev. Fat. no formato AAAA-MM, para filtrar e agrupar.
+function mesDaLinha(row){
+  const d = parseDate(row.dataEntrega);
+  return d ? `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}` : '';
+}
+
+const MESES_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function rotuloMes(ym){
+  if(ym === 'sem') return 'Sem data';
+  const [a, m] = ym.split('-');
+  return `${MESES_PT[+m-1]}/${a}`;
+}
 
 function computeRows(){
   const q = normalizeText(STATE.searchQuery).toLowerCase();
 
   return computeAllRows().filter(row => {
     const f = STATE.activeFilter;
+    // o mês da Prev. Fat. vale para qualquer aba
+    if(STATE.filtroMes){
+      const m = mesDaLinha(row) || 'sem';
+      if(m !== STATE.filtroMes) return false;
+    }
     if(f === 'rateados'){
       if(!rateioDaLinha(row)) return false;
       if(!q) return true;
-      return `${row.codigo} ${row.produto} ${row.cor}`.toLowerCase().includes(q);
+      return textoDaLinha(row).includes(q);
     }
     if(f === 'ocultos') return isOculto(row);
     if(f === 'finalizados') return isDispoFinalizado(row);
     if(isOculto(row)) return false;
-    if(q){
-      const hay = `${row.codigo} ${row.produto} ${row.cor}`.toLowerCase();
-      if(!hay.includes(q)) return false;
-    }
+    if(q && !textoDaLinha(row).includes(q)) return false;
     if(f === 'com-pedido') return (row.pendente + row.aprovado) > 0;
     if(f === 'pendente') return row.pendente > 0;
     if(f === 'aprovado') return row.aprovado > 0;
@@ -1462,6 +1485,16 @@ function rateioDaLinha(row){
   return Object.keys(r).some(k => k !== '_selo' && Number(r[k]) > 0) ? r : null;
 }
 // "JORGE 4 cx · RAFAEL 3 cx": quem tem cota, em caixas, na linha da tabela.
+// A linha com as cotas saiu da tabela: quem quiser o detalhe abre o modal.
+// A dica do chip guarda o resumo para uma conferida rápida.
+function dicaRateio(row){
+  const r = rateioDaLinha(row);
+  if(!r) return 'Ver e alterar o rateio';
+  const selo = r._selo ? r._selo : 'Forecast (padrão)';
+  const cotas = resumoRateio(row);
+  return `Selo: ${selo}${cotas ? ' · ' + cotas : ''} — clique para alterar`;
+}
+
 function resumoRateio(row){
   const r = rateioDaLinha(row);
   if(!r) return '';
@@ -1569,15 +1602,6 @@ async function liberarRateio(){
   }catch(err){ console.error(err); showToast('Erro ao liberar.', 'error'); }
 }
 
-function setKpiFilter(filter){
-  STATE.activeFilter = filter;
-  // Sincroniza pills visuais
-  document.querySelectorAll('.filter-pill').forEach(p => {
-    p.classList.toggle('active', p.dataset.filter === filter);
-  });
-  renderTable();
-}
-
 function sortRows(rows){
   const col = STATE.sortCol;
   const dir = STATE.sortDir === 'asc' ? 1 : -1;
@@ -1618,25 +1642,6 @@ function updateSortHeaders(){
       }
     }
   });
-}
-
-function renderKpis(rows){
-  const allRows = computeAllRows();
-  const comPedido = allRows.filter(r => (r.pendente + r.aprovado) > 0).length;
-  const totalPendUnits = allRows.reduce((s,r)=>s+r.pendente,0);
-  const totalAprovUnits = allRows.reduce((s,r)=>s+r.aprovado,0);
-  const criticos = allRows.filter(r => r.saldoReal <= 0).length;
-  const saldoRealTotal = allRows.reduce((s,r)=>s+Math.max(0,r.saldoReal),0);
-
-  $('kpiLinhas').textContent = formatInt(STATE.dispoRows.length);
-  $('kpiLinhasAtualizado').textContent = STATE.dispoLoadedAt
-    ? `Atualizado ${STATE.dispoLoadedAt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`
-    : '—';
-  $('kpiComPedido').textContent = formatInt(comPedido);
-  $('kpiPendente').textContent = formatInt(totalPendUnits);
-  $('kpiAprovado').textContent = formatInt(totalAprovUnits);
-  $('kpiCriticos').textContent = formatInt(criticos);
-  $('kpiSaldoReal').textContent = formatInt(saldoRealTotal);
 }
 
 function computeAllRows(){
@@ -1708,9 +1713,10 @@ function renderDispo(){
   const rows = computeRows();
   const sorted = sortRows(rows);
 
-  renderKpis(rows);
   atualizarBadgeRateados();
   updateSortHeaders();
+  renderOrdenarMenu();
+  atualizarFunilMes();
   renderBannerAntecipacao(computeAllRows());
 
   $('tableCount').textContent = `${sorted.length} ${sorted.length === 1 ? 'item' : 'itens'}`;
@@ -1750,8 +1756,7 @@ function renderDispo(){
         <td>
           <span class="font-extrabold text-slate-800">${safeHtml(row.produto)}</span>
           <span class="text-xs text-slate-400 font-semibold ml-1">${safeHtml(row.codigo||'')}</span>
-          ${desmBadge}${rateioDaLinha(row) ? `<button type="button" class="badge-rateio ml-1" onclick="abrirRateio('${safeHtml(String(row.num||''))}')" title="Ver e alterar o rateio">Rateado <i class="fa-solid fa-pen" style="font-size:8px"></i></button>
-          <div class="rateio-resumo"><i class="fa-solid fa-users"></i> ${safeHtml(resumoRateio(row))}<span class="rateio-selo">${rateioDaLinha(row)._selo ? '<i class="fa-solid fa-star"></i> ' + safeHtml(rateioDaLinha(row)._selo) : '<i class="fa-solid fa-star"></i> Forecast <span style="opacity:.7">(padrão)</span>'}</span></div>` : ''}
+          ${desmBadge}${rateioDaLinha(row) ? `<button type="button" class="badge-rateio ml-1" onclick="abrirRateio('${safeHtml(String(row.num||''))}')" title="${safeHtml(dicaRateio(row))}">Rateado <i class="fa-solid fa-pen" style="font-size:8px"></i></button>` : ''}
         </td>
         <td class="text-slate-500 font-semibold">${safeHtml(row.cor)}</td>
         <td class="tabular-nums font-semibold ${row._antecipavel ? 'text-[#3C3489]' : 'text-slate-600'}">
@@ -1764,12 +1769,7 @@ function renderDispo(){
         <td class="text-right tabular-nums">${saldoRealDisplay}</td>
         <td class="text-right tabular-nums col-desmembrado ${totalDesm > 0 ? 'text-[var(--brand)] font-extrabold' : 'text-slate-300'}">${totalDesm > 0 ? formatInt(totalDesm) : '—'}</td>
         <td class="col-pedidoMae text-center font-semibold text-[11px] ${row.pedidoMae === 'SIM' ? 'text-emerald-600' : 'text-slate-400'}">${safeHtml(row.pedidoMae || '—')}</td>
-        <td>
-          <span class="chip ${sit.chipClass} ${sit.sortVal <= 1 ? 'badge-ruptura' : ''}">
-            ${sit.sortVal <= 1 ? '<i class="fa-solid fa-triangle-exclamation"></i>' : ''}
-            ${safeHtml(sit.label)}
-          </span>
-        </td>
+        <td><span class="chip ${sit.chipClass}">${safeHtml(sit.label)}</span></td>
         <td>
           <div class="btn-group">
             <button class="icon-btn btn-editar-dispo" title="Editar dados do produto" onclick="abrirEditarProduto('${safeHtml(String(row.num||''))}')" style="color:var(--brand);border-color:var(--brand-soft)"><i class="fa-solid fa-pen" style="font-size:12px"></i></button>
@@ -2192,33 +2192,186 @@ async function confirmarAntecipacao(){
 
 let _bannerShownThisLoad = false;
 
+// O aviso saiu do meio da tela: agora o sino do cabeçalho fica vermelho
+// quando há antecipação e a lista aparece num balão, só se for clicado.
 function renderBannerAntecipacao(allRows){
-  const antecipаveis = allRows.filter(r => r._antecipavel);
-  const banner = $('bannerAntecipacao');
-  if(!antecipаveis.length){
-    banner.classList.add('hidden');
-    return;
+  const antecipaveis = allRows.filter(r => r._antecipavel);
+  const btn = $('btnAntecipacoes');
+  const badge = $('antecBadge');
+  const n = antecipaveis.length;
+
+  if(badge){
+    badge.textContent = n > 99 ? '99+' : n;
+    badge.classList.toggle('hidden', n === 0);
   }
-  // Monta chips únicos por produto+cor
+  if(btn){
+    btn.classList.toggle('sino-aceso', n > 0);
+    btn.title = n
+      ? `${n} produto${n>1?'s':''} com antecipação disponível`
+      : 'Nenhuma antecipação disponível';
+  }
+
   const unicos = [];
   const seen = new Set();
-  antecipаveis.forEach(r => {
+  antecipaveis.forEach(r => {
     const k = `${r.produto}|${r.cor}`;
     if(!seen.has(k)){ seen.add(k); unicos.push(r); }
   });
 
-  $('bannerAntecipacaoTitle').textContent = `${antecipаveis.length} produto${antecipаveis.length>1?'s':''} com antecipação disponível`;
-  $('bannerAntecipacaoChips').innerHTML = unicos.map(r =>
+  const tit = $('antecTitulo'), txt = $('antecTexto'), chips = $('antecChips');
+  if(tit) tit.textContent = n
+    ? `${n} produto${n>1?'s':''} com antecipação disponível`
+    : 'Nenhuma antecipação disponível';
+  if(txt) txt.textContent = n
+    ? 'Foram detectadas disponibilidades com data anterior. Clique na linha destacada para antecipar.'
+    : 'Quando aparecer uma disponibilidade com data anterior, ela é listada aqui.';
+  if(chips) chips.innerHTML = unicos.map(r =>
     `<span style="background:#fff;border:0.5px solid #AFA9EC;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;color:#3C3489">${safeHtml(r.produto)} · ${safeHtml(r.cor)}</span>`
   ).join('');
-  banner.classList.remove('hidden');
+  if(!n) fecharAntecPop();
 
   // Toast só uma vez por carregamento
-  if(!_bannerShownThisLoad){
+  if(n && !_bannerShownThisLoad){
     _bannerShownThisLoad = true;
-    showToast(`${antecipаveis.length} produto${antecipаveis.length>1?'s':''} com antecipação disponível`, 'info');
+    showToast(`${n} produto${n>1?'s':''} com antecipação disponível`, 'info');
   }
 }
+
+function fecharAntecPop(){
+  const pop = $('antecPop');
+  if(pop) pop.classList.add('hidden');
+}
+(function(){
+  const btn = $('btnAntecipacoes'), pop = $('antecPop');
+  if(!btn || !pop) return;
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    pop.classList.toggle('hidden');
+  });
+  $('btnFecharAntec').addEventListener('click', fecharAntecPop);
+  document.addEventListener('click', (e) => {
+    if(!pop.classList.contains('hidden') && !e.target.closest('#antecWrap')) fecharAntecPop();
+  });
+  document.addEventListener('keydown', (e) => { if(e.key === 'Escape') fecharAntecPop(); });
+})();
+
+// ── FILTRO DE MÊS (coluna Prev. Fat) ─────────────────────────────────────────
+function mesesDaDispo(){
+  const conta = new Map();
+  for(const row of computeAllRows()){
+    if(isOculto(row) && STATE.activeFilter !== 'ocultos') continue;
+    const m = mesDaLinha(row) || 'sem';
+    conta.set(m, (conta.get(m) || 0) + 1);
+  }
+  // meses em ordem; "sem data" por último
+  return [...conta.entries()]
+    .sort((a, b) => (a[0] === 'sem') - (b[0] === 'sem') || a[0].localeCompare(b[0]));
+}
+
+function renderMenuFiltroMes(){
+  const menu = $('menuFiltroMes');
+  if(!menu) return;
+  const itens = [['', 'Todos os meses', 0], ...mesesDaDispo().map(([m, n]) => [m, rotuloMes(m), n])];
+  menu.innerHTML = itens.map(([v, txt, n]) => {
+    const on = v === (STATE.filtroMes || '');
+    return `<button data-mes="${v}" class="text-left rounded-xl px-3 py-2 text-xs font-bold flex items-center gap-2 ${on ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50'}">
+      <i class="fa-solid fa-check text-[10px] ${on ? '' : 'invisible'}"></i>
+      <span class="flex-1">${txt}</span>
+      ${n ? `<span class="text-[10px] font-extrabold text-slate-400">${n}</span>` : ''}</button>`;
+  }).join('');
+}
+
+function atualizarFunilMes(){
+  const btn = $('btnFiltroMes');
+  if(!btn) return;
+  const on = !!STATE.filtroMes;
+  btn.classList.toggle('ativo', on);
+  btn.title = on ? `Prev. Fat: ${rotuloMes(STATE.filtroMes)} — clique para trocar` : 'Filtrar por mês';
+}
+
+function fecharMenuFiltroMes(){
+  const menu = $('menuFiltroMes');
+  if(menu) menu.classList.add('hidden');
+}
+
+(function(){
+  const btn = $('btnFiltroMes'), menu = $('menuFiltroMes');
+  if(!btn || !menu) return;
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();   // não pode ordenar a coluna junto
+    if(!menu.classList.contains('hidden')){ fecharMenuFiltroMes(); return; }
+    renderMenuFiltroMes();
+    menu.classList.remove('hidden');
+    const r = btn.getBoundingClientRect();
+    const larg = menu.offsetWidth || 190;
+    menu.style.top = `${Math.round(r.bottom + 6)}px`;
+    menu.style.left = `${Math.round(Math.min(Math.max(8, r.left), window.innerWidth - larg - 8))}px`;
+  });
+  menu.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-mes]');
+    if(!b) return;
+    STATE.filtroMes = b.dataset.mes || '';
+    fecharMenuFiltroMes();
+    renderDispo();
+  });
+  document.addEventListener('click', (e) => {
+    if(!menu.classList.contains('hidden') && !e.target.closest('#menuFiltroMes,#btnFiltroMes')) fecharMenuFiltroMes();
+  });
+  document.addEventListener('keydown', (e) => { if(e.key === 'Escape') fecharMenuFiltroMes(); });
+  window.addEventListener('resize', fecharMenuFiltroMes);
+})();
+
+// ── ORDENAÇÃO ─────────────────────────────────────────────────────────────────
+const ORDENS_DISPO = [
+  ['saldoReal:asc', 'Saldo — menor primeiro'],
+  ['saldoReal:desc', 'Saldo — maior primeiro'],
+  ['dataEntrega:asc', 'Prev. Faturamento — mais próxima'],
+  ['situacao:asc', 'Situação — mais crítico primeiro'],
+  ['produto:asc', 'Produto (A-Z)'],
+];
+
+function renderOrdenarMenu(){
+  const menu = $('ordenarMenu');
+  if(!menu) return;
+  const atual = `${STATE.sortCol}:${STATE.sortDir}`;
+  menu.innerHTML = ORDENS_DISPO.map(([v, txt]) => {
+    const on = v === atual;
+    return `<button data-ordem="${v}" class="text-left rounded-xl px-3 py-2 text-xs font-bold flex items-center gap-2 ${on ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50'}">
+      <i class="fa-solid fa-check text-[10px] ${on ? '' : 'invisible'}"></i>${txt}</button>`;
+  }).join('');
+  const btn = $('btnOrdenar');
+  const nome = (ORDENS_DISPO.find(([v]) => v === atual) || [,''])[1];
+  if(btn) btn.title = nome ? `Ordenar a lista · ${nome}` : 'Ordenar a lista';
+}
+
+function toggleOrdenarMenu(){
+  const menu = $('ordenarMenu'), btn = $('btnOrdenar');
+  if(!menu || !btn) return;
+  if(!menu.classList.contains('hidden')){ menu.classList.add('hidden'); return; }
+  renderOrdenarMenu();
+  menu.classList.remove('hidden');
+  const r = btn.getBoundingClientRect();
+  const larg = menu.offsetWidth || 250;
+  menu.style.top = `${Math.round(r.bottom + 6)}px`;
+  menu.style.left = `${Math.round(Math.min(Math.max(8, r.left), window.innerWidth - larg - 8))}px`;
+}
+(function(){
+  const menu = $('ordenarMenu');
+  if(!menu) return;
+  menu.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ordem]');
+    if(!b) return;
+    const [col, dir] = b.dataset.ordem.split(':');
+    STATE.sortCol = col; STATE.sortDir = dir;
+    menu.classList.add('hidden');
+    renderDispo();
+  });
+  document.addEventListener('click', (e) => {
+    if(!menu.classList.contains('hidden') && !e.target.closest('#ordenarMenu,#btnOrdenar')) menu.classList.add('hidden');
+  });
+  document.addEventListener('keydown', (e) => { if(e.key === 'Escape') menu.classList.add('hidden'); });
+  window.addEventListener('resize', () => menu.classList.add('hidden'));
+})();
 
 // ── DARK MODE ─────────────────────────────────────────────────────────────────
 function toggleDark(){
@@ -2230,18 +2383,14 @@ function toggleDark(){
 }
 
 // ── TEMA PREMIUM (visual neutro alternativo) ──────────────────────────────────
+// O botao saiu do cabecalho; o estilo continua aqui para quem ja o deixou
+// ligado e pode voltar pelo console com toggleTemaPremium().
 function toggleTemaPremium(){
   const on = document.body.classList.toggle('theme-premium');
   localStorage.setItem('dispo_tema_premium', on ? '1' : '0');
-  const lbl = $('lblTemaPremium');
-  if(lbl) lbl.textContent = on ? 'Tema Premium ✓' : 'Tema Premium';
 }
 if(localStorage.getItem('dispo_tema_premium') === '1'){
-  document.addEventListener('DOMContentLoaded', ()=>{
-    document.body.classList.add('theme-premium');
-    const lbl = $('lblTemaPremium');
-    if(lbl) lbl.textContent = 'Tema Premium ✓';
-  });
+  document.addEventListener('DOMContentLoaded', ()=> document.body.classList.add('theme-premium'));
 }
 // Lê admin_dark (definido no index) como fonte principal; dispo_dark como fallback
 const _darkOn = localStorage.getItem('admin_dark') === '1' || localStorage.getItem('dispo_dark') === '1';
@@ -2262,26 +2411,8 @@ function voltarParaPedidos(){
   }
 }
 
-function toggleFullscreen(){
-  if(!document.fullscreenElement){
-    document.documentElement.requestFullscreen().catch(()=>{});
-  } else {
-    document.exitFullscreen();
-  }
-}
-document.addEventListener('fullscreenchange', ()=>{
-  const icon = document.getElementById('iconFullscreen');
-  if(!icon) return;
-  icon.className = document.fullscreenElement ? 'fa-solid fa-compress text-xs' : 'fa-solid fa-expand text-xs';
-});
-
 // ── TOGGLE KPIs ───────────────────────────────────────────────────────────────
-function toggleKpis(){
-  const block = $('kpiBlock');
-  const icon  = $('kpiEyeIcon');
-  const hidden = block.classList.toggle('hidden');
-  icon.className = hidden ? 'fa-regular fa-eye-slash text-xs' : 'fa-regular fa-eye text-xs';
-}
+
 
 // ── TOGGLE COLUNAS ────────────────────────────────────────────────────────────
 const _colState = { pendente:false, aprovado:false, pedidoMae:false, desmembrado:false };
@@ -2419,19 +2550,6 @@ $('dispoSearch').addEventListener('input', (e) => {
   });
 })();
 
-// ── Painel "Mais opções": abre fechado por padrão, alterna ao clicar ──────────
-(function(){
-  const btn = $('btnMaisOpcoesDispo');
-  const painel = $('painelMaisOpcoesDispo');
-  const icon = $('iconMaisOpcoesDispo');
-  if(!btn || !painel) return;
-  btn.addEventListener('click', ()=>{
-    const abrindo = painel.classList.contains('hidden');
-    painel.classList.toggle('hidden');
-    if(icon) icon.style.transform = abrindo ? 'rotate(180deg)' : '';
-  });
-})();
-
 // Filter pills
 $('filterPills').addEventListener('click', (e) => {
   const pill = e.target.closest('[data-filter]');
@@ -2444,18 +2562,6 @@ $('filterPills').addEventListener('click', (e) => {
 
   renderDispo();
 });
-
-// Sort dropdown
-const dispoSortSelect = $('dispoSortSelect');
-if(dispoSortSelect){
-  dispoSortSelect.value = `${STATE.sortCol}:${STATE.sortDir}`;
-  dispoSortSelect.addEventListener('change', (e) => {
-    const [col, dir] = e.target.value.split(':');
-    STATE.sortCol = col;
-    STATE.sortDir = dir;
-    renderDispo();
-  });
-}
 
 // Sortable columns
 document.querySelector('thead').addEventListener('click', (e) => {
@@ -2471,7 +2577,7 @@ document.querySelector('thead').addEventListener('click', (e) => {
   }
 
   renderDispo();
-  if(dispoSortSelect) dispoSortSelect.value = `${STATE.sortCol}:${STATE.sortDir}`;
+  renderOrdenarMenu();
 });
 
 // Click em qualquer linha da tabela DISPO — seleciona para facilitar scroll horizontal
