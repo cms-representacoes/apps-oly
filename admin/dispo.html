@@ -48,6 +48,37 @@
        Em tela estreita a busca ocupa uma fileira inteira. */
     #dispoHeader .hdr-busca{ width:280px; }
 
+    /* Barra de filtros recolhida: o botão pisca para lembrar que ela existe */
+    @keyframes pisca-filtro{
+      0%,100%{ box-shadow:0 0 0 0 rgba(2,132,199,.5); }
+      70%{ box-shadow:0 0 0 9px rgba(2,132,199,0); }
+    }
+    #btnToggleFiltros.piscando{
+      color:#0284c7; border-color:#7dd3fc; background:#f0f9ff;
+      animation:pisca-filtro 1.6s ease-out infinite;
+    }
+
+    /* Limpar filtros: laranja e flutuante, no computador e no celular */
+    #fabLimparDispo{
+      position:fixed; left:18px; bottom:18px; z-index:60;
+      display:inline-flex; align-items:center; gap:8px;
+      border:none; border-radius:999px; cursor:pointer;
+      padding:11px 18px; font-size:13px; font-weight:800; color:#fff;
+      background:linear-gradient(135deg,#fb923c,#ea580c);
+      box-shadow:0 10px 24px -8px rgba(234,88,12,.65);
+      transition:transform .12s, filter .12s;
+    }
+    #fabLimparDispo:hover{ filter:brightness(1.06); transform:translateY(-1px); }
+    #fabLimparDispo.hidden{ display:none; }
+    @media(max-width:640px){
+      #fabLimparDispo{ width:50px; height:50px; padding:0; justify-content:center; font-size:17px; left:14px; bottom:14px; }
+      #fabLimparDispo .fab-lbl{ display:none; }
+    }
+    @media(prefers-reduced-motion:reduce){
+      #btnToggleFiltros.piscando{ animation:none; }
+      #fabLimparDispo{ transition:none; }
+    }
+
     /* Ordenar: mesma altura das abas, com cor própria para não se confundir
        com um filtro ligado */
     .btn-ordenar{
@@ -64,7 +95,6 @@
     .table-wrap thead th,
     .table-wrap tbody td{ text-align:center !important; vertical-align:middle !important; }
     .table-wrap tbody td .btn-group{ justify-content:center; }
-    .table-wrap tbody td .btn-antecipa-row{ margin-left:auto; margin-right:auto; }
 
     /* funil do mês no cabeçalho da coluna Prev. Fat */
     .th-filtro{
@@ -277,7 +307,7 @@
       white-space:nowrap;
       user-select:none;
     }
-    .table-wrap{ max-height:60vh; }
+    .table-wrap{ max-height:calc(100vh - 210px); min-height:280px; }
 
     .table-wrap thead th.sortable{
       cursor:pointer;
@@ -435,10 +465,12 @@
       white-space:nowrap; transition:background .12s;
     }
     .btn-desmembrar:hover{ background:#d8dbff; }
-    .btn-antecipa-row{ display:flex; align-items:center; gap:4px; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; width:fit-content; margin-top:4px; transition:background .12s; }
-    .btn-antecipa-ok{ border:1px solid #AFA9EC; color:#3C3489; background:#EEEDFE; }
+    /* Antecipar: mesmo botão redondo dos outros, na mesma fileira. O texto
+       que ficava embaixo virou a dica. */
+    .btn-antecipa-row{ cursor:pointer; }
+    .btn-antecipa-ok{ border:0.5px solid #AFA9EC; color:#3C3489; background:#EEEDFE; }
     .btn-antecipa-ok:hover{ background:#AFA9EC; }
-    .btn-antecipa-warn{ border:1px solid #EF9F27; color:#633806; background:#FAEEDA; }
+    .btn-antecipa-warn{ border:0.5px solid #EF9F27; color:#633806; background:#FAEEDA; }
     .btn-antecipa-warn:hover{ background:#FAC775; }
     .row-antecipa td { background:#EEEDFE !important; }
     .row-antecipa td:first-child { border-left:3px solid #534AB7; }
@@ -462,7 +494,9 @@
     .icon-btn.reexibir:hover{ background:#AFA9EC; }
     .icon-btn.desm{ border-color:#c7d2fe; color:#4338ca; background:#eef2ff; }
     .icon-btn.desm:hover{ background:#c7d2fe; }
-    .btn-group{ display:flex; gap:4px; align-items:center; flex-wrap:wrap; }
+    /* os botões de ação ficam sempre lado a lado: a tabela já rola de lado,
+       e quebrar a fileira empurrava a linha para baixo */
+    .btn-group{ display:flex; gap:4px; align-items:center; flex-wrap:nowrap; }
   
     /* ===================== MODO ESCURO — TEMA DASHBOARD ===================== */
     .dark{
@@ -526,6 +560,12 @@
     .dark .filter-pill.active{ background:linear-gradient(135deg,#5b8cff,#4f7bff) !important; border-color:transparent !important; color:#fff !important; box-shadow:0 8px 18px -10px rgba(91,140,255,.8) !important; }
     .dispo-chk, .dispo-chk-all{ width:15px; height:15px; cursor:pointer; accent-color:var(--brand,#4f46e5); }
     .th-chk, .td-chk{ text-align:center; }
+    /* O botão roxo é o aviso de que o lote está rateado: cheio quando tem
+       cotas, vazado quando ainda não foi rateado. */
+    .icon-btn.btn-ratear{ color:#7c3aed; border-color:#ddd6fe; }
+    .icon-btn.btn-ratear.rateado{ color:#fff; background:#7c3aed; border-color:#7c3aed; }
+    .icon-btn.btn-ratear.rateado:hover{ background:#6d28d9; }
+
     button.badge-rateio{ border:0; cursor:pointer; font-family:inherit; }
     button.badge-rateio:hover{ filter:brightness(1.08); }
     .rateio-resumo{ display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; margin-top:3px;
@@ -709,6 +749,11 @@
               </div>
             </div>
 
+            <button id="btnToggleFiltros" onclick="toggleBarraFiltros()" title="Ocultar a barra de filtros"
+              class="focus-ring h-9 w-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors">
+              <i class="fa-solid fa-sliders text-sm" id="iconToggleFiltros"></i>
+            </button>
+
             <button id="btnDarkMode" onclick="toggleDark()" title="Alternar entre modo claro e escuro"
               class="focus-ring h-9 w-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors">
               <i class="fa-solid fa-moon text-slate-400 text-sm" id="darkIcon"></i>
@@ -719,10 +764,10 @@
       </header>
 
       <!-- FILTERS + TABLE -->
-      <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-card">
+      <div class="rounded-[28px] border border-slate-200 bg-white px-4 pt-4 pb-1.5 shadow-card">
 
         <!-- Filter pills + count -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div id="barraFiltros" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
           <div class="flex flex-wrap gap-2" id="filterPills">
             <button class="filter-pill active" data-filter="all">Todos</button>
             <button class="filter-pill" data-filter="com-pedido">
@@ -776,6 +821,19 @@
 
         <div id="ordenarMenu" class="hidden fixed z-[120] bg-white border border-slate-200 rounded-2xl shadow-lg p-2 flex flex-col gap-1 min-w-[250px]"></div>
 
+        <!-- Filtro digitável da coluna Nº -->
+        <div id="caixaFiltroNum" class="hidden fixed z-[120] bg-white border border-slate-200 rounded-2xl shadow-lg p-3 w-[220px]">
+          <div class="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2">
+            <i class="fa-solid fa-hashtag text-slate-400 text-xs"></i>
+            <input id="inputFiltroNum" type="text" inputmode="numeric" placeholder="Digite o Nº"
+              class="focus-ring w-full bg-transparent text-sm font-semibold outline-none" />
+          </div>
+          <div class="mt-2 flex items-center justify-between gap-2">
+            <span id="contaFiltroNum" class="text-[11px] font-bold text-slate-400"></span>
+            <button id="btnLimparFiltroNum" class="text-[11px] font-extrabold text-slate-500 hover:text-slate-700">Limpar</button>
+          </div>
+        </div>
+
         <!-- Menu do filtro de mês: fixo na tela, senão a rolagem da tabela o corta -->
         <div id="menuFiltroMes" class="hidden fixed z-[120] bg-white border border-slate-200 rounded-2xl shadow-lg p-2 flex flex-col gap-1 min-w-[190px] max-h-[320px] overflow-y-auto"></div>
 
@@ -785,7 +843,7 @@
             <thead>
               <tr>
                 <th class="th-chk" style="width:36px;text-align:center"><input type="checkbox" id="dispoCheckAll" class="dispo-chk-all" title="Selecionar todos"></th>
-                <th class="sortable" data-col="num">Nº<i class="fa-solid fa-sort sort-icon"></i></th>
+                <th class="sortable" data-col="num">Nº<i class="fa-solid fa-sort sort-icon"></i><button id="btnFiltroNum" class="th-filtro" title="Filtrar por Nº"><i class="fa-solid fa-filter"></i></button></th>
                 <th class="sortable" data-col="gci">GCI<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th class="sortable" data-col="produto">Produto<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th>Cor</th>
@@ -805,10 +863,10 @@
         </div>
       </div>
 
-      <!-- FOOTER INFO -->
-      <div class="mt-4 text-center text-xs font-semibold text-slate-400">
-        Saldo real = Saldo DISPO − Pendente − Aprovado &nbsp;·&nbsp; Pedidos cancelados e arquivados não são contabilizados
-      </div>
+      <!-- Limpar filtros: flutuante em qualquer tela, só aparece com filtro ligado -->
+      <button id="fabLimparDispo" onclick="limparFiltrosDispo()" class="hidden" title="Limpar os filtros">
+        <i class="fa-solid fa-filter-circle-xmark"></i><span class="fab-lbl">Limpar filtros</span>
+      </button>
 
       <!-- CONSULTA DESMEMBRAMENTOS -->
       <div id="consultaDesmWrap" class="hidden mt-6">
@@ -936,6 +994,7 @@ const STATE = {
   activeFilter: 'all',
   searchQuery: '',
   filtroMes: '',      // AAAA-MM da Prev. Fat, ou 'sem' para linhas sem data
+  filtroNum: '',      // pedaço do Nº digitado na coluna
   rateio: {}
 };
 
@@ -1222,6 +1281,8 @@ function computeRows(){
       const m = mesDaLinha(row) || 'sem';
       if(m !== STATE.filtroMes) return false;
     }
+    // o Nº é digitado: casa por pedaço, para achar "12" em 120 e 512
+    if(STATE.filtroNum && !String(row.num || '').includes(STATE.filtroNum)) return false;
     if(f === 'rateados'){
       if(!rateioDaLinha(row)) return false;
       if(!q) return true;
@@ -1489,7 +1550,7 @@ function rateioDaLinha(row){
 // A dica do chip guarda o resumo para uma conferida rápida.
 function dicaRateio(row){
   const r = rateioDaLinha(row);
-  if(!r) return 'Ver e alterar o rateio';
+  if(!r) return 'Ratear este lote por vendedor';
   const selo = r._selo ? r._selo : 'Forecast (padrão)';
   const cotas = resumoRateio(row);
   return `Selo: ${selo}${cotas ? ' · ' + cotas : ''} — clique para alterar`;
@@ -1717,6 +1778,8 @@ function renderDispo(){
   updateSortHeaders();
   renderOrdenarMenu();
   atualizarFunilMes();
+  atualizarFunilNum();
+  atualizarFabLimpar();
   renderBannerAntecipacao(computeAllRows());
 
   $('tableCount').textContent = `${sorted.length} ${sorted.length === 1 ? 'item' : 'itens'}`;
@@ -1756,7 +1819,7 @@ function renderDispo(){
         <td>
           <span class="font-extrabold text-slate-800">${safeHtml(row.produto)}</span>
           <span class="text-xs text-slate-400 font-semibold ml-1">${safeHtml(row.codigo||'')}</span>
-          ${desmBadge}${rateioDaLinha(row) ? `<button type="button" class="badge-rateio ml-1" onclick="abrirRateio('${safeHtml(String(row.num||''))}')" title="${safeHtml(dicaRateio(row))}">Rateado <i class="fa-solid fa-pen" style="font-size:8px"></i></button>` : ''}
+          ${desmBadge}
         </td>
         <td class="text-slate-500 font-semibold">${safeHtml(row.cor)}</td>
         <td class="tabular-nums font-semibold ${row._antecipavel ? 'text-[#3C3489]' : 'text-slate-600'}">
@@ -1775,14 +1838,14 @@ function renderDispo(){
             <button class="icon-btn btn-editar-dispo" title="Editar dados do produto" onclick="abrirEditarProduto('${safeHtml(String(row.num||''))}')" style="color:var(--brand);border-color:var(--brand-soft)"><i class="fa-solid fa-pen" style="font-size:12px"></i></button>
             ${STATE.activeFilter === 'ocultos'
               ? `<button class="icon-btn reexibir btn-reexibir" data-gci="${safeHtml(String(row.gci||''))}" title="Reexibir"><i class="fa-solid fa-eye" style="font-size:12px"></i></button>
-                 <button class="icon-btn btn-ratear" title="Ratear por vendedor" onclick="abrirRateio('${safeHtml(String(row.num||''))}')" style="color:#7c3aed;border-color:#ddd6fe"><i class="fa-solid fa-users" style="font-size:12px"></i></button>`
+                 <button class="icon-btn btn-ratear ${rateioDaLinha(row) ? 'rateado' : ''}" title="${safeHtml(dicaRateio(row))}" onclick="abrirRateio('${safeHtml(String(row.num||''))}')"><i class="fa-solid fa-users" style="font-size:12px"></i></button>`
               : STATE.activeFilter === 'finalizados'
               ? `<button class="icon-btn btn-excluir-dispo" data-idx="${idx}" title="Excluir da DISPO" style="color:#b91c1c;border-color:#fca5a5" onclick="excluirDaDispoJson(STATE.dispoRows.find(r=>String(r.num)===String('${safeHtml(String(row.num||''))}')))"><i class="fa-solid fa-trash-can" style="font-size:12px"></i></button>`
               : `<button class="icon-btn desm btn-desmembrar" data-idx="${idx}" title="Desmembrar"><i class="fa-solid fa-table-list" style="font-size:12px"></i></button>
-                 <button class="icon-btn btn-ratear" title="Ratear por vendedor" onclick="abrirRateio('${safeHtml(String(row.num||''))}')" style="color:#7c3aed;border-color:#ddd6fe"><i class="fa-solid fa-users" style="font-size:12px"></i></button>
+                 <button class="icon-btn btn-ratear ${rateioDaLinha(row) ? 'rateado' : ''}" title="${safeHtml(dicaRateio(row))}" onclick="abrirRateio('${safeHtml(String(row.num||''))}')"><i class="fa-solid fa-users" style="font-size:12px"></i></button>
                  <button class="icon-btn ocultar btn-ocultar" data-gci="${safeHtml(String(row.gci||''))}" title="Ocultar"><i class="fa-solid fa-eye-slash" style="font-size:12px"></i></button>
                  <button class="icon-btn btn-excluir-dispo" data-idx="${idx}" title="Excluir da DISPO" style="color:#b91c1c;border-color:#fca5a5" onclick="excluirDaDispoJson(STATE.dispoRows.find(r=>String(r.num)===String('${safeHtml(String(row.num||''))}')))"><i class="fa-solid fa-trash-can" style="font-size:12px"></i></button>
-                 ${row._antecipavel ? `<button class="btn-antecipa-row ${row._antecipavel.gradeDiferente ? 'btn-antecipa-warn' : 'btn-antecipa-ok'}" data-gci="${safeHtml(String(row.gci||''))}"><i class="fa-solid fa-angles-up text-[10px]"></i>${row._antecipavel.gradeDiferente ? '⚠ Grade diferente' : `${row._antecipavel.pedidosVinculados.length} pedido${row._antecipavel.pedidosVinculados.length>1?'s':''} — antecipar`}</button>` : ''}`
+                 ${row._antecipavel ? `<button class="icon-btn btn-antecipa-row ${row._antecipavel.gradeDiferente ? 'btn-antecipa-warn' : 'btn-antecipa-ok'}" data-gci="${safeHtml(String(row.gci||''))}" title="${row._antecipavel.gradeDiferente ? 'Grade diferente — confira antes de antecipar' : `${row._antecipavel.pedidosVinculados.length} pedido${row._antecipavel.pedidosVinculados.length>1?'s':''} para antecipar`}"><i class="fa-solid fa-angles-up" style="font-size:12px"></i></button>` : ''}`
             }
           </div>
         </td>
@@ -2253,6 +2316,116 @@ function fecharAntecPop(){
     if(!pop.classList.contains('hidden') && !e.target.closest('#antecWrap')) fecharAntecPop();
   });
   document.addEventListener('keydown', (e) => { if(e.key === 'Escape') fecharAntecPop(); });
+})();
+
+// ── BARRA DE FILTROS: esconder e limpar ──────────────────────────────────────
+const FILTROS_OCULTOS_KEY = 'dispo_filtros_ocultos';
+
+function aplicarBarraFiltros(oculta){
+  const barra = $('barraFiltros'), btn = $('btnToggleFiltros'), icone = $('iconToggleFiltros');
+  if(!barra || !btn) return;
+  barra.classList.toggle('hidden', oculta);
+  // recolhida, o botão pisca — senão ninguém lembra que a barra existe
+  btn.classList.toggle('piscando', oculta);
+  btn.title = oculta ? 'Exibir a barra de filtros' : 'Ocultar a barra de filtros';
+  if(icone) icone.className = `fa-solid ${oculta ? 'fa-eye' : 'fa-sliders'} text-sm`;
+}
+
+function toggleBarraFiltros(){
+  const oculta = !$('barraFiltros').classList.contains('hidden');
+  try{ localStorage.setItem(FILTROS_OCULTOS_KEY, oculta ? '1' : '0'); }catch(_){}
+  aplicarBarraFiltros(oculta);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  let oculta = false;
+  try{ oculta = localStorage.getItem(FILTROS_OCULTOS_KEY) === '1'; }catch(_){}
+  aplicarBarraFiltros(oculta);
+});
+
+function filtrosLigados(){
+  const f = [];
+  if(STATE.activeFilter && STATE.activeFilter !== 'all') f.push('aba');
+  if((STATE.searchQuery || '').trim()) f.push('busca');
+  if(STATE.filtroNum) f.push('Nº');
+  if(STATE.filtroMes) f.push('mês');
+  return f;
+}
+
+function atualizarFabLimpar(){
+  const fab = $('fabLimparDispo');
+  if(!fab) return;
+  const f = filtrosLigados();
+  fab.classList.toggle('hidden', f.length === 0);
+  fab.title = f.length ? `Limpar os filtros (${f.join(', ')})` : 'Limpar os filtros';
+}
+
+function limparFiltrosDispo(){
+  STATE.activeFilter = 'all';
+  STATE.searchQuery = '';
+  STATE.filtroMes = '';
+  STATE.filtroNum = '';
+  const campoNum = $('inputFiltroNum');
+  if(campoNum) campoNum.value = '';
+  const busca = $('dispoSearch');
+  if(busca) busca.value = '';
+  const limpar = $('btnClearSearchDispo');
+  if(limpar) limpar.classList.add('hidden');
+  document.querySelectorAll('.filter-pill').forEach(x => x.classList.toggle('active', x.dataset.filter === 'all'));
+  renderDispo();
+}
+
+// ── FILTRO DE Nº (coluna Nº) ─────────────────────────────────────────────────
+function atualizarFunilNum(){
+  const btn = $('btnFiltroNum');
+  if(!btn) return;
+  const on = !!STATE.filtroNum;
+  btn.classList.toggle('ativo', on);
+  btn.title = on ? `Nº contendo "${STATE.filtroNum}" — clique para trocar` : 'Filtrar por Nº';
+}
+
+function fecharFiltroNum(){
+  const cx = $('caixaFiltroNum');
+  if(cx) cx.classList.add('hidden');
+}
+
+(function(){
+  const btn = $('btnFiltroNum'), cx = $('caixaFiltroNum'), campo = $('inputFiltroNum');
+  if(!btn || !cx || !campo) return;
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();          // clicar no funil não ordena a coluna
+    if(!cx.classList.contains('hidden')){ fecharFiltroNum(); return; }
+    cx.classList.remove('hidden');
+    const r = btn.getBoundingClientRect();
+    const larg = cx.offsetWidth || 220;
+    cx.style.top = `${Math.round(r.bottom + 6)}px`;
+    cx.style.left = `${Math.round(Math.min(Math.max(8, r.left), window.innerWidth - larg - 8))}px`;
+    campo.value = STATE.filtroNum || '';
+    campo.focus(); campo.select();
+  });
+
+  // filtra enquanto digita
+  campo.addEventListener('input', () => {
+    STATE.filtroNum = campo.value.replace(/\D/g, '');
+    if(campo.value !== STATE.filtroNum) campo.value = STATE.filtroNum;
+    renderDispo();
+    const conta = $('contaFiltroNum');
+    if(conta) conta.textContent = STATE.filtroNum ? `${computeRows().length} linha(s)` : '';
+  });
+  campo.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === 'Escape') fecharFiltroNum(); });
+
+  $('btnLimparFiltroNum').addEventListener('click', () => {
+    campo.value = ''; STATE.filtroNum = '';
+    const conta = $('contaFiltroNum');
+    if(conta) conta.textContent = '';
+    renderDispo(); campo.focus();
+  });
+
+  document.addEventListener('click', (e) => {
+    if(!cx.classList.contains('hidden') && !e.target.closest('#caixaFiltroNum,#btnFiltroNum')) fecharFiltroNum();
+  });
+  window.addEventListener('resize', fecharFiltroNum);
 })();
 
 // ── FILTRO DE MÊS (coluna Prev. Fat) ─────────────────────────────────────────
