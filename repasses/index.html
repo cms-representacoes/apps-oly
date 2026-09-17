@@ -242,8 +242,28 @@
     .ord-per-btn:hover{ border-color:#94a3b8; }
     .ord-per-btn.ativo{ background:var(--brand); border-color:var(--brand); color:#fff; }
 
+    /* KPIs do cabeçalho: contagem do que está listado */
+    .ord-kpis{ display:flex; gap:6px; flex-wrap:wrap; }
+    .ord-kpi{
+      display:inline-flex; align-items:center; gap:4px; border-radius:999px;
+      border:1px solid #e2e8f0; background:#f8fafc; padding:3px 10px;
+      font-size:11.5px; font-weight:700; color:#64748b; white-space:nowrap;
+    }
+    .ord-kpi:empty{ display:none; }
+    .ord-kpi b{ font-size:13px; font-weight:800; color:#0f172a; }
+    .ord-kpi-pend{ border-color:#fde68a; background:#fffbeb; color:#b45309; }
+    .ord-kpi-pend b{ color:#b45309; }
+    /* a busca divide a fileira com o título; não vale a pena ficar enorme */
+    #ordersDrawer .ord-busca{ max-width:340px; }
+
     /* rótulo curto só aparece no celular */
     .lbl-curto{ display:none; }
+
+    /* tablet: a busca cede espaço para o título e para o botão de fechar */
+    @media(min-width:641px) and (max-width:1024px){
+      #ordersDrawer .ord-busca{ max-width:none; }
+      #ordersDrawer .ord-kpi{ font-size:11px; padding:3px 9px; }
+    }
 
     /* ── Histórico no celular ────────────────────────────────────────────
        Eram 4 fileiras de controle antes do primeiro pedido. Os seletores
@@ -254,10 +274,15 @@
       #ordersDrawer .lbl-curto{ display:inline; }
 
       #ordersDrawer .ord-hd{ padding:10px 14px 12px; }
-      #ordersDrawer .ord-sub{ display:none; }
-      #ordersDrawer .ord-title{ font-size:18px; }
-      #ordersDrawer .ord-hd button[data-close-orders]{ height:36px; width:36px; font-size:15px; }
-      #ordersDrawer #ordersSearchInput{ padding-top:8px; padding-bottom:8px; font-size:13px; }
+      #ordersDrawer .ord-title{ font-size:15px; }
+      #ordersDrawer .ord-hd button[data-close-orders]{ height:34px; width:34px; font-size:14px; }
+      #ordersDrawer .ord-busca{ max-width:none; }
+      #ordersDrawer #ordersSearchInput{ padding-top:7px; padding-bottom:7px; font-size:12.5px; }
+      #ordersDrawer .ord-kpis{ margin-top:8px; gap:5px; flex-wrap:nowrap; overflow-x:auto;
+        scrollbar-width:none; -ms-overflow-style:none; }
+      #ordersDrawer .ord-kpis::-webkit-scrollbar{ display:none; }
+      #ordersDrawer .ord-kpi{ flex:0 0 auto; font-size:10.5px; padding:2px 8px; }
+      #ordersDrawer .ord-kpi b{ font-size:12px; }
 
       #ordersDrawer .ord-per-row{ margin-top:8px; gap:5px; }
       #ordersDrawer .ord-per-btn{ padding:5px 10px; font-size:11.5px; }
@@ -953,19 +978,22 @@
     <div class="backdrop absolute inset-0" data-close-orders="true"></div>
     <aside id="ordersDrawer" class="drawer absolute right-0 top-0 bottom-0 w-full max-w-2xl bg-[#f8f9fc] shadow-card flex flex-col">
       <div class="safe-top border-b border-slate-200 bg-white px-5 py-4 ord-hd">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <div class="text-sm text-slate-500 ord-sub">Pedidos sincronizados</div>
-            <div class="text-[22px] leading-none font-extrabold ord-title">Meus pedidos</div>
+        <div class="flex items-center gap-2.5">
+          <div class="text-[17px] leading-none font-extrabold ord-title whitespace-nowrap">Meus pedidos</div>
+          <!-- Busca: na mesma fileira do título, para sobrar altura para a lista -->
+          <div class="relative flex-1 min-w-0 ord-busca">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+            <input id="ordersSearchInput" type="text" placeholder="Buscar cliente ou produto..."
+              class="focus-ring w-full rounded-full border border-slate-200 bg-slate-50 pl-8 pr-3 py-2 text-[13px] font-semibold"
+              oninput="renderOrders()"/>
           </div>
-          <button class="focus-ring h-11 w-11 rounded-full border border-slate-300 bg-slate-100 text-slate-700 text-lg" data-close-orders="true" title="Fechar"><i class="fa-solid fa-xmark"></i></button>
+          <button class="focus-ring h-9 w-9 shrink-0 rounded-full border border-slate-300 bg-slate-100 text-slate-700" data-close-orders="true" title="Fechar"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <!-- Busca -->
-        <div class="relative mt-3">
-          <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-          <input id="ordersSearchInput" type="text" placeholder="Buscar por cliente ou produto..."
-            class="focus-ring w-full rounded-full border border-slate-200 bg-slate-50 pl-8 pr-4 py-2.5 text-sm font-semibold"
-            oninput="renderOrders()"/>
+        <!-- KPIs do que está na tela: substituem a frase de resumo -->
+        <div class="mt-2.5 ord-kpis">
+          <span class="ord-kpi" id="ordKpiPedidos"></span>
+          <span class="ord-kpi" id="ordKpiPares"></span>
+          <span class="ord-kpi ord-kpi-pend" id="ordKpiPendentes"></span>
         </div>
         <!-- Período -->
         <div class="mt-2.5 ord-per-row">
@@ -1013,7 +1041,6 @@
             </button>
           </div>
         </div>
-        <div id="ordersResumo" class="mb-3 text-xs font-bold text-slate-500"></div>
         <div id="ordersList" class="space-y-3"></div>
       </div>
       <div class="safe-bottom border-t border-slate-200 bg-white px-4 py-3 sm:hidden ord-rodape">
@@ -1675,7 +1702,18 @@ function getVendedorSession(){
   if(portal) return { codigo: portal.codigo, nome: portal.nome };
   var local = readJsonSafe(STORAGE_KEYS.vendedorSession, null);
   if(local) return local;
-  if(isAmbienteLocal()) return { codigo: '000000', nome: 'CMS' };
+  if(isAmbienteLocal()){
+    // Só rodando na propria maquina: ?vendedor=JORGE abre como aquele
+    // vendedor, para conferir o que cada um enxerga sem precisar da senha.
+    // No endereco publicado isto nunca vale, o login continua o de sempre.
+    var q = (new URLSearchParams(location.search).get('vendedor') || '').trim().toUpperCase();
+    if(q){
+      var cod = PREPOSTO_NAME_BY_CODE[q] ? q
+        : Object.keys(PREPOSTO_NAME_BY_CODE).find(function(k){ return PREPOSTO_NAME_BY_CODE[k] === q; });
+      if(cod) return { codigo: cod, nome: PREPOSTO_NAME_BY_CODE[cod] };
+    }
+    return { codigo: '000000', nome: 'CMS' };
+  }
   return null;
 }
 function setVendedorSession(s){ localStorage.setItem(STORAGE_KEYS.vendedorSession, JSON.stringify(s)); }
@@ -1908,6 +1946,19 @@ function stopStockAutoRefresh(){
 function prepostoValueFromOrder(order){
   const preposto = normalizePreposto(order?.preposto || order?.vendedor || '');
   return `${preposto.codigo} - ${preposto.nome}`.trim();
+}
+// "Meus pedidos" é de quem está logado. Antes a lista se guiava pelo último
+// preposto escolhido no checkout, guardado no navegador: vinha vazio quando a
+// sessão entrava pelo portal (aí apareciam pedidos de todo mundo) e vinha
+// errado quando outro vendedor já tinha usado o aparelho. O CMS continua
+// vendo todos, que é o papel dele.
+function pedidoDoVendedorLogado(order){
+  const s = getVendedorSession();
+  if(!s || sessaoCms()) return true;
+  const eu = normalizePreposto({ codigo: s.codigo, nome: s.nome });
+  const dele = normalizePreposto(order?.preposto || order?.vendedor || '');
+  if(eu.codigo && dele.codigo) return eu.codigo === dele.codigo;
+  return normalizeText(eu.nome) === normalizeText(dele.nome);
 }
 function getItemUnits(item){
   const totalUnits = Number(item?.totalUnits || 0);
@@ -2937,22 +2988,19 @@ document.addEventListener('click', (e)=>{
 });
 
 function renderOrders(){
-  const currentPreposto = getLastPreposto();
   const scope = getOrdersScope();
   updateOrdersScopeButtons();
   const searchQ = normalizeText(($('ordersSearchInput')?.value || '').trim());
 
   let orders = [...STATE.orders]
-    .sort((a,b)=>new Date(b.createdAt) - new Date(a.createdAt));
-  if(currentPreposto){
-    orders = orders.filter(order => prepostoValueFromOrder(order) === currentPreposto);
-  }
-  // Filtro por status
-  orders = orders.filter(order => orderMatchesScope(order, scope));
+    .sort((a,b)=>new Date(b.createdAt) - new Date(a.createdAt))
+    .filter(pedidoDoVendedorLogado);
   // Filtro por período
   const periodo = getOrdersPeriodo();
   updateOrdersPeriodoButtons();
-  orders = orders.filter(order => pedidoNoPeriodo(order, periodo));
+  const noPeriodo = orders.filter(order => pedidoNoPeriodo(order, periodo));
+  // Filtro por status
+  orders = noPeriodo.filter(order => orderMatchesScope(order, scope));
   // Filtro por busca
   if(searchQ){
     orders = orders.filter(order => {
@@ -2964,14 +3012,25 @@ function renderOrders(){
     });
   }
 
-  // Totais do que está sendo exibido (período + status + busca).
+  // KPIs do cabeçalho: o que está na tela (período + status + busca) e, à
+  // parte, quantos do período ainda esperam resposta da fábrica.
   const totalPares = orders.reduce((soma, o) =>
     soma + (o.items || []).reduce((t, i) => t + Number(i.totalUnits || 0), 0), 0);
-  $('ordersResumo').textContent = orders.length
-    ? `${orders.length} ${orders.length === 1 ? 'pedido' : 'pedidos'}`
-      + (totalPares > 0 ? ` · ${totalPares} pares` : '')
-      + ` ${rotuloPeriodo(periodo)}`
-    : '';
+  const pendentes = noPeriodo.filter(o => (o.status || 'Pendente') === 'Pendente').length;
+  const kpi = (el, n, um, muitos, dica) => {
+    if(!el) return;
+    el.innerHTML = `<b>${n}</b> ${n === 1 ? um : muitos}`;
+    el.title = dica;
+  };
+  kpi($('ordKpiPedidos'), orders.length, 'pedido', 'pedidos', `Pedidos ${rotuloPeriodo(periodo)}`);
+  kpi($('ordKpiPares'), totalPares, 'par', 'pares', 'Pares somados dos pedidos listados');
+  const elPend = $('ordKpiPendentes');
+  if(elPend){
+    // com o filtro em Pendente o número já está no primeiro KPI
+    if(pendentes > 0 && scope !== 'Pendente'){
+      kpi(elPend, pendentes, 'pendente', 'pendentes', `Aguardando resposta ${rotuloPeriodo(periodo)}`);
+    } else { elPend.innerHTML = ''; elPend.title = ''; }
+  }
 
   $('ordersEmptyState').classList.toggle('hidden', orders.length !== 0);
   const list = $('ordersList');
@@ -3057,10 +3116,9 @@ function closeCart(){
   }, 240);
 }
 function getOrdersForExport(){
-  const currentPreposto = getLastPreposto();
   const scope = getOrdersScope();
   let orders = [...STATE.orders].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
-  if(currentPreposto) orders = orders.filter(o => prepostoValueFromOrder(o) === currentPreposto);
+  orders = orders.filter(pedidoDoVendedorLogado);
   const periodo = getOrdersPeriodo();
   return orders.filter(o => orderMatchesScope(o, scope) && pedidoNoPeriodo(o, periodo));
 }
@@ -3173,9 +3231,18 @@ async function ordersExportPdf(){
   finally{ btn.disabled=false; btn.innerHTML=prev; }
 }
 
+// No celular a busca divide a fileira com o titulo e fica estreita: com o
+// texto longo o placeholder era cortado no meio da palavra.
+function ajustarBuscaPedidos(){
+  const el = $('ordersSearchInput');
+  if(el) el.placeholder = window.innerWidth <= 640 ? 'Buscar…' : 'Buscar cliente ou produto...';
+}
+window.addEventListener('resize', ajustarBuscaPedidos);
+
 async function openOrders(){
   // Abre sempre em "Todos": o vendedor quer ver o que fez, nao so o pendente.
   setOrdersScope('Todos');
+  ajustarBuscaPedidos();
   // Abre imediatamente com dados locais — sem delay
   renderOrders();
   $('ordersDrawerWrap').classList.remove('hidden');
