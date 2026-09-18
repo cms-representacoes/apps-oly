@@ -48,6 +48,20 @@
        Em tela estreita a busca ocupa uma fileira inteira. */
     #dispoHeader .hdr-busca{ width:280px; }
 
+    /* KPI de saldo ao lado da busca: acompanha os filtros e a busca */
+    .kpi-saldo{ display:flex; align-items:center; gap:10px; height:36px; padding:0 12px;
+      border:1px solid #dbe2ff; background:#f5f7ff; border-radius:999px; white-space:nowrap;
+      font-family:'Plus Jakarta Sans',sans-serif; }
+    .kpi-saldo .k{ display:flex; align-items:baseline; gap:5px; }
+    .kpi-saldo .l{ font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#64748b; }
+    .kpi-saldo .v{ font-size:14px; font-weight:800; color:#2836D4; font-variant-numeric:tabular-nums; }
+    .kpi-saldo .v.real{ color:#0f766e; }
+    .kpi-saldo .sep{ width:1px; height:16px; background:#cbd5e1; }
+    .dark .kpi-saldo{ background:var(--card); border-color:var(--line); }
+    .dark .kpi-saldo .v{ color:#a5b4fc; }
+    .dark .kpi-saldo .v.real{ color:#5eead4; }
+    .dark .kpi-saldo .l{ color:#94a3b8; }
+
     /* Barra de filtros recolhida: o botão pisca para lembrar que ela existe */
     @keyframes pisca-filtro{
       0%,100%{ box-shadow:0 0 0 0 rgba(2,132,199,.5); }
@@ -692,6 +706,11 @@
 
           <!-- Busca encostada nos botões, à direita; o resto mora em "mais opções" -->
           <div class="hdr-dir flex flex-wrap items-center justify-end gap-2">
+            <div class="kpi-saldo" id="kpiSaldo" title="Soma dos itens que aparecem na tabela — acompanha a busca e os filtros">
+              <span class="k"><span class="l">Dispo</span><span class="v" id="kpiSaldoDispo">—</span></span>
+              <span class="sep"></span>
+              <span class="k"><span class="l">Real</span><span class="v real" id="kpiSaldoReal">—</span></span>
+            </div>
             <div class="hdr-busca flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2"
               title="Buscar por Nº, GCI, código, produto ou cor">
               <i class="fa-solid fa-magnifying-glass text-slate-400 text-sm"></i>
@@ -1789,6 +1808,9 @@ function renderDispo(){
   renderBannerAntecipacao(computeAllRows());
 
   $('tableCount').textContent = `${sorted.length} ${sorted.length === 1 ? 'item' : 'itens'}`;
+  // saldo real negativo (ruptura) não desconta do que ainda há para vender
+  $('kpiSaldoDispo').textContent = formatInt(sorted.reduce((t, r) => t + Number(r.saldo || 0), 0));
+  $('kpiSaldoReal').textContent = formatInt(sorted.reduce((t, r) => t + Math.max(0, r.saldoReal || 0), 0));
   $('tableWrap').classList.remove('hidden');
 
   if(!sorted.length){
