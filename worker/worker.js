@@ -40,6 +40,7 @@ export default {
       "saveFaturados",
       "saveRateio",
       "resolverMatrizPendente",
+      "cadastrarMatrizItem",
       "deleteMatrizItens",
       "limparHistoricoMatriz",
       "uploadMatrizImagem",
@@ -2299,6 +2300,45 @@ export default {
 
           await saveFile(GITHUB_MATRIZ, data, sha, `matriz: pendente resolvido — ${body.id}`);
           return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH action:"cadastrarMatrizItem" + lojaCodigo + marca + artigo + cor (+ descricao,
+        // estoqueAtual, venda, pendenteId) → admin cadastra na loja um produto escolhido na base
+        // de produtos. Com pendenteId, o aviso "novo produto" daquela loja fica resolvido junto —
+        // e o que entra é o produto da base, não o que a loja digitou. Exige admin.
+        if (body.action === "cadastrarMatrizItem" && body.lojaCodigo && body.marca && body.artigo && body.cor) {
+          const { content, sha } = await getFile(GITHUB_MATRIZ);
+          const data = (content && typeof content === "object") ? content : { lojas: [], pendentes: [] };
+          const loja = (data.lojas || []).find(l => String(l.codigo) === String(body.lojaCodigo));
+          if (!loja) return new Response(JSON.stringify({ success: false, error: "Loja não encontrada." }), { status: 404, headers: corsHeaders });
+          const marca = String(body.marca);
+          const artigo = String(body.artigo).trim();
+          const cor = String(body.cor).trim();
+          loja.marcas = loja.marcas || {};
+          if (!Array.isArray(loja.marcas[marca])) loja.marcas[marca] = [];
+          const id = `${artigo}|${cor}`;
+          // O mesmo produto em outra lista da loja também conta como já cadastrado.
+          const duplicado = Object.values(loja.marcas).some(lista => Array.isArray(lista) && lista.some(i => i.id === id));
+          if (!duplicado) {
+            loja.marcas[marca].push({
+              id, artigo, cor,
+              descricao: String(body.descricao || "").trim() || artigo,
+              estoqueAtual: Math.max(0, Number(body.estoqueAtual) || 0),
+              venda: Math.max(0, Number(body.venda) || 0),
+              preposto: null
+            });
+          }
+          if (body.pendenteId) {
+            const pend = (data.pendentes || []).find(p => p.id === body.pendenteId);
+            if (pend && pend.status === "pendente") {
+              pend.status = "aprovado";
+              pend.resolvidoEm = new Date().toISOString();
+              pend.cadastradoComo = { marca, artigo, cor, descricao: String(body.descricao || "").trim() };
+            }
+          }
+          await saveFile(GITHUB_MATRIZ, data, sha,
+            `matriz: cadastro pela base — ${loja.nome} — ${artigo}/${cor}${duplicado ? " (já existia)" : ""}`);
+          return new Response(JSON.stringify({ success: true, duplicado }), { status: 200, headers: corsHeaders });
         }
 
         // PATCH action:"deleteMatrizItens" + lojaCodigo + marca + itemIds:[...] → admin remove um ou
