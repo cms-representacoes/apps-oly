@@ -273,10 +273,12 @@
     /* Modal zoom */
     /* ⓘ da ficha técnica: fica ao lado do preço, só em quem tem ficha */
     .btn-ficha{ flex:none; width:22px; height:22px; border-radius:50%; padding:0;
-      border:1px solid var(--line); background:var(--card); color:var(--muted);
+      /* na cor da marca — cinza, ele sumia no card e ninguém clicava */
+      border:1.5px solid var(--marca-cor, var(--accent)); background:var(--card);
+      color:var(--marca-cor, var(--accent));
       font-size:11px; font-weight:800; line-height:1; cursor:pointer;
       display:grid; place-items:center; transition:.15s }
-    .btn-ficha:hover{ border-color:var(--accent); color:var(--accent) }
+    .btn-ficha:hover{ background:color-mix(in srgb, var(--marca-cor, var(--accent)) 12%, var(--card)) }
     .ficha-bg{ position:fixed; inset:0; z-index:210; background:rgba(15,23,42,.55);
       display:flex; align-items:center; justify-content:center; padding:18px }
     .ficha-bg.hidden{ display:none }
@@ -5461,6 +5463,8 @@ function aplicarIdentidadeMarca(){
   document.documentElement.style.setProperty('--accent',       info.accent);
   document.documentElement.style.setProperty('--accent-light', info.accentLight);
   document.documentElement.style.setProperty('--brand',        info.brand);
+  // azul da Olympikus / vermelho da UA: é a cor do logo, usada no ⓘ da ficha
+  document.documentElement.style.setProperty('--marca-cor',    info.bgMarca);
   document.documentElement.style.setProperty('--pulse-color-strong', info.pulseRgba);
   // Título da aba
   document.title = `${info.nome} — Disponibilidades`;
@@ -5556,6 +5560,8 @@ function aplicarIdentidadeMarcaCliente(){
   document.documentElement.style.setProperty('--accent',       info.accent);
   document.documentElement.style.setProperty('--accent-light', info.accentLight);
   document.documentElement.style.setProperty('--brand',        info.brand);
+  // azul da Olympikus / vermelho da UA: é a cor do logo, usada no ⓘ da ficha
+  document.documentElement.style.setProperty('--marca-cor',    info.bgMarca);
   document.documentElement.style.setProperty('--brand-bg',     info.bgMarca);
   // Header do cliente
   const h = $('cliHeader');
