@@ -942,12 +942,66 @@ export default {
       return globalThis.__UAC_SESSAO;
     }
 
+    // ── Índice do catálogo ───────────────────────────────────────────────
+    // A página de cada coleção traz a lista inteira de produtos embutida
+    // (codigo, cor, numeração). Lendo isso uma vez, sabemos em que coleção
+    // cada artigo está e uma cor válida dele — sem isso, era tentar sete
+    // endereços por produto e ainda cair em erro 500 do próprio site.
+    async function uacIndice(sessao, forcar) {
+      const cache = globalThis.__UAC_INDICE;
+      if (!forcar && cache && (Date.now() - cache.criadoEm) < 20 * 60 * 1000) {
+        return cache.mapa;
+      }
+      const mapa = {};
+      for (const c of (sessao.colecoes || [])) {
+        const url = `${UAC_BASE}/user/${c.secao}/colecoes/${c.slug}`;
+        const r = await fetch(url, {
+          headers: {
+            "User-Agent": TS_UA_HEADER, Accept: "text/html,*/*",
+            "Accept-Language": "pt-BR,pt;q=0.9", Cookie: sessao.cookie, Referer: UAC_LISTA
+          },
+          redirect: "follow"
+        });
+        if (!r.ok) continue;
+        const html = await r.text();
+        // entre um campo e outro há quebras e campos vazios no meio: a janela
+        // precisa de folga (o par fica a ~210 caracteres de distância)
+        for (const m of html.matchAll(/codigo:\s*"([^"]+)"[\s\S]{0,400}?codigo_cor:\s*"([^"]*)"/g)) {
+          const art = String(m[1]).trim().toUpperCase();
+          if (!art || mapa[art]) continue;
+          mapa[art] = { secao: c.secao, slug: c.slug, cor: String(m[2]).trim() };
+        }
+      }
+      globalThis.__UAC_INDICE = { mapa, criadoEm: Date.now() };
+      return mapa;
+    }
+
     // Procura a página do produto, uma coleção por vez.
     async function uacPaginaProduto(sessao, artigo, cor) {
       const cab = { "User-Agent": TS_UA_HEADER, Accept: "text/html,*/*",
                     "Accept-Language": "pt-BR,pt;q=0.9", Cookie: sessao.cookie,
                     Referer: UAC_LISTA };
       const tentativas = [];
+
+      // Caminho curto: o índice diz a coleção e uma cor que existe lá. A cor
+      // que a gente usa internamente nem sempre é a do catálogo.
+      const indice = await uacIndice(sessao);
+      const achado = indice[String(artigo).trim().toUpperCase()];
+      if (achado) {
+        for (const tentarCor of [cor, achado.cor].filter(Boolean)) {
+          const url = `${UAC_BASE}/user/${achado.secao}/colecoes/${achado.slug}` +
+                      `/${encodeURIComponent(artigo)}/${encodeURIComponent(tentarCor)}`;
+          const r = await fetch(url, { headers: cab, redirect: "follow" });
+          const html = r.ok ? await r.text() : "";
+          tentativas.push({ secao: achado.secao, slug: achado.slug, cor: tentarCor,
+                            status: r.status, tamanho: html.length });
+          if (r.ok && html.includes(String(artigo))) {
+            return { url, html, slug: achado.slug, secao: achado.secao, tentativas };
+          }
+        }
+        return { url: "", html: "", slug: "", secao: "", tentativas };
+      }
+
       for (const c of (sessao.colecoes || [])) {
         const secao = c.secao || UAC_SECOES[0];
         const slug = c.slug || c;
@@ -962,6 +1016,35 @@ export default {
         }
       }
       return { url: "", html: "", slug: "", secao: "", tentativas };
+    }
+
+    // Ficha de um artigo pelo Trade Squash, sem gravar nada: serve de reserva
+    // para o catálogo da UA, que só publica as coleções da temporada.
+    async function tsFichaDeArtigo(tenant, artigo) {
+      try {
+        const sessao = await tsSessao(tenant, false);
+        const achados = await tsBuscar(sessao, artigo, "");
+        const redirect = achados.length ? (achados[0].redirect || "") : "";
+        if (!redirect) return null;
+        const r = await fetch(TS_BASE + redirect, {
+          headers: {
+            "User-Agent": TS_UA_HEADER, Accept: "text/html,*/*",
+            Referer: sessao.showcase, Cookie: sessao.cookie
+          }
+        });
+        if (!r.ok) return null;
+        const { ficha } = tsFichaDoHtml(await r.text());
+        const temAlgo = ficha.composicao || ficha.origem || ficha.descricao ||
+                        (ficha.tecnologias || []).length;
+        if (!temAlgo) return null;
+        ficha.marca = tenant === "under-armour" ? "ua" : "oly";
+        ficha.fonte = "trade-squash";
+        ficha.sku = achados[0].sku || "";
+        ficha.lidoEm = new Date().toISOString();
+        return ficha;
+      } catch (_) {
+        return null;
+      }
     }
 
     function tsChaveFicha(artigo) {
@@ -2918,9 +3001,12 @@ export default {
             }
 
             if (body.soLogin) {
+              const indice = body.indice ? await uacIndice(sessao, !!body.relogar) : null;
               return new Response(JSON.stringify({
                 success: true, colecoes: sessao.colecoes, statusPost: sessao.statusPost,
-                cookies: sessao.cookie.split(";").length
+                cookies: sessao.cookie.split(";").length,
+                artigosNoIndice: indice ? Object.keys(indice).length : undefined,
+                amostra: indice ? Object.entries(indice).slice(0, 5) : undefined
               }), { status: 200, headers: corsHeaders });
             }
             const { url, html, slug, tentativas } = await uacPaginaProduto(sessao, artigo, cor);
@@ -2976,8 +3062,23 @@ export default {
             try {
               const { html, slug, secao } = await uacPaginaProduto(sessao, artigo, cor);
               if (!html) {
+                // Fora das coleções de hoje: o Trade Squash guarda as antigas,
+                // então vale tentar por lá antes de desistir do artigo.
+                const daReserva = await tsFichaDeArtigo("under-armour", artigo);
+                if (daReserva) {
+                  const chaveR = tsChaveFicha(artigo);
+                  fichas[chaveR] = daReserva;
+                  for (const k of Object.keys(fichas)) {
+                    if (k !== chaveR && k.startsWith(chaveR + "|")) delete fichas[k];
+                  }
+                  gravou++;
+                  resultados.push({ artigo, status: "ok", colecao: "trade-squash",
+                                    composicao: daReserva.composicao, origem: daReserva.origem,
+                                    tecnologias: (daReserva.tecnologias || []).length });
+                  continue;
+                }
                 resultados.push({ artigo, status: "nao_encontrado",
-                                  motivo: "Não achei em nenhuma coleção" });
+                                  motivo: "Fora das coleções de hoje e sem ficha no Trade Squash" });
                 continue;
               }
               const { ficha } = uacFichaDoHtml(html, artigo);
