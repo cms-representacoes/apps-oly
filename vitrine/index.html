@@ -1595,9 +1595,80 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
 @media(max-width:640px){
   .fab-sacola .n{ background:var(--marca); color:#fff; border-color:#fff; }
 }
+
+/* ── Tela de abertura (só no app instalado) ───────────────────────────
+   Mesma linguagem da splash do Portal — quadrado CMS, nome, as duas
+   marcas —, mas aqui os três selos acendem em sequência: quem abre a
+   vitrine precisa saber, antes de ver o primeiro cartão, que ali tem
+   estoque, repasse e produção no mesmo lugar. */
+#vSplash{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;
+  background:linear-gradient(160deg,#1e293b,#0f172a 55%,#020617);
+  opacity:1;transition:opacity .45s ease}
+#vSplash.out{opacity:0;pointer-events:none}
+#vSplash[hidden]{display:none}
+.vs-box{display:flex;flex-direction:column;align-items:center;gap:9px;
+  padding:0 20px;text-align:center;
+  animation:vsIn .5s cubic-bezier(.22,1,.36,1) both}
+.vs-logo{position:relative;overflow:hidden;width:88px;height:88px;border-radius:24px;
+  background:linear-gradient(145deg,var(--splash-claro) 0%,var(--marca) 55%,var(--splash-escuro) 100%);
+  display:grid;place-items:center;color:#fff;font:700 29px "Space Grotesk",sans-serif;
+  box-shadow:0 14px 40px color-mix(in srgb,var(--marca) 45%,transparent);
+  animation:vsPulse 1.6s ease-in-out .4s infinite}
+.vs-shine{position:absolute;top:-30%;left:-80%;width:55%;height:160%;transform:rotate(18deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);
+  animation:vsShine 1.8s ease-in-out .6s infinite}
+.vs-nome{color:#f1f5f9;font:600 15px "Space Grotesk",sans-serif}
+.vs-sub{color:#94a3b8;font:500 11px "Inter",sans-serif;letter-spacing:.14em;text-transform:uppercase}
+.vs-selos{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;flex-wrap:wrap}
+.vs-selo{display:inline-flex;align-items:center;gap:6px;border-radius:999px;
+  padding:6px 12px;font:700 10.5px "Space Grotesk",sans-serif;letter-spacing:.06em;
+  text-transform:uppercase;color:#fff;background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.14);opacity:0;transform:translateY(8px);
+  animation:vsAcende .5s cubic-bezier(.22,1,.36,1) forwards}
+.vs-selo i{width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+.vs-selo.est{animation-delay:.45s;color:#34D399}
+.vs-selo.rep{animation-delay:.70s;color:#93A5FF}
+.vs-selo.pro{animation-delay:.95s;color:#C4A0F5}
+.vs-frase{margin-top:16px;color:#cbd5e1;font:500 12.5px "Inter",sans-serif;
+  opacity:0;animation:vsAcende .5s ease 1.25s forwards}
+.vs-marcas{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:18px;height:40px;
+  opacity:0;animation:vsAcende .5s ease 1.45s forwards}
+.vs-marcas img{width:auto;display:block}
+.vs-marcas .oly{height:24px}
+.vs-marcas .ua{height:34px}
+.vs-marcas .div{width:1px;height:28px;background:rgba(255,255,255,.22)}
+@keyframes vsIn{from{transform:scale(.88);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes vsPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@keyframes vsShine{0%{left:-80%}55%,100%{left:130%}}
+@keyframes vsAcende{to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){
+  .vs-logo,.vs-shine{animation:none}
+  .vs-selo,.vs-frase,.vs-marcas{animation:none;opacity:1;transform:none}
+}
 </style>
 
 <body>
+
+<!-- Abertura do app instalado. Nasce escondida: o script só a mostra em
+     modo standalone, e some sozinha quando a vitrine termina de montar. -->
+<div id="vSplash" hidden>
+  <div class="vs-box">
+    <div class="vs-logo">CMS<span class="vs-shine"></span></div>
+    <div class="vs-nome">CMS PASS</div>
+    <div class="vs-sub" id="vsSub">Vitrine</div>
+    <div class="vs-selos" aria-hidden="true">
+      <span class="vs-selo est"><i></i>Estoque</span>
+      <span class="vs-selo rep"><i></i>Repasse</span>
+      <span class="vs-selo pro"><i></i>Produção</span>
+    </div>
+    <div class="vs-frase">Tudo em um Só Lugar</div>
+    <div class="vs-marcas" aria-hidden="true">
+      <img class="oly" src="../logo-oly-simbolo.png" alt="">
+      <span class="div"></span>
+      <img class="ua" src="../logo-ua-simbolo.png" alt="">
+    </div>
+  </div>
+</div>
 
 <header class="topo">
   <div class="topo-l1" id="topoL1">
@@ -2129,6 +2200,32 @@ function trocaLocal(s){
     : Object.keys(VENDEDORES_TESTE).find(k => VENDEDORES_TESTE[k] === q);
   return cod ? { ...s, codigo:cod, nome:VENDEDORES_TESTE[cod], _local:true } : s;
 }
+/* A abertura só existe no app instalado (ícone na tela inicial). No
+   navegador, o vendedor entra direto — ele abre a vitrine dez vezes por
+   dia e uma animação a cada vez viraria pedágio. */
+const SPLASH = (() => {
+  const app = matchMedia('(display-mode: standalone)').matches ||
+              window.navigator.standalone === true;
+  const el = document.getElementById('vSplash');
+  if(!app || !el) return { fim(){} };
+  el.hidden = false;
+  const nasceu = Date.now();
+  let saiu = false;
+  const sair = () => {
+    if(saiu) return;
+    saiu = true;
+    el.classList.add('out');
+    setTimeout(() => { el.hidden = true; }, 480);
+  };
+  // some quando a vitrine termina de montar, mas nunca antes da animação
+  // completar — a tela piscando é pior do que esperar meio segundo
+  return {
+    fim(){ setTimeout(sair, Math.max(0, 1900 - (Date.now() - nasceu))); },
+    // rede ruim não pode deixar a pessoa presa aqui
+    _guarda: setTimeout(sair, 6000)
+  };
+})();
+
 const SESSAO = getSessao();
 // CMS é sigla e fica como está; nomes de gente vão em caixa de título.
 function nomeCurto(n){
@@ -2152,6 +2249,15 @@ const MARCAS = {
   ua:  { nome:'Under Armour', curto:'UA',  marca:'#e52125', claro:'#F2494C', escuro:'#A81215', logo:'../logo-ua-simbolo.png' }
 };
 let MARCA = (new URLSearchParams(location.search).get('marca') || 'oly').toLowerCase();
+// a abertura usa a cor da marca que está sendo aberta
+(() => {
+  const m = MARCAS[MARCA] || MARCAS.oly;
+  const r = document.documentElement.style;
+  r.setProperty('--splash-claro', m.claro);
+  r.setProperty('--splash-escuro', m.escuro);
+  const sub = document.getElementById('vsSub');
+  if(sub) sub.textContent = 'Vitrine · ' + m.nome;
+})();
 if(!MARCAS[MARCA]) MARCA = 'oly';
 
 /* ── estado ─────────────────────────────────────────────────────── */
@@ -2639,6 +2745,7 @@ async function carregar(){
     $('estado').innerHTML = '';
     aplicar();
     pintarVistos();
+    SPLASH.fim();
   }catch(e){
     console.error(e);
     $('estado').innerHTML =
