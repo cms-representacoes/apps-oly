@@ -1609,10 +1609,13 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
 .vs-box{display:flex;flex-direction:column;align-items:center;gap:9px;
   padding:0 20px;text-align:center;
   animation:vsIn .5s cubic-bezier(.22,1,.36,1) both}
+/* mesmo quadrado do Portal: roxo CMS sobre o fundo marinho, em todas as
+   aberturas — a cor da marca fica para dentro da vitrine */
 .vs-logo{position:relative;overflow:hidden;width:88px;height:88px;border-radius:24px;
-  background:linear-gradient(145deg,var(--splash-claro) 0%,var(--marca) 55%,var(--splash-escuro) 100%);
+  background:linear-gradient(145deg,#a970ff 0%,#8b5cf6 48%,#7439e0 100%);
+  border:1px solid rgba(190,160,255,.30);
   display:grid;place-items:center;color:#fff;font:700 29px "Space Grotesk",sans-serif;
-  box-shadow:0 14px 40px color-mix(in srgb,var(--marca) 45%,transparent);
+  box-shadow:0 14px 40px rgba(124,58,237,.45);
   animation:vsPulse 1.6s ease-in-out .4s infinite}
 .vs-shine{position:absolute;top:-30%;left:-80%;width:55%;height:160%;transform:rotate(18deg);
   background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);
@@ -2200,14 +2203,25 @@ function trocaLocal(s){
     : Object.keys(VENDEDORES_TESTE).find(k => VENDEDORES_TESTE[k] === q);
   return cod ? { ...s, codigo:cod, nome:VENDEDORES_TESTE[cod], _local:true } : s;
 }
-/* A abertura só existe no app instalado (ícone na tela inicial). No
-   navegador, o vendedor entra direto — ele abre a vitrine dez vezes por
-   dia e uma animação a cada vez viraria pedágio. */
+/* A abertura: no app instalado, sempre; no navegador, uma vez por dia por
+   aparelho — o vendedor abre a vitrine dez vezes por dia e uma animação a
+   cada vez viraria pedágio. "?abertura=1" força, para conferir. */
 const SPLASH = (() => {
   const app = matchMedia('(display-mode: standalone)').matches ||
               window.navigator.standalone === true;
+  const forcar = /[?&]abertura=1\b/.test(location.search);
+  let mostrar = app || forcar;
+  if(!mostrar){
+    try{
+      const hoje = new Date().toISOString().slice(0, 10);
+      if(localStorage.getItem('cms.abertura.vitrine') !== hoje){
+        localStorage.setItem('cms.abertura.vitrine', hoje);
+        mostrar = true;
+      }
+    }catch(_){ /* sem armazenamento: entra direto */ }
+  }
   const el = document.getElementById('vSplash');
-  if(!app || !el) return { fim(){} };
+  if(!mostrar || !el) return { fim(){} };
   el.hidden = false;
   const nasceu = Date.now();
   let saiu = false;

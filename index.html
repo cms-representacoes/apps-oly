@@ -612,10 +612,23 @@
 </style>
 <script>
 (function(){
-  // só no app instalado (Android: display-mode; iOS: navigator.standalone)
+  // Quando mostrar a abertura: no app instalado, sempre; no navegador
+  // (computador ou celular), uma vez por dia por aparelho — anuncia sem virar
+  // pedágio a cada visita. "?abertura=1" força, para conferir a animação.
   const standalone = window.matchMedia('(display-mode: standalone)').matches
     || window.navigator.standalone === true;
-  if(!standalone) return;
+  const forcar = /[?&]abertura=1\b/.test(location.search);
+  let mostrar = standalone || forcar;
+  if(!mostrar){
+    try{
+      const hoje = new Date().toISOString().slice(0, 10);
+      if(localStorage.getItem('cms.abertura.portal') !== hoje){
+        localStorage.setItem('cms.abertura.portal', hoje);
+        mostrar = true;
+      }
+    }catch(_){ /* sem armazenamento: fica sem abertura, sem prejuízo */ }
+  }
+  if(!mostrar) return;
   const el = document.getElementById('appSplash');
   el.hidden = false;
   const inicio = Date.now();
