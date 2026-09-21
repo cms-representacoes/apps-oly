@@ -12,8 +12,10 @@
   <title>Portal do Vendedor · CMS Representações</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- fontes sem travar a primeira pintura: no app, o Android segura a tela
+       parada com o logo até a página pintar alguma coisa -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet" media="print" onload="this.media='all'">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{min-height:100%}
@@ -642,6 +644,11 @@
   setTimeout(function(){ window.__hideSplash && window.__hideSplash(); }, MAX);
 })();
 </script>
+<!-- O Tailwind vem depois da abertura, não no <head>: no <head> ele travava
+     a pintura da página inteira, e no celular o Android mostrava a tela
+     parada com o logo até ele baixar. Aqui a animação já está na tela; o
+     resto da página só é lido depois dele, então nada aparece sem estilo. -->
+<script src="https://cdn.tailwindcss.com"></script>
 
   <main class="min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 py-3 sm:py-5">
 
