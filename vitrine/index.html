@@ -1626,13 +1626,13 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
   border:1px solid rgba(255,255,255,.14);opacity:0;transform:translateY(8px);
   animation:vsAcende .5s cubic-bezier(.22,1,.36,1) forwards}
 .vs-selo i{width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
-.vs-selo.est{animation-delay:.45s;color:#34D399}
-.vs-selo.rep{animation-delay:.70s;color:#93A5FF}
-.vs-selo.pro{animation-delay:.95s;color:#C4A0F5}
+.vs-selo.est{animation-delay:.55s;color:#34D399}
+.vs-selo.rep{animation-delay:1s;color:#93A5FF}
+.vs-selo.pro{animation-delay:1.45s;color:#C4A0F5}
 .vs-frase{margin-top:16px;color:#cbd5e1;font:500 12.5px "Inter",sans-serif;
-  opacity:0;animation:vsAcende .5s ease 1.25s forwards}
+  opacity:0;animation:vsAcende .5s ease 1.95s forwards}
 .vs-marcas{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:18px;height:40px;
-  opacity:0;animation:vsAcende .5s ease 1.45s forwards}
+  opacity:0;animation:vsAcende .5s ease 2.35s forwards}
 .vs-marcas img{width:auto;display:block}
 .vs-marcas .oly{height:24px}
 .vs-marcas .ua{height:34px}
@@ -1655,7 +1655,7 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
   <div class="vs-box">
     <div class="vs-logo">CMS<span class="vs-shine"></span></div>
     <div class="vs-nome">CMS PASS</div>
-    <div class="vs-sub" id="vsSub">Vitrine</div>
+    <div class="vs-sub" id="vsSub">Vitrine · Olympikus e Under Armour</div>
     <div class="vs-selos" aria-hidden="true">
       <span class="vs-selo est"><i></i>Estoque</span>
       <span class="vs-selo rep"><i></i>Repasse</span>
@@ -2220,9 +2220,10 @@ const SPLASH = (() => {
   // some quando a vitrine termina de montar, mas nunca antes da animação
   // completar — a tela piscando é pior do que esperar meio segundo
   return {
-    fim(){ setTimeout(sair, Math.max(0, 1900 - (Date.now() - nasceu))); },
+    // 3,4s: dá para ler os três selos e a frase antes de a vitrine entrar
+    fim(){ setTimeout(sair, Math.max(0, 3400 - (Date.now() - nasceu))); },
     // rede ruim não pode deixar a pessoa presa aqui
-    _guarda: setTimeout(sair, 6000)
+    _guarda: setTimeout(sair, 8000)
   };
 })();
 
@@ -2255,8 +2256,8 @@ let MARCA = (new URLSearchParams(location.search).get('marca') || 'oly').toLower
   const r = document.documentElement.style;
   r.setProperty('--splash-claro', m.claro);
   r.setProperty('--splash-escuro', m.escuro);
-  const sub = document.getElementById('vsSub');
-  if(sub) sub.textContent = 'Vitrine · ' + m.nome;
+  // o texto nomeia as duas marcas: a vitrine é das duas, e trocar de marca
+  // é um toque no topo — só a cor segue a que está sendo aberta
 })();
 if(!MARCAS[MARCA]) MARCA = 'oly';
 
