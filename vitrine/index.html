@@ -275,6 +275,36 @@ button{font:inherit}
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cod{display:block;font-size:9.5px;font-weight:600;color:var(--tenue);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .preco{display:block;font-size:14px;font-weight:900;color:var(--marca);letter-spacing:-.025em}
+/* Linha do preço com o ⓘ da ficha à direita: o card já está cheio, então o
+   acesso à ficha é um botão pequeno, e só existe em quem tem ficha. */
+.linha-preco{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.btn-ficha{flex:none;width:22px;height:22px;border-radius:50%;border:1px solid var(--linha);
+  background:var(--carta);color:var(--tenue);font-size:11px;font-weight:800;cursor:pointer;
+  display:grid;place-items:center;line-height:1;padding:0;transition:.15s}
+.btn-ficha:hover{border-color:var(--marca);color:var(--marca);background:color-mix(in srgb,var(--marca) 8%,var(--carta))}
+.btn-ficha:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+
+/* Ficha técnica dentro do modal */
+.ficha{border:1px solid var(--linha);border-radius:10px;background:var(--carta);overflow:hidden}
+.ficha>summary{list-style:none;cursor:pointer;padding:9px 11px;display:flex;align-items:center;gap:7px;
+  font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--fraco)}
+.ficha>summary::-webkit-details-marker{display:none}
+.ficha>summary .seta{margin-left:auto;font-size:10px;transition:transform .18s}
+.ficha[open]>summary .seta{transform:rotate(180deg)}
+.ficha-corpo{padding:0 11px 11px;display:flex;flex-direction:column;gap:9px}
+.ficha-campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px 14px}
+.ficha-campo{min-width:0}
+.ficha-campo .r{display:block;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fraco)}
+.ficha-campo .v{display:block;font-size:12.5px;font-weight:600;color:var(--tinta);line-height:1.35;overflow-wrap:anywhere}
+.ficha-tec{display:flex;flex-wrap:wrap;gap:5px}
+.ficha-tec span{font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:999px;
+  border:1px solid color-mix(in srgb,var(--marca) 30%,var(--linha));
+  background:color-mix(in srgb,var(--marca) 8%,var(--carta));color:var(--marca)}
+.ficha-desc{font-size:12px;line-height:1.45;color:var(--tenue);margin:0}
+.ficha-desc.curta{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.ficha-mais{align-self:flex-start;background:none;border:0;padding:0;cursor:pointer;
+  font-size:11px;font-weight:700;color:var(--marca)}
+.ficha-fonte{font-size:9.5px;color:var(--fraco)}
 .campanha{display:block;font-size:9.5px;font-weight:600;color:var(--fraco)}
 .campanha b{color:var(--tinta);font-weight:600}
 
@@ -2100,6 +2130,7 @@ const STATE = { produtos:[], filtrados:[], origem:'tudo', categoria:'', busca:''
                 sel:{ selo:new Set(), chega:new Set(), genero:new Set(), sub:new Set(),
                       fabrica:new Set(), camp:new Set() },
                 sacola:new Map(), aba:'estoque', marcados:new Set(), soNovos:false,
+                fichas:{},
                 ordem:(() => { try{ return localStorage.getItem('cmspass.ordem') || 'padrao'; }
                                catch(_){ return 'padrao'; } })() };
 
@@ -2537,12 +2568,16 @@ async function bloqueios(){
     try{ return await doWorker(action); }
     catch(_){ try{ return await json(arquivo); }catch(__){ return null; } }
   };
-  const [oc, ocD, exc, rat] = await Promise.all([
+  const [oc, ocD, exc, rat, fic] = await Promise.all([
     pegar('getOcultos', 'ocultos.json'),
     pegar('getOcultosDisp', 'ocultos_disponibilidades.json'),
     pegar('getExclusivos', 'exclusivos.json'),
-    pegar('getRateio', 'rateio.json')
+    pegar('getRateio', 'rateio.json'),
+    // ficha técnica lida do Trade Squash pelo painel: composição, origem,
+    // tecnologias. Produto sem ficha simplesmente não mostra o ⓘ.
+    pegar('getFichas', 'fichas.json')
   ]);
+  STATE.fichas = (fic && typeof fic === 'object' && !Array.isArray(fic)) ? fic : {};
   return {
     // Rateio: o lote dividido por vendedor. Cada Nº traz as cotas em pares e,
     // opcionalmente, o nome do selo que aparece no card.
@@ -2977,7 +3012,9 @@ function montar(dispo, disponib, produtos, pedidos, oculto){
 const ICONE = {
   'c-pronta':'<path d="M21 8v8a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4A2 2 0 0 1 21 8z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
   'c-repasse':'<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>',
-  'c-plano':'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>'
+  'c-plano':'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  // prancheta com linhas: a ficha técnica do produto
+  'c-ficha':'<path d="M9 3h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1z"/><path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/><path d="M8 11h8M8 15h5"/>'
 };
 const svgIcone = (cls, tam = 11) => `<svg width="${tam}" height="${tam}" viewBox="0 0 24 24"
   fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"
@@ -3341,6 +3378,60 @@ function pintarAtalhoNovidades(){
 }
 
 /* ── grade ──────────────────────────────────────────────────────── */
+/* ── Ficha técnica ───────────────────────────────────────────────────
+   Vem do Trade Squash, por artigo+cor. Cada marca preenche o que quer: a
+   Olympikus não informa composição, a UA não informa pisada. Por isso a
+   ficha mostra só o que existe, em vez de linhas com travessão. */
+// A chave é o artigo: a ficha vale para todas as cores dele. As fichas
+// gravadas antes, por artigo+cor, continuam valendo até serem regravadas.
+const fichaDe = o => (STATE.fichas || {})[norm(o.artigo)]
+                  || (STATE.fichas || {})[chave(o.artigo, o.cor)]
+                  || null;
+
+const capIni = t => String(t || '').toLowerCase()
+  .replace(/(^|[\s/])([a-zà-ú])/g, (_, a, b) => a + b.toUpperCase());
+
+// A UA informa o peso em gramas, num campo chamado "unidade para peso"
+function pesoTexto(v){
+  const n = Number(String(v || '').replace(',', '.'));
+  if(!n) return '';
+  return n >= 100 ? (n / 1000).toFixed(3).replace('.', ',') + ' kg'
+                  : String(v).trim() + ' kg';
+}
+
+function blocoFicha(o, aberto){
+  const f = fichaDe(o);
+  if(!f) return '';
+  const campos = [
+    ['Composição', f.composicao],
+    ['Origem',     capIni(f.origem)],
+    ['Peso',       pesoTexto(f.peso)],
+    // a grade da ficha é a da cor que foi lida e nem sempre vale para as
+    // outras; quem manda são as grades de estoque e repasse, logo acima
+    ['Gênero',     capIni(f.genero)],
+    ['Tipo',       f.tipo],
+    ['Pisada',     capIni(f.pisada)],
+    ['Coleção',    f.colecao],
+    ['Código de barras', f.ean]
+  ].filter(c => String(c[1] || '').trim());
+  const tec = Array.isArray(f.tecnologias) ? f.tecnologias.filter(Boolean) : [];
+  const desc = String(f.descricao || '').trim();
+  if(!campos.length && !tec.length && !desc) return '';
+  const longa = desc.length > 260;
+  return `<details class="ficha" id="fichaBloco"${aberto ? ' open' : ''}>
+    <summary>${svgIcone('c-ficha', 13)}Ficha técnica<span class="seta">▾</span></summary>
+    <div class="ficha-corpo">
+      ${campos.length ? `<div class="ficha-campos">${campos.map(([r, v]) =>
+        `<span class="ficha-campo"><span class="r">${esc(r)}</span><span class="v">${esc(v)}</span></span>`
+      ).join('')}</div>` : ''}
+      ${tec.length ? `<div class="ficha-tec">${tec.map(t => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
+      ${desc ? `<p class="ficha-desc${longa ? ' curta' : ''}" id="fichaDesc">${esc(desc)}</p>
+        ${longa ? '<button class="ficha-mais" type="button" id="fichaMais">Ver mais</button>' : ''}` : ''}
+      <span class="ficha-fonte">Informação do catálogo da marca.</span>
+    </div>
+  </details>`;
+}
+
 function cardHtml(o, i){
   // Com uma campanha filtrada, o card mostra a que foi escolhida — senão o
   // vendedor marca a de 2,8 e continua lendo o preço da de 2,3.
@@ -3371,7 +3462,12 @@ function cardHtml(o, i){
         <span class="nome">${esc(o.nome || o.artigo)}</span>
         <span class="cod">${esc(o.artigo)} · ${esc(o.cor)}</span>
       </span>
-      ${o.pdv ? `<span class="preco">${brl(o.pdv)}</span>` : ''}
+      ${(o.pdv || fichaDe(o)) ? `<span class="linha-preco">
+        ${o.pdv ? `<span class="preco">${brl(o.pdv)}</span>` : '<span></span>'}
+        ${fichaDe(o) ? `<button class="btn-ficha" type="button" onclick="abrirModal(${i}, true)"
+          title="Ficha técnica: composição, origem e tecnologias"
+          aria-label="Ver a ficha técnica de ${quem}">i</button>` : ''}
+      </span>` : ''}
       ${cam}
       <span class="quando">${faixas(o).map(f =>
         `<span class="chip ${f.cls}" title="${esc(rotuloFaixa(f))}">${svgIcone(f.cls, 10)}` +
@@ -5459,9 +5555,10 @@ const celulas = (g, cls = '') => `<div class="celulas ${cls}">${Object.entries(g
   `<span class="cel"><span class="t">${esc(t)}</span><span class="q">${nf(q)}</span></span>`).join('')}</div>`;
 
 let _abertoEm = -1;
-function abrirModal(i){
+function abrirModal(i, comFicha){
   // Aceita o índice na lista ou o próprio produto: a cor escolhida no zoom
-  // pode estar fora dos filtros.
+  // pode estar fora dos filtros. Com 'comFicha', a ficha já abre — é o
+  // caminho de quem clicou no ⓘ do card.
   const o = typeof i === 'object' ? i : STATE.filtrados[i];
   if(!o) return;
   _abertoEm = typeof i === 'object' ? STATE.filtrados.indexOf(o) : i;
@@ -5500,7 +5597,22 @@ function abrirModal(i){
         `<div class="mes"><span class="m">${esc(rot)}</span>
           <span class="v">${nf(v)} un</span></div>`).join('')}</div></div>`;
   }
+  // A ficha entra por último: o vendedor vem pela grade e pelo preço, a
+  // composição é consulta.
+  h += blocoFicha(o, !!comFicha);
   $('mCorpo').innerHTML = h;
+
+  const maisFicha = $('fichaMais');
+  if(maisFicha) maisFicha.onclick = () => {
+    const d = $('fichaDesc');
+    const cortada = d.classList.toggle('curta');
+    maisFicha.textContent = cortada ? 'Ver mais' : 'Ver menos';
+  };
+  if(comFicha){
+    const bloco = $('fichaBloco');
+    if(bloco) requestAnimationFrame(() =>
+      bloco.scrollIntoView({ block:'nearest', behavior:'smooth' }));
+  }
 
   // Cada origem leva ao fluxo que já existe para ela. Produção é plano de
   // fabricação, não estoque: não há pedido a fazer por ali.

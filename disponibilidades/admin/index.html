@@ -550,6 +550,11 @@
             style="border-color:#38bdf8;background:rgba(56,189,248,.12);color:#0369a1">
             <i class="fa-solid fa-wand-magic-sparkles text-xs"></i> Buscar imagens
           </button>
+          <button onclick="abrirBuscaFichas()" data-tip="Buscar composição, origem e tecnologias no Trade Squash — aparecem na ficha do produto na vitrine"
+            class="focus-ring rounded-full border px-4 py-2 text-sm font-bold flex items-center gap-2 transition-colors"
+            style="border-color:#5eead4;background:rgba(45,212,191,.14);color:#0f766e">
+            <i class="fa-solid fa-clipboard-list text-xs"></i> Buscar fichas
+          </button>
         </div>
 
         <!-- Voltar ao Portal -->
@@ -774,6 +779,93 @@
               class="focus-ring flex-1 rounded-2xl border py-2.5 text-sm font-extrabold"
               style="border-color:var(--line);background:var(--card);color:var(--muted)">Parar</button>
             <button id="biBtnFechar" onclick="fecharBuscaImagens()"
+              class="focus-ring hidden flex-1 rounded-2xl py-2.5 text-sm font-extrabold text-slate-900"
+              style="background:var(--accent)">Concluir</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ BUSCA DA FICHA TÉCNICA (Trade Squash) ═══ -->
+  <div id="buscaFichaModal" class="hidden fixed inset-0 z-[110]" onclick="fecharBuscaFichas(event)">
+    <div class="absolute inset-0" style="background:rgba(15,23,42,.55);backdrop-filter:blur(3px)"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4" onclick="event.stopPropagation()">
+      <div class="w-full max-w-lg rounded-[28px] border shadow-card overflow-hidden"
+           style="background:var(--card);border-color:var(--line)">
+
+        <div class="px-6 pt-6 pb-4 border-b" style="border-color:var(--line)">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="text-lg font-extrabold">Buscar fichas técnicas</div>
+              <div class="text-sm text-slate-500 mt-0.5">
+                Composição, origem, tecnologias e descrição, do catálogo da marca.
+              </div>
+            </div>
+            <button onclick="fecharBuscaFichas()" data-tip="Fechar"
+              class="focus-ring h-9 w-9 rounded-full border flex items-center justify-center flex-none"
+              style="border-color:var(--line);background:var(--bg);color:var(--muted)">
+              <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="bfEscolha" class="px-6 py-5">
+          <div class="text-xs font-bold uppercase tracking-wide text-slate-400 mb-3">Marca</div>
+          <div class="space-y-2">
+            <label class="bi-opt" data-tip="Só os artigos Olympikus ainda sem ficha">
+              <input type="radio" name="bfMarca" value="oly" checked>
+              <span class="bi-opt-nome">Olympikus</span>
+              <span class="bi-opt-cont" id="bfContOly">0</span>
+            </label>
+            <label class="bi-opt" data-tip="Só os itens Under Armour ainda sem ficha">
+              <input type="radio" name="bfMarca" value="ua">
+              <span class="bi-opt-nome">Under Armour</span>
+              <span class="bi-opt-cont" id="bfContUa">0</span>
+            </label>
+            <label class="bi-opt" data-tip="Roda Olympikus e depois Under Armour, em sequência">
+              <input type="radio" name="bfMarca" value="ambas">
+              <span class="bi-opt-nome">Ambas</span>
+              <span class="bi-opt-cont" id="bfContAmbas">0</span>
+            </label>
+          </div>
+          <label class="flex items-center gap-2 mt-4 text-[12px] font-bold text-slate-500 cursor-pointer"
+                 data-tip="Marcado, refaz também a ficha de quem já tem — use quando a marca corrigir os dados">
+            <input type="checkbox" id="bfRefazer"> refazer as que já existem
+          </label>
+          <div class="mt-3 text-[11.5px] leading-relaxed text-slate-500">
+            A contagem é por <b>artigo</b>: a ficha vale para todas as cores dele.
+            A busca roda no servidor, em lotes de 8, e o que for encontrado vai
+            para <b>fichas.json</b> — na vitrine aparece no ⓘ do produto.
+          </div>
+          <button id="bfBtnIniciar" onclick="iniciarBuscaFichas()"
+            class="focus-ring w-full mt-5 rounded-2xl py-3 text-sm font-extrabold text-slate-900 flex items-center justify-center gap-2"
+            style="background:var(--accent)">
+            <i class="fa-solid fa-clipboard-list"></i> Iniciar busca
+          </button>
+        </div>
+
+        <div id="bfProgresso" class="hidden px-6 py-5">
+          <div class="flex items-center justify-between text-sm font-bold mb-2">
+            <span id="bfFase">Preparando...</span>
+            <span id="bfContagem" class="text-slate-500">0 / 0</span>
+          </div>
+          <div class="h-2 rounded-full overflow-hidden" style="background:var(--line)">
+            <div id="bfBarra" class="h-full transition-all" style="width:0%;background:var(--accent-dark)"></div>
+          </div>
+          <div class="grid grid-cols-3 gap-2 mt-4 text-center">
+            <div><div id="bfOk"   class="text-xl font-extrabold" style="color:#15803d">0</div><div class="text-[10px] font-bold text-slate-400">ACHADAS</div></div>
+            <div><div id="bfNao"  class="text-xl font-extrabold" style="color:#b91c1c">0</div><div class="text-[10px] font-bold text-slate-400">SEM MATCH</div></div>
+            <div><div id="bfErro" class="text-xl font-extrabold" style="color:#64748b">0</div><div class="text-[10px] font-bold text-slate-400">ERRO</div></div>
+          </div>
+          <div id="bfLog" class="mt-4 rounded-xl p-3 text-[11px] font-mono overflow-y-auto"
+               style="background:#0f172a;color:#e2e8f0;max-height:180px"></div>
+          <div class="flex gap-2 mt-4">
+            <button id="bfBtnParar" onclick="pararBuscaFichas()"
+              class="focus-ring flex-1 rounded-2xl border py-2.5 text-sm font-extrabold"
+              style="border-color:var(--line);background:var(--card);color:var(--muted)">Parar</button>
+            <button id="bfBtnFechar" onclick="fecharBuscaFichas()"
               class="focus-ring hidden flex-1 rounded-2xl py-2.5 text-sm font-extrabold text-slate-900"
               style="background:var(--accent)">Concluir</button>
           </div>
@@ -1691,6 +1783,158 @@ async function limparSaldoBaixo(){
     // Não salvou: devolve o estado para não divergir do que está no servidor
     showToast('Erro ao salvar — nada foi removido. Recarregando...', 'error');
     loadData();
+  }
+}
+
+// ── FICHA TÉCNICA (Trade Squash) ─────────────────────────────────────────────
+// Composição, origem, peso e tecnologias só existem na página do produto, e
+// cada marca preenche o que quer. O Worker lê e grava em fichas.json; aqui a
+// gente só escolhe quem falta e acompanha.
+const BF = { rodando:false, parar:false, ok:0, nao:0, erro:0, feitos:0, total:0, fichas:{} };
+const BF_LOTE = 8;
+
+// A ficha é por artigo: as cores de um mesmo tênis compartilham
+// composição, origem, peso, grade e tecnologias.
+const bfChave = artigo => String(artigo || '').toUpperCase().replace(/[\/\-\s.]+/g, '_');
+
+async function bfCarregarFichas(){
+  try{
+    const r = await workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'getFichas' }) });
+    const j = r.ok ? await r.json() : {};
+    BF.fichas = (j && typeof j === 'object' && !Array.isArray(j)) ? j : {};
+  }catch(_){ BF.fichas = {}; }
+}
+
+function bfItensSemFicha(marca){
+  const refazer = $('bfRefazer') && $('bfRefazer').checked;
+  const vistos = new Set();
+  return STATE.itens.filter(item => {
+    if(isOculto(item)) return false;
+    const m = String(item.marca || '').trim().toUpperCase();
+    if(marca === 'ua' ? (m !== 'UA') : (m !== 'OLY')) return false;
+    const k = bfChave(item.artigo);
+    if(vistos.has(k)) return false;            // outra cor do mesmo artigo
+    if(!refazer && BF.fichas[k]) return false;
+    vistos.add(k);
+    return true;
+  }).map(i => ({ artigo:i.artigo }));
+}
+
+function bfContar(){
+  const oly = bfItensSemFicha('oly').length;
+  const ua  = bfItensSemFicha('ua').length;
+  $('bfContOly').textContent   = oly;
+  $('bfContUa').textContent    = ua;
+  $('bfContAmbas').textContent = oly + ua;
+}
+
+async function abrirBuscaFichas(){
+  $('bfEscolha').classList.remove('hidden');
+  $('bfProgresso').classList.add('hidden');
+  $('bfBtnFechar').classList.add('hidden');
+  $('bfBtnParar').classList.remove('hidden');
+  $('buscaFichaModal').classList.remove('hidden');
+  $('bfContOly').textContent = $('bfContUa').textContent = $('bfContAmbas').textContent = '…';
+  await bfCarregarFichas();
+  bfContar();
+}
+
+function fecharBuscaFichas(e){
+  if(e && e.target !== e.currentTarget) return;
+  if(BF.rodando){ showToast('A busca ainda está rodando — use Parar.', 'info'); return; }
+  $('buscaFichaModal').classList.add('hidden');
+}
+
+function pararBuscaFichas(){
+  if(BF.rodando){ BF.parar = true; bfLog('inf', 'Parando após o lote atual...'); }
+  else $('buscaFichaModal').classList.add('hidden');
+}
+
+function bfLog(classe, texto){
+  const el = $('bfLog');
+  if(!el) return;
+  const linha = document.createElement('div');
+  linha.className = classe;
+  linha.textContent = texto;
+  el.appendChild(linha);
+  el.scrollTop = el.scrollHeight;
+}
+
+function bfAtualizarUI(){
+  $('bfOk').textContent   = BF.ok;
+  $('bfNao').textContent  = BF.nao;
+  $('bfErro').textContent = BF.erro;
+  $('bfContagem').textContent = `${BF.feitos} / ${BF.total}`;
+  $('bfBarra').style.width = BF.total ? `${(BF.feitos / BF.total) * 100}%` : '0%';
+}
+
+async function bfRodarMarca(marca, rotulo){
+  const itens = bfItensSemFicha(marca);
+  if(!itens.length){ bfLog('inf', `${rotulo}: nada a buscar.`); return; }
+  bfLog('inf', `${rotulo}: ${itens.length} artigo(s) sem ficha.`);
+
+  for(let i = 0; i < itens.length; i += BF_LOTE){
+    if(BF.parar) return;
+    const lote = itens.slice(i, i + BF_LOTE);
+    $('bfFase').textContent = `${rotulo} — buscando...`;
+    try{
+      const res = await workerFetch({
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ action:'tsFichas', marca, itens: lote })
+      });
+      const json = await res.json();
+      if(!json.success){
+        bfLog('nao', `Falha: ${json.error || 'erro desconhecido'}`);
+        BF.erro += lote.length; BF.feitos += lote.length; bfAtualizarUI();
+        continue;
+      }
+      for(const r of (json.resultados || [])){
+        if(r.status === 'ok'){
+          BF.ok++;
+          BF.fichas[bfChave(r.artigo)] = true;
+          const extra = [r.composicao, r.origem].filter(Boolean).join(' · ');
+          bfLog('ok', `✓ ${r.artigo}${extra ? ' — ' + extra : ''}`);
+        }
+        else if(r.status === 'nao_encontrado'){ BF.nao++; bfLog('nao', `✗ ${r.artigo} — ${r.motivo}`); }
+        else { BF.erro++; bfLog('nao', `! ${r.artigo} — ${r.motivo}`); }
+        BF.feitos++;
+      }
+      bfAtualizarUI();
+    }catch(err){
+      bfLog('nao', `Erro de rede: ${err.message}`);
+      BF.erro += lote.length; BF.feitos += lote.length; bfAtualizarUI();
+    }
+  }
+}
+
+async function iniciarBuscaFichas(){
+  const marca = document.querySelector('input[name="bfMarca"]:checked')?.value || 'oly';
+  const oly = bfItensSemFicha('oly').length;
+  const ua  = bfItensSemFicha('ua').length;
+  const total = marca === 'ambas' ? (oly + ua) : marca === 'ua' ? ua : oly;
+  if(!total){ showToast('Nenhum artigo sem ficha para essa marca.', 'info'); return; }
+
+  Object.assign(BF, { rodando:true, parar:false, ok:0, nao:0, erro:0, feitos:0, total });
+  $('bfEscolha').classList.add('hidden');
+  $('bfProgresso').classList.remove('hidden');
+  $('bfLog').innerHTML = '';
+  bfAtualizarUI();
+
+  try{
+    if(marca === 'ambas'){
+      await bfRodarMarca('oly', 'Olympikus');
+      if(!BF.parar) await bfRodarMarca('ua', 'Under Armour');
+    }else{
+      await bfRodarMarca(marca, marca === 'ua' ? 'Under Armour' : 'Olympikus');
+    }
+  }finally{
+    BF.rodando = false;
+    $('bfFase').textContent = BF.parar ? 'Interrompido' : 'Concluído';
+    $('bfBtnParar').classList.add('hidden');
+    $('bfBtnFechar').classList.remove('hidden');
+    showToast(`Fichas: ${BF.ok} achada(s), ${BF.nao} sem match, ${BF.erro} com erro.`,
+              BF.ok ? 'success' : 'info');
   }
 }
 

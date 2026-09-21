@@ -46,6 +46,8 @@ export default {
       "uploadMatrizImagem",
       "clearPedidosHistorico",
       "tsBuscarImagens",
+      "tsFicha",
+      "tsFichas",
       "tsDiagnostico",
       "tsInspecionarLogin",
       "saveExclusivos"
@@ -99,6 +101,8 @@ export default {
     const GITHUB_LINKS         = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/links_compartilhados.json`;
     const GITHUB_IMG_HIST      = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/disponibilidades_imagens.json`;
     const GITHUB_STATUS        = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/app_status.json`;
+    // Ficha técnica vinda do Trade Squash: { "ARTIGO|COR": {...} }
+    const GITHUB_FICHAS        = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/fichas.json`;
     const GITHUB_RATEIO        = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/rateio.json`;
     const GITHUB_PREPOSTOS     = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/prepostos.json`;
     // Histórico de pedidos do Catálogo Digital — 1 arquivo por comissionista
@@ -697,6 +701,116 @@ export default {
       return principalOly || candidatas[0];
     }
 
+    // ── Ficha técnica do produto ─────────────────────────────────────────
+    // Composição, origem, peso e tecnologias só existem na página do produto:
+    // nenhuma planilha traz esses campos. O HTML vira uma lista de textos e os
+    // rótulos conhecidos levam ao valor da linha seguinte — assim uma mudança
+    // de layout não derruba a leitura inteira, só o campo que mudou.
+    function tsTextos(html) {
+      return String(html || "")
+        .replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<[^>]+>/g, "\n")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&").replace(/&quot;/gi, '"')
+        .replace(/&#0?39;|&apos;/gi, "'")
+        .replace(/&lt;/gi, "<").replace(/&gt;/gi, ">")
+        .split("\n").map(t => t.replace(/\s+/g, " ").trim()).filter(Boolean);
+    }
+
+    // Na página, cada atributo é um bloco que termina em "Ver menos" e repete
+    // o valor: ["Artigo", "1382797", "1382797", "Ver menos"]. Ler por esse
+    // fecho vale para as duas marcas, que usam rótulos diferentes.
+    function tsAtributos(t) {
+      const attr = {};
+      let buf = [];
+      for (const linha of t) {
+        if (/^ver menos$/i.test(linha)) {
+          if (buf.length >= 2) {
+            const n = buf.length;
+            const repetiu = buf[n - 1] === buf[n - 2];
+            const rot = repetiu ? buf[n - 3] : buf[n - 2];
+            const val = buf[n - 1];
+            if (rot && val && rot !== val) attr[rot] = val;
+            else if (rot && val) attr[rot] = val;
+          }
+          buf = [];
+          continue;
+        }
+        if (/^(ver mais|copiar)$/i.test(linha)) continue;
+        buf.push(linha);
+        if (buf.length > 4) buf.shift();
+      }
+      return attr;
+    }
+
+    // Descrição solta da Olympikus: vem depois de "Descrição"/"Copiar" e
+    // segue até "Disclaimers", quebrada em várias linhas.
+    function tsDescricaoSolta(t) {
+      const i = t.findIndex((x, k) => /^descrição$/i.test(x) && /^copiar$/i.test(t[k + 1] || ""));
+      if (i < 0) return "";
+      const linhas = [];
+      for (let j = i + 2; j < t.length && linhas.length < 20; j++) {
+        if (/^(disclaimers|atributos|destaques|catálogo|catalogo|ver mais)$/i.test(t[j])) break;
+        linhas.push(t[j]);
+      }
+      return linhas.join(" ").trim();
+    }
+
+    // O Trade Squash escreve "vazio" no atributo que a marca não preencheu:
+    // isso é ausência de informação, não conteúdo, e não pode ir para a tela.
+    function tsValorUtil(v) {
+      const t = String(v || "").trim();
+      return /^(vazio|vazia|n\/?a|nao informado|não informado|-{1,2}|\.)$/i.test(t) ? "" : t;
+    }
+
+    function tsPrimeiro(attr, nomes) {
+      for (const n of nomes) {
+        for (const k of Object.keys(attr)) {
+          if (k.toLowerCase().replace(/\s+/g, " ").trim() === n) {
+            const v = tsValorUtil(attr[k]);
+            if (v) return v;
+          }
+        }
+      }
+      return "";
+    }
+
+    function tsFichaDoHtml(html) {
+      const t = tsTextos(html);
+      const attr = tsAtributos(t);
+      const tec = tsPrimeiro(attr, ["tecnologias"]);
+      const ficha = {
+        artigo:        tsPrimeiro(attr, ["artigo"]),
+        // cor só como referência do SKU que foi lido: a ficha vale para o
+        // artigo inteiro
+        corLida:       tsPrimeiro(attr, ["cód. cor", "codigo da cor", "código da cor"]),
+        composicao:    tsPrimeiro(attr, ["material / composição", "material/composição", "composição"]),
+        origem:        tsPrimeiro(attr, ["país origem do produto", "origem"]),
+        peso:          tsPrimeiro(attr, ["unidade para peso", "peso"]),
+        grade:         tsPrimeiro(attr, ["grade", "sistema de tamanho do item"]),
+        genero:        tsPrimeiro(attr, ["gênero traduzido", "gênero"]),
+        colecao:       tsPrimeiro(attr, ["coleção"]),
+        tipo:          tsPrimeiro(attr, ["tipo de produto"]),
+        categoria:     tsPrimeiro(attr, ["categoria (pai)", "tipo de produto geral"]),
+        subcategoria:  tsPrimeiro(attr, ["sub categoria (filho)"]),
+        pisada:        tsPrimeiro(attr, ["pisada"]),
+        ean:           tsPrimeiro(attr, ["ean13", "upc / ean"]),
+        precoSugerido: tsPrimeiro(attr, ["preço sugerido"]),
+        // as tecnologias vêm separadas por barra vertical
+        tecnologias:   tec ? tec.split("|").map(x => tsValorUtil(x)).filter(Boolean) : [],
+        descricao:     tsPrimeiro(attr, ["descrição"]) || tsDescricaoSolta(t)
+      };
+      return { ficha, atributos: attr, textos: t };
+    }
+
+    // A ficha é do ARTIGO, não da cor: composição, origem, peso, grade e
+    // tecnologias são as mesmas em todas as cores. Guardar por cor seria
+    // repetir o mesmo conteúdo e multiplicar as consultas por quatro.
+    function tsChaveFicha(artigo) {
+      return tsNormalizarChave(artigo);
+    }
+
     // O Python usava MD5, mas a Web Crypto não oferece MD5 — para detectar
     // "duas cores com a mesma foto", qualquer hash serve.
     async function tsHash(buf) {
@@ -971,6 +1085,14 @@ export default {
           };
           await saveFile(GITHUB_STATUS, status, sha, status.paused ? "app pausado (manutencao)" : "app retomado");
           return new Response(JSON.stringify({ success: true, status }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getFichas" → ficha técnica por "ARTIGO|COR". Público:
+        // a vitrine mostra composição e origem para o vendedor.
+        if (body.action === "getFichas") {
+          const { content } = await getFile(GITHUB_FICHAS);
+          const fichas = (content && typeof content === "object" && !Array.isArray(content)) ? content : {};
+          return new Response(JSON.stringify(fichas), { status: 200, headers: corsHeaders });
         }
 
         // PATCH com action:"getRateio" → cotas por vendedor (objeto por Nº). Público.
@@ -2409,6 +2531,173 @@ export default {
               formulario: globalThis.__TS_ULTIMO_FORM
             }), { status: 200, headers: corsHeaders });
           }
+        }
+
+        // ── TRADE SQUASH: ficha técnica de um produto ─────────────────────
+        // Diagnóstico: mostra o que dá para ler na página do produto
+        // (composição, origem, peso, tecnologias). Com "textos:true" devolve
+        // também as primeiras linhas da página, para ajustar os rótulos.
+        if (body.action === "tsFicha") {
+          const marcaKey = String(body.marca || "oly").toLowerCase();
+          const tenant = TS_TENANTS[marcaKey];
+          if (!tenant) {
+            return new Response(JSON.stringify({ success: false, error: "Marca inválida." }),
+              { status: 400, headers: corsHeaders });
+          }
+          const artigo = String(body.artigo || "").trim();
+          const cor    = String(body.cor || "").trim();
+          try {
+            const sessao = await tsSessao(tenant, !!body.relogar);
+            const achados = await tsBuscar(sessao, artigo, cor);
+            if (!achados.length) {
+              return new Response(JSON.stringify({
+                success: false, tenant, artigo, cor,
+                error: "Nenhum SKU casou com artigo + cor."
+              }), { status: 200, headers: corsHeaders });
+            }
+            const redirect = achados[0].redirect || "";
+            if (!redirect) {
+              return new Response(JSON.stringify({
+                success: false, tenant, artigo, cor, sku: achados[0].sku,
+                error: "SKU sem link de detalhe."
+              }), { status: 200, headers: corsHeaders });
+            }
+            const res = await fetch(TS_BASE + redirect, {
+              headers: {
+                "User-Agent": TS_UA_HEADER,
+                Accept: "text/html,*/*",
+                Referer: sessao.showcase,
+                Cookie: sessao.cookie
+              }
+            });
+            const html = await res.text();
+            const lida = tsFichaDoHtml(html);
+            return new Response(JSON.stringify({
+              success: res.ok,
+              tenant, artigo, cor,
+              sku: achados[0].sku,
+              url: TS_BASE + redirect,
+              status: res.status,
+              tamanhoHtml: html.length,
+              ficha: lida.ficha,
+              atributos: lida.atributos,
+              textos: body.textos ? lida.textos.slice(0, 200) : undefined
+            }), { status: 200, headers: corsHeaders });
+          } catch (e) {
+            return new Response(JSON.stringify({
+              success: false, tenant, artigo, cor,
+              error: String((e && e.message) || e)
+            }), { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // ── TRADE SQUASH: ficha técnica em lote ───────────────────────────
+        // Espera: { action:"tsFichas", marca:"oly"|"ua",
+        //           itens:[{artigo, cor}] }  — até 8 por chamada, como as
+        // imagens: cada item custa subrequisições e o plano tem teto.
+        // Grava em data/fichas.json, chave "ARTIGO|COR".
+        if (body.action === "tsFichas" && Array.isArray(body.itens)) {
+          const TS_MAX_FICHAS = 8;
+          // aceita {artigo} ou {artigo, cor}: a cor é ignorada
+          const soArtigos = [];
+          const vistosArt = new Set();
+          for (const it of body.itens) {
+            const a = String((it && it.artigo) || "").trim();
+            if (!a || vistosArt.has(a.toUpperCase())) continue;
+            vistosArt.add(a.toUpperCase());
+            soArtigos.push({ artigo: a });
+          }
+          const marcaKey = String(body.marca || "oly").toLowerCase();
+          const tenant = TS_TENANTS[marcaKey];
+          if (!tenant) {
+            return new Response(JSON.stringify({ success: false, error: "Marca inválida." }),
+              { status: 400, headers: corsHeaders });
+          }
+          const itens = soArtigos.slice(0, TS_MAX_FICHAS);
+
+          let sessao;
+          try {
+            sessao = await tsSessao(tenant, !!body.relogar);
+          } catch (e) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: "Falha no login do Trade Squash: " + String((e && e.message) || e)
+            }), { status: 200, headers: corsHeaders });
+          }
+
+          const { content, sha } = await getFile(GITHUB_FICHAS);
+          const fichas = (content && typeof content === "object" && !Array.isArray(content))
+            ? content : {};
+          const resultados = [];
+          let gravou = 0;
+
+          for (const it of itens) {
+            const artigo = String((it && it.artigo) || "").trim();
+            if (!artigo) {
+              resultados.push({ artigo, status: "erro", motivo: "Artigo vazio" });
+              continue;
+            }
+            try {
+              // sem cor: a primeira cor do artigo já traz a ficha inteira
+              const achados = await tsBuscar(sessao, artigo, "");
+              if (!achados.length) {
+                resultados.push({ artigo, status: "nao_encontrado",
+                                  motivo: "Artigo não encontrado no catálogo" });
+                continue;
+              }
+              const redirect = achados[0].redirect || "";
+              if (!redirect) {
+                resultados.push({ artigo, status: "nao_encontrado",
+                                  motivo: "SKU sem link de detalhe" });
+                continue;
+              }
+              const res = await fetch(TS_BASE + redirect, {
+                headers: {
+                  "User-Agent": TS_UA_HEADER,
+                  Accept: "text/html,*/*",
+                  Referer: sessao.showcase,
+                  Cookie: sessao.cookie
+                }
+              });
+              if (res.status === 401 || res.status === 403) throw new Error("SESSAO_EXPIRADA");
+              if (!res.ok) {
+                resultados.push({ artigo, status: "erro", motivo: `Página HTTP ${res.status}` });
+                continue;
+              }
+              const { ficha } = tsFichaDoHtml(await res.text());
+              // Sem nenhum campo util, nao adianta gravar uma casca vazia
+              const temAlgo = ficha.composicao || ficha.origem || ficha.descricao ||
+                              ficha.tecnologias.length || ficha.grade;
+              if (!temAlgo) {
+                resultados.push({ artigo, status: "nao_encontrado",
+                                  motivo: "Página sem atributos reconhecidos" });
+                continue;
+              }
+              ficha.marca = marcaKey;
+              ficha.sku = achados[0].sku || "";
+              ficha.lidoEm = new Date().toISOString();
+              const chave = tsChaveFicha(artigo);
+              fichas[chave] = ficha;
+              // limpa as fichas antigas, que eram gravadas por artigo+cor
+              for (const k of Object.keys(fichas)) {
+                if (k !== chave && k.startsWith(chave + "|")) delete fichas[k];
+              }
+              gravou++;
+              resultados.push({ artigo, status: "ok",
+                                composicao: ficha.composicao, origem: ficha.origem });
+            } catch (e) {
+              const msg = String((e && e.message) || e);
+              resultados.push({ artigo, status: "erro", motivo: msg });
+              if (msg === "SESSAO_EXPIRADA") break;
+            }
+          }
+
+          if (gravou) {
+            await saveFile(GITHUB_FICHAS, fichas, sha,
+                           `fichas: ${gravou} ficha(s) do Trade Squash`);
+          }
+          return new Response(JSON.stringify({ success: true, gravou, resultados }),
+            { status: 200, headers: corsHeaders });
         }
 
         // ── TRADE SQUASH: espelho cru da tela de login ────────────────────
