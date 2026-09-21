@@ -3399,6 +3399,21 @@ function pesoTexto(v){
                   : String(v).trim() + ' kg';
 }
 
+// Composição e origem valem no vestuário, nos acessórios e nas meias: é ali
+// que o lojista pergunta do tecido. No calçado ele pergunta de outra coisa, e
+// a linha só roubaria espaço no catálogo impresso.
+const CAT_VESTUARIO = ['V&A', 'ACC', 'MEIA', 'VESTUARIO', 'VESTUÁRIO', 'ACESSORIO',
+                       'ACESSÓRIO', 'ACESSORIOS', 'MEIAS'];
+const CAT_CALCADO = ['FTW', 'CHI', 'TENIS', 'TÊNIS', 'CHINELO', 'CALCADO', 'CALÇADO'];
+function ehVestuario(o){
+  const c = norm(o.categoria);
+  if(CAT_VESTUARIO.includes(c)) return true;
+  if(CAT_CALCADO.includes(c)) return false;
+  // categoria em branco ou fora do padrão: quem decide é a seção do catálogo
+  const f = fichaDe(o);
+  return !!(f && f.secao && f.secao !== 'calcados');
+}
+
 function blocoFicha(o, aberto){
   const f = fichaDe(o);
   if(!f) return '';
@@ -5238,7 +5253,32 @@ async function gerarCatalogoPdf(){
       ty += 13;
       cor(C.fraco); doc.setFont('helvetica','normal'); doc.setFontSize(8);
       doc.text(`${o.artigo}  ·  ${o.cor}`, tx, ty);
-      ty += 14;
+      ty += 12;
+
+      // Composição e origem, quando a ficha existe: é o que o lojista pergunta
+      // antes de fechar, e no papel não dá para clicar em nada.
+      const fic = ehVestuario(o) ? fichaDe(o) : null;
+      if(fic && (fic.composicao || fic.origem)){
+        const partes = [];
+        if(fic.composicao) partes.push(['COMPOSIÇÃO', fic.composicao]);
+        if(fic.origem)     partes.push(['ORIGEM', capIni(fic.origem)]);
+        let fx = tx;
+        for(const [rot, val] of partes){
+          cor(C.fraco); doc.setFont('helvetica','bold'); doc.setFontSize(6);
+          doc.text(rot, fx, ty);
+          fx += doc.getTextWidth(rot) + 5;
+          cor(C.texto); doc.setFont('helvetica','normal'); doc.setFontSize(7.2);
+          // o que não couber na linha é cortado: o card tem altura fixa
+          const sobra = tx + tw - fx;
+          const txt = doc.splitTextToSize(val, Math.max(40, sobra))[0];
+          doc.text(txt, fx, ty);
+          fx += doc.getTextWidth(txt) + 12;
+          if(fx > tx + tw - 40) break;
+        }
+        ty += 11;
+      }else{
+        ty += 2;
+      }
 
       cor(C.marca); doc.setFont('helvetica','bold'); doc.setFontSize(13);
       doc.text(o.pdv ? brl(o.pdv) : '—', tx, ty);

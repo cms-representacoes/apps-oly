@@ -271,6 +271,30 @@
     .visao-btn.ativo:hover{ filter:brightness(1.06); }
 
     /* Modal zoom */
+    /* ⓘ da ficha técnica: fica ao lado do preço, só em quem tem ficha */
+    .btn-ficha{ flex:none; width:22px; height:22px; border-radius:50%; padding:0;
+      border:1px solid var(--line); background:var(--card); color:var(--muted);
+      font-size:11px; font-weight:800; line-height:1; cursor:pointer;
+      display:grid; place-items:center; transition:.15s }
+    .btn-ficha:hover{ border-color:var(--accent); color:var(--accent) }
+    .ficha-bg{ position:fixed; inset:0; z-index:210; background:rgba(15,23,42,.55);
+      display:flex; align-items:center; justify-content:center; padding:18px }
+    .ficha-bg.hidden{ display:none }
+    .ficha-card{ background:var(--card); border:1px solid var(--line); border-radius:20px;
+      width:min(520px,100%); max-height:86vh; overflow:auto; padding:18px 20px 20px }
+    .ficha-card h3{ margin:0; font-size:16px; font-weight:800; color:var(--text) }
+    .ficha-card .sub{ font-size:12px; color:var(--muted); margin-top:2px }
+    .ficha-campos{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+      gap:8px 14px; margin-top:14px }
+    .ficha-campos .r{ display:block; font-size:9px; font-weight:800; letter-spacing:.08em;
+      text-transform:uppercase; color:var(--muted) }
+    .ficha-campos .v{ display:block; font-size:12.5px; font-weight:600; color:var(--text);
+      line-height:1.35; overflow-wrap:anywhere }
+    .ficha-tec{ display:flex; flex-wrap:wrap; gap:5px; margin-top:12px }
+    .ficha-tec span{ font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:999px;
+      border:1px solid var(--line); background:var(--bg); color:var(--text) }
+    .ficha-desc{ font-size:12px; line-height:1.45; color:var(--muted); margin:12px 0 0 }
+
     .modal-zoom{ position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.8); display:flex; align-items:center; justify-content:center; padding:24px; }
     .modal-zoom-inner{ max-width:600px; max-height:90vh; display:flex; align-items:center; justify-content:center; position:relative; }
     .modal-zoom img{ max-width:100%; max-height:80vh; object-fit:contain; border-radius:16px; box-shadow:0 24px 64px rgba(0,0,0,.5); }
@@ -1600,6 +1624,20 @@ body.theme-dark .load-more-btn{ background:var(--card); }
 </div>
 
 <!-- Modal Zoom -->
+<div id="fichaBg" class="ficha-bg hidden" onclick="fecharFicha(event)">
+  <div class="ficha-card" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:flex-start;gap:10px">
+      <div style="flex:1;min-width:0">
+        <h3 id="fichaTit">—</h3>
+        <div class="sub" id="fichaSub">—</div>
+      </div>
+      <button onclick="fecharFicha()" title="Fechar"
+        style="flex:none;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--muted);cursor:pointer">✕</button>
+    </div>
+    <div id="fichaCorpo"></div>
+  </div>
+</div>
+
 <div id="modalZoom" class="modal-zoom hidden" onclick="fecharZoom()">
   <div class="modal-zoom-inner" onclick="event.stopPropagation()">
     <button onclick="fecharZoom()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,.15);border:none;color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center">✕</button>
@@ -2486,6 +2524,9 @@ async function loadData(){
         body: JSON.stringify({ action:'getExclusivos' })
       })
     ]);
+    // Ficha técnica (composição, origem, tecnologias). Se falhar, a vitrine
+    // segue sem o ⓘ — é informação de apoio, não pode travar o catálogo.
+    carregarFichas();
     if(!dispRes.ok) throw new Error('Falha ao carregar');
     const itens = await dispRes.json();
     const ocultosArr = ocultosRes.ok ? await ocultosRes.json() : [];
@@ -3202,7 +3243,13 @@ function buildCardHtml(item){
         ? `<div class="flex flex-wrap gap-1.5 mb-3">${chipTabela}${chipEmpresa}${chipQuinzena}</div>`
         : ''}
       <div class="flex items-center justify-between mb-2">
-        <div class="text-lg font-black" style="color:var(--accent)">R$ ${Number(item.pdv||0).toFixed(2)}</div>
+        <div class="flex items-center gap-2 min-w-0">
+          <div class="text-lg font-black" style="color:var(--accent)">R$ ${Number(item.pdv||0).toFixed(2)}</div>
+          ${fichaDe(item) ? `<button class="btn-ficha" type="button"
+            onclick="event.stopPropagation();abrirFicha('${safeHtml(item.artigo)}','${safeHtml(item.cor)}')"
+            title="Ficha técnica: composição, origem e tecnologias"
+            aria-label="Ver a ficha técnica">i</button>` : ''}
+        </div>
         ${ehMeta ? '' : `<div class="text-xs font-semibold" style="color:var(--muted)">T. ${totalExibir.toLocaleString('pt-BR')} un</div>`}
       </div>
       <div class="tabesp-slot">${tabEspBoxHtml(campanhaAtiva, ehMeta)}</div>
@@ -4259,6 +4306,81 @@ function mpCarregarRespostaNaSacola(link){
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ── ZOOM ──────────────────────────────────────────────────────────────────────
+/* ── Ficha técnica ────────────────────────────────────────────────────
+   Lida do catálogo da marca pelo painel e guardada por ARTIGO — vale para
+   todas as cores. A vitrine só mostra o que existe. */
+STATE.fichas = {};
+const fichaChave = a => String(a || '').toUpperCase().replace(/[\/\-\s.]+/g, '_');
+const fichaDe = item => STATE.fichas[fichaChave(item && item.artigo)] || null;
+
+async function carregarFichas(){
+  try{
+    const r = await fetch(WORKER_URL, { method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'getFichas' }) });
+    const j = r.ok ? await r.json() : {};
+    STATE.fichas = (j && typeof j === 'object' && !Array.isArray(j)) ? j : {};
+    // os cards já desenhados ganham o ⓘ sem precisar recarregar a página
+    if(Object.keys(STATE.fichas).length && typeof renderCards === 'function') renderCards();
+  }catch(_){ STATE.fichas = {}; }
+}
+
+// Composição e origem interessam no vestuário, no acessório e na meia.
+const CAT_VESTUARIO = ['V&A','ACC','MEIA','MEIAS','VESTUARIO','VESTUÁRIO','ACESSORIO','ACESSÓRIO','ACESSORIOS'];
+const CAT_CALCADO   = ['FTW','CHI','TENIS','TÊNIS','CHINELO','CALCADO','CALÇADO'];
+function ehVestuario(item){
+  const c = String((item && item.categoria) || '').trim().toUpperCase();
+  if(CAT_VESTUARIO.includes(c)) return true;
+  if(CAT_CALCADO.includes(c)) return false;
+  const f = fichaDe(item);
+  return !!(f && f.secao && f.secao !== 'calcados');
+}
+
+const fichaCapIni = t => String(t || '').toLowerCase()
+  .replace(/(^|[\s/])([a-zà-ú])/g, (_, a, b) => a + b.toUpperCase());
+function fichaPeso(v){
+  const n = Number(String(v || '').replace(',', '.'));
+  if(!n) return '';
+  return n >= 100 ? (n/1000).toFixed(3).replace('.', ',') + ' kg'
+                  : String(v).trim() + ' kg';
+}
+
+function abrirFicha(artigo, cor){
+  const item = (STATE.itens || []).find(i =>
+    String(i.artigo) === String(artigo) && String(i.cor) === String(cor)) || { artigo, cor };
+  const f = fichaDe(item);
+  if(!f) return;
+  $('fichaTit').textContent = item.descricao || item.artigo || '—';
+  $('fichaSub').textContent = `${item.artigo || ''} · ${String(item.cor || '').replace(/_/g,'/')}`;
+  const campos = [
+    ['Composição', f.composicao],
+    ['Origem',     fichaCapIni(f.origem)],
+    ['Peso',       fichaPeso(f.peso)],
+    ['Tamanhos',   f.tamanhos],
+    ['Gênero',     fichaCapIni(f.genero)],
+    ['Tipo',       f.tipo],
+    ['Drop',       f.drop],
+    ['Pisada',     fichaCapIni(f.pisada)],
+    ['Coleção',    f.colecao],
+    ['Código de barras', f.ean]
+  ].filter(c => String(c[1] || '').trim());
+  const tec = (Array.isArray(f.tecnologias) ? f.tecnologias : [])
+    .map(t => typeof t === 'string' ? { nome:t, texto:'' } : (t || {}))
+    .filter(t => t.nome);
+  const desc = String(f.descricao || '').trim();
+  $('fichaCorpo').innerHTML =
+    `<div class="ficha-campos">${campos.map(([r,v]) =>
+      `<span><span class="r">${safeHtml(r)}</span><span class="v">${safeHtml(v)}</span></span>`).join('')}</div>` +
+    (tec.length ? `<div class="ficha-tec">${tec.map(t =>
+      `<span${t.texto ? ` title="${safeHtml(t.texto)}"` : ''}>${safeHtml(t.nome)}</span>`).join('')}</div>` : '') +
+    (desc ? `<p class="ficha-desc">${safeHtml(desc)}</p>` : '');
+  $('fichaBg').classList.remove('hidden');
+}
+function fecharFicha(e){
+  if(e && e.target !== e.currentTarget) return;
+  $('fichaBg').classList.add('hidden');
+}
+
 function abrirZoom(src){
   $('zoomImg').src = src;
   $('modalZoom').classList.remove('hidden');
@@ -4267,7 +4389,7 @@ function fecharZoom(){
   $('modalZoom').classList.add('hidden');
   $('zoomImg').src = '';
 }
-document.addEventListener('keydown', e => { if(e.key==='Escape') fecharZoom(); });
+document.addEventListener('keydown', e => { if(e.key==='Escape'){ fecharZoom(); fecharFicha(); } });
 
 // ── HELPERS PDF ───────────────────────────────────────────────────────────────
 async function imageUrlToDataUrl(url){
@@ -4553,7 +4675,31 @@ async function gerarPDFComOrdem(modo){
       const corDisp = String(item.cor||'—').replace(/_/g,'/');
       const attrLine = `Artigo: ${item.artigo||'—'}  ·  Cor: ${corDisp}  ·  ${item.empresa||'—'}`;
       doc.text(doc.splitTextToSize(attrLine, txW).slice(0,1), tx, ty);
-      ty += 14;
+      ty += 12;
+
+      // Composição e origem: o lojista pergunta do tecido, e no papel não dá
+      // para clicar no ⓘ. Calçado fica de fora — ali a pergunta é outra.
+      const ficPdf = ehVestuario(item) ? fichaDe(item) : null;
+      if(ficPdf && (ficPdf.composicao || ficPdf.origem)){
+        const partes = [];
+        if(ficPdf.composicao) partes.push(['COMPOSIÇÃO', ficPdf.composicao]);
+        if(ficPdf.origem)     partes.push(['ORIGEM', fichaCapIni(ficPdf.origem)]);
+        let fx = tx;
+        for(const [rot, val] of partes){
+          sc(C.muted); doc.setFont('helvetica','bold'); doc.setFontSize(6);
+          doc.text(rot, fx, ty);
+          fx += doc.getTextWidth(rot) + 5;
+          sc(C.text); doc.setFont('helvetica','normal'); doc.setFontSize(7.2);
+          const sobra = tx + txW - fx;
+          const txt = doc.splitTextToSize(val, Math.max(40, sobra))[0];
+          doc.text(txt, fx, ty);
+          fx += doc.getTextWidth(txt) + 12;
+          if(fx > tx + txW - 40) break;
+        }
+        ty += 12;
+      }else{
+        ty += 2;
+      }
 
       // ── Boxes de dados ──
       const boxGap = 8;
