@@ -3406,15 +3406,21 @@ function blocoFicha(o, aberto){
     ['Composição', f.composicao],
     ['Origem',     capIni(f.origem)],
     ['Peso',       pesoTexto(f.peso)],
-    // a grade da ficha é a da cor que foi lida e nem sempre vale para as
-    // outras; quem manda são as grades de estoque e repasse, logo acima
+    // Tamanhos só do catálogo da marca, que informa por artigo. A "grade" do
+    // Trade Squash é da cor que foi lida e nem sempre vale para as outras.
+    ['Tamanhos',   f.tamanhos],
     ['Gênero',     capIni(f.genero)],
     ['Tipo',       f.tipo],
+    ['Drop',       f.drop],
     ['Pisada',     capIni(f.pisada)],
     ['Coleção',    f.colecao],
     ['Código de barras', f.ean]
   ].filter(c => String(c[1] || '').trim());
-  const tec = Array.isArray(f.tecnologias) ? f.tecnologias.filter(Boolean) : [];
+  // a tecnologia vem como texto (Trade Squash) ou com explicação (catálogo
+  // da marca) — no segundo caso ela explica o que é ao toque
+  const tec = (Array.isArray(f.tecnologias) ? f.tecnologias : [])
+    .map(t => typeof t === 'string' ? { nome:t, texto:'' } : (t || {}))
+    .filter(t => t.nome);
   const desc = String(f.descricao || '').trim();
   if(!campos.length && !tec.length && !desc) return '';
   const longa = desc.length > 260;
@@ -3424,7 +3430,8 @@ function blocoFicha(o, aberto){
       ${campos.length ? `<div class="ficha-campos">${campos.map(([r, v]) =>
         `<span class="ficha-campo"><span class="r">${esc(r)}</span><span class="v">${esc(v)}</span></span>`
       ).join('')}</div>` : ''}
-      ${tec.length ? `<div class="ficha-tec">${tec.map(t => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
+      ${tec.length ? `<div class="ficha-tec">${tec.map(t =>
+        `<span${t.texto ? ` title="${esc(t.texto)}"` : ''}>${esc(t.nome)}</span>`).join('')}</div>` : ''}
       ${desc ? `<p class="ficha-desc${longa ? ' curta' : ''}" id="fichaDesc">${esc(desc)}</p>
         ${longa ? '<button class="ficha-mais" type="button" id="fichaMais">Ver mais</button>' : ''}` : ''}
       <span class="ficha-fonte">Informação do catálogo da marca.</span>

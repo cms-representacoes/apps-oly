@@ -48,6 +48,8 @@ export default {
       "tsBuscarImagens",
       "tsFicha",
       "tsFichas",
+      "uacFicha",
+      "uacFichas",
       "tsDiagnostico",
       "tsInspecionarLogin",
       "saveExclusivos"
@@ -807,6 +809,161 @@ export default {
     // A ficha é do ARTIGO, não da cor: composição, origem, peso, grade e
     // tecnologias são as mesmas em todas as cores. Guardar por cor seria
     // repetir o mesmo conteúdo e multiplicar as consultas por quatro.
+    // ── Catálogo oficial da Under Armour ─────────────────────────────────
+    // O Trade Squash não tem tudo o que a UA publica. Este catálogo tem, mas
+    // é fechado: login por e-mail e senha (Laravel), guardados nos secrets do
+    // Worker. O endereço do produto é /colecoes/<colecao>/<artigo>/<cor>, e a
+    // mesma peça pode estar em mais de uma coleção — por isso a busca tenta
+    // uma coleção por vez e para na primeira que responder.
+    const UAC_BASE = "https://catalogo.underarmourbr.com.br";
+    // O catálogo é dividido em duas seções, cada uma com as suas coleções:
+    // vestuário e calçados. O mesmo artigo nunca está nas duas.
+    const UAC_SECOES = ["vestuario-e-acessorios", "calcados"];
+    const UAC_LISTA = `${UAC_BASE}/user/${UAC_SECOES[0]}/colecoes`;
+
+    // A lista de coleções é montada em JavaScript; o que sobra no HTML é o
+    // seletor, com um data-slug por coleção. WHSL primeiro: é onde está o
+    // atacado, que é o que a gente vende.
+    function uacColecoes(html) {
+      const achadas = [];
+      const vistas = new Set();
+      for (const m of String(html).matchAll(/data-slug="([a-z0-9\-]+)"/gi)) {
+        const slug = m[1].toLowerCase();
+        // DTC é canal direto: aqueles produtos não entram na nossa vitrine
+        if (slug.includes("dtc") || vistas.has(slug)) continue;
+        vistas.add(slug);
+        achadas.push(slug);
+      }
+      achadas.sort((a, b) => (b.includes("whsl") ? 1 : 0) - (a.includes("whsl") ? 1 : 0));
+      return achadas;
+    }
+
+    // ── Ficha do catálogo UA ─────────────────────────────────────────────
+    // A página é direta: rótulo numa linha, valor na seguinte. As tecnologias
+    // vêm em pares (nome + explicação) — é o que o Trade Squash não dá.
+    const UAC_ROTULOS = {
+      "pdv": "precoSugerido", "gênero": "genero", "genero": "genero",
+      "peso": "peso", "origem": "origem",
+      "composicao": "composicao", "composição": "composicao",
+      "tamanhos": "tamanhos", "descrição": "descricao", "descricao": "descricao",
+      "drop": "drop", "período de vendas": "periodoVendas"
+    };
+
+    function uacFichaDoHtml(html, artigo) {
+      const t = tsTextos(html);
+      const ficha = {
+        artigo: String(artigo || ""), composicao: "", origem: "", peso: "",
+        genero: "", tipo: "", descricao: "", precoSugerido: "", tamanhos: "",
+        drop: "", tecnologias: [], cores: [], fonte: "ua-catalogo"
+      };
+      for (let i = 0; i < t.length; i++) {
+        const rot = UAC_ROTULOS[t[i].toLowerCase().replace(/:\s*$/, "")];
+        const val = t[i + 1];
+        if (rot && !ficha[rot] && val && !UAC_ROTULOS[val.toLowerCase()]) {
+          ficha[rot] = val.trim();
+        }
+        if (/^tecnologias$/i.test(t[i])) {
+          for (let j = i + 1; j + 1 < t.length && ficha.tecnologias.length < 12; j += 2) {
+            const nome = t[j], texto = t[j + 1];
+            if (!nome || /enviar sugest|voltar|tabela de medidas/i.test(nome)) break;
+            ficha.tecnologias.push({ nome, texto });
+          }
+        }
+      }
+      // O tipo não tem rótulo: vem logo acima do artigo, no topo da página
+      const iArt = t.findIndex(x => x.trim() === String(artigo));
+      if (iArt > 0) ficha.tipo = t[iArt - 1];
+      // Cores: código seguido do nome comercial ("AEBLBK", "430 - Aegean Blue")
+      for (let i = 0; i < t.length - 1; i++) {
+        if (/^[A-Z0-9/_\-]{3,10}$/.test(t[i]) && /^\d{3}\s*-\s*\S/.test(t[i + 1])) {
+          ficha.cores.push({ codigo: t[i], nome: t[i + 1] });
+        }
+      }
+      return { ficha, textos: t };
+    }
+
+    async function uacLogin() {
+      if (!env.UACAT_EMAIL || !env.UACAT_SENHA) {
+        throw new Error("UACAT_EMAIL/UACAT_SENHA não configurados nos secrets do Worker.");
+      }
+      const cab = { "User-Agent": TS_UA_HEADER, "Accept-Language": "pt-BR,pt;q=0.9" };
+
+      const r1 = await fetch(`${UAC_BASE}/acessos`, { headers: cab, redirect: "follow" });
+      if (!r1.ok) throw new Error(`GET /acessos falhou (${r1.status})`);
+      const html = await r1.text();
+      let cookie = tsColherCookies("", r1);
+
+      const formulario = tsFormLogin(html);
+      if (!formulario) throw new Error("Formulário de login não encontrado no catálogo.");
+      const acao = tsAttr(formulario.tag, "action") || "/admin/login";
+      const urlPost = acao.startsWith("http") ? acao
+        : UAC_BASE + (acao.startsWith("/") ? acao : "/" + acao);
+      const { dados, achados } = tsMontarPayload(formulario.corpo, env.UACAT_EMAIL, env.UACAT_SENHA);
+      if (!achados.email || !achados.senha) {
+        throw new Error(`Campos de login não identificados (email="${achados.email}", senha="${achados.senha}").`);
+      }
+
+      const r2 = await fetch(urlPost, {
+        method: "POST",
+        headers: {
+          ...cab,
+          "Content-Type": "application/x-www-form-urlencoded",
+          Cookie: cookie,
+          Referer: `${UAC_BASE}/acessos`,
+          Origin: UAC_BASE
+        },
+        body: dados.toString(),
+        redirect: "manual"
+      });
+      cookie = tsColherCookies(cookie, r2);
+      if (r2.status >= 400) throw new Error(`POST de login falhou (${r2.status})`);
+
+      // Uma lista por seção: o endereço do produto leva a seção dentro dele
+      const colecoes = [];
+      for (const secao of UAC_SECOES) {
+        const r3 = await fetch(`${UAC_BASE}/user/${secao}/colecoes`,
+                               { headers: { ...cab, Cookie: cookie }, redirect: "follow" });
+        cookie = tsColherCookies(cookie, r3);
+        const htmlLista = await r3.text();
+        if (/\/acessos/.test(r3.url || "") || /type\s*=\s*"password"/i.test(htmlLista)) {
+          throw new Error("Login recusado — voltou para a tela de acesso. Confira UACAT_EMAIL/UACAT_SENHA.");
+        }
+        for (const slug of uacColecoes(htmlLista)) colecoes.push({ secao, slug });
+      }
+      if (!colecoes.length) throw new Error("Nenhuma coleção encontrada no catálogo.");
+      return { cookie, colecoes, statusPost: r2.status, criadoEm: Date.now() };
+    }
+
+    async function uacSessao(forcar) {
+      const valida = globalThis.__UAC_SESSAO &&
+                     (Date.now() - globalThis.__UAC_SESSAO.criadoEm) < 20 * 60 * 1000;
+      if (valida && !forcar) return globalThis.__UAC_SESSAO;
+      globalThis.__UAC_SESSAO = await uacLogin();
+      return globalThis.__UAC_SESSAO;
+    }
+
+    // Procura a página do produto, uma coleção por vez.
+    async function uacPaginaProduto(sessao, artigo, cor) {
+      const cab = { "User-Agent": TS_UA_HEADER, Accept: "text/html,*/*",
+                    "Accept-Language": "pt-BR,pt;q=0.9", Cookie: sessao.cookie,
+                    Referer: UAC_LISTA };
+      const tentativas = [];
+      for (const c of (sessao.colecoes || [])) {
+        const secao = c.secao || UAC_SECOES[0];
+        const slug = c.slug || c;
+        const url = `${UAC_BASE}/user/${secao}/colecoes/${slug}/${encodeURIComponent(artigo)}` +
+                    (cor ? `/${encodeURIComponent(cor)}` : "");
+        const r = await fetch(url, { headers: cab, redirect: "follow" });
+        const html = r.ok ? await r.text() : "";
+        tentativas.push({ secao, slug, status: r.status, tamanho: html.length });
+        // a página de produto tem o artigo escrito nela; a de erro não
+        if (r.ok && html.includes(String(artigo))) {
+          return { url, html, slug, secao, tentativas };
+        }
+      }
+      return { url: "", html: "", slug: "", secao: "", tentativas };
+    }
+
     function tsChaveFicha(artigo) {
       return tsNormalizarChave(artigo);
     }
@@ -2695,6 +2852,161 @@ export default {
           if (gravou) {
             await saveFile(GITHUB_FICHAS, fichas, sha,
                            `fichas: ${gravou} ficha(s) do Trade Squash`);
+          }
+          return new Response(JSON.stringify({ success: true, gravou, resultados }),
+            { status: 200, headers: corsHeaders });
+        }
+
+        // ── CATÁLOGO UA: diagnóstico de leitura ───────────────────────────
+        // Mostra em que coleção o produto está e o que dá para ler na página.
+        // Com "textos:true" devolve as linhas da página, para eu ajustar os
+        // rótulos antes de ligar a busca em lote.
+        if (body.action === "uacFicha") {
+          const artigo = String(body.artigo || "").trim();
+          const cor    = String(body.cor || "").trim();
+          try {
+            const sessao = await uacSessao(!!body.relogar);
+
+            // Espelho de uma página qualquer do catálogo, já logado: é assim
+            // que eu descubro como a lista e o produto são montados sem
+            // precisar de um deploy a cada tentativa.
+            if (body.caminho) {
+              const alvo = String(body.caminho).startsWith("http")
+                ? String(body.caminho)
+                : UAC_BASE + (String(body.caminho).startsWith("/") ? body.caminho : "/" + body.caminho);
+              const r = await fetch(alvo, {
+                headers: {
+                  "User-Agent": TS_UA_HEADER,
+                  Accept: body.json ? "application/json, text/plain, */*" : "text/html,*/*",
+                  "Accept-Language": "pt-BR,pt;q=0.9",
+                  "X-Requested-With": body.json ? "XMLHttpRequest" : undefined,
+                  Cookie: sessao.cookie,
+                  Referer: UAC_LISTA
+                },
+                redirect: "follow"
+              });
+              const corpo = await r.text();
+              const links = [...new Set([...corpo.matchAll(/href="([^"]+)"/gi)]
+                .map(m => m[1]).filter(h => /colecoes|produto|catalog|api/i.test(h)))].slice(0, 40);
+              const scripts = [...new Set([...corpo.matchAll(/(?:fetch|axios\.get|url)\s*[:(]\s*["'`]([^"'`]+)["'`]/gi)]
+                .map(m => m[1]).filter(u => /\//.test(u)))].slice(0, 40);
+              // procura no HTML cru: é onde os dados ficam quando a página
+              // monta tudo em JavaScript
+              let achados;
+              if (body.procurar) {
+                achados = [];
+                const volta = Number(body.antes || 120);
+                const adiante = Number(body.depois || 600);
+                try {
+                  const re = new RegExp(body.procurar, body.flags || "gi");
+                  let m, n = 0;
+                  while ((m = re.exec(corpo)) !== null && n < Number(body.max || 6)) {
+                    achados.push(corpo.slice(Math.max(0, m.index - volta), m.index + adiante));
+                    n++;
+                    if (m.index === re.lastIndex) re.lastIndex++;
+                  }
+                } catch (e) { achados = ["regex inválida: " + String(e && e.message)]; }
+              }
+              return new Response(JSON.stringify({
+                success: r.ok, url: r.url, status: r.status, tamanho: corpo.length,
+                links, scripts, achados,
+                textos: body.semTextos ? undefined : tsTextos(corpo).slice(0, 120),
+                trecho: body.trecho
+                  ? corpo.slice(Number(body.de || 0), Number(body.de || 0) + Number(body.quanto || 4000))
+                  : undefined
+              }), { status: 200, headers: corsHeaders });
+            }
+
+            if (body.soLogin) {
+              return new Response(JSON.stringify({
+                success: true, colecoes: sessao.colecoes, statusPost: sessao.statusPost,
+                cookies: sessao.cookie.split(";").length
+              }), { status: 200, headers: corsHeaders });
+            }
+            const { url, html, slug, tentativas } = await uacPaginaProduto(sessao, artigo, cor);
+            if (!html) {
+              return new Response(JSON.stringify({
+                success: false, artigo, cor, colecoes: sessao.colecoes, tentativas,
+                error: "Produto não encontrado em nenhuma coleção."
+              }), { status: 200, headers: corsHeaders });
+            }
+            const lida = uacFichaDoHtml(html, artigo);
+            return new Response(JSON.stringify({
+              success: true, artigo, cor, colecao: slug, url,
+              tamanhoHtml: html.length,
+              ficha: lida.ficha,
+              textos: body.textos ? lida.textos.slice(0, 250) : undefined
+            }), { status: 200, headers: corsHeaders });
+          } catch (e) {
+            return new Response(JSON.stringify({
+              success: false, artigo, cor, error: String((e && e.message) || e)
+            }), { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // ── CATÁLOGO UA: ficha em lote ────────────────────────────────────
+        // Espera: { action:"uacFichas", itens:[{artigo, cor}] } — a cor serve
+        // só para montar o endereço da página; a ficha vale para o artigo.
+        if (body.action === "uacFichas" && Array.isArray(body.itens)) {
+          const UAC_MAX = 8;
+          const itens = body.itens.slice(0, UAC_MAX);
+          let sessao;
+          try {
+            sessao = await uacSessao(!!body.relogar);
+          } catch (e) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: "Falha no login do catálogo UA: " + String((e && e.message) || e)
+            }), { status: 200, headers: corsHeaders });
+          }
+
+          const { content, sha } = await getFile(GITHUB_FICHAS);
+          const fichas = (content && typeof content === "object" && !Array.isArray(content))
+            ? content : {};
+          const resultados = [];
+          let gravou = 0;
+
+          for (const it of itens) {
+            const artigo = String((it && it.artigo) || "").trim();
+            const cor    = String((it && it.cor) || "").trim();
+            if (!artigo) {
+              resultados.push({ artigo, status: "erro", motivo: "Artigo vazio" });
+              continue;
+            }
+            try {
+              const { html, slug, secao } = await uacPaginaProduto(sessao, artigo, cor);
+              if (!html) {
+                resultados.push({ artigo, status: "nao_encontrado",
+                                  motivo: "Não achei em nenhuma coleção" });
+                continue;
+              }
+              const { ficha } = uacFichaDoHtml(html, artigo);
+              if (!ficha.composicao && !ficha.origem && !ficha.descricao && !ficha.tecnologias.length) {
+                resultados.push({ artigo, status: "nao_encontrado",
+                                  motivo: "Página sem os campos da ficha" });
+                continue;
+              }
+              ficha.marca = "ua";
+              ficha.colecao = slug;
+              ficha.secao = secao;
+              ficha.lidoEm = new Date().toISOString();
+              const chave = tsChaveFicha(artigo);
+              fichas[chave] = ficha;
+              for (const k of Object.keys(fichas)) {
+                if (k !== chave && k.startsWith(chave + "|")) delete fichas[k];
+              }
+              gravou++;
+              resultados.push({ artigo, status: "ok", colecao: slug,
+                                composicao: ficha.composicao, origem: ficha.origem,
+                                tecnologias: ficha.tecnologias.length });
+            } catch (e) {
+              resultados.push({ artigo, status: "erro", motivo: String((e && e.message) || e) });
+            }
+          }
+
+          if (gravou) {
+            await saveFile(GITHUB_FICHAS, fichas, sha,
+                           `fichas: ${gravou} ficha(s) do catálogo UA`);
           }
           return new Response(JSON.stringify({ success: true, gravou, resultados }),
             { status: 200, headers: corsHeaders });

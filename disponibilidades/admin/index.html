@@ -819,7 +819,7 @@
               <span class="bi-opt-nome">Olympikus</span>
               <span class="bi-opt-cont" id="bfContOly">0</span>
             </label>
-            <label class="bi-opt" data-tip="Só os itens Under Armour ainda sem ficha">
+            <label class="bi-opt" data-tip="Só os artigos Under Armour ainda sem ficha — lidos no catálogo da própria UA">
               <input type="radio" name="bfMarca" value="ua">
               <span class="bi-opt-nome">Under Armour</span>
               <span class="bi-opt-cont" id="bfContUa">0</span>
@@ -1818,7 +1818,9 @@ function bfItensSemFicha(marca){
     if(!refazer && BF.fichas[k]) return false;
     vistos.add(k);
     return true;
-  }).map(i => ({ artigo:i.artigo }));
+  // a cor vai junto porque o catálogo da UA precisa dela no endereço da
+  // página; a ficha continua valendo para o artigo inteiro
+  }).map(i => ({ artigo:i.artigo, cor:i.cor }));
 }
 
 function bfContar(){
@@ -1879,9 +1881,12 @@ async function bfRodarMarca(marca, rotulo){
     const lote = itens.slice(i, i + BF_LOTE);
     $('bfFase').textContent = `${rotulo} — buscando...`;
     try{
+      // UA tem catálogo próprio, com tecnologia explicada e peso em quilo;
+      // a Olympikus não existe lá, então continua pelo Trade Squash
+      const acao = marca === 'ua' ? 'uacFichas' : 'tsFichas';
       const res = await workerFetch({
         method:'PATCH', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ action:'tsFichas', marca, itens: lote })
+        body: JSON.stringify({ action: acao, marca, itens: lote })
       });
       const json = await res.json();
       if(!json.success){
