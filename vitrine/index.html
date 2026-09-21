@@ -286,6 +286,34 @@ button{font:inherit}
 .btn-ficha:hover{background:color-mix(in srgb,var(--marca) 12%,var(--carta))}
 .btn-ficha:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
 
+/* Escolha da planilha: com ou sem fotos, como na Detalhada */
+.escplan{position:fixed;inset:0;z-index:125;background:rgba(15,23,42,.55);
+  display:flex;align-items:center;justify-content:center;padding:18px}
+.escplan[hidden]{display:none}
+.escplan .cx{background:var(--carta);border:1px solid var(--linha);border-radius:18px;
+  width:min(420px,100%);padding:18px 18px 16px;box-shadow:0 24px 60px rgba(15,23,42,.22)}
+.escplan h3{margin:0;font-size:16px;font-weight:800;color:var(--tinta)}
+.escplan .sub{margin:3px 0 14px;font-size:12px;color:var(--tenue)}
+.escplan .op{display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--linha);background:var(--carta);border-radius:12px;padding:12px 13px;
+  margin-top:8px;color:var(--tinta);font:inherit}
+.escplan .op:hover,.escplan .op:focus-visible{border-color:var(--marca);outline:none;
+  background:color-mix(in srgb,var(--marca) 6%,var(--carta))}
+.escplan .op .ic{flex:none;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;
+  background:color-mix(in srgb,var(--marca) 12%,var(--carta));color:var(--marca)}
+.escplan .op b{display:block;font-size:13.5px}
+.escplan .op small{display:block;font-size:11.5px;color:var(--tenue);margin-top:1px}
+.escplan .filtro{border:1px solid var(--linha);border-radius:12px;padding:10px 12px;margin:2px 0 6px;
+  background:color-mix(in srgb,var(--marca) 4%,var(--carta))}
+.escplan .filtro .t{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--tenue)}
+.escplan .filtro .q{font-size:12.5px;font-weight:700;color:var(--tinta);margin:3px 0 8px}
+.escplan .filtro label{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--tinta);
+  padding:5px 0;cursor:pointer}
+.escplan .filtro label small{display:block;color:var(--tenue);font-size:11px}
+.escplan .filtro input{accent-color:var(--marca);margin-top:2px}
+.escplan .fechar{margin-top:12px;width:100%;background:none;border:0;cursor:pointer;
+  font:inherit;font-size:12.5px;font-weight:700;color:var(--tenue);padding:6px}
+
 /* Ficha técnica em janela própria: é o caminho do ⓘ no card, para ver
    composição e origem sem passar pela grade e pelos lotes. */
 .fichabg{position:fixed;inset:0;z-index:120;background:rgba(15,23,42,.55);
@@ -2131,6 +2159,30 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
         <button class="acao forte zc-ver" id="zcVer">Ver detalhes</button>
       </div>
     </div>
+  </div>
+</div>
+
+<div id="escPlan" class="escplan" hidden>
+  <div class="cx" role="dialog" aria-labelledby="escPlanTit">
+    <h3 id="escPlanTit">Gerar planilha</h3>
+    <div class="sub" id="escPlanSub">—</div>
+    <div class="filtro" id="escPlanFiltro" hidden>
+      <div class="t">Filtro aplicado</div>
+      <div class="q" id="escPlanFiltroTxt">—</div>
+      <label><input type="radio" name="escAlcance" value="filtro" checked>
+        <span><b>Só o que o filtro mostra</b><small>As outras origens desses produtos ficam de fora</small></span></label>
+      <label><input type="radio" name="escAlcance" value="tudo">
+        <span><b>Tudo dos produtos marcados</b><small>Estoque, repasse e produção de cada um</small></span></label>
+    </div>
+    <button class="op" type="button" data-esc="com">
+      <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></span>
+      <span><b>Com imagens</b><small>Miniatura do produto em cada linha · arquivo maior</small></span>
+    </button>
+    <button class="op" type="button" data-esc="sem">
+      <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg></span>
+      <span><b>Sem imagens</b><small>Só os dados · mais leve e rápido</small></span>
+    </button>
+    <button class="fechar" type="button" data-esc="">Cancelar</button>
   </div>
 </div>
 
@@ -5531,38 +5583,283 @@ async function gerarCatalogoPdf(){
   }finally{ liberado(btn); }
 }
 
-// A planilha do catálogo é lista, não pedido: uma linha por origem, para o
-// mesmo produto poder aparecer três vezes com dados diferentes.
-function gerarCatalogoXlsx(){
+// ── Planilha do catálogo ──────────────────────────────────────────────
+// No formato da Detalhada: título, resumo e totais no topo, cabeçalho na cor
+// da marca, tudo centralizado, um tamanho por coluna e, opcionalmente, a foto
+// na primeira coluna. É lista, não pedido: uma linha por origem, para o mesmo
+// produto poder aparecer em estoque, em cada lote de repasse e em produção.
+/* O filtro da vitrine escolhe PRODUTOS; a planilha tem uma linha por
+   ORIGEM. Três filtros dizem respeito à linha, não ao produto: a aba de
+   origem (Estoque, Repasse, Produção), a ação (Forecast e outras, que são de
+   lote de repasse) e o "Chega em". Com algum deles ligado, a planilha segue
+   o filtro linha a linha — senão, filtrar Forecast trazia junto o estoque e
+   a produção do mesmo tênis. */
+const ROT_ORIGEM = { pronta:'Estoque', repasse:'Repasse', meta:'Produção' };
+function filtroDeLinha(){
+  const partes = [];
+  if(STATE.origem && STATE.origem !== 'tudo') partes.push(ROT_ORIGEM[STATE.origem]);
+  if(STATE.sel.selo.size)  partes.push([...STATE.sel.selo].join(', '));
+  if(STATE.sel.chega.size) partes.push('chega em ' + [...STATE.sel.chega].join(', '));
+  return partes.length ? partes.join(' · ') : '';
+}
+function linhaPassa(origem, alvo){
+  if(STATE.origem && STATE.origem !== 'tudo' && STATE.origem !== origem) return false;
+  // ação é coisa de lote de repasse: estoque e produção não têm selo
+  if(STATE.sel.selo.size){
+    if(origem !== 'repasse' || !alvo || !alvo.rateado || !STATE.sel.selo.has(alvo.selo)) return false;
+  }
+  if(STATE.sel.chega.size){
+    const mes = origem === 'pronta' ? AGORA
+              : origem === 'repasse' ? mesDaData(alvo && alvo.data)
+              : (alvo && alvo.mes);
+    if(!STATE.sel.chega.has(mes)) return false;
+  }
+  return true;
+}
+
+function escolherPlanilha(n){
+  return new Promise(resolve => {
+    const fundo = $('escPlan');
+    $('escPlanSub').textContent = `${nf(n)} ${n === 1 ? 'produto marcado' : 'produtos marcados'}`;
+    const filtro = filtroDeLinha();
+    $('escPlanFiltro').hidden = !filtro;
+    $('escPlanFiltroTxt').textContent = filtro;
+    const radio = fundo.querySelector('input[name="escAlcance"][value="filtro"]');
+    if(radio) radio.checked = true;
+    const fim = v => {
+      fundo.hidden = true;
+      fundo.onclick = null;
+      document.removeEventListener('keydown', esc, true);
+      const alcance = (fundo.querySelector('input[name="escAlcance"]:checked') || {}).value;
+      resolve(v ? { fotos: v, soFiltro: !!filtro && alcance !== 'tudo' } : null);
+    };
+    const esc = e => { if(e.key === 'Escape'){ e.stopPropagation(); fim(null); } };
+    fundo.onclick = e => {
+      const b = e.target.closest('button[data-esc]');
+      if(b) fim(b.dataset.esc);
+      else if(e.target === fundo) fim(null);
+    };
+    document.addEventListener('keydown', esc, true);
+    fundo.hidden = false;
+    setTimeout(() => { const f = fundo.querySelector('[data-esc="com"]'); if(f) f.focus(); }, 30);
+  });
+}
+
+// O ExcelJS só é baixado quando alguém pede a planilha: são quase 1 MB que a
+// vitrine não precisa para abrir.
+async function garantirExcelJs(){
+  if(window.ExcelJS) return true;
+  try{
+    await new Promise((ok, nao) => {
+      const t = document.createElement('script');
+      t.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+      t.onload = ok; t.onerror = nao;
+      document.head.appendChild(t);
+    });
+  }catch(_){ return false; }
+  return !!window.ExcelJS;
+}
+
+// Foto para a planilha: 320 px bastam para a miniatura ficar boa com zoom, e
+// a original de 3000 px deixaria o arquivo enorme.
+const _fotoPlan = new Map();
+function fotoPlanilha(o){
+  const chave = o.artigo + '|' + o.cor;
+  if(_fotoPlan.has(chave)) return _fotoPlan.get(chave);
+  const pr = new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      try{
+        const k = Math.min(1, 320 / Math.max(img.naturalWidth, img.naturalHeight));
+        const cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(img.naturalWidth * k));
+        cv.height = Math.max(1, Math.round(img.naturalHeight * k));
+        const cx = cv.getContext('2d');
+        cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+        cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+        cx.drawImage(img, 0, 0, cv.width, cv.height);
+        res({ url: cv.toDataURL('image/jpeg', 0.9), w: cv.width, h: cv.height });
+      }catch(_){ res(null); }
+    };
+    img.onerror = () => res(null);
+    img.src = foto(o);
+  });
+  _fotoPlan.set(chave, pr);
+  return pr;
+}
+
+// Ordem dos tamanhos: numeração pelo número (33/34 antes de 35), roupa na
+// ordem de vestir, e o que sobrar no fim, em ordem alfabética.
+const ORDEM_ROUPA = ['PP','P','M','G','GG','XG','EG','XGG','EGG','2GG','3GG','4GG','U','UN','UNICO','ÚNICO'];
+function chaveTamanho(t){
+  const s = String(t).trim().toUpperCase();
+  // só é numeração o que for número puro ou par (33/34): "2GG" é roupa
+  if(/^\d+(\/\d+)?$/.test(s)) return [0, parseInt(s, 10), s];
+  const i = ORDEM_ROUPA.indexOf(s);
+  return i >= 0 ? [1, i, s] : [2, 0, s];
+}
+function ordenarTamanhos(lista){
+  return [...lista].sort((a, b) => {
+    const x = chaveTamanho(a), y = chaveTamanho(b);
+    return x[0] - y[0] || x[1] - y[1] || x[2].localeCompare(y[2]);
+  });
+}
+
+async function gerarCatalogoXlsx(){
   const itens = marcadosVisiveis();
   if(!itens.length) return;
-  const cab = ['Marca','Artigo','Descrição','Cor','Categoria','Gênero','PDV',
-               'Campanha','MKP','Custo','Origem','Quando','Quantidade',
-               'Nº','GCI','Grade'];
-  const linhas = [cab];
-  const base = o => {
-    const c = campanhaAtiva(o) || {};
-    return [MARCAS[o.marca].nome, o.artigo, o.nome, String(o.cor).replace(/_/g,'/'),
-            o.categoria, o.genero, o.pdv || '',
-            c.codigoTabela || '', c.mkp || '', c.custo || ''];
-  };
-  const gradeTxt = g => Object.entries(g || {}).map(([t,q]) => t + ':' + q).join(' ');
-  for(const o of itens){
-    if(o.pronta) linhas.push([...base(o), 'Estoque', 'Agora', o.pronta.total,
-                              '', '', gradeTxt(o.pronta.grade)]);
-    if(o.repasse) for(const l of o.repasse.lotes)
-      linhas.push([...base(o), 'Repasse', l.data || '', l.saldo, l.num, l.gci,
-                   gradeTxt(l.grade)]);
-    if(o.meta) for(const q of o.meta.quinzenas)
-      linhas.push([...base(o), 'Produção', q.rot, q.v, '', '', '']);
-  }
-  const ws = XLSX.utils.aoa_to_sheet(linhas);
-  ws['!cols'] = cab.map((c, i) => ({ wch: i === 2 ? 28 : i === 15 ? 30 : 12 }));
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Catálogo');
-  const d = new Date(), p2 = n => String(n).padStart(2,'0');
-  XLSX.writeFile(wb, `catalogo_${MARCA}_${d.getFullYear()}${p2(d.getMonth()+1)}${p2(d.getDate())}` +
-    `_${p2(d.getHours())}${p2(d.getMinutes())}.xlsx`);
+  const escolha = await escolherPlanilha(itens.length);
+  if(!escolha || (escolha.fotos !== 'com' && escolha.fotos !== 'sem')) return;
+  const comFotos = escolha.fotos === 'com';
+  const passaLinha = escolha.soFiltro ? linhaPassa : () => true;
+  const btn = $('btnSelXlsx');
+  ocupado(btn, 'Gerando…');
+  try{
+    if(!await garantirExcelJs()){
+      avisar('Não deu para gerar a planilha', 'O gerador de planilhas não carregou. Confira a internet e tente de novo.');
+      return;
+    }
+
+    // ── linhas: uma por origem ───────────────────────────────────────
+    const linhas = [];
+    for(const o of itens){
+      const c = campanhaAtiva(o) || {};
+      const base = { o, ref:String(o.artigo), desc:o.nome || '', cor:String(o.cor).replace(/_/g,'/'),
+                     cat:o.categoria || '', gen:o.genero || '', pdv:Number(o.pdv) || '',
+                     camp:c.codigoTabela || '', mkp:c.mkp ? Number(String(c.mkp).replace(',','.')) || c.mkp : '',
+                     custo:c.custo ? Number(c.custo) || '' : '' };
+      if(o.pronta && passaLinha('pronta', o.pronta))
+        linhas.push({ ...base, origem:'Estoque', quando:'Pronta entrega', num:'', gci:'',
+                      qtd:o.pronta.total, grade:o.pronta.grade || {} });
+      if(o.repasse) for(const l of o.repasse.lotes) if(passaLinha('repasse', l))
+        linhas.push({ ...base, origem:'Repasse', quando:l.data || '', num:l.num || '', gci:l.gci || '',
+                      qtd:l.saldo, grade:l.grade || {} });
+      if(o.meta) for(const q of o.meta.quinzenas) if(passaLinha('meta', q))
+        linhas.push({ ...base, origem:'Produção', quando:q.rot, num:'', gci:'', qtd:q.v, grade:{} });
+    }
+    if(!linhas.length){
+      avisar('Nada para exportar', 'Com esse filtro, nenhuma linha dos produtos marcados sobrou.');
+      return;
+    }
+    // os tamanhos viram colunas: tudo o que aparece em alguma grade
+    const tams = new Set();
+    for(const l of linhas) for(const [t, q] of Object.entries(l.grade)) if(Number(q) > 0) tams.add(t);
+    const colTam = ordenarTamanhos(tams);
+
+    // ── fotos, em lotes de 8 ─────────────────────────────────────────
+    const img = new Map();
+    if(comFotos){
+      const unicos = [...new Map(linhas.map(l => [l.o.artigo + '|' + l.o.cor, l.o])).values()];
+      for(let i = 0; i < unicos.length; i += 8){
+        passo(btn, `Fotos ${nf(Math.min(i + 8, unicos.length))}/${nf(unicos.length)}`);
+        const lote = await Promise.all(unicos.slice(i, i + 8).map(fotoPlanilha));
+        lote.forEach((f, j) => img.set(unicos[i + j].artigo + '|' + unicos[i + j].cor, f));
+      }
+    }
+    passo(btn, 'Montando…');
+
+    // ── planilha ─────────────────────────────────────────────────────
+    const M = MARCAS[MARCA];
+    const argb = h => 'FF' + String(h).replace('#','').toUpperCase();
+    const MEIO = { horizontal:'center', vertical:'middle' };
+    const wb = new window.ExcelJS.Workbook();
+    wb.creator = 'CMS Representações · Vitrine';
+    const desloc = comFotos ? 1 : 0;
+    const ws = wb.addWorksheet('Catálogo', { views:[{ state:'frozen', ySplit:5, xSplit:desloc + 1 }] });
+
+    // topo: título, quando e quem, totais
+    const est = linhas.filter(l => l.origem === 'Estoque').reduce((a, l) => a + (Number(l.qtd) || 0), 0);
+    const rep = linhas.filter(l => l.origem === 'Repasse');
+    const pro = linhas.filter(l => l.origem === 'Produção').reduce((a, l) => a + (Number(l.qtd) || 0), 0);
+    const nProd = new Set(linhas.map(l => l.o.k)).size;
+    const totais = [`${nf(nProd)} ${nProd === 1 ? 'produto' : 'produtos'}`];
+    if(est) totais.push(`estoque ${nf(est)} un`);
+    if(rep.length) totais.push(`repasse ${nf(rep.length)} ${rep.length === 1 ? 'lote' : 'lotes'} · ` +
+                               `${nf(rep.reduce((a, l) => a + (Number(l.qtd) || 0), 0))} un`);
+    if(pro) totais.push(`produção ${nf(pro)} un`);
+    const quem = SESSAO && SESSAO.nome ? ` · ${nomeCurto(SESSAO.nome)}` : '';
+    const topo = [
+      [`Catálogo ${M.nome} · CMS Representações`, { name:'Calibri', bold:true, size:14, color:{ argb:argb(M.marca) } }],
+      [`${escolha.soFiltro ? 'Filtro: ' + filtroDeLinha() + ' · ' : ''}Gerado em ${new Date().toLocaleString('pt-BR')}${quem}`,
+       { name:'Calibri', size:10, color:{ argb:'FF6B7280' } }],
+      [totais.join(' · '), { name:'Calibri', size:10, color:{ argb:'FF6B7280' } }],
+    ];
+    topo.forEach(([texto, fonte], i) => {
+      const c = ws.getCell(i + 1, 1);
+      c.value = texto; c.font = fonte; c.alignment = { vertical:'middle' };
+    });
+    ws.getRow(1).height = 18.75;
+
+    // cabeçalho
+    const titulos = [...(comFotos ? ['Foto'] : []), 'Referência', 'Descrição', 'Cor', 'Categoria',
+                     'Gênero', 'PDV', 'Campanha', 'MKP', 'Custo', 'Origem', 'Prev. fat.',
+                     'Nº', 'GCI', 'Quantidade', ...colTam, 'DESTINO', 'PRAZO'];
+    const cabec = ws.getRow(5);
+    cabec.values = titulos;
+    cabec.height = 21.95;
+    cabec.eachCell(c => {
+      c.font = { name:'Calibri', size:11, bold:true, color:{ argb:'FFFFFFFF' } };
+      c.fill = { type:'pattern', pattern:'solid', fgColor:{ argb:argb(M.marca) } };
+      c.alignment = { ...MEIO, wrapText:true };
+    });
+
+    // corpo
+    const nCol = titulos.length;
+    const col = nome => titulos.indexOf(nome) + 1;
+    const ids = new Map();
+    const EMU_PX = 9525, COL_EMU = 89 * EMU_PX, LIN_EMU = Math.round(57.95 * 12700);
+    linhas.forEach((l, i) => {
+      const n = 6 + i;
+      const row = ws.getRow(n);
+      row.values = [...(comFotos ? [''] : []), l.ref, l.desc, l.cor, l.cat, l.gen, l.pdv,
+                    l.camp, l.mkp, l.custo, l.origem, l.quando, l.num, l.gci,
+                    Number(l.qtd) || 0,
+                    ...colTam.map(t => Number(l.grade[t]) > 0 ? Number(l.grade[t]) : ''),
+                    '', ''];
+      row.height = comFotos ? 57.95 : 20;
+      for(let c = 1; c <= nCol - 2; c++) row.getCell(c).alignment = MEIO;
+      row.getCell(col('Descrição')).alignment = { ...MEIO, wrapText:true };
+      if(l.pdv !== '') row.getCell(col('PDV')).numFmt = '"R$" #,##0.00';
+      if(l.custo !== '') row.getCell(col('Custo')).numFmt = '"R$" #,##0.00';
+      row.getCell(col('Quantidade')).numFmt = '#,##0';
+      if(comFotos){
+        const chave = l.o.artigo + '|' + l.o.cor, f = img.get(chave);
+        if(f){
+          if(!ids.has(chave)) ids.set(chave, wb.addImage({ base64:f.url, extension:'jpeg' }));
+          // "Mover e dimensionar com células", centralizada: os cantos vão em
+          // EMU, a unidade do Excel — em fração de célula a foto saía achatada.
+          const lado = 72, k = Math.min(lado / f.w, lado / f.h);
+          const wE = Math.round(f.w * k * EMU_PX), hE = Math.round(f.h * k * EMU_PX);
+          const x0 = Math.round((COL_EMU - wE) / 2), y0 = Math.round((LIN_EMU - hE) / 2);
+          ws.addImage(ids.get(chave), {
+            tl:{ nativeCol:0, nativeColOff:x0, nativeRow:n - 1, nativeRowOff:y0 },
+            br:{ nativeCol:0, nativeColOff:x0 + wE, nativeRow:n - 1, nativeRowOff:y0 + hE },
+            editAs:'twoCell'
+          });
+        }
+      }
+    });
+
+    // larguras no padrão da Detalhada; cada tamanho com 40 px (5,71 no arquivo)
+    const larguras = [...(comFotos ? [12] : []), 11, 32, 10, 12, 11, 11, 11, 7, 11, 11, 13, 8, 11, 12,
+                      ...colTam.map(() => 5.7109375), 16, 13];
+    larguras.forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+    ws.autoFilter = { from:{ row:5, column:1 }, to:{ row:5 + linhas.length, column:nCol - 2 } };
+
+    const buf = await wb.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([buf],
+      { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const d = new Date(), p2 = n => String(n).padStart(2,'0');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `catalogo_${MARCA}_${d.getFullYear()}${p2(d.getMonth()+1)}${p2(d.getDate())}` +
+                 `_${p2(d.getHours())}${p2(d.getMinutes())}${comFotos ? '_fotos' : ''}.xlsx`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }catch(e){
+    console.error(e);
+    avisar('Não deu para gerar a planilha', 'Tente de novo em alguns instantes.');
+  }finally{ liberado(btn); }
 }
 
 $('btnSelPdf').onclick = gerarCatalogoPdf;
