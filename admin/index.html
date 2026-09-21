@@ -974,6 +974,18 @@
           <button onclick="$('inputDispoXlsx').click()" class="text-xs text-blue-600 font-bold hover:underline">Trocar arquivo</button>
         </div>
 
+        <!-- Conferência das datas: a Prev. Fat. é a informação que mais
+             quebra na importação, e o erro só aparece depois, na vitrine -->
+        <div id="dispoDatasBlock" class="hidden mb-4">
+          <div class="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2">
+            <div class="text-xs font-bold text-amber-800 mb-1">
+              <i class="fa-solid fa-calendar-day mr-1"></i>Confira as datas de faturamento
+            </div>
+            <div class="text-[11px] text-amber-700" id="dispoDatasResumo">—</div>
+            <div class="text-[11px] text-amber-900 mt-1 font-semibold" id="dispoDatasAlerta"></div>
+          </div>
+        </div>
+
         <!-- Novos -->
         <div id="dispoNovosBlock" class="hidden mb-4">
           <div class="flex items-center gap-2 mb-2">
@@ -1544,6 +1556,7 @@ function renderStatusChip(status){
 
 function parseDate(value){
   if(!value) return null;
+  if(value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
   // Número serial do Excel (ex: 46104 = alguma data de 2026)
   const n = Number(value);
   if(!isNaN(n) && n > 40000 && n < 60000){
@@ -1551,8 +1564,52 @@ function parseDate(value){
     d.setUTCDate(d.getUTCDate() + n);
     return d;
   }
-  const d = new Date(value);
+  // Data brasileira DD/MM/AAAA: sem isto o new Date() lê à americana e
+  // 05/10/2026 vira 10 de maio — foi o que trocou a Prev. Fat. na vitrine.
+  const s = String(value).trim();
+  const m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
+  if(m){
+    let dd = +m[1], mm = +m[2], yy = +m[3];
+    if(yy < 100) yy += 2000;
+    if(mm > 12 && dd <= 12) [dd, mm] = [mm, dd];   // planilha em MM/DD
+    if(mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31){
+      const d = new Date(Date.UTC(yy, mm - 1, dd));
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+  }
+  const d = new Date(s);
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+// ── Data da planilha ──────────────────────────────────────────────────────
+// A Prev. Fat. chega de três jeitos: célula de data (objeto Date), número
+// serial do Excel ou texto. O texto brasileiro é o perigoso — "05/10/2026"
+// lido pelo new Date() vira 10 de maio. Aqui o dia vem sempre primeiro e o
+// valor nativo da célula tem prioridade sobre o texto formatado.
+function dataPlanilhaBR(bruto, texto){
+  const fmt = (dd, mm, yy) =>
+    `${String(dd).padStart(2,'0')}/${String(mm).padStart(2,'0')}/${yy}`;
+  const v = (bruto === undefined || bruto === null || bruto === '') ? texto : bruto;
+  if(v === undefined || v === null || v === '') return { br:null, aviso:'' };
+  if(v instanceof Date && !isNaN(v))
+    return { br: fmt(v.getDate(), v.getMonth()+1, v.getFullYear()), aviso:'' };
+  if(typeof v === 'number' && v > 40000 && v < 60000){
+    const d = new Date(Date.UTC(1899,11,30));
+    d.setUTCDate(d.getUTCDate() + v);
+    return { br: fmt(d.getUTCDate(), d.getUTCMonth()+1, d.getUTCFullYear()), aviso:'' };
+  }
+  const s = String(v).trim();
+  let m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/);
+  if(m){
+    let dd = +m[1], mm = +m[2], yy = +m[3];
+    if(yy < 100) yy += 2000;
+    let aviso = '';
+    if(mm > 12 && dd <= 12){ [dd, mm] = [mm, dd]; aviso = 'a planilha veio em MM/DD'; }
+    if(mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) return { br: fmt(dd, mm, yy), aviso };
+  }
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);            // ISO
+  if(m) return { br: fmt(+m[3], +m[2], +m[1]), aviso:'' };
+  return { br: s, aviso:'data em formato desconhecido' };
 }
 
 function formatDateTime(value){
@@ -2867,6 +2924,9 @@ async function processarDispoXlsx(file){
   let _hdrIdx = _matrix.findIndex(_isHdr);
   if(_hdrIdx < 0) _hdrIdx = 0;
   const rows = XLSX.utils.sheet_to_json(ws, { range:_hdrIdx, defval:null, raw:false });
+  // A mesma leitura sem formatar: a data vem como Date ou serial, sem passar
+  // pelo texto da planilha — era dele que saía a troca de dia com mês.
+  const rowsBrutas = XLSX.utils.sheet_to_json(ws, { range:_hdrIdx, defval:null, raw:true });
 
   const chaveAtual = new Map(); // por Nº (identidade única)
   for(const r of _dispoJsonAtual){
@@ -2902,13 +2962,15 @@ async function processarDispoXlsx(file){
   };
   const colsGrade = _headerKeys.filter(_isGradeCol);
 
-  function rowToJson(row){
+  function rowToJson(row, bruta){
     const grade = {};
     for(const col of colsGrade){
       const v = row[col];
       grade[col] = (v === null || v === undefined || v === '') ? null : Number(v) || null;
     }
     const _g = (col) => col ? row[col] : undefined;
+    const _data = dataPlanilhaBR(colData && bruta ? bruta[colData] : undefined,
+                                 colData ? row[colData] : undefined);
 
     // Algumas planilhas chegam com Código e Produto invertidos. A imagem do
     // produto e montada como {codigo}_{COR}.jpg, entao um nome no lugar da
@@ -2930,15 +2992,10 @@ async function processarDispoXlsx(file){
       codigo: _codigo,
       produto: _produto,
       cor: String(_g(colCor) || '').trim(),
-      dataEntrega: _g(colData) ? (()=>{
-        const v = _g(colData);
-        let d = null;
-        if(v instanceof Date){ d = v; }
-        else if(typeof v === 'number' && v > 40000){ d = new Date(Date.UTC(1899,11,30)); d.setUTCDate(d.getUTCDate()+v); }
-        else { d = new Date(v); }
-        if(!d || isNaN(d)) return String(v);
-        return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
-      })() : null,
+      dataEntrega: _data.br,
+      // guardados só para a conferência na tela; não vão para o dispo.json
+      _dataTexto: colData ? String(_g(colData) ?? '').trim() : '',
+      _dataAviso: _data.aviso,
       pedidoMae: String(_g(colPedMae) || '').trim(),
       saldo: Number(_g(colSaldo) || 0),
       grade
@@ -2948,8 +3005,9 @@ async function processarDispoXlsx(file){
   _dispoNovos = [];
   _dispoConflitos = [];
 
-  for(const row of rows){
-    const item = rowToJson(row);
+  for(let _i = 0; _i < rows.length; _i++){
+    const row = rows[_i];
+    const item = rowToJson(row, rowsBrutas[_i]);
     if(!item.codigo && !item.produto) continue;
     const k = String(item.num||'').trim();
     if(k && chaveAtual.has(k)){
@@ -3105,10 +3163,49 @@ async function enviarImagemDispo(file){
   }
 }
 
+// A Prev. Fat. trocada só aparece dias depois, na vitrine. Aqui ela é
+// mostrada antes de salvar: as datas lidas, quantas linhas em cada uma e o
+// que a planilha trazia escrito quando o texto não bate com o que vai ser
+// gravado.
+function renderConferenciaDatas(){
+  const bloco = $('dispoDatasBlock');
+  if(!bloco) return;
+  const itens = [..._dispoNovos, ..._dispoConflitos.map(c => c.xlsx)];
+  if(!itens.length){ bloco.classList.add('hidden'); return; }
+
+  const porData = new Map();
+  const suspeitas = [];
+  const soDigitos = t => String(t || '').replace(/\D/g, '');
+  for(const it of itens){
+    const d = it.dataEntrega || '—';
+    porData.set(d, (porData.get(d) || 0) + 1);
+    const txt = it._dataTexto || '';
+    // o texto da planilha e a data gravada precisam ter os mesmos números;
+    // se a ordem mudou, o dia virou mês em algum lugar
+    const diferente = txt && soDigitos(txt).length >= 6 &&
+      soDigitos(txt) !== soDigitos(d) &&
+      soDigitos(txt).split('').sort().join('') === soDigitos(d).split('').sort().join('');
+    if(it._dataAviso || diferente)
+      suspeitas.push(`Nº ${it.num || '—'}: planilha "${txt}" → gravado ${d}` +
+        (it._dataAviso ? ` (${it._dataAviso})` : ''));
+  }
+  const lista = [...porData.entries()]
+    .sort((a, b) => (parseDate(a[0])?.getTime() || 0) - (parseDate(b[0])?.getTime() || 0))
+    .map(([d, n]) => `${safeHtml(d)} · ${n} linha(s)`).join(' &nbsp;|&nbsp; ');
+  $('dispoDatasResumo').innerHTML = lista;
+  $('dispoDatasAlerta').innerHTML = suspeitas.length
+    ? `<i class="fa-solid fa-triangle-exclamation mr-1"></i>${suspeitas.length} data(s) a conferir — ` +
+      suspeitas.slice(0, 5).map(safeHtml).join(' · ') +
+      (suspeitas.length > 5 ? ` … e mais ${suspeitas.length - 5}` : '')
+    : '';
+  bloco.classList.remove('hidden');
+}
+
 function renderPreviewDispo(fileName, totalLinhas){
   $('dispoUploadArea').classList.add('hidden');
   $('dispoPreviewArea').classList.remove('hidden');
   $('dispoPreviewTitle').textContent = `${fileName} — ${totalLinhas} linha(s) lida(s)`;
+  renderConferenciaDatas();
 
   // Novos
   const novosBlock = $('dispoNovosBlock');
@@ -3234,7 +3331,9 @@ async function confirmarImportarDispo(){
     const subsNums = new Set(_dispoConflitos.filter(c=>c.acao==='substituir').map(c=>String(c.atual.num)));
     const base = _dispoJsonAtual.filter(r => !subsNums.has(String(r.num)));
     const adicionar = [..._dispoNovos, ..._dispoConflitos.filter(c=>c.acao==='incluir'||c.acao==='substituir').map(c=>c.xlsx)];
-    const listaFinal = [...base, ...adicionar];
+    // _dataTexto e _dataAviso servem só para conferir na tela
+    const semMarcas = ({ _dataTexto, _dataAviso, ...r }) => r;
+    const listaFinal = [...base, ...adicionar.map(semMarcas)];
     const res = await fetch(WORKER_URL, {
       method: 'PATCH', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ action:'saveDispo', data: listaFinal })
