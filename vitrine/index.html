@@ -284,6 +284,21 @@ button{font:inherit}
 .btn-ficha:hover{border-color:var(--marca);color:var(--marca);background:color-mix(in srgb,var(--marca) 8%,var(--carta))}
 .btn-ficha:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
 
+/* Ficha técnica em janela própria: é o caminho do ⓘ no card, para ver
+   composição e origem sem passar pela grade e pelos lotes. */
+.fichabg{position:fixed;inset:0;z-index:120;background:rgba(15,23,42,.55);
+  display:flex;align-items:center;justify-content:center;padding:18px}
+.fichabg[hidden]{display:none}
+.fichacx{background:var(--carta);border:1px solid var(--linha);border-radius:18px;
+  width:min(520px,100%);max-height:86vh;overflow:auto;padding:17px 19px 19px;
+  box-shadow:0 24px 60px rgba(15,23,42,.22)}
+.fichacx .topo{display:flex;align-items:flex-start;gap:10px}
+.fichacx h3{margin:0;font-size:16px;font-weight:800;color:var(--tinta);letter-spacing:-.01em}
+.fichacx .sub{font-size:12px;color:var(--tenue);margin-top:2px}
+.fichacx .x{flex:none;width:32px;height:32px;border-radius:50%;cursor:pointer;
+  border:1px solid var(--linha);background:var(--fundo);color:var(--tenue);font-size:14px}
+.fichacx .x:hover{color:var(--tinta)}
+
 /* Ficha técnica dentro do modal */
 .ficha{border:1px solid var(--linha);border-radius:10px;background:var(--carta);overflow:hidden}
 .ficha>summary{list-style:none;cursor:pointer;padding:9px 11px;display:flex;align-items:center;gap:7px;
@@ -2043,6 +2058,19 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
   </div>
 </div>
 
+<div id="fichaBg" class="fichabg" hidden onclick="fecharFicha(event)">
+  <div class="fichacx" onclick="event.stopPropagation()">
+    <div class="topo">
+      <div style="flex:1;min-width:0">
+        <h3 id="fichaTit">—</h3>
+        <div class="sub" id="fichaSub">—</div>
+      </div>
+      <button class="x" id="fichaX" type="button" title="Fechar" aria-label="Fechar">✕</button>
+    </div>
+    <div id="fichaCorpo"></div>
+  </div>
+</div>
+
 <div class="fundo" id="modal" hidden>
   <div class="folha" role="dialog" aria-modal="true" aria-labelledby="mTit">
     <div class="folha-topo">
@@ -3414,7 +3442,7 @@ function ehVestuario(o){
   return !!(f && f.secao && f.secao !== 'calcados');
 }
 
-function blocoFicha(o, aberto){
+function blocoFicha(o, aberto, solta){
   const f = fichaDe(o);
   if(!f) return '';
   const campos = [
@@ -3439,9 +3467,7 @@ function blocoFicha(o, aberto){
   const desc = String(f.descricao || '').trim();
   if(!campos.length && !tec.length && !desc) return '';
   const longa = desc.length > 260;
-  return `<details class="ficha" id="fichaBloco"${aberto ? ' open' : ''}>
-    <summary>${svgIcone('c-ficha', 13)}Ficha técnica<span class="seta">▾</span></summary>
-    <div class="ficha-corpo">
+  const corpo = `<div class="ficha-corpo"${solta ? ' style="padding:0"' : ''}>
       ${campos.length ? `<div class="ficha-campos">${campos.map(([r, v]) =>
         `<span class="ficha-campo"><span class="r">${esc(r)}</span><span class="v">${esc(v)}</span></span>`
       ).join('')}</div>` : ''}
@@ -3450,9 +3476,42 @@ function blocoFicha(o, aberto){
       ${desc ? `<p class="ficha-desc${longa ? ' curta' : ''}" id="fichaDesc">${esc(desc)}</p>
         ${longa ? '<button class="ficha-mais" type="button" id="fichaMais">Ver mais</button>' : ''}` : ''}
       <span class="ficha-fonte">Informação do catálogo da marca.</span>
-    </div>
+    </div>`;
+  // Na janela própria a moldura recolhível só atrapalha: ali a ficha é o
+  // assunto, não um bloco no meio de outros.
+  if(solta) return corpo;
+  return `<details class="ficha" id="fichaBloco"${aberto ? ' open' : ''}>
+    <summary>${svgIcone('c-ficha', 13)}Ficha técnica<span class="seta">▾</span></summary>
+    ${corpo}
   </details>`;
 }
+
+/* A mesma ficha do modal, sozinha numa janela: quem clica no ⓘ quer o
+   tecido e a origem, não a grade. O bloco dentro de "Ver detalhes"
+   continua existindo para quem chega por lá. */
+function abrirFicha(i){
+  const o = typeof i === 'object' ? i : STATE.filtrados[i];
+  const f = o && fichaDe(o);
+  if(!f) return;
+  $('fichaTit').textContent = o.nome || o.artigo;
+  $('fichaSub').textContent = `${o.artigo} · ${o.cor}` + (o.pdv ? ` · ${brl(o.pdv)}` : '');
+  const html = blocoFicha(o, true, true);
+  $('fichaCorpo').innerHTML = html;
+  $('fichaBg').hidden = false;
+  const mais = $('fichaMais');
+  if(mais) mais.onclick = () => {
+    const d = $('fichaDesc');
+    mais.textContent = d.classList.toggle('curta') ? 'Ver mais' : 'Ver menos';
+  };
+}
+function fecharFicha(e){
+  if(e && e.target !== e.currentTarget) return;
+  $('fichaBg').hidden = true;
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const x = $('fichaX');
+  if(x) x.onclick = () => fecharFicha();
+});
 
 function cardHtml(o, i){
   // Com uma campanha filtrada, o card mostra a que foi escolhida — senão o
@@ -3486,7 +3545,7 @@ function cardHtml(o, i){
       </span>
       ${(o.pdv || fichaDe(o)) ? `<span class="linha-preco">
         ${o.pdv ? `<span class="preco">${brl(o.pdv)}</span>` : '<span></span>'}
-        ${fichaDe(o) ? `<button class="btn-ficha" type="button" onclick="abrirModal(${i}, true)"
+        ${fichaDe(o) ? `<button class="btn-ficha" type="button" onclick="abrirFicha(${i})"
           title="Ficha técnica: composição, origem e tecnologias"
           aria-label="Ver a ficha técnica de ${quem}">i</button>` : ''}
       </span>` : ''}
@@ -6802,6 +6861,7 @@ $('zoom').addEventListener('click', e => {
   }
 });
 document.addEventListener('keydown', e => {
+  if(e.key === 'Escape' && !$('fichaBg').hidden){ fecharFicha(); return; }
   if($('zoom').hidden) return;
   if(e.key === 'ArrowRight') andarZoom(1);
   else if(e.key === 'ArrowLeft') andarZoom(-1);
