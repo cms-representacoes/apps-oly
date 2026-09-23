@@ -336,6 +336,10 @@
     #cartDrawer .qty-btn{ height:30px; width:30px; font-size:12px; }
 
     #cartDrawer .cart-ft{ padding:10px 12px; }
+    .ord-check{flex:none;width:26px;height:26px;border-radius:9px;border:1.5px solid #CBD5E1;background:#fff;
+      color:transparent;display:grid;place-items:center;font-size:12px;transition:.15s;cursor:pointer}
+    .ord-check:hover{border-color:#2836D4}
+    .ord-check.marcado{background:#2836D4;border-color:#2836D4;color:#fff}
     /* .grid-cols-2 e não .grid: o container dos botões também é .grid */
     #cartDrawer .cart-ft .grid-cols-2{ display:flex; gap:16px; align-items:baseline; }
     #cartDrawer .cart-ft div.rounded-2xl{
@@ -1041,6 +1045,12 @@
             </button>
           </div>
         </div>
+        <div id="ordersSelBar" class="hidden mb-3 flex flex-wrap items-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-3.5 py-2.5">
+          <i class="fa-solid fa-file-pdf text-indigo-600"></i>
+          <span id="ordersSelInfo" class="text-sm text-slate-700 flex-1 min-w-[140px]"></span>
+          <button type="button" id="ordersSelCliente" class="hidden chip chip-blue text-xs font-bold focus-ring"></button>
+          <button type="button" class="chip chip-gray text-xs font-bold focus-ring" onclick="limparPedidosSel()">Limpar</button>
+        </div>
         <div id="ordersList" class="space-y-3"></div>
       </div>
       <div class="safe-bottom border-t border-slate-200 bg-white px-4 py-3 sm:hidden ord-rodape">
@@ -1316,6 +1326,9 @@ const STATE = {
   latestCatalogPdfBlob: null,
   latestCatalogPdfFileName: '',
   latestCatalogShareText: 'Oportunidades com estoque disponível — confira 👇',
+  // Pedidos marcados na tela "Meus pedidos": com algum marcado, o PDF e o
+  // XLSX saem só deles
+  pedidosSel: new Set(),
   // Produtos marcados para PDF/XLSX (chave do produto)
   selecionados: new Set()
 };
@@ -3035,6 +3048,8 @@ function renderOrders(){
     } else { elPend.innerHTML = ''; elPend.title = ''; }
   }
 
+  // marcados que ficaram fora dos filtros continuam valendo para o PDF
+  pintarBarraSelPedidos();
   $('ordersEmptyState').classList.toggle('hidden', orders.length !== 0);
   const list = $('ordersList');
   list.innerHTML = '';
@@ -3062,6 +3077,9 @@ function renderOrders(){
     card.innerHTML = `
       <div class="ord-head p-3.5">
         <div class="flex items-center justify-between gap-3">
+          <button type="button" class="ord-check focus-ring${STATE.pedidosSel.has(order.id) ? ' marcado' : ''}"
+                  title="Marcar este pedido para o PDF" aria-label="Marcar pedido"
+                  aria-pressed="${STATE.pedidosSel.has(order.id)}"><i class="fa-solid fa-check"></i></button>
           <div class="min-w-0 flex-1">
             <div class="ord-cliente text-[15px] font-extrabold truncate">${safeHtml(clienteLabel)}</div>
             <div class="mt-0.5 text-xs text-slate-500 truncate">${safeHtml(resumo)}</div>
@@ -3097,6 +3115,7 @@ function renderOrders(){
       </div>
     `;
 
+    card.querySelector('.ord-check').addEventListener('click', ev => alternarPedidoSel(order.id, ev));
     card.querySelector('.ord-head').addEventListener('click', ()=>{
       card.classList.toggle('aberto');
       card.querySelector('.ord-det').classList.toggle('hidden');
@@ -3122,8 +3141,75 @@ function getOrdersForExport(){
   const scope = getOrdersScope();
   let orders = [...STATE.orders].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
   orders = orders.filter(pedidoDoVendedorLogado);
+  // Com pedidos marcados, a exportação é deles — é assim que se tira o PDF
+  // de um cliente só, sem depender dos filtros da tela.
+  if(STATE.pedidosSel.size) return orders.filter(o => STATE.pedidosSel.has(o.id));
   const periodo = getOrdersPeriodo();
   return orders.filter(o => orderMatchesScope(o, scope) && pedidoNoPeriodo(o, periodo));
+}
+
+/* ── marcação de pedidos ─────────────────────────────────────────────
+   Um quadradinho em cada pedido. Marcado um, aparece o atalho para levar
+   junto todos os do mesmo cliente — que é o caso de sempre: o vendedor quer
+   o PDF de um cliente, não de um pedido solto. */
+function alternarPedidoSel(id, ev){
+  if(ev){ ev.stopPropagation(); ev.preventDefault(); }
+  STATE.pedidosSel.has(id) ? STATE.pedidosSel.delete(id) : STATE.pedidosSel.add(id);
+  renderOrders();
+}
+function marcarPedidosDoCliente(codigo){
+  const alvo = STATE.orders.filter(pedidoDoVendedorLogado)
+    .filter(o => String(o.clienteCodigo || '') === String(codigo || ''));
+  const todosJa = alvo.every(o => STATE.pedidosSel.has(o.id));
+  alvo.forEach(o => todosJa ? STATE.pedidosSel.delete(o.id) : STATE.pedidosSel.add(o.id));
+  renderOrders();
+}
+function limparPedidosSel(){ STATE.pedidosSel.clear(); renderOrders(); }
+function clientesDaSelecao(){
+  const mapa = new Map();
+  for(const o of STATE.orders){
+    if(!STATE.pedidosSel.has(o.id)) continue;
+    const k = String(o.clienteCodigo || '');
+    if(!mapa.has(k)) mapa.set(k, { codigo:k, nome:o.clienteNome || '', pedidos:0 });
+    mapa.get(k).pedidos++;
+  }
+  return [...mapa.values()];
+}
+function pintarBarraSelPedidos(){
+  const el = $('ordersSelBar');
+  if(!el) return;
+  const n = STATE.pedidosSel.size;
+  el.classList.toggle('hidden', !n);
+  if(!n) return;
+  const cli = clientesDaSelecao();
+  const quem = cli.length === 1
+    ? (cli[0].nome ? `${cli[0].nome}` : cli[0].codigo)
+    : `${cli.length} clientes`;
+  $('ordersSelInfo').innerHTML =
+    `<b>${n}</b> ${n === 1 ? 'pedido marcado' : 'pedidos marcados'} · ${safeHtml(quem)}`;
+  const btnCli = $('ordersSelCliente');
+  if(cli.length === 1){
+    const total = STATE.orders.filter(pedidoDoVendedorLogado)
+      .filter(o => String(o.clienteCodigo || '') === cli[0].codigo).length;
+    btnCli.classList.toggle('hidden', total <= cli[0].pedidos);
+    btnCli.textContent = `Marcar os ${total} deste cliente`;
+    btnCli.onclick = () => marcarPedidosDoCliente(cli[0].codigo);
+  }else{
+    btnCli.classList.add('hidden');
+  }
+}
+
+/* Nome do arquivo e subtítulo do PDF: com pedidos marcados vale o cliente,
+   que é o que a pessoa vai procurar depois na pasta de downloads. */
+function rotuloExport(){
+  if(!STATE.pedidosSel.size) return { arquivo: getOrdersScope().toLowerCase(), titulo: getOrdersScope() };
+  const cli = clientesDaSelecao();
+  if(cli.length === 1){
+    const nome = (cli[0].nome || cli[0].codigo || 'cliente').toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+    return { arquivo: nome, titulo: cli[0].nome || cli[0].codigo };
+  }
+  return { arquivo: 'selecionados', titulo: `${STATE.pedidosSel.size} pedidos marcados` };
 }
 
 function buildExportRows(orders){
@@ -3163,7 +3249,7 @@ function ordersExportXlsx(){
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Pedidos');
     const now = new Date();
-    XLSX.writeFile(wb, `pedidos_${getOrdersScope().toLowerCase()}_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.xlsx`);
+    XLSX.writeFile(wb, `pedidos_${rotuloExport().arquivo}_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.xlsx`);
     toast('XLSX exportado com sucesso');
   }catch(err){ console.error(err); toast('Erro ao exportar XLSX'); }
 }
@@ -3187,7 +3273,7 @@ async function ordersExportPdf(){
     doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(11);
     doc.text('REPASSE OLYMPIKUS', 12, 10);
     doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
-    doc.text(`${nomeVendedor} · ${getOrdersScope()} · ${now.toLocaleDateString('pt-BR')}`, pw-12, 10, {align:'right'});
+    doc.text(`${nomeVendedor} · ${rotuloExport().titulo} · ${now.toLocaleDateString('pt-BR')}`, pw-12, 10, {align:'right'});
 
     const cols = [
       {label:'Nº',w:8,align:'right'},{label:'Vendedor',w:20},{label:'Cod.Cli',w:14},
@@ -3216,7 +3302,11 @@ async function ordersExportPdf(){
         const col=cols[i];
         const val=String(row[i]??'');
         const tx=col.align==='right'?cx+col.w-2:cx;
-        if(i===12){ const s=val; doc.setTextColor(s==='Aprovado'?[21,128,61]:s==='Cancelado'?[185,28,28]:[180,83,9]); }
+        // setTextColor não aceita array: passar [r,g,b] derrubava o PDF
+        // inteiro ("Invalid argument passed to jsPDF.f3") logo na coluna
+        // Status, que é a 13ª de toda linha.
+        if(i===12){ const c = val==='Aprovado'?[21,128,61]:val==='Cancelado'?[185,28,28]:[180,83,9];
+                    doc.setTextColor(c[0], c[1], c[2]); }
         else if(i===8&&val&&val!=='—'){ doc.setTextColor(40,54,212); }
         else { doc.setTextColor(15,23,42); }
         doc.text(doc.splitTextToSize(val,col.w-2)[0]||'', tx, y+4.8, {align:col.align==='right'?'right':'left'});
@@ -3228,7 +3318,7 @@ async function ordersExportPdf(){
     doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(148,163,184);
     doc.text(`Gerado em ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`, 12, ph-5);
     doc.text('Repasse Olympikus', pw-12, ph-5, {align:'right'});
-    doc.save(`pedidos_${getOrdersScope().toLowerCase()}_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.pdf`);
+    doc.save(`pedidos_${rotuloExport().arquivo}_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.pdf`);
     toast('PDF exportado com sucesso');
   }catch(err){ console.error(err); toast('Erro ao exportar PDF'); }
   finally{ btn.disabled=false; btn.innerHTML=prev; }
