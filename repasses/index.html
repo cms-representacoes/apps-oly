@@ -3212,7 +3212,9 @@ function rotuloExport(){
   return { arquivo: 'selecionados', titulo: `${STATE.pedidosSel.size} pedidos marcados` };
 }
 
-function buildExportRows(orders){
+// `metas` (opcional) recebe, na mesma ordem das linhas, o artigo e a cor de
+// cada uma — é por eles que o PDF acha a foto.
+function buildExportRows(orders, metas){
   const rows = [['Nº','Vendedor','Cod. Cliente','Nome','Prazo','Campanha','Qtde','EBM','GCI','Descrição','Cor','Prev Fat','Status','Grade']];
   let n = 0;
   for(const o of orders){
@@ -3226,9 +3228,11 @@ function buildExportRows(orders){
     if(!items.length){
       n++;
       rows.push([n, vendedor, codCliente, nomeCliente, prazo, campanha,'—','—','—','—','—','—', status,'—']);
+      if(metas) metas.push({ codigo:'', cor:'' });
     } else {
       for(const item of items){
         n++;
+        if(metas) metas.push({ codigo:item.codigo || '', cor:item.cor || '' });
         const units = Number(item.totalUnits||0)||(item.grade||[]).reduce((s,g)=>s+Number(g.qty||0),0);
         const prevFat = formatDate(item.prevFaturamento) || '—';
         const grade = Array.isArray(item.grade)&&item.grade.length ? item.grade.map(g=>`${g.size}(${g.qty})`).join(' ') : '—';
@@ -3254,6 +3258,47 @@ function ordersExportXlsx(){
   }catch(err){ console.error(err); toast('Erro ao exportar XLSX'); }
 }
 
+/* As fotos do PDF dos pedidos. É a mesma busca do catálogo (pasta local e
+   depois a v2, jpg/png/jpeg/webp), só que aqui uma por produto+cor: o mesmo
+   tênis aparece em vários pedidos e não faz sentido baixar de novo. */
+const _fotosPdf = new Map();
+/* A foto do site tem 1.000 px ou mais; no papel ela ocupa 28 mm. Embutir o
+   arquivo inteiro fazia um PDF de um pedido só passar de 12 MB. Aqui ela é
+   reduzida e sai em JPEG. */
+function miniaturaPdf(img, max = 260){
+  return new Promise(resolve => {
+    const el = new Image();
+    el.onload = () => {
+      const r = Math.min(1, max / Math.max(el.width, el.height));
+      const w = Math.max(1, Math.round(el.width * r)), h = Math.max(1, Math.round(el.height * r));
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);      // JPEG não tem transparência
+      ctx.drawImage(el, 0, 0, w, h);
+      resolve({ dataUrl: c.toDataURL('image/jpeg', 0.82), w, h, jpeg:true });
+    };
+    el.onerror = () => resolve(img);
+    el.src = img.dataUrl;
+  });
+}
+async function fotoParaPdf(meta){
+  const chave = `${meta.codigo}|${meta.cor}`;
+  if(_fotosPdf.has(chave)) return _fotosPdf.get(chave);
+  let img = null;
+  try{
+    let bruto = '';
+    for(const url of productImageCandidates(meta)){
+      bruto = await imageUrlToDataUrl(url);
+      if(bruto) break;
+    }
+    if(bruto) img = await loadImgForPdfCrop(bruto);
+    if(img && img.dataUrl) img = await miniaturaPdf(img);
+  }catch(_){ img = null; }
+  _fotosPdf.set(chave, img);
+  return img;
+}
+
 async function ordersExportPdf(){
   const orders = getOrdersForExport();
   if(!orders.length){ toast('Nenhum pedido para exportar'); return; }
@@ -3262,7 +3307,7 @@ async function ordersExportPdf(){
   btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
   try{
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+    const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4', compress:true });
     const pw = doc.internal.pageSize.getWidth();
     const ph = doc.internal.pageSize.getHeight();
     const now = new Date();
@@ -3275,41 +3320,80 @@ async function ordersExportPdf(){
     doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
     doc.text(`${nomeVendedor} · ${rotuloExport().titulo} · ${now.toLocaleDateString('pt-BR')}`, pw-12, 10, {align:'right'});
 
+    // A foto entra como primeira coluna, do tamanho da do catálogo (86 pt ≈
+    // 30 mm). A linha cresce junto, e as colunas de texto encolhem o
+    // suficiente para tudo continuar cabendo na largura da página.
+    const IMG = 28, GAP = 3;
     const cols = [
-      {label:'Nº',w:8,align:'right'},{label:'Vendedor',w:20},{label:'Cod.Cli',w:14},
-      {label:'Nome',w:22},{label:'Prazo',w:16},{label:'Campanha',w:18},
-      {label:'Qtde',w:10,align:'right'},{label:'EBM',w:15},{label:'GCI',w:13},
-      {label:'Descrição',w:36},{label:'Cor',w:15},{label:'Prev Fat',w:15},
-      {label:'Status',w:15},{label:'Grade',w:36}
+      {label:'Foto',w:IMG+GAP},
+      {label:'Nº',w:8,align:'right'},{label:'Vendedor',w:16},{label:'Cod.Cli',w:13},
+      {label:'Nome',w:30},{label:'Prazo',w:14},{label:'Campanha',w:14},
+      {label:'Qtde',w:10,align:'right'},{label:'EBM',w:14},{label:'GCI',w:13},
+      {label:'Descrição',w:32},{label:'Cor',w:14},{label:'Prev Fat',w:14},
+      {label:'Status',w:14},{label:'Grade',w:37}
     ];
-    const startX=12; let y=22; const rowH=7;
+    const startX=12; let y=22; const rowH=IMG+4;
 
+    // A faixa dos títulos tem altura própria: com a da linha (que agora
+    // comporta a foto) ela virava uma tarja cinza de um terço da página.
+    const hdrH = 7;
     function drawHdr(){
-      doc.setFillColor(248,250,252); doc.rect(startX,y,pw-24,rowH,'F');
+      doc.setFillColor(248,250,252); doc.rect(startX,y,pw-24,hdrH,'F');
       doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(71,85,105);
       let cx=startX+1.5;
       for(const col of cols){ doc.text(col.label, col.align==='right'?cx+col.w-2:cx, y+4.8, {align:col.align==='right'?'right':'left'}); cx+=col.w; }
-      y+=rowH;
+      y+=hdrH;
     }
     drawHdr();
     doc.setFont('helvetica','normal'); doc.setFontSize(6.5);
-    const dataRows = buildExportRows(orders).slice(1);
-    for(const row of dataRows){
-      if(y>ph-14){ doc.addPage(); y=10; drawHdr(); }
+    const metas = [];
+    const dataRows = buildExportRows(orders, metas).slice(1);
+
+    // As fotos vêm antes de desenhar: baixar no meio do laço deixaria a
+    // montagem aos pedaços. O botão mostra o andamento porque, num PDF de
+    // muitos pedidos, isso leva alguns segundos.
+    const distintas = [...new Map(metas.map(m => [`${m.codigo}|${m.cor}`, m])).values()]
+      .filter(m => m.codigo);
+    let feitas = 0;
+    for(const m of distintas){
+      await fotoParaPdf(m);
+      feitas++;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${Math.round(feitas / distintas.length * 100)}%`;
+    }
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+    for(let r=0;r<dataRows.length;r++){
+      const row = dataRows[r];
+      if(y>ph-14-rowH){ doc.addPage(); y=10; drawHdr(); }
       doc.setDrawColor(237,242,247); doc.line(startX,y,pw-12,y);
       let cx=startX+1.5;
       for(let i=0;i<cols.length;i++){
         const col=cols[i];
-        const val=String(row[i]??'');
+        if(i===0){            // a foto
+          const img = _fotosPdf.get(`${metas[r].codigo}|${metas[r].cor}`);
+          const ix = cx, iy = y+2;
+          if(img && img.dataUrl){
+            let w2 = IMG, h2 = IMG;
+            if(img.w && img.h){ const rr = img.w/img.h; if(rr > 1) h2 = IMG/rr; else w2 = IMG*rr; }
+            doc.addImage(img.dataUrl, img.jpeg ? 'JPEG' : 'PNG', ix+(IMG-w2)/2, iy+(IMG-h2)/2, w2, h2, undefined, 'FAST');
+          }else{
+            doc.setTextColor(148,163,184);
+            doc.text('sem foto', ix+IMG/2, iy+IMG/2, {align:'center'});
+          }
+          cx+=col.w;
+          continue;
+        }
+        const val=String(row[i-1]??'');
         const tx=col.align==='right'?cx+col.w-2:cx;
         // setTextColor não aceita array: passar [r,g,b] derrubava o PDF
         // inteiro ("Invalid argument passed to jsPDF.f3") logo na coluna
         // Status, que é a 13ª de toda linha.
-        if(i===12){ const c = val==='Aprovado'?[21,128,61]:val==='Cancelado'?[185,28,28]:[180,83,9];
+        if(i===13){ const c = val==='Aprovado'?[21,128,61]:val==='Cancelado'?[185,28,28]:[180,83,9];
                     doc.setTextColor(c[0], c[1], c[2]); }
-        else if(i===8&&val&&val!=='—'){ doc.setTextColor(40,54,212); }
+        else if(i===9&&val&&val!=='—'){ doc.setTextColor(40,54,212); }
         else { doc.setTextColor(15,23,42); }
-        doc.text(doc.splitTextToSize(val,col.w-2)[0]||'', tx, y+4.8, {align:col.align==='right'?'right':'left'});
+        // com a linha alta, o texto fica no meio dela, na altura da foto
+        doc.text(doc.splitTextToSize(val,col.w-2)[0]||'', tx, y+rowH/2+1, {align:col.align==='right'?'right':'left'});
         cx+=col.w;
       }
       y+=rowH;
