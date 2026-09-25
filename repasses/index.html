@@ -2381,6 +2381,17 @@ function groupKey(item){ return `${normalizeText(item.produto)}||${normalizeText
 const NOVO_DIAS = 7;
 const CH_VISTOS = 'repasse_lotes_vistos_v1';
 let LOTES_NOVOS = new Map();       // chave do lote -> dia em que apareceu
+// Base remontada do histórico por gerar_novidades_repasse.py: sem ela, quem
+// abre a vitrine pela primeira vez não teria como saber o que entrou ontem —
+// tudo viraria "já estava".
+let NOVIDADES = {};
+async function carregarNovidades(){
+  try{
+    const r = await fetch('../data/novidades-repasse.json', { cache:'no-cache' });
+    const d = await r.json();
+    if(d && typeof d === 'object') NOVIDADES = d;
+  }catch(_){ NOVIDADES = {}; }   // sem o arquivo, vale só o que este aparelho viu
+}
 
 const chaveLoteNovo = item => `${String(item.num || '').trim()}|${String(item.gci || '').trim()}`;
 const diaDeHoje = () => new Date().toISOString().slice(0, 10);
@@ -2402,8 +2413,10 @@ function anotarLotesVistos(){
     const k = chaveLoteNovo(item);
     if(!k || k === '|') continue;
     agora.add(k);
-    if(!mapa[k]) mapa[k] = primeira ? 'ja-estava' : hoje;
-    if(mapa[k] !== 'ja-estava' && diasAte(mapa[k]) <= NOVO_DIAS) LOTES_NOVOS.set(k, mapa[k]);
+    // o histórico manda; o registro do aparelho cobre o que entrar depois
+    if(!mapa[k]) mapa[k] = NOVIDADES[k] || (primeira ? 'ja-estava' : hoje);
+    const dia = NOVIDADES[k] || mapa[k];
+    if(dia !== 'ja-estava' && diasAte(dia) <= NOVO_DIAS) LOTES_NOVOS.set(k, dia);
   }
   // lote que saiu da vitrine sai do registro, senão o arquivo só cresce
   for(const k of Object.keys(mapa)) if(!agora.has(k)) delete mapa[k];
@@ -4243,7 +4256,9 @@ async function loadCatalog(){
       for(const k of [...STATE.selecionados]) if(!chaves.has(k)) STATE.selecionados.delete(k);
     }catch(e){ console.error('Falha ao conferir imagens; nada foi ocultado.', e); }
 
-    // o que entrou desde a última visita deste aparelho
+    // o que entrou desde a última publicação (histórico) e desde a última
+    // visita deste aparelho
+    await carregarNovidades();
     anotarLotesVistos();
 
     buildFilters();
