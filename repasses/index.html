@@ -471,10 +471,6 @@
       body.cards-duo .qty-btn{ height:26px !important; width:26px !important; }
     }
 
-    /* Botão de alternar layout — só faz sentido onde há dois modos */
-    #btnLayoutCards{ display:none; }
-    @media(max-width:640px){ #btnLayoutCards{ display:inline-flex; } }
-
     /* ── Autocomplete de cliente (checkout) ── */
     .cli-combo{position:relative}
     .cli-sug{
@@ -796,13 +792,6 @@
             title="Voltar ao Portal" aria-label="Voltar ao Portal">
             <i class="fa-solid fa-arrow-left text-sm"></i>
           </a>
-
-          <button id="btnLayoutCards" onclick="toggleLayoutCards()" data-tip="Alternar visualização"
-            title="Alternar visualização" aria-label="Alternar visualização"
-            class="focus-ring items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600"
-            style="width:44px;height:44px;flex:0 0 auto">
-            <i id="icoLayoutCards" class="fa-solid fa-square text-sm"></i>
-          </button>
         </div>
       </div>
 
@@ -1707,39 +1696,14 @@ function saveOrdersStorage(){ localStorage.setItem(STORAGE_KEYS.orders, JSON.str
 function saveViewMode(){ localStorage.setItem(STORAGE_KEYS.view, STATE.viewMode); }
 
 // ── LAYOUT DOS CARDS NO SMARTPHONE ───────────────────────────────────────────
-// Dois modos: 'duo' (2 colunas, compacto — padrão) e 'uno' (1 coluna, completo).
-// A troca é só uma classe no body, então não re-renderiza os cards.
-// O ícone do botão mostra para ONDE você vai, mesmo padrão do catálogo digital.
-const LAYOUT_CARDS_KEY = 'repasse_layout_cards_v1';
-
-function aplicarLayoutCards(modo){
-  const duo = modo !== 'uno';                 // padrão é 2 colunas
-  document.body.classList.toggle('cards-duo', duo);
-  const ico = document.getElementById('icoLayoutCards');
-  // no modo 2 colunas o botão oferece 1 coluna, e vice-versa
-  if(ico) ico.className = duo ? 'fa-solid fa-square text-sm' : 'fa-solid fa-table-cells-large text-sm';
-  const btn = document.getElementById('btnLayoutCards');
-  if(btn){
-    const alvo = duo ? 'Ver em 1 coluna' : 'Ver em 2 colunas';
-    btn.title = alvo;
-    btn.setAttribute('aria-label', alvo);
-    btn.setAttribute('data-tip', alvo);
-  }
-}
-
-function toggleLayoutCards(){
-  const duoAgora = document.body.classList.contains('cards-duo');
-  const novo = duoAgora ? 'uno' : 'duo';
-  try{ localStorage.setItem(LAYOUT_CARDS_KEY, novo); }catch(_){}
-  aplicarLayoutCards(novo);
-}
-
-// Aplica na carga: 2 colunas por padrão, ou o que o vendedor escolheu antes
+// No celular são sempre 2 colunas. Havia um botão para ver em 1 coluna, mas
+// ninguém usava e ele só disputava espaço no cabeçalho. A classe entra sempre,
+// e quem tinha escolhido 1 coluna antes volta para 2.
 (function(){
-  let salvo = 'duo';
-  try{ salvo = localStorage.getItem(LAYOUT_CARDS_KEY) || 'duo'; }catch(_){}
-  if(document.body) aplicarLayoutCards(salvo);
-  else document.addEventListener('DOMContentLoaded', ()=> aplicarLayoutCards(salvo));
+  try{ localStorage.removeItem('repasse_layout_cards_v1'); }catch(_){}
+  const por = () => document.body.classList.add('cards-duo');
+  if(document.body) por();
+  else document.addEventListener('DOMContentLoaded', por);
 })();
 function getLastPreposto(){ return localStorage.getItem(STORAGE_KEYS.lastPreposto) || ''; }
 function setLastPreposto(value){ localStorage.setItem(STORAGE_KEYS.lastPreposto, value || ''); }
