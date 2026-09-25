@@ -781,6 +781,63 @@ button{font:inherit}
 .ped-tipos button.t-est.on{background:var(--pronta);border-color:var(--pronta)}
 .ped-tipos button .n{margin-left:5px;font-size:10px;opacity:.75}
 .ped-selo.rep{background:var(--repasse-fundo);color:var(--repasse)}
+
+/* ── Pedido de cancelamento ou alteração ─────────────────────────────
+   O vendedor errou algo depois de enviar e pede ao admin daqui mesmo.
+   Só vale para o pedido de repasse: é ele que o admin trata. Vermelho é
+   cancelamento, âmbar é alteração; o destaque é a borda e uma faixa.   */
+/* a janela do pedido fica acima da tela de Meus pedidos (85) e abaixo do
+   diálogo de confirmação (90) */
+#solVit{z-index:88}
+.ped-item.sol-canc{border-color:#F3A6A6}
+.ped-item.sol-alt{border-color:#F3CB8A}
+.ped-sol{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;
+  font-size:12px;line-height:1.5;border-top:1px solid var(--linha)}
+.ped-sol.canc{background:#FEF4F4;border-top-color:#F7D4D4}
+.ped-sol.alt{background:#FFFBEF;border-top-color:#F6E2BD}
+.ped-sol.fim{background:var(--papel);border-top-color:var(--linha)}
+.ped-sol .ic{width:24px;height:24px;border-radius:50%;background:var(--carta);
+  display:grid;place-items:center;flex:none;font-size:12px;font-weight:800}
+.ped-sol.canc .ic{color:#C2183F;border:1px solid #F7D4D4}
+.ped-sol.alt .ic{color:#B45309;border:1px solid #F6E2BD}
+.ped-sol.fim .ic{color:#0E6B47;border:1px solid #BBE7D2}
+.ped-sol.fim.nao .ic{color:var(--fraco);border:1px solid var(--linha-forte)}
+.ped-sol .corpo{min-width:0;flex:1}
+.ped-sol b{display:block;font-size:12px;font-weight:800;color:var(--tinta)}
+.ped-sol .txt{color:var(--texto);margin-top:1px}
+.ped-sol .txt em{font-style:normal;font-weight:700;color:var(--tinta)}
+.ped-sol .qd{color:var(--tenue);font-size:11px;margin-top:3px}
+.ped-sol .desfaz{margin-left:auto;align-self:center;background:none;border:0;
+  color:var(--fraco);font:inherit;font-size:11px;font-weight:800;
+  text-decoration:underline;cursor:pointer;white-space:nowrap}
+.ped-acoes{display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  padding-top:10px;margin-top:10px;border-top:1px dashed var(--linha)}
+.ped-acoes .rotulo{font-size:10.5px;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--tenue)}
+.btn-sol{display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+  border:1px solid var(--linha-forte);background:var(--carta);border-radius:999px;
+  padding:7px 13px;font:inherit;font-size:11.5px;font-weight:800;color:var(--fraco)}
+.btn-sol.alt{color:#B45309;border-color:#F3CB8A}
+.btn-sol.alt:hover{background:#FFFBEF}
+.btn-sol.canc{color:#C2183F;border-color:#F3A6A6}
+.btn-sol.canc:hover{background:#FEF4F4}
+/* a janela do pedido */
+.sv-corpo{padding:18px 20px 6px;text-align:left}
+.sv-rot{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--tenue);margin:0 0 8px}
+.sv-motivos{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 16px}
+.sv-mchip{border:1px solid var(--linha-forte);background:var(--carta);border-radius:999px;
+  padding:7px 12px;font:inherit;font-size:11.5px;font-weight:700;color:var(--texto);cursor:pointer}
+.sv-mchip.on{background:var(--marca);border-color:var(--marca);color:#fff}
+.sv-texto{width:100%;border:1px solid var(--linha-forte);border-radius:12px;padding:10px 12px;
+  font:inherit;font-size:12.5px;color:var(--tinta);background:var(--carta);resize:vertical;min-height:74px}
+.sv-texto:focus{outline:none;border-color:var(--marca)}
+.sv-nota{display:flex;gap:8px;font-size:11px;line-height:1.45;color:var(--fraco);
+  background:var(--papel);border-radius:10px;padding:9px 11px;margin-top:12px}
+@media (max-width:640px){
+  .ped-acoes .rotulo{width:100%}
+  .btn-sol{flex:1;justify-content:center}
+}
 .ped-busca input{flex:1;width:100%;font-weight:600}
 .ped-campo > svg{flex:none;color:var(--tenue)}
 
@@ -2094,6 +2151,25 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
     <div class="folha-pe">
       <button class="acao" id="cfNao">Manter</button>
       <button class="acao forte" id="cfSim">Entendi</button>
+    </div>
+  </div>
+</div>
+
+<div class="fundo" id="solVit" hidden>
+  <div class="folha dlg" role="dialog" aria-modal="true" aria-labelledby="svTit">
+    <div class="sv-corpo">
+      <h3 id="svTit" style="margin:0 0 2px;font-size:16px;font-weight:800;color:var(--tinta)">—</h3>
+      <p id="svSub" style="margin:0 0 16px;font-size:11.5px;font-weight:600;color:var(--fraco)"></p>
+      <p class="sv-rot">Qual o motivo?</p>
+      <div class="sv-motivos" id="svMotivos"></div>
+      <p class="sv-rot">Quer explicar? (opcional)</p>
+      <textarea class="sv-texto" id="svTexto" rows="3" aria-label="Detalhe do motivo"></textarea>
+      <div class="sv-nota">O admin recebe na hora, com destaque. O pedido só muda
+        depois que ele responder — e você acompanha por aqui.</div>
+    </div>
+    <div class="folha-pe">
+      <button class="acao" id="svNao">Voltar</button>
+      <button class="acao forte" id="svSim">Enviar pedido</button>
     </div>
   </div>
 </div>
@@ -4181,6 +4257,8 @@ function repasseComoPedido(p){
   });
   return {
     id: 'rep-' + String(p.id || ''),
+    pedidoId: String(p.id || ''),
+    solicitacao: normalizeSolicitacao(p.solicitacao),
     criadoEm: p.createdAt || p.criadoEm || '',
     tipo: 'repasse',
     status: p.status || 'Pendente',
@@ -4347,7 +4425,14 @@ function pedidoHtml(p){
   const sel = PED.sel.has(p.id), aberto = PED.abertos.has(p.id);
   const curto = MARCAS[p.marca] ? MARCAS[p.marca].curto : (p.marca || '—');
   const itens = p.itens || [];
-  return `<article class="ped-item${sel ? ' sel' : ''}${aberto ? ' aberto' : ''}" data-id="${esc(p.id)}">
+  // Pedir cancelamento/alteração só faz sentido no repasse: é o pedido que o
+  // admin trata. O da vitrine vira planilha na hora e não passa por lá.
+  const sol = p.solicitacao;
+  const solAberta = sol && sol.estado === 'aberta' ? sol : null;
+  const podePedir = p.tipo === 'repasse' && !solAberta &&
+    String(p.status || 'Pendente') !== 'Cancelado';
+  const classeSol = solAberta ? (solAberta.tipo === 'cancelar' ? ' sol-canc' : ' sol-alt') : '';
+  return `<article class="ped-item${sel ? ' sel' : ''}${aberto ? ' aberto' : ''}${classeSol}" data-id="${esc(p.id)}">
     <div class="ped-linha">
       <input type="checkbox" data-sel="${esc(p.id)}" ${sel ? 'checked' : ''}
              ${p.tipo === 'repasse' ? 'disabled title="Pedido do app de repasses: aqui ele é só para consulta"' : ''}
@@ -4366,6 +4451,7 @@ function pedidoHtml(p){
           <path d="m6 9 6 6 6-6"/></svg>
         ${aberto ? 'Fechar' : 'Itens'}</button>
     </div>
+    ${faixaSolicitacao(p)}
     <div class="ped-det">
       <p class="ped-info">
         <span>Cliente <b>${esc(p.cliente)}</b></span>
@@ -4388,9 +4474,195 @@ function pedidoHtml(p){
           ${celulas(i.gradeSaida || {}, i.origem === 'repasse' ? 'g-rep'
             : i.origem === 'producao' ? 'g-pro' : 'g-est')}
         </span></div>`).join('')}
+      ${podePedir ? `<div class="ped-acoes">
+        <span class="rotulo">Precisa mexer?</span>
+        <button class="btn-sol alt" data-solv="alterar" data-id="${esc(p.id)}">Pedir alteração</button>
+        <button class="btn-sol canc" data-solv="cancelar" data-id="${esc(p.id)}">Pedir cancelamento</button>
+      </div>` : ''}
     </div>
   </article>`;
 }
+
+/* ── Pedido de cancelamento ou alteração ─────────────────────────────
+   Mesmo desenho e mesmo caminho do app Repasses: a marca fica no próprio
+   pedido (campo `solicitacao`) e sobe por PUT updateOrders, que grava só os
+   campos enviados. O pedido então aparece destacado no topo do admin.      */
+const SOL_MOTIVOS = {
+  cancelar: ['Prazo errado','Cliente errado','Grade errada','Quantidade errada','Pedido duplicado','Cliente desistiu','Outro'],
+  alterar:  ['Prazo errado','Grade errada','Quantidade errada','Trocar a cor','Trocar o cliente','Outro'],
+};
+
+function normalizeSolicitacao(raw){
+  if(!raw || typeof raw !== 'object') return null;
+  const tipo = String(raw.tipo || '').toLowerCase();
+  if(tipo !== 'cancelar' && tipo !== 'alterar') return null;
+  const estado = ['aberta','atendida','recusada'].includes(String(raw.estado || '').toLowerCase())
+    ? String(raw.estado).toLowerCase() : 'aberta';
+  const r = raw.resposta && typeof raw.resposta === 'object' ? raw.resposta : null;
+  return {
+    tipo,
+    motivo: String(raw.motivo || '').trim(),
+    texto: String(raw.texto || '').trim(),
+    por: { codigo: String(raw.por && raw.por.codigo || ''), nome: String(raw.por && raw.por.nome || '') },
+    em: raw.em || '',
+    estado,
+    resposta: r ? { por: String(r.por || ''), em: r.em || '', texto: String(r.texto || '') } : null
+  };
+}
+
+function quandoCurto(iso){
+  const d = iso ? new Date(iso) : null;
+  if(!d || isNaN(d)) return '';
+  const hora = d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  const dia = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const hoje = new Date();
+  const dif = Math.round((new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()) - dia) / 864e5);
+  if(dif === 0) return `hoje às ${hora}`;
+  if(dif === 1) return `ontem às ${hora}`;
+  return `${d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' })} às ${hora}`;
+}
+
+function faixaSolicitacao(p){
+  const sol = p.solicitacao;
+  if(!sol) return '';
+  const canc = sol.tipo === 'cancelar';
+  const detalhe = `${esc(sol.motivo || 'Sem motivo')}${sol.texto ? ` — <em>${esc(sol.texto)}</em>` : ''}`;
+  if(sol.estado === 'aberta'){
+    return `<div class="ped-sol ${canc ? 'canc' : 'alt'}">
+      <span class="ic">${canc ? '⃠' : '✎'}</span>
+      <span class="corpo">
+        <b>${canc ? 'Cancelamento solicitado' : 'Alteração solicitada'}</b>
+        <span class="txt">${detalhe}</span>
+        <span class="qd">Enviado ${esc(quandoCurto(sol.em))} · aguardando o admin</span>
+      </span>
+      <button class="desfaz" data-solv-desfaz="${esc(p.id)}">Desfazer</button>
+    </div>`;
+  }
+  const ok = sol.estado === 'atendida';
+  const r = sol.resposta;
+  return `<div class="ped-sol fim${ok ? '' : ' nao'}">
+    <span class="ic">${ok ? '✓' : '✕'}</span>
+    <span class="corpo">
+      <b>${ok ? (canc ? 'Cancelamento atendido' : 'Alteração resolvida') : 'Solicitação recusada'}</b>
+      <span class="txt">${detalhe}</span>
+      ${r && r.texto ? `<span class="txt">Resposta: <em>${esc(r.texto)}</em></span>` : ''}
+      <span class="qd">Pedido ${esc(quandoCurto(sol.em))}${r && r.em ? ` · respondido ${esc(quandoCurto(r.em))}${r.por ? ' por ' + esc(r.por) : ''}` : ''}</span>
+    </span>
+  </div>`;
+}
+
+let SV_ALVO = null, SV_TIPO = 'cancelar', SV_MOTIVO = '';
+
+function abrirSolVit(id, tipo){
+  const p = pedidoPorId(id);
+  if(!p || p.tipo !== 'repasse') return;
+  SV_ALVO = id; SV_TIPO = tipo === 'alterar' ? 'alterar' : 'cancelar'; SV_MOTIVO = '';
+  const canc = SV_TIPO === 'cancelar';
+  $('svTit').textContent = canc ? 'Pedir cancelamento' : 'Pedir alteração';
+  $('svSub').textContent = `${p.clienteNome || 'Cliente ' + p.cliente} · ${nf(p.totalPares)} pares`;
+  $('svTexto').value = '';
+  $('svTexto').placeholder = canc ? 'Ex.: era para ser 20/12, subiu 20/11.'
+                                  : 'Ex.: trocar 2 pares do 39 para o 41.';
+  $('svSim').textContent = 'Enviar pedido';
+  $('svSim').disabled = false;
+  $('svMotivos').innerHTML = SOL_MOTIVOS[SV_TIPO]
+    .map(m => `<button class="sv-mchip" data-m="${esc(m)}">${esc(m)}</button>`).join('');
+  $('solVit').hidden = false;
+  document.body.classList.add('trava');
+}
+function fecharSolVit(){
+  $('solVit').hidden = true;
+  document.body.classList.remove('trava');
+  SV_ALVO = null;
+}
+
+// Grava só o campo `solicitacao` e o evento no histórico do pedido. Recusado
+// pelo servidor, a tela volta ao que era: pedido que não chegou ao admin não
+// pode ficar marcado como enviado aqui.
+async function gravarSolVit(p, sol, evento){
+  const anterior = p.solicitacao || null;
+  p.solicitacao = sol;
+  pintarPedidos();
+  try{
+    const r = await doWorkerComPrazo({
+      method:'PUT',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ action:'updateOrders', updates:[
+        { id: p.pedidoId, campos:{ solicitacao: sol }, historyAppend: evento }] })
+    }, 12000);
+    if(r && Array.isArray(r.aplicados) && !r.aplicados.includes(p.pedidoId))
+      throw new Error('Pedido não encontrado no servidor.');
+    return true;
+  }catch(e){
+    p.solicitacao = anterior;
+    pintarPedidos();
+    avisar('Não deu para enviar', 'O pedido continua como estava. Confira a conexão e tente de novo.');
+    return false;
+  }
+}
+
+function eventoSolVit(p, acao, rotulo, nota, sol){
+  return {
+    eventId: `evt_${Date.now().toString(36)}${Math.random().toString(36).slice(2,8)}`,
+    at: new Date().toISOString(),
+    action: acao,
+    label: rotulo,
+    statusFrom: p.status || 'Pendente',
+    statusTo: p.status || 'Pendente',
+    clientCode: p.cliente || '',
+    prepostoCodigo: p.comissionista || '',
+    prepostoNome: p.comissionistaNome || '',
+    notes: nota,
+    meta: sol ? { solicitacao: sol } : {}
+  };
+}
+
+async function enviarSolVit(){
+  if(!SV_ALVO) return;
+  if(!SV_MOTIVO){ avisar('Falta o motivo', 'Escolha um motivo para o admin saber o que houve.'); return; }
+  const p = pedidoPorId(SV_ALVO);
+  if(!p){ fecharSolVit(); return; }
+  const canc = SV_TIPO === 'cancelar';
+  const texto = $('svTexto').value.trim();
+  const sol = {
+    tipo: SV_TIPO, motivo: SV_MOTIVO, texto,
+    por: { codigo: p.comissionista || '', nome: p.comissionistaNome || '' },
+    em: new Date().toISOString(), estado: 'aberta', resposta: null
+  };
+  const evento = eventoSolVit(p, canc ? 'cancel_requested' : 'change_requested',
+    canc ? 'Cancelamento solicitado' : 'Alteração solicitada',
+    SV_MOTIVO + (texto ? ` — ${texto}` : ''), sol);
+  $('svSim').disabled = true;
+  $('svSim').textContent = 'Enviando…';
+  const foi = await gravarSolVit(p, sol, evento);
+  $('svSim').disabled = false;
+  $('svSim').textContent = 'Enviar pedido';
+  if(!foi) return;
+  fecharSolVit();
+  mostrarDialogo({ titulo: canc ? 'Cancelamento enviado' : 'Alteração enviada', sucesso:true,
+    texto:'O admin já está vendo o seu pedido em destaque. A resposta aparece aqui no cartão.' });
+}
+
+async function desfazerSolVit(id){
+  const p = pedidoPorId(id);
+  if(!p || !p.solicitacao || p.solicitacao.estado !== 'aberta') return;
+  const canc = p.solicitacao.tipo === 'cancelar';
+  const evento = eventoSolVit(p, 'request_undone',
+    canc ? 'Cancelamento desfeito' : 'Alteração desfeita',
+    'O vendedor desfez o próprio pedido', null);
+  await gravarSolVit(p, null, evento);
+}
+
+$('svNao').onclick = fecharSolVit;
+$('svSim').onclick = enviarSolVit;
+$('solVit').onclick = e => { if(e.target.id === 'solVit') fecharSolVit(); };
+$('svMotivos').addEventListener('click', e => {
+  const c = e.target.closest('.sv-mchip');
+  if(!c) return;
+  for(const x of $('svMotivos').children) x.classList.remove('on');
+  c.classList.add('on');
+  SV_MOTIVO = c.dataset.m;
+});
 
 function pintarPedidos(){
   const lista = $('pedLista');
@@ -4486,6 +4758,10 @@ $('pedLista').addEventListener('change', e => {
   pintarPedidos();
 });
 $('pedLista').addEventListener('click', e => {
+  const pedir = e.target.closest('[data-solv]');
+  if(pedir){ abrirSolVit(pedir.dataset.id, pedir.dataset.solv); return; }
+  const desfaz = e.target.closest('[data-solv-desfaz]');
+  if(desfaz){ desfazerSolVit(desfaz.dataset.solvDesfaz); return; }
   const b = e.target.closest('[data-abrir]');
   if(!b) return;
   const id = b.dataset.abrir;

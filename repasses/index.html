@@ -231,6 +231,47 @@
     .ord-head{ cursor:pointer; }
     .ord-head:hover .ord-cliente{ color:var(--brand); }
 
+    /* ── Pedido de cancelamento ou alteração ─────────────────────────── */
+    /* O destaque é só a borda e uma faixa clara: o cartão continua o mesmo. */
+    .ord-card.sol-canc{ border-color:#f3a6a6; }
+    .ord-card.sol-alt { border-color:#f3cb8a; }
+    .chip-canc{ background:#fef4f4; color:#dc2626; border:1px solid #f7d4d4; }
+    .chip-alt { background:#fffbef; color:#d97706; border:1px solid #f6e2bd; }
+    .sol-faixa{ display:flex; gap:10px; align-items:flex-start; padding:10px 14px; font-size:12.5px; line-height:1.5; }
+    .sol-faixa.canc{ background:#fef4f4; border-top:1px solid #f7d4d4; }
+    .sol-faixa.alt { background:#fffbef; border-top:1px solid #f6e2bd; }
+    .sol-faixa.fim { background:#f8fafc; border-top:1px solid #f1f5f9; }
+    .sol-faixa .ic{ width:26px; height:26px; border-radius:999px; display:grid; place-items:center;
+      font-size:12px; flex-shrink:0; background:#fff; }
+    .sol-faixa.canc .ic{ color:#dc2626; border:1px solid #f7d4d4; }
+    .sol-faixa.alt  .ic{ color:#d97706; border:1px solid #f6e2bd; }
+    .sol-faixa.fim  .ic{ color:#047857; border:1px solid #bbf7d0; }
+    .sol-faixa.fim.nao .ic{ color:#64748b; border-color:#e2e8f0; }
+    .sol-faixa b{ display:block; font-size:12.5px; font-weight:800; margin-bottom:1px; }
+    .sol-faixa .txt{ color:#475569; }
+    .sol-faixa .txt em{ font-style:normal; font-weight:700; color:#0f172a; }
+    .sol-faixa .qd{ color:#94a3b8; font-size:11.5px; margin-top:3px; }
+    .sol-faixa .desfaz{ margin-left:auto; align-self:center; background:none; border:0; color:#5c6675;
+      font-size:11.5px; font-weight:800; text-decoration:underline; cursor:pointer; white-space:nowrap; }
+    .ord-acoes{ display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+      padding-top:11px; margin-top:3px; border-top:1px dashed #e6e9f3; }
+    .ord-acoes .rotulo{ font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+      color:#94a3b8; margin-right:2px; }
+    .btn-sol{ display:inline-flex; align-items:center; gap:7px; border-radius:999px; border:1px solid #e6e9f3;
+      background:#fff; padding:8px 14px; font-size:12.5px; font-weight:800; color:#5c6675; cursor:pointer; }
+    .btn-sol.alt { color:#d97706; border-color:#f3cb8a; }
+    .btn-sol.alt:hover { background:#fffbef; }
+    .btn-sol.canc{ color:#dc2626; border-color:#f3a6a6; }
+    .btn-sol.canc:hover{ background:#fef4f4; }
+    .btn-sol:disabled{ opacity:.45; cursor:not-allowed; }
+    .sol-mchip{ border:1px solid #e6e9f3; background:#fff; border-radius:999px; padding:8px 13px;
+      font-size:12.5px; font-weight:700; color:#475569; cursor:pointer; }
+    .sol-mchip.on{ background:var(--brand); border-color:var(--brand); color:#fff; }
+    @media (max-width:640px){
+      .ord-acoes .rotulo{ width:100%; margin-bottom:2px; }
+      .btn-sol{ flex:1; justify-content:center; }
+    }
+
     /* filtro de período: rola na horizontal quando não cabe */
     .ord-per-row{ display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none; }
     .ord-per-row::-webkit-scrollbar{ display:none; }
@@ -1287,6 +1328,40 @@
       </div>
     </div>
   </div>
+  <!-- ── PEDIDO DE CANCELAMENTO / ALTERAÇÃO ─────────────────────────────── -->
+  <div id="solModalWrap" class="hidden fixed inset-0 z-[92]">
+    <div class="backdrop absolute inset-0" id="solBackdrop"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="w-full max-w-md rounded-[28px] border border-slate-200 bg-white shadow-card overflow-hidden flex flex-col max-h-[92dvh]">
+        <div class="flex items-center gap-3 border-b border-slate-200 px-5 py-4">
+          <div id="solIcone" class="grid h-9 w-9 shrink-0 place-items-center rounded-full"></div>
+          <div class="min-w-0">
+            <div id="solTitulo" class="text-[15px] font-extrabold"></div>
+            <div id="solSub" class="text-xs text-slate-500 truncate"></div>
+          </div>
+          <button id="btnSolFechar" title="Fechar" aria-label="Fechar"
+            class="focus-ring ml-auto h-9 w-9 shrink-0 rounded-full border border-slate-200 bg-white"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="px-5 py-4 overflow-y-auto">
+          <div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">Qual o motivo?</div>
+          <div id="solMotivos" class="flex flex-wrap gap-2 mb-4"></div>
+          <div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">Quer explicar? (opcional)</div>
+          <textarea id="solTexto" rows="3" aria-label="Detalhe do motivo"
+            class="focus-ring w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"></textarea>
+          <div class="mt-3 flex gap-2 rounded-2xl bg-slate-50 px-3 py-2.5 text-[11.5px] leading-relaxed text-slate-500">
+            <i class="fa-solid fa-circle-info mt-0.5 text-[var(--brand)]"></i>
+            <div>O admin recebe na hora, com destaque. O pedido só muda depois que ele responder — e você acompanha pelo próprio cartão.</div>
+          </div>
+        </div>
+        <div class="flex gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
+          <button id="btnSolVoltar" class="focus-ring flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-extrabold text-slate-600">Voltar</button>
+          <button id="btnSolEnviar" class="focus-ring flex-1 rounded-2xl px-4 py-3 text-sm font-extrabold text-white">
+            <i class="fa-solid fa-paper-plane"></i> Enviar pedido
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
   <!-- ────────────────────────────────────────────────────────────────────── -->
 
 <script>
@@ -1344,6 +1419,8 @@ const STATE = {
   // Pedidos marcados na tela "Meus pedidos": com algum marcado, o PDF e o
   // XLSX saem só deles
   pedidosSel: new Set(),
+  // ids dos cartões abertos em Meus pedidos
+  ordAbertos: new Set(),
   // Produtos marcados para PDF/XLSX (chave do produto)
   selecionados: new Set()
 };
@@ -1854,6 +1931,7 @@ function normalizeOrder(rawOrder){
   order.prazo = sanitizeDisplayText(order.prazo);
   order.campanha = sanitizeDisplayText(order.campanha);
   order.observacoes = sanitizeDisplayText(order.observacoes);
+  order.solicitacao = normalizeSolicitacao(order.solicitacao);
   order.preposto = normalizedPreposto;
   order.vendedor = order.vendedor || `${normalizedPreposto.codigo} - ${normalizedPreposto.nome}`.trim();
 
@@ -3162,7 +3240,15 @@ function renderOrders(){
     const clienteLabel = order.clienteNome
       ? `${order.clienteCodigo} — ${order.clienteNome}`
       : order.clienteCodigo || '—';
-    const statusClass = order.status === 'Aprovado' ? 'chip-blue' : 'chip-gray';
+    // com pedido de cancelamento/alteração em aberto, o chip de status dá
+    // lugar ao que o vendedor está esperando resposta
+    const sol = order.solicitacao;
+    const solAberta = sol && sol.estado === 'aberta' ? sol : null;
+    const statusClass = solAberta ? (solAberta.tipo === 'cancelar' ? 'chip-canc' : 'chip-alt')
+      : order.status === 'Aprovado' ? 'chip-blue' : 'chip-gray';
+    const statusLabel = solAberta ? (solAberta.tipo === 'cancelar' ? 'Cancelamento pedido' : 'Alteração pedida')
+      : (order.status || 'Pendente');
+    const podePedir = !solAberta && sanitizeDisplayText(order.status) !== 'Cancelado';
     const dataCurta = created.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'});
     const hora = created.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
     const resumo = [
@@ -3182,11 +3268,12 @@ function renderOrders(){
             <div class="mt-0.5 text-xs text-slate-500 truncate">${safeHtml(resumo)}</div>
           </div>
           <div class="flex items-center gap-2 shrink-0">
-            <span class="chip ${statusClass} text-xs font-bold">${safeHtml(order.status || 'Pendente')}</span>
+            <span class="chip ${statusClass} text-xs font-bold">${safeHtml(statusLabel)}</span>
             <i class="fa-solid fa-chevron-down ord-caret text-slate-400 text-sm"></i>
           </div>
         </div>
       </div>
+      ${faixaSolicitacaoHtml(sol)}
       <div class="ord-det hidden border-t border-slate-100 px-3.5 pb-3.5 pt-3">
         <div class="flex flex-wrap gap-2 text-xs font-bold">
           <span class="chip chip-gray">${safeHtml(order.preposto?.nome || '')}</span>
@@ -3209,18 +3296,259 @@ function renderOrders(){
             </div>
           `).join('')}
         </div>
+        ${podePedir ? `
+        <div class="ord-acoes">
+          <span class="rotulo">Precisa mexer?</span>
+          <button type="button" class="btn-sol alt focus-ring" data-sol="alterar"><i class="fa-solid fa-pen"></i> Pedir alteração</button>
+          <button type="button" class="btn-sol canc focus-ring" data-sol="cancelar"><i class="fa-solid fa-ban"></i> Pedir cancelamento</button>
+        </div>` : ''}
       </div>
     `;
 
+    if(solAberta) card.classList.add(solAberta.tipo === 'cancelar' ? 'sol-canc' : 'sol-alt');
+    card.querySelectorAll('[data-sol]').forEach(btn => btn.addEventListener('click', ev => {
+      ev.stopPropagation();
+      abrirSolicitacao(order.id, btn.dataset.sol);
+    }));
+    const btnDesfaz = card.querySelector('[data-sol-desfaz]');
+    if(btnDesfaz) btnDesfaz.addEventListener('click', ev => { ev.stopPropagation(); desfazerSolicitacao(order.id); });
+
     card.querySelector('.ord-check').addEventListener('click', ev => alternarPedidoSel(order.id, ev));
+    if(STATE.ordAbertos.has(order.id)){
+      card.classList.add('aberto');
+      card.querySelector('.ord-det').classList.remove('hidden');
+    }
     card.querySelector('.ord-head').addEventListener('click', ()=>{
-      card.classList.toggle('aberto');
-      card.querySelector('.ord-det').classList.toggle('hidden');
+      const abriu = card.classList.toggle('aberto');
+      card.querySelector('.ord-det').classList.toggle('hidden', !abriu);
+      abriu ? STATE.ordAbertos.add(order.id) : STATE.ordAbertos.delete(order.id);
     });
 
     list.appendChild(card);
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PEDIDO DE CANCELAMENTO OU ALTERAÇÃO
+//
+// O vendedor errou algo depois de enviar (o prazo, a grade, o cliente) e hoje
+// pede ao admin por fora. Aqui ele pede pela própria tela, com o motivo, e
+// acompanha a resposta no cartão.
+//
+// A marca fica no PRÓPRIO pedido (campo `solicitacao`) e vai pelo mesmo
+// caminho que o admin usa para mudar status: PUT updateOrders, que grava só os
+// campos enviados. Mandar o pedido inteiro daqui seria arriscado — a cópia do
+// vendedor pode estar velha e apagaria no servidor o que o admin acabou de
+// fazer.
+// ─────────────────────────────────────────────────────────────────────────────
+const SOL_MOTIVOS = {
+  cancelar: ['Prazo errado','Cliente errado','Grade errada','Quantidade errada','Pedido duplicado','Cliente desistiu','Outro'],
+  alterar:  ['Prazo errado','Grade errada','Quantidade errada','Trocar a cor','Trocar o cliente','Outro'],
+};
+const SOL_ESTADOS = ['aberta','atendida','recusada'];
+
+function normalizeSolicitacao(raw){
+  if(!raw || typeof raw !== 'object') return null;
+  const tipo = sanitizeDisplayText(raw.tipo).toLowerCase();
+  if(tipo !== 'cancelar' && tipo !== 'alterar') return null;
+  const estado = SOL_ESTADOS.includes(String(raw.estado || '').toLowerCase())
+    ? String(raw.estado).toLowerCase() : 'aberta';
+  const resp = raw.resposta && typeof raw.resposta === 'object' ? raw.resposta : null;
+  return {
+    tipo,
+    motivo: sanitizeDisplayText(raw.motivo),
+    texto: sanitizeDisplayText(raw.texto),
+    por: { codigo: sanitizeDisplayText(raw.por?.codigo), nome: sanitizeDisplayText(raw.por?.nome) },
+    em: raw.em || '',
+    estado,
+    resposta: resp ? {
+      por: sanitizeDisplayText(resp.por),
+      em: resp.em || '',
+      texto: sanitizeDisplayText(resp.texto)
+    } : null
+  };
+}
+
+// "hoje às 10:12" / "ontem às 16:22" / "24/09 às 16:05"
+function quandoCurto(iso){
+  const d = iso ? new Date(iso) : null;
+  if(!d || isNaN(d)) return '';
+  const hora = d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  const dia = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const hoje = new Date(); const h0 = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  const dif = Math.round((h0 - dia) / 86400000);
+  if(dif === 0) return `hoje às ${hora}`;
+  if(dif === 1) return `ontem às ${hora}`;
+  return `${d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'})} às ${hora}`;
+}
+
+function faixaSolicitacaoHtml(sol){
+  if(!sol) return '';
+  const canc = sol.tipo === 'cancelar';
+  const detalhe = `${safeHtml(sol.motivo || 'Sem motivo')}${sol.texto ? ` — <em>${safeHtml(sol.texto)}</em>` : ''}`;
+  if(sol.estado === 'aberta'){
+    return `
+      <div class="sol-faixa ${canc ? 'canc' : 'alt'}">
+        <div class="ic"><i class="fa-solid fa-${canc ? 'ban' : 'pen'}"></i></div>
+        <div class="min-w-0">
+          <b>${canc ? 'Cancelamento solicitado' : 'Alteração solicitada'}</b>
+          <div class="txt">${detalhe}</div>
+          <div class="qd">Enviado ${safeHtml(quandoCurto(sol.em))} · aguardando o admin</div>
+        </div>
+        <button type="button" class="desfaz" data-sol-desfaz="1">Desfazer</button>
+      </div>`;
+  }
+  const ok = sol.estado === 'atendida';
+  const titulo = ok ? (canc ? 'Cancelamento atendido' : 'Alteração resolvida') : 'Solicitação recusada';
+  const resp = sol.resposta;
+  const rodape = resp
+    ? `Pedido ${safeHtml(quandoCurto(sol.em))} · ${ok ? 'respondido' : 'recusado'} ${safeHtml(quandoCurto(resp.em))}${resp.por ? ` por ${safeHtml(resp.por)}` : ''}`
+    : `Pedido ${safeHtml(quandoCurto(sol.em))}`;
+  return `
+    <div class="sol-faixa fim ${ok ? '' : 'nao'}">
+      <div class="ic"><i class="fa-solid fa-${ok ? 'check' : 'xmark'}"></i></div>
+      <div class="min-w-0">
+        <b>${titulo}</b>
+        <div class="txt">${detalhe}</div>
+        ${resp && resp.texto ? `<div class="txt">Resposta: <em>${safeHtml(resp.texto)}</em></div>` : ''}
+        <div class="qd">${rodape}</div>
+      </div>
+    </div>`;
+}
+
+let SOL_ALVO = null, SOL_TIPO = 'cancelar', SOL_MOTIVO = '';
+
+function abrirSolicitacao(id, tipo){
+  const order = STATE.orders.find(o => o.id === id);
+  if(!order) return;
+  SOL_ALVO = id; SOL_TIPO = tipo === 'alterar' ? 'alterar' : 'cancelar'; SOL_MOTIVO = '';
+  const canc = SOL_TIPO === 'cancelar';
+  const pares = (order.items || []).reduce((t,i)=>t+Number(i.totalUnits||0), 0);
+  const cliente = order.clienteNome ? `${order.clienteCodigo} — ${order.clienteNome}` : (order.clienteCodigo || '—');
+
+  $('solIcone').className = `grid h-9 w-9 shrink-0 place-items-center rounded-full ${canc ? 'chip-canc' : 'chip-alt'}`;
+  $('solIcone').innerHTML = `<i class="fa-solid fa-${canc ? 'ban' : 'pen'}"></i>`;
+  $('solTitulo').textContent = canc ? 'Pedir cancelamento' : 'Pedir alteração';
+  $('solSub').textContent = `${cliente}${pares ? ` · ${pares} pares` : ''}`;
+  $('solTexto').value = '';
+  $('solTexto').placeholder = canc ? 'Ex.: era para ser 20/12, subiu 20/11.' : 'Ex.: trocar 2 pares do 39 para o 41.';
+  $('btnSolEnviar').style.background = canc ? '#dc2626' : '#d97706';
+  $('solMotivos').innerHTML = SOL_MOTIVOS[SOL_TIPO]
+    .map(m => `<button type="button" class="sol-mchip focus-ring" data-m="${safeHtml(m)}">${safeHtml(m)}</button>`).join('');
+  $('solMotivos').querySelectorAll('.sol-mchip').forEach(c => c.addEventListener('click', ()=>{
+    $('solMotivos').querySelectorAll('.sol-mchip').forEach(x => x.classList.remove('on'));
+    c.classList.add('on');
+    SOL_MOTIVO = c.dataset.m;
+  }));
+  $('solModalWrap').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+function fecharSolicitacao(){
+  $('solModalWrap').classList.add('hidden');
+  document.body.style.overflow = '';
+  SOL_ALVO = null;
+}
+
+// Grava só o campo `solicitacao` e um evento no histórico. Se o servidor
+// recusar, a tela volta ao que era — pedido que não chegou ao admin não pode
+// ficar marcado como enviado no aparelho do vendedor.
+async function gravarSolicitacao(order, sol, evento){
+  const anterior = order.solicitacao || null;
+  order.solicitacao = sol;
+  saveOrdersStorage();
+  renderOrders();
+  try{
+    const resp = await workerRequest('PUT', {
+      action: 'updateOrders',
+      updates: [{ id: order.id, campos: { solicitacao: sol }, historyAppend: evento }]
+    });
+    const ok = !resp || !Array.isArray(resp.aplicados) || resp.aplicados.includes(order.id);
+    if(!ok) throw new Error('Pedido não encontrado no servidor.');
+    return true;
+  }catch(err){
+    console.error('Falha ao enviar a solicitação', err);
+    order.solicitacao = anterior;
+    saveOrdersStorage();
+    renderOrders();
+    toast('Não deu para enviar. Confira a internet e tente de novo.', 3200);
+    return false;
+  }
+}
+
+function eventoSolicitacao(order, acao, rotulo, nota, sol){
+  const sessao = getVendedorSession() || {};
+  const eu = normalizePreposto({ codigo: sessao.codigo, nome: sessao.nome });
+  return {
+    eventId: `evt_${Date.now().toString(36)}${Math.random().toString(36).slice(2,8)}`,
+    at: new Date().toISOString(),
+    action: acao,
+    label: rotulo,
+    statusFrom: order.status || 'Pendente',
+    statusTo: order.status || 'Pendente',
+    clientCode: order.clienteCodigo || '',
+    prepostoCodigo: eu.codigo || order.preposto?.codigo || '',
+    prepostoNome: eu.nome || order.preposto?.nome || '',
+    notes: nota,
+    meta: sol ? { solicitacao: sol } : {}
+  };
+}
+
+async function enviarSolicitacao(){
+  if(!SOL_ALVO) return;
+  if(!SOL_MOTIVO){ toast('Escolha o motivo'); return; }
+  const order = STATE.orders.find(o => o.id === SOL_ALVO);
+  if(!order){ fecharSolicitacao(); return; }
+  const canc = SOL_TIPO === 'cancelar';
+  const sessao = getVendedorSession() || {};
+  const eu = normalizePreposto({ codigo: sessao.codigo, nome: sessao.nome });
+  const texto = sanitizeDisplayText($('solTexto').value.trim());
+  const sol = {
+    tipo: SOL_TIPO,
+    motivo: SOL_MOTIVO,
+    texto,
+    por: { codigo: eu.codigo || '', nome: eu.nome || '' },
+    em: new Date().toISOString(),
+    estado: 'aberta',
+    resposta: null
+  };
+  const evento = eventoSolicitacao(
+    order,
+    canc ? 'cancel_requested' : 'change_requested',
+    canc ? 'Cancelamento solicitado' : 'Alteração solicitada',
+    SOL_MOTIVO + (texto ? ` — ${texto}` : ''),
+    sol
+  );
+  const btn = $('btnSolEnviar');
+  btn.disabled = true;
+  const foi = await gravarSolicitacao(order, sol, evento);
+  btn.disabled = false;
+  if(!foi) return;
+  fecharSolicitacao();
+  toast(canc ? 'Cancelamento enviado ao admin' : 'Alteração enviada ao admin', 2800);
+}
+
+async function desfazerSolicitacao(id){
+  const order = STATE.orders.find(o => o.id === id);
+  if(!order || !order.solicitacao || order.solicitacao.estado !== 'aberta') return;
+  const canc = order.solicitacao.tipo === 'cancelar';
+  const evento = eventoSolicitacao(
+    order,
+    'request_undone',
+    canc ? 'Cancelamento desfeito' : 'Alteração desfeita',
+    'O vendedor desfez o próprio pedido',
+    null
+  );
+  const foi = await gravarSolicitacao(order, null, evento);
+  if(foi) toast('Pedido desfeito');
+}
+
+$('btnSolFechar').addEventListener('click', fecharSolicitacao);
+$('btnSolVoltar').addEventListener('click', fecharSolicitacao);
+$('solBackdrop').addEventListener('click', fecharSolicitacao);
+$('btnSolEnviar').addEventListener('click', enviarSolicitacao);
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape' && !$('solModalWrap').classList.contains('hidden')) fecharSolicitacao();
+});
 
 function openCart(){
   $('cartDrawerWrap').classList.remove('hidden');
