@@ -514,6 +514,20 @@
     .selo-exclusivo{ max-width:calc(100% - 60px); }
     .selo-exclusivo .exc-rot{ overflow:hidden; text-overflow:ellipsis; margin-left:2px; }
     .card-exclusivo{ border-color:#c4b5fd !important; box-shadow:0 0 0 2px rgba(124,58,237,.12), 0 10px 30px rgba(15,23,42,.06) !important; }
+    /* Novidade: verde, o mesmo selo da vitrine CMS. */
+    /* à direita da lupa, que já mora no canto de cima */
+    .selo-novo{ position:absolute; top:12px; left:48px; z-index:2; pointer-events:none;
+      font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+      color:#fff; background:#16A34A; border-radius:999px; padding:3px 9px;
+      box-shadow:0 4px 10px rgba(22,163,74,.35); }
+    @media(max-width:640px){
+      body.cards-duo .selo-novo{ top:7px; left:36px; padding:2px 7px; font-size:9px; }
+    }
+    .chip-novo{ cursor:pointer; background:#dcfce7; color:#15803d; border:1px solid #bbf7d0;
+      display:inline-flex; align-items:center; gap:6px; }
+    .chip-novo.ligado{ background:#16A34A; color:#fff; border-color:#16A34A; }
+    .dark .chip-novo{ background:rgba(22,163,74,.22); color:#86efac; border-color:rgba(22,163,74,.4); }
+    .dark .chip-novo.ligado{ background:#16A34A; color:#fff; }
     .chip-exc{ cursor:pointer; background:#f3e8ff; color:#6d28d9; border:1px solid #ddd6fe; }
     .chip-exc.ligado{ background:#7c3aed; color:#fff; border-color:#7c3aed; }
     .dark .chip-exc{ background:rgba(124,58,237,.22); color:#c4b5fd; border-color:rgba(124,58,237,.4); }
@@ -815,6 +829,7 @@
             <div class="text-sm font-bold text-slate-500 flex items-center gap-1.5" title="Itens na vitrine"><i class="fa-solid fa-table-cells-large text-slate-400"></i><span id="visibleCount">0</span></div>
             <div class="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-bold">
               <span id="chipsExclusivos" class="flex flex-wrap items-center gap-2"></span>
+              <button type="button" id="chipNovos" class="chip chip-novo focus-ring" hidden aria-pressed="false"></button>
               <span class="chip chip-blue" title="Pares disponíveis"><i class="fa-solid fa-shoe-prints"></i> <span id="kpiUnits">0</span></span>
             </div>
           </div>
@@ -1317,7 +1332,7 @@ const STATE = {
   raw: [],
   view: [],
   search: '',
-  filters: { categoria:'', segmento:'', genero:'', prevFat:'', sort:'entregaAsc' },
+  filters: { categoria:'', segmento:'', genero:'', prevFat:'', sort:'entregaAsc', novos:false },
   cart: new Map(),
   orders: [],
   ocultos: new Set(),
@@ -2357,6 +2372,51 @@ function getItemSiblings(item){
 }
 // Retorna a "chave de grupo" usada para agrupar no card
 function groupKey(item){ return `${normalizeText(item.produto)}||${normalizeText(item.cor)}`; }
+
+/* ── o que entrou agora ──────────────────────────────────────────────
+   Mesma ideia do selo Novo da vitrine CMS: cada aparelho anota os lotes que
+   já viu e o que aparece depois disso fica marcado por alguns dias. Na
+   primeira visita nada é novo — marcar a vitrine inteira seria o mesmo que
+   não marcar nada. */
+const NOVO_DIAS = 7;
+const CH_VISTOS = 'repasse_lotes_vistos_v1';
+let LOTES_NOVOS = new Map();       // chave do lote -> dia em que apareceu
+
+const chaveLoteNovo = item => `${String(item.num || '').trim()}|${String(item.gci || '').trim()}`;
+const diaDeHoje = () => new Date().toISOString().slice(0, 10);
+function diasAte(dia){
+  const t = Date.parse(dia + 'T12:00:00');
+  return t ? Math.floor((Date.now() - t) / 86400000) : 999;
+}
+
+/** Compara a vitrine de agora com o que este aparelho já tinha visto. */
+function anotarLotesVistos(){
+  const hoje = diaDeHoje();
+  let mapa = null;
+  try{ mapa = JSON.parse(localStorage.getItem(CH_VISTOS) || 'null'); }catch(_){}
+  const primeira = !mapa || typeof mapa !== 'object';
+  if(primeira) mapa = {};
+  const agora = new Set();
+  LOTES_NOVOS = new Map();
+  for(const item of STATE.raw){
+    const k = chaveLoteNovo(item);
+    if(!k || k === '|') continue;
+    agora.add(k);
+    if(!mapa[k]) mapa[k] = primeira ? 'ja-estava' : hoje;
+    if(mapa[k] !== 'ja-estava' && diasAte(mapa[k]) <= NOVO_DIAS) LOTES_NOVOS.set(k, mapa[k]);
+  }
+  // lote que saiu da vitrine sai do registro, senão o arquivo só cresce
+  for(const k of Object.keys(mapa)) if(!agora.has(k)) delete mapa[k];
+  try{ localStorage.setItem(CH_VISTOS, JSON.stringify(mapa)); }catch(_){}
+}
+
+const ehNovo = item => LOTES_NOVOS.has(chaveLoteNovo(item));
+const diaDoNovo = item => LOTES_NOVOS.get(chaveLoteNovo(item)) || '';
+/** O card é do produto+cor: basta um lote novo para ele ser novidade. */
+function grupoTemNovo(item){
+  const g = grupoProdutoCor(item);
+  return STATE.raw.some(x => grupoProdutoCor(x) === g && ehNovo(x));
+}
 function remainingUnits(item){
   const reservedLocal = item.mode === 'boxed'
     ? currentCartAmount(item.key) * item.packSize
@@ -2435,9 +2495,14 @@ function sortView(items){
     }); break;
     default: arr.sort((a,b)=>String(a.produto).localeCompare(String(b.produto), 'pt-BR', { sensitivity:'base' })); break;
   }
-  // Os exclusivos do vendedor abrem a vitrine, na ordem escolhida entre eles;
-  // o resto vem depois, na mesma ordem de sempre.
-  return [...arr.filter(ehExclusivo), ...arr.filter(x => !ehExclusivo(x))];
+  // Os exclusivos do vendedor abrem a vitrine, na ordem escolhida entre
+  // eles; logo atrás vem o que acabou de entrar, o mais recente primeiro; o
+  // resto segue na ordem de sempre.
+  const exc = arr.filter(ehExclusivo);
+  const resto = arr.filter(x => !ehExclusivo(x));
+  const novos = resto.filter(grupoTemNovo)
+    .sort((a, b) => String(diaDoNovo(b)).localeCompare(String(diaDoNovo(a))));
+  return [...exc, ...novos, ...resto.filter(x => !grupoTemNovo(x))];
 }
 // Valores normalizados ficam guardados no proprio item. STATE.raw e
 // reconstruido a cada carga, entao o cache morre junto e nao envelhece.
@@ -2569,7 +2634,8 @@ function applyFilters(){
     const hitGen = !STATE.filters.genero || item.genero === STATE.filters.genero;
     const hitMes = !STATE.filters.prevFat || (mesAnoFromPrevFat(item)?.key === STATE.filters.prevFat);
     const hitExc = !STATE.filters.exclusivos || (ehExclusivo(item) && seloDe(item) === STATE.filters.exclusivos);
-    return hitQ && hitCat && hitSeg && hitGen && hitMes && hitExc;
+    const hitNovo = !STATE.filters.novos || grupoTemNovo(item);
+    return hitQ && hitCat && hitSeg && hitGen && hitMes && hitExc && hitNovo;
   }));
   atualizarOpcoesFiltros();   // as listas acompanham o que sobrou
   renderCatalog();
@@ -2596,6 +2662,23 @@ function renderKpis(){
       return `<button type="button" class="chip chip-exc focus-ring${on ? ' ligado' : ''}" data-selo="${safeHtml(nome)}" aria-pressed="${on}"
         title="Mostrar só os lotes com o selo ${safeHtml(nome)}"><i class="fa-solid fa-star"></i> ${safeHtml(nome)} <span>${grupos.size}</span></button>`;
     }).join('');
+  }
+  // Chip das novidades: quantos produtos entraram nos últimos dias
+  const cn = $('chipNovos');
+  if(cn){
+    const gruposNovos = new Set();
+    for(const item of STATE.raw){
+      if((saldo.get(grupoProdutoCor(item)) || 0) <= 0) continue;
+      if(ehNovo(item)) gruposNovos.add(groupKey(item));
+    }
+    const n = gruposNovos.size;
+    cn.hidden = !n && !STATE.filters.novos;
+    cn.classList.toggle('ligado', STATE.filters.novos);
+    cn.setAttribute('aria-pressed', String(STATE.filters.novos));
+    cn.innerHTML = `<i class="fa-solid fa-sparkles"></i> Novos <span>${n}</span>`;
+    cn.title = STATE.filters.novos
+      ? 'Voltar a ver a vitrine inteira'
+      : `Ver só o que entrou nos últimos ${NOVO_DIAS} dias`;
   }
   $('kpiUnits').textContent = STATE.view.reduce((sum, item)=>sum + remainingUnits(item), 0);
 }
@@ -2728,6 +2811,7 @@ function renderCatalog(){
           : remainingUnits(displayItem)} pares</span>
         ${img ? `<button class="btn-zoom" type="button" title="Ampliar imagem" aria-label="Ampliar imagem"><i class="fa-solid fa-magnifying-glass-plus"></i></button>` : ''}
         <button type="button" class="card-sel focus-ring${STATE.selecionados.has(displayItem.key) ? ' marcado' : ''}" title="Marcar para PDF/XLSX" aria-label="Marcar produto"><i class="fa-solid fa-heart cheio"></i><i class="fa-regular fa-heart vazio"></i></button>
+        ${grupoTemNovo(displayItem) ? '<span class="selo-novo">Novo</span>' : ''}
         ${exclusivo ? `<span class="selo-exclusivo" title="${safeHtml(nomeSelo)} · ${quemTemCota ? 'rateado para ' + safeHtml(quemTemCota) + ' · só acompanhamento' : 'lote separado para você no rateio'}${cotaCx ? ' · sua cota: ' + cotaCx + (displayItem.mode === 'boxed' ? ' cx' : ' un') : ''}"><i class="fa-solid fa-star"></i><span class="exc-rot">${safeHtml(nomeSelo)}</span></span>` : ''}
         ${img ? `<img src="${img}" data-srcs="${productImageCandidates(item).join('|')}" data-src-idx="0" alt="${safeHtml(item.produto)}" class="h-full w-full object-contain bg-white" onerror="(function(el){var srcs=el.dataset.srcs.split('|'),idx=parseInt(el.dataset.srcIdx||0)+1;if(idx<srcs.length){el.dataset.srcIdx=idx;el.src=srcs[idx];}else{el.style.display='none';el.parentElement.querySelector('.img-fallback').classList.remove('hidden');}})(this)">` : ''}
         <div class="img-fallback ${img ? 'hidden' : ''} flex flex-col items-center justify-center text-slate-400">
@@ -4159,6 +4243,9 @@ async function loadCatalog(){
       for(const k of [...STATE.selecionados]) if(!chaves.has(k)) STATE.selecionados.delete(k);
     }catch(e){ console.error('Falha ao conferir imagens; nada foi ocultado.', e); }
 
+    // o que entrou desde a última visita deste aparelho
+    anotarLotesVistos();
+
     buildFilters();
     renderCart();
     // ?busca=ARTIGO — a vitrine unica manda o vendedor direto no produto que
@@ -4827,6 +4914,11 @@ function bindEvents(){
   $('filterPrevFat').addEventListener('change', e=>{ STATE.filters.prevFat = e.target.value; applyFilters(); });
   $('sortBy').addEventListener('change', e=>{ STATE.filters.sort = e.target.value; applyFilters(); });
 
+  $('chipNovos').addEventListener('click', ()=>{
+    STATE.filters.novos = !STATE.filters.novos;
+    applyFilters();
+    window.scrollTo({ top:0, behavior:'smooth' });
+  });
   $('chipsExclusivos').addEventListener('click', e=>{
     const b = e.target.closest('[data-selo]');
     if(!b) return;
@@ -4837,7 +4929,7 @@ function bindEvents(){
 
   $('btnClearFilters').addEventListener('click', ()=>{
     STATE.search = '';
-    STATE.filters = { categoria:'', segmento:'', genero:'', prevFat:'', sort:'produto', exclusivos:'' };
+    STATE.filters = { categoria:'', segmento:'', genero:'', prevFat:'', sort:'produto', exclusivos:'', novos:false };
     $('searchInputTop').value = '';
     $('btnClearSearchTop').classList.add('hidden');
     $('searchShell').classList.remove('expanded');
