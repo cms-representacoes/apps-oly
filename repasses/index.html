@@ -662,6 +662,33 @@
     /* depois da regra .visivel: empate de especificidade, vence a ultima */
     .fab-top.visivel:active{ transform:scale(.92); }
 
+    /* ── Limpar filtros: pílula flutuante ────────────────────────────────
+       Mesma pílula da vitrine CMS. Aqui o painel de filtros vive fechado,
+       então ela flutua em qualquer tamanho de tela; no celular sobe para
+       cima da sacola, que mora neste mesmo canto. */
+    .fab-limpar{
+      position:fixed; z-index:45;
+      left:calc(16px + env(safe-area-inset-left,0px));
+      bottom:calc(16px + env(safe-area-inset-bottom,0px));
+      display:inline-flex; align-items:center; gap:7px;
+      border:0; border-radius:32px; padding:12px 17px 12px 14px;
+      font-size:13px; font-weight:800; color:#fff; white-space:nowrap; cursor:pointer;
+      background:linear-gradient(145deg,#FDBA74 0%,#F97316 48%,#C2410C 100%);
+      box-shadow:0 10px 26px rgba(249,115,22,.45), inset 0 1px 0 rgba(255,255,255,.30);
+    }
+    .fab-limpar[hidden]{ display:none; }
+    .fab-limpar:hover{ filter:brightness(1.06); }
+    .fab-limpar .cont{
+      background:rgba(255,255,255,.26); border-radius:999px; padding:0 6px;
+      font-size:11px; font-variant-numeric:tabular-nums;
+    }
+    /* Fixa, ela cobriria o último card; a folga só existe quando ela aparece. */
+    body.com-limpar #cardsWrap, body.com-limpar #listWrap{ padding-bottom:72px; }
+    @media (max-width: 767px){
+      .fab-limpar{ bottom:calc(86px + env(safe-area-inset-bottom,0px)); }
+      body.com-limpar #cardsWrap, body.com-limpar #listWrap{ padding-bottom:142px; }
+    }
+
     /* ── Botão limpar (×) dentro dos campos ── */
     .field-clear{position:relative; display:block}
     .field-clear > input, .field-clear > textarea{padding-right:40px}
@@ -896,6 +923,15 @@
       <i class="fa-solid fa-xmark"></i>
     </button>
   </div>
+
+  <button id="fabLimpar" class="fab-limpar focus-ring" type="button" hidden
+          title="Limpar a busca e todos os filtros" aria-label="Limpar todos os filtros">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M3 5h18l-7 8v6l-4-2v-4z"/><path d="m16.5 4.5 5 5m0-5-5 5"/>
+    </svg>
+    <span>Limpar filtros</span><span class="cont" id="fabLimparN"></span>
+  </button>
 
   <button id="fabTop" class="fab-top focus-ring" type="button" title="Voltar ao topo" aria-label="Voltar ao topo">
     <i class="fa-solid fa-arrow-up"></i>
@@ -2776,8 +2812,27 @@ function applyFilters(){
   renderCatalog();
   renderKpis();
 }
+/* Quantos filtros estão ligados. A ordenação fica de fora: ela muda a
+   ordem, não esconde nada — e o botão viveria aceso à toa. */
+function contarFiltros(){
+  const f = STATE.filters;
+  return (STATE.search.trim() ? 1 : 0)
+       + (f.categoria ? 1 : 0) + (f.segmento ? 1 : 0) + (f.genero ? 1 : 0)
+       + f.grade.size + (f.prevFat ? 1 : 0)
+       + (f.exclusivos ? 1 : 0) + (f.novos ? 1 : 0);
+}
+function pintarFabLimpar(){
+  const n = contarFiltros();
+  const b = $('fabLimpar');
+  if(!b) return;
+  b.hidden = n === 0;
+  $('fabLimparN').textContent = n || '';
+  document.body.classList.toggle('com-limpar', n > 0);
+}
+
 function renderKpis(){
   $('visibleCount').textContent = STATE.view.length;
+  pintarFabLimpar();
   // Um botão por nome de selo: só existe para quem tem lote separado no
   // rateio, e cada um filtra os lotes daquele nome.
   const saldo = saldoPorGrupo();
@@ -5326,6 +5381,8 @@ function bindEvents(){
     window.scrollTo({ top:0, behavior:'smooth' });
   });
 
+  // A pílula flutuante faz o mesmo que o botão do painel — um caminho só.
+  $('fabLimpar').addEventListener('click', ()=> $('btnClearFilters').click());
   $('btnClearFilters').addEventListener('click', ()=>{
     STATE.search = '';
     STATE.filters = { categoria:'', segmento:'', genero:'', grade:new Set(), prevFat:'', sort:'produto', exclusivos:'', novos:false };
