@@ -835,6 +835,7 @@
             <div>
               <label class="text-xs font-bold text-slate-500 filtros-lbl">Grade</label>
               <select id="filterGrade" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold"></select>
+              <div id="gradeChips" class="mt-2 flex flex-wrap gap-1.5"></div>
             </div>
             <div>
               <label class="text-xs font-bold text-slate-500 filtros-lbl">Prev. Faturamento</label>
@@ -1400,7 +1401,9 @@ const STATE = {
   raw: [],
   view: [],
   search: '',
-  filters: { categoria:'', segmento:'', genero:'', grade:'', prevFat:'', sort:'entregaAsc', novos:false },
+  // grade é um conjunto: o cliente que compra 34/39 muitas vezes também
+  // compra 35/40, e o vendedor quer as duas na mesma tela
+  filters: { categoria:'', segmento:'', genero:'', grade:new Set(), prevFat:'', sort:'entregaAsc', novos:false },
   cart: new Map(),
   orders: [],
   ocultos: new Set(),
@@ -2377,6 +2380,8 @@ function familiaGrade(v){
   return 'Masculina';
 }
 const FAMILIAS = ['Infantil', 'Feminina', 'Masculina', 'Ampla', 'Vestuário'];
+const ordenaGrade = (a, b) => posTamanho(String(a[0]).split('–')[0]) - posTamanho(String(b[0]).split('–')[0])
+                           || String(a[0]).localeCompare(String(b[0]), 'pt-BR', { numeric:true });
 function inferMode(grade, categoria, produto){
   const labels = grade.map(g => g.size);
   const hasFootwear = labels.some(l => FOOTWEAR_COLUMNS.includes(l));
@@ -2645,7 +2650,7 @@ function itensParaOpcoes(campoIgnorado){
     if(campoIgnorado !== 'categoria' && STATE.filters.categoria && categoryLabel !== STATE.filters.categoria) return false;
     if(campoIgnorado !== 'segmento' && STATE.filters.segmento && item.segmento !== STATE.filters.segmento) return false;
     if(campoIgnorado !== 'genero'    && STATE.filters.genero    && item.genero    !== STATE.filters.genero) return false;
-    if(campoIgnorado !== 'grade'     && STATE.filters.grade     && gradeDoItem(item) !== STATE.filters.grade) return false;
+    if(campoIgnorado !== 'grade'     && STATE.filters.grade.size && !STATE.filters.grade.has(gradeDoItem(item))) return false;
     if(campoIgnorado !== 'prevFat'   && STATE.filters.prevFat   && mesAnoFromPrevFat(item)?.key !== STATE.filters.prevFat) return false;
     return true;
   });
@@ -2682,29 +2687,37 @@ function atualizarOpcoesFiltros(){
   // filtra é a grade exata.
   const selG = $('filterGrade');
   if(selG){
-    const atual = STATE.filters.grade;
+    const escolhidas = STATE.filters.grade;
     const conta = new Map();
     for(const x of itensParaOpcoes('grade')){
       const g = gradeDoItem(x);
       if(g) conta.set(g, (conta.get(g) || 0) + 1);
     }
-    if(atual && !conta.has(atual)) conta.set(atual, 0);
+    // O que já está escolhido sai da lista e vira chip logo abaixo: assim o
+    // select serve só para juntar mais uma.
     const porFam = new Map();
     for(const [g, n] of conta){
+      if(escolhidas.has(g)) continue;
       const f = familiaGrade(g);
       if(!porFam.has(f)) porFam.set(f, []);
       porFam.get(f).push([g, n]);
     }
     const grupos = FAMILIAS.filter(f => porFam.has(f)).map(f => {
-      const ops = porFam.get(f)
-        .sort((a, b) => posTamanho(a[0].split('–')[0]) - posTamanho(b[0].split('–')[0])
-                     || String(a[0]).localeCompare(String(b[0])))
-        .map(([g, n]) => `<option value="${safeHtml(g)}"${g === atual ? ' selected' : ''}>` +
-          `${safeHtml(rotuloGrade(g))}${n ? ` (${n})` : ''}</option>`).join('');
+      const ops = porFam.get(f).sort(ordenaGrade)
+        .map(([g, n]) => `<option value="${safeHtml(g)}">${safeHtml(rotuloGrade(g))} (${n})</option>`).join('');
       return `<optgroup label="${safeHtml(f)}">${ops}</optgroup>`;
     }).join('');
-    selG.innerHTML = `<option value="">Todas as grades</option>` + grupos;
-    selG.value = atual || '';
+    selG.innerHTML = `<option value="">${escolhidas.size ? 'Juntar outra grade…' : 'Todas as grades'}</option>` + grupos;
+    selG.value = '';
+
+    const chips = $('gradeChips');
+    if(chips){
+      chips.innerHTML = [...escolhidas].map(g => [g, 0]).sort(ordenaGrade).map(([g]) =>
+        `<button type="button" class="chip chip-blue focus-ring" data-grade="${safeHtml(g)}"
+          title="Tirar a grade ${safeHtml(rotuloGrade(g))}">${safeHtml(rotuloGrade(g))}
+          <i class="fa-solid fa-xmark"></i></button>`).join('');
+      chips.hidden = !escolhidas.size;
+    }
   }
 
   // Meses: só os que ainda têm produto e nunca os que já passaram.
@@ -2753,7 +2766,7 @@ function applyFilters(){
     const hitCat = !STATE.filters.categoria || categoryLabel === STATE.filters.categoria;
     const hitSeg = !STATE.filters.segmento || item.segmento === STATE.filters.segmento;
     const hitGen = !STATE.filters.genero || item.genero === STATE.filters.genero;
-    const hitGrade = !STATE.filters.grade || gradeDoItem(item) === STATE.filters.grade;
+    const hitGrade = !STATE.filters.grade.size || STATE.filters.grade.has(gradeDoItem(item));
     const hitMes = !STATE.filters.prevFat || (mesAnoFromPrevFat(item)?.key === STATE.filters.prevFat);
     const hitExc = !STATE.filters.exclusivos || (ehExclusivo(item) && seloDe(item) === STATE.filters.exclusivos);
     const hitNovo = !STATE.filters.novos || grupoTemNovo(item);
@@ -5285,7 +5298,18 @@ function bindEvents(){
   $('filterCategoria').addEventListener('change', e=>{ STATE.filters.categoria = e.target.value; applyFilters(); });
   $('filterSegmento').addEventListener('change', e=>{ STATE.filters.segmento = e.target.value; applyFilters(); });
   $('filterGenero').addEventListener('change', e=>{ STATE.filters.genero = e.target.value; applyFilters(); });
-  $('filterGrade').addEventListener('change', e=>{ STATE.filters.grade = e.target.value; applyFilters(); });
+  $('filterGrade').addEventListener('change', e=>{
+    const v = e.target.value;
+    if(v) STATE.filters.grade.add(v);
+    e.target.value = '';
+    applyFilters();
+  });
+  $('gradeChips').addEventListener('click', e=>{
+    const b = e.target.closest('[data-grade]');
+    if(!b) return;
+    STATE.filters.grade.delete(b.dataset.grade);
+    applyFilters();
+  });
   $('filterPrevFat').addEventListener('change', e=>{ STATE.filters.prevFat = e.target.value; applyFilters(); });
   $('sortBy').addEventListener('change', e=>{ STATE.filters.sort = e.target.value; applyFilters(); });
 
@@ -5304,7 +5328,7 @@ function bindEvents(){
 
   $('btnClearFilters').addEventListener('click', ()=>{
     STATE.search = '';
-    STATE.filters = { categoria:'', segmento:'', genero:'', grade:'', prevFat:'', sort:'produto', exclusivos:'', novos:false };
+    STATE.filters = { categoria:'', segmento:'', genero:'', grade:new Set(), prevFat:'', sort:'produto', exclusivos:'', novos:false };
     $('searchInputTop').value = '';
     $('btnClearSearchTop').classList.add('hidden');
     $('searchShell').classList.remove('expanded');
