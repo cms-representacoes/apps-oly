@@ -41,9 +41,13 @@
   .theme-btn{cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--navy);
     border-radius:8px;width:36px;height:36px;display:grid;place-items:center;padding:0;flex:none}
   .theme-btn:hover{border-color:#CBD2DC}
-  .periodo-bar{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:var(--card);padding:3px;gap:2px}
+  /* com seis períodos a fita não cabe no celular: ela rola de lado em vez
+     de quebrar os rótulos em duas linhas */
+  .periodo-bar{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:var(--card);
+    padding:3px;gap:2px;max-width:100%;overflow-x:auto;scrollbar-width:none}
+  .periodo-bar::-webkit-scrollbar{display:none}
   .periodo-btn{border:none;background:none;border-radius:999px;padding:6px 12px;font-family:"Space Grotesk",sans-serif;
-    font-size:12px;font-weight:600;cursor:pointer;color:var(--slate);transition:all .12s}
+    font-size:12px;font-weight:600;cursor:pointer;color:var(--slate);transition:all .12s;white-space:nowrap}
   .periodo-btn.active{background:var(--ftw);color:var(--ftw-ink)}
   .refresh-spin{animation:spin .8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -159,6 +163,7 @@
       <button class="periodo-btn" onclick="setPeriod('7d',this)">7 dias</button>
       <button class="periodo-btn" onclick="setPeriod('15d',this)">15 dias</button>
       <button class="periodo-btn" onclick="setPeriod('30d',this)">30 dias</button>
+      <button class="periodo-btn" onclick="setPeriod('tudo',this)">Todos</button>
     </div>
     <button class="btn" id="btnRefresh" onclick="loadAll()">
       <i class="fa-solid fa-rotate" id="refreshIcon"></i> Atualizar
@@ -330,6 +335,8 @@ function janelaPeriodo(p){
   const hoje0 = inicioDoDia(agora);
   if(p === 'hoje')  return { de: hoje0,          ate: Infinity };
   if(p === 'ontem') return { de: hoje0 - UM_DIA, ate: hoje0 };
+  // tudo que já passou pelo aplicativo, desde o primeiro pedido
+  if(p === 'tudo')  return { de: -Infinity,      ate: Infinity };
   const dias = { '7d':7, '15d':15, '30d':30 }[p];
   if(!dias) return { de: hoje0, ate: Infinity };   // valor desconhecido: hoje
   return { de: agora - dias*UM_DIA, ate: Infinity };
