@@ -715,11 +715,30 @@
       background:rgba(255,255,255,.26); border-radius:999px; padding:0 6px;
       font-size:11px; font-variant-numeric:tabular-nums;
     }
+    /* No celular e no tablet a pílula vira só o ícone, com a conta num
+       badge: ali embaixo o espaço é dos cards, e o rótulo tomava metade
+       da largura da tela. */
+    @media (max-width: 1023px), (pointer: coarse){
+      .fab-limpar{
+        width:50px; height:50px; padding:0; gap:0;
+        border-radius:999px; justify-content:center;
+      }
+      .fab-limpar .rot{ display:none; }
+      .fab-limpar svg{ width:19px; height:19px; }
+      .fab-limpar .cont{
+        position:absolute; top:-3px; right:-3px;
+        min-width:21px; height:21px; padding:0 5px;
+        background:#fff; color:#C2410C; border:2px solid #C2410C;
+        font-size:11px; font-weight:900; line-height:1;
+        display:flex; align-items:center; justify-content:center;
+      }
+      .fab-limpar .cont:empty{ display:none; }
+    }
     /* Fixa, ela cobriria o último card; a folga só existe quando ela aparece. */
     body.com-limpar #cardsWrap, body.com-limpar #listWrap{ padding-bottom:72px; }
     @media (max-width: 767px){
       .fab-limpar{ bottom:calc(86px + env(safe-area-inset-bottom,0px)); }
-      body.com-limpar #cardsWrap, body.com-limpar #listWrap{ padding-bottom:142px; }
+      body.com-limpar #cardsWrap, body.com-limpar #listWrap{ padding-bottom:148px; }
     }
 
     /* ── Botão limpar (×) dentro dos campos ── */
@@ -962,7 +981,7 @@
          stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M3 5h18l-7 8v6l-4-2v-4z"/><path d="m16.5 4.5 5 5m0-5-5 5"/>
     </svg>
-    <span>Limpar filtros</span><span class="cont" id="fabLimparN"></span>
+    <span class="rot">Limpar filtros</span><span class="cont" id="fabLimparN"></span>
   </button>
 
   <button id="fabTop" class="fab-top focus-ring" type="button" title="Voltar ao topo" aria-label="Voltar ao topo">
