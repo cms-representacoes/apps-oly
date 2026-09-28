@@ -1276,6 +1276,58 @@
     </div>
   </div>
 
+  <!-- ── CORRIGIR O PEDIDO ────────────────────────────────────────────────
+       O vendedor erra o prazo e pede alteração; até aqui a CMS só marcava a
+       solicitação como resolvida e corrigia por fora, e o pedido na vitrine
+       seguia com o dado errado. -->
+  <div id="editarPedidoModal" class="hidden fixed inset-0 z-[140] bg-slate-950/45 p-4">
+    <div class="flex min-h-full items-center justify-center">
+      <div class="w-full max-w-lg rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,.24)]"
+           style="background:var(--card);border-color:var(--line)">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="text-xl font-extrabold">Corrigir pedido</div>
+            <div class="mt-1 text-sm font-semibold text-slate-500" id="editarPedidoQuem" style="color:var(--muted)"></div>
+          </div>
+          <button id="btnFecharEditar" type="button" class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600" style="background:var(--card);border-color:var(--line);color:var(--muted)">Fechar</button>
+        </div>
+
+        <div id="editarPedidoSol" class="mt-4 hidden rounded-[18px] px-4 py-3 text-sm font-semibold"
+             style="background:var(--warning-soft);color:var(--warning)"></div>
+        <div id="editarPedidoExp" class="mt-3 hidden rounded-[18px] px-4 py-3 text-xs font-bold"
+             style="background:var(--warning-soft);color:var(--warning)"></div>
+
+        <div class="mt-4 grid gap-4">
+          <div>
+            <label class="text-xs font-bold uppercase tracking-[.18em] text-slate-500" style="color:var(--muted)">Prazo</label>
+            <select id="editarPedidoPrazo" class="focus-ring mt-2 w-full rounded-[20px] border border-slate-200 px-4 py-3 text-sm font-semibold"
+                    style="background:var(--card);border-color:var(--line);color:var(--text)"></select>
+          </div>
+          <div>
+            <label class="text-xs font-bold uppercase tracking-[.18em] text-slate-500" style="color:var(--muted)">Campanha</label>
+            <select id="editarPedidoCampanha" class="focus-ring mt-2 w-full rounded-[20px] border border-slate-200 px-4 py-3 text-sm font-semibold"
+                    style="background:var(--card);border-color:var(--line);color:var(--text)"></select>
+          </div>
+          <div>
+            <label class="text-xs font-bold uppercase tracking-[.18em] text-slate-500" style="color:var(--muted)">Observações</label>
+            <textarea id="editarPedidoObs" rows="3" class="focus-ring mt-2 w-full resize-none rounded-[20px] border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700"
+              style="background:var(--card);border-color:var(--line);color:var(--text)" placeholder="Sem observações"></textarea>
+          </div>
+        </div>
+
+        <label id="editarPedidoResolverBox" class="mt-4 hidden items-center gap-2 text-sm font-bold text-slate-600" style="color:var(--muted)">
+          <input type="checkbox" id="editarPedidoResolver" checked style="width:16px;height:16px;accent-color:var(--brand)">
+          Marcar a solicitação como resolvida e avisar o vendedor
+        </label>
+
+        <div class="mt-5 flex flex-wrap justify-end gap-2">
+          <button id="btnVoltarEditar" type="button" class="focus-ring rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700" style="background:var(--card);border-color:var(--line);color:var(--muted)">Voltar</button>
+          <button id="btnSalvarEditar" type="button" class="focus-ring rounded-2xl border border-transparent bg-[var(--brand)] px-5 py-3 text-sm font-extrabold text-white">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── RECUSAR SOLICITAÇÃO DO VENDEDOR ──────────────────────────────────── -->
   <div id="solRecusaModal" class="hidden fixed inset-0 z-[140] bg-slate-950/45 p-4">
     <div class="flex min-h-full items-center justify-center">
@@ -2277,6 +2329,9 @@ function renderList(){
         <button class="ea-btn ea-pdf-btn" data-action="pdf" data-id="${safeHtml(order.id)}" title="Exportar PDF">
           <div class="ea-icon ea-icon-red">${svgPdf}</div><span class="ea-lbl">PDF</span>
         </button>
+        ${canonicalStatus(order.status) === 'Cancelado' ? '' : `<button class="ea-btn" data-action="editar" data-id="${safeHtml(order.id)}" title="Corrigir prazo, campanha ou observações">
+          <div class="ea-icon ea-icon-gray"><i class="fa-solid fa-pen"></i></div><span class="ea-lbl">Corrigir</span>
+        </button>`}
         <button class="ea-btn" data-action="arquivar" data-id="${safeHtml(order.id)}" title="Arquivar">
           <div class="ea-icon ea-icon-gray">${svgArch}</div><span class="ea-lbl">Arquivar</span>
         </button>
@@ -2376,8 +2431,8 @@ function renderBlocoSolicitacao(order, sol){
           <div class="motivo">${detalhe}</div>
           <div class="quem">${safeHtml(quem)} · ${safeHtml(formatDateTime(sol.em))}</div>
           <div class="adm-sol-btns">
-            <button class="bt-sol ok${canc ? '' : ' alt'}" data-action="sol-ok" data-id="${safeHtml(order.id)}">
-              <i class="fa-solid fa-check"></i> ${canc ? 'Cancelar o pedido' : 'Marcar como resolvida'}
+            <button class="bt-sol ok${canc ? '' : ' alt'}" data-action="${canc ? 'sol-ok' : 'editar'}" data-id="${safeHtml(order.id)}">
+              <i class="fa-solid fa-${canc ? 'check' : 'pen'}"></i> ${canc ? 'Cancelar o pedido' : 'Corrigir o pedido'}
             </button>
             <button class="bt-sol no" data-action="sol-no" data-id="${safeHtml(order.id)}">
               <i class="fa-solid fa-xmark"></i> Recusar
@@ -2447,6 +2502,128 @@ async function responderSolicitacao(id, atender, textoResposta){
   }
 }
 
+/* ── corrigir o pedido ───────────────────────────────────────────────
+   As mesmas listas da vitrine de repasses: o pedido tem de continuar
+   falando a língua do EBM depois da correção. */
+const PRAZOS = [
+  'Z01 - A VISTA','Z02 - 14 D','Z03 - 21 D','Z04 - 28 D','Z05 - 35 D','Z06 - 42 D','Z07 - 49 D',
+  'Z08 - 56 D','Z09 - 63 D','Z10 - 70 D','Z11 - 77 D','Z12 - 84 D','Z13 - 91 D','Z14 - 98 D',
+  'Z15 - 105 D','Z16 - 112 D','Z17 - 119 D','Z18 - 21/49 D','Z19 - 28/56 D','Z20 - 35/63 D',
+  'Z21 - 42/70 D','Z22 - 49/77 D','Z23 - 56/84 D','Z24 - 63/91 D','Z25 - 70/98 D','Z26 - 77/105 D',
+  'Z27 - 84/112 D','Z28 - 91/119 D','Z29 - 21/49/77 D','Z30 - 28/56/84 D','Z31 - 35/63/91 D',
+  'Z32 - 42/70/98 D','Z33 - 49/77/105 D','Z34 - 56/84/112 D','Z35 - 63/91/119 D'
+];
+const CAMPANHAS = ['CO681 +28DD OLY','CO689 +56DD OLY','CO684 +28DD UA','CO690 +56DD UA'];
+
+let _editarId = null;
+function abrirEdicaoPedido(id){
+  const order = STATE.orders.find(o => o.id === id);
+  if(!order){ showToast('Pedido não encontrado.', 'error'); return; }
+  const atual = normalizeOrder(order);
+  _editarId = id;
+
+  $('editarPedidoQuem').textContent =
+    `${atual.clienteNome || atual.clienteCodigo || 'cliente'} · ${atual.preposto?.nome || '—'} · ${formatDateTime(atual.createdAt)}`;
+
+  // Valor que está no pedido entra na lista mesmo se não for um dos padrões:
+  // pedido antigo pode trazer um prazo que saiu da tabela, e some-lo faria a
+  // correção trocar em silêncio o que ninguém pediu para trocar.
+  const opcoes = (lista, atualValor, vazio) => {
+    const vals = lista.slice();
+    if(atualValor && !vals.includes(atualValor)) vals.unshift(atualValor);
+    return `<option value="">${vazio}</option>` +
+      vals.map(v => `<option value="${safeHtml(v)}"${v === atualValor ? ' selected' : ''}>${safeHtml(v)}</option>`).join('');
+  };
+  $('editarPedidoPrazo').innerHTML = opcoes(PRAZOS, atual.prazo, 'Sem prazo');
+  $('editarPedidoCampanha').innerHTML = opcoes(CAMPANHAS, atual.campanha, 'Sem campanha');
+  $('editarPedidoObs').value = atual.observacoes || '';
+
+  const sol = solicitacaoAberta(atual);
+  const pedeAlteracao = sol && sol.tipo !== 'cancelar';
+  const cx = $('editarPedidoSol');
+  cx.classList.toggle('hidden', !pedeAlteracao);
+  if(pedeAlteracao){
+    cx.innerHTML = `<b>${safeHtml(sol.motivo || 'Alteração pedida')}</b>` +
+      (sol.texto ? ` — “${safeHtml(sol.texto)}”` : '') +
+      `<div style="font-weight:700;opacity:.8;margin-top:2px">${safeHtml(sol.por?.nome || 'vendedor')} · ${safeHtml(formatDateTime(sol.em))}</div>`;
+  }
+  $('editarPedidoResolverBox').classList.toggle('hidden', !pedeAlteracao);
+  $('editarPedidoResolverBox').classList.toggle('flex', !!pedeAlteracao);
+  $('editarPedidoResolver').checked = true;
+
+  // Já exportado, a planilha que foi para o EBM não bate mais com o pedido.
+  const exp = $('editarPedidoExp');
+  exp.classList.toggle('hidden', !atual.exportedAt);
+  if(atual.exportedAt)
+    exp.textContent = `Este pedido já foi exportado em ${formatDateTime(atual.exportedAt)} — a planilha enviada não vai bater com a correção.`;
+
+  $('editarPedidoModal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => $('editarPedidoPrazo')?.focus(), 30);
+}
+function fecharEdicaoPedido(){
+  _editarId = null;
+  $('editarPedidoModal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+async function salvarEdicaoPedido(){
+  const id = _editarId;
+  const idx = STATE.orders.findIndex(o => o.id === id);
+  if(idx === -1) return;
+  const atual = normalizeOrder(STATE.orders[idx]);
+
+  const novo = {
+    prazo: sanitizeDisplayText($('editarPedidoPrazo').value),
+    campanha: sanitizeDisplayText($('editarPedidoCampanha').value),
+    observacoes: sanitizeDisplayText($('editarPedidoObs').value)
+  };
+  const ROT = { prazo:'Prazo', campanha:'Campanha', observacoes:'Observações' };
+  const mudou = Object.keys(ROT)
+    .filter(k => (atual[k] || '') !== novo[k])
+    .map(k => `${ROT[k]}: ${atual[k] || '—'} → ${novo[k] || '—'}`);
+
+  const sol = solicitacaoAberta(atual);
+  const resolver = sol && sol.tipo !== 'cancelar' && $('editarPedidoResolver').checked;
+  if(!mudou.length && !resolver){ showToast('Nada mudou no pedido.', 'info'); return; }
+
+  const base = { ...atual, ...novo };
+  const nota = mudou.join(' · ');
+  if(resolver){
+    base.solicitacao = { ...sol, estado:'atendida',
+      resposta:{ por:'CMS', em:new Date().toISOString(),
+                 texto: nota || 'Conferido, sem mudança no pedido.' } };
+  }
+  const evento = createHistoryEvent(atual, resolver ? 'request_accepted' : 'order_edited',
+    resolver ? 'Alteração resolvida' : 'Pedido corrigido',
+    { statusFrom: canonicalStatus(atual.status), statusTo: canonicalStatus(atual.status),
+      archivedFrom: Boolean(atual.archived), archivedTo: Boolean(atual.archived),
+      notes: [sol?.motivo, sol?.texto, nota].filter(Boolean).join(' · ') });
+  const atualizado = appendOrderHistory(base, evento);
+
+  const anterior = STATE.orders[idx];
+  STATE.orders[idx] = atualizado;
+  fecharEdicaoPedido();
+  renderList();
+  try{
+    await workerUpdateOrder(atualizado);
+    showToast(mudou.length ? 'Pedido corrigido.' : 'Solicitação marcada como resolvida.', 'success');
+    await loadAdmin();
+  }catch(err){
+    console.error(err);
+    STATE.orders[idx] = anterior;
+    renderList();
+    showToast('Não foi possível salvar a correção.', 'error');
+  }
+}
+
+$('btnFecharEditar').addEventListener('click', fecharEdicaoPedido);
+$('btnVoltarEditar').addEventListener('click', fecharEdicaoPedido);
+$('btnSalvarEditar').addEventListener('click', salvarEdicaoPedido);
+$('editarPedidoModal').addEventListener('click', e => {
+  if(e.target === $('editarPedidoModal')) fecharEdicaoPedido();
+});
+
 let _solRecusaId = null;
 function abrirRecusaSolicitacao(id){
   _solRecusaId = id;
@@ -2509,6 +2686,9 @@ document.addEventListener('click', e => {
   }
   if(action === 'excluir'){
     deleteOrder(id);
+  }
+  if(action === 'editar'){
+    abrirEdicaoPedido(id);
   }
   if(action === 'remover-item'){
     removerItemDoPedido(id, Number(btn.dataset.idx));
