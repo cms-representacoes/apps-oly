@@ -2304,9 +2304,9 @@ const IMG   = '../Catalogo/';
 /* ── sessão ─────────────────────────────────────────────────────── */
 // A mesma chave que o portal grava; todos os apps leem daqui.
 const SESSION_KEY = 'cms_portal_session_v1';
-// Enquanto a vitrine está em obra, só o CMS entra. Para abrir para todos,
-// basta esvaziar a lista.
-const SO_ESTES = ['CMS'];
+// Enquanto a vitrine está em obra, só o CMS e quem desenvolve entram. Para
+// abrir para todos, basta esvaziar a lista.
+const SO_ESTES = ['CMS', 'MARCOS (DEV)'];
 
 function getSessao(){
   try{
@@ -3088,7 +3088,9 @@ setInterval(() => atualizarSaldoRepasse(false), 60000);
    A CMS acompanha todos, com a quantidade cheia, mas não pede — quem pede é
    o vendedor que tem cota. É a mesma regra do app Repasses. */
 const SELO_PADRAO = 'Forecast';
-const ehCmsSessao = () => String((SESSAO && SESSAO.nome) || '').toUpperCase() === 'CMS';
+// A CMS e quem desenvolve enxergam a vitrine inteira, sem cota de rateio.
+const NOMES_CMS = ['CMS', 'MARCOS (DEV)'];
+const ehCmsSessao = () => NOMES_CMS.includes(String((SESSAO && SESSAO.nome) || '').toUpperCase());
 const meuCodigo = () => String((SESSAO && SESSAO.codigo) || '').trim();
 
 function cotasDoLote(rateio, num){
@@ -4363,6 +4365,7 @@ const PED = { cache:{}, lista:[], filtrados:[], sel:new Set(), abertos:new Set()
 // A lista é a mesma do portal; um vendedor comum nem vê o campo.
 const VENDEDORES = [
   { codigo:'25846',   nome:'CMS' },
+  { codigo:'3616654', nome:'MARCOS (DEV)' },
   { codigo:'25745',   nome:'LEANDRO' },
   { codigo:'4322318', nome:'CHRISTIAN LUCAS' },
   { codigo:'114611',  nome:'JORGE' },
@@ -4370,7 +4373,7 @@ const VENDEDORES = [
   { codigo:'1333497', nome:'RAFAEL' },
   { codigo:'25471',   nome:'WILLAME' }
 ];
-const ehCms = () => String((SESSAO && SESSAO.nome) || '').toUpperCase() === 'CMS';
+const ehCms = () => NOMES_CMS.includes(String((SESSAO && SESSAO.nome) || '').toUpperCase());
 
 function abrirPedidos(){
   $('pedidos').hidden = false;
@@ -7054,8 +7057,9 @@ $('scPe').addEventListener('click', e => {
    mesmas regras. O admin, o dispo e a reserva de saldo dos outros apps leem
    esse arquivo, então nada aqui pode inventar campo ou status próprio. */
 const PREPOSTOS_REP = [['114611','JORGE'], ['109839','MARIANA'], ['1333497','RAFAEL'],
-  ['25471','WILLAME'], ['25745','LEANDRO'], ['4322318','CHRISTIAN LUCAS'], ['25846','CMS']];
-const ehSessaoCms = () => !!SESSAO && String(SESSAO.codigo).trim() === '25846';
+  ['25471','WILLAME'], ['25745','LEANDRO'], ['4322318','CHRISTIAN LUCAS'], ['25846','CMS'],
+  ['3616654','MARCOS (DEV)']];
+const ehSessaoCms = () => !!SESSAO && ['25846', '3616654'].includes(String(SESSAO.codigo).trim());
 const chaveFormRep = () => `vitrine_form_rep_v1_${(SESSAO && SESSAO.codigo) || 'anon'}`;
 // Os status que seguram saldo — os mesmos do Repasses (isReservedStatus).
 const RESERVA_STATUS = new Set(['PENDENTE','EM ANALISE','APROVADO','ATENDIDO PARCIALMENTE']);

@@ -1405,7 +1405,7 @@ function getPortalSession(){
 }
 function isCmsLogado(){
   const s = getPortalSession();
-  if(s && s.nome === 'CMS') return true;
+  if(s && (s.nome === 'CMS' || s.nome === 'MARCOS (DEV)')) return true;
   // Liberação apenas em desenvolvimento local: localStorage é isolado por
   // origem, então a sessão feita no site publicado não chega aqui. Em
   // produção (github.io) nada muda — a sessão CMS continua obrigatória.
@@ -5633,7 +5633,7 @@ if(isCmsLogado()){
   // Entrou sem sessão CMS? Então foi pela liberação local. Deixa isso à vista,
   // porque mesmo local esta página escreve no Worker de PRODUÇÃO.
   const _s = getPortalSession();
-  if(!(_s && _s.nome === 'CMS') && isAmbienteLocal()){
+  if(!(_s && _(s.nome === 'CMS' || s.nome === 'MARCOS (DEV)')) && isAmbienteLocal()){
     const av = document.createElement('div');
     av.id = 'avisoLocal';
     av.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Modo local · sem sessão CMS · dados de <b>produção</b>';

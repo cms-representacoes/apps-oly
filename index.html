@@ -445,6 +445,10 @@
     .lg-avatar{width:34px;height:34px;border-radius:10px;background:#1e293b;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:800;color:#a5b4fc;flex:none}
     .lg-item.selected{border-color:#7c3aed;background:linear-gradient(150deg,rgba(156,102,255,.16),rgba(59,12,142,.16))}
     .lg-item.selected .lg-avatar{background:linear-gradient(150deg,#9c66ff,#7c3aed);color:#fff}
+    .lg-avatar.dev{background:linear-gradient(150deg,#1e293b,#0b1220);color:#34d399;border:1px solid #14532d}
+    .lg-item.selected .lg-avatar.dev{background:linear-gradient(150deg,#10b981,#047857);color:#04150e;border-color:transparent}
+    .lg-tag{margin-left:7px;padding:1px 6px;border-radius:999px;background:rgba(52,211,153,.14);
+      color:#34d399;font-size:9.5px;font-weight:800;letter-spacing:.08em;vertical-align:1px}
     .lg-name{font-size:14px;font-weight:700;color:#f1f5f9}
     .lg-pwbox{margin-top:14px;padding-top:14px;border-top:1px solid #253248;display:none}
     .lg-pwbox.show{display:block}
@@ -983,15 +987,27 @@
     { codigo: '25471',   nome: 'WILLAME' },
     { codigo: '25745',   nome: 'LEANDRO' },
     { codigo: '4322318', nome: 'CHRISTIAN LUCAS' },
-    { codigo: '25846',   nome: 'CMS', senha: '300269' }
+    { codigo: '25846',   nome: 'CMS', senha: '300269' },
+    // Quem mexe nos aplicativos. Vê tudo o que a CMS vê, em todos eles.
+    { codigo: '3616654', nome: 'MARCOS (DEV)', senha: '104464', dev: true }
   ];
+  // Os dois nomes com acesso total; os apps leem a mesma lista.
+  var MANDA_EM_TUDO = ['CMS', 'MARCOS (DEV)'];
+  function temTudoLiberado(nome){
+    return MANDA_EM_TUDO.indexOf(String(nome || '').trim().toUpperCase()) >= 0;
+  }
 
   function tituloCaso(s){
     if(String(s || '').toUpperCase() === 'CMS') return 'CMS';
+    if(String(s || '').toUpperCase() === 'MARCOS (DEV)') return 'Marcos';
     return String(s || '').toLowerCase().split(' ').map(function(w){
       return w ? w[0].toUpperCase() + w.slice(1) : w;
     }).join(' ');
   }
+  var ICONE_DEV = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+    ' stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="m8 8-4 4 4 4"/><path d="m16 8 4 4-4 4"/><path d="m13.5 6-3 12"/></svg>';
+
   function iniciais(nome){
     var partes = String(nome || '').trim().split(/\s+/);
     return (partes[0][0] || '') + (partes.length > 1 ? partes[partes.length-1][0] : '');
@@ -1027,9 +1043,13 @@
 
   function renderLista(){
     lgList.innerHTML = USERS.map(function(u, i){
-      return '<button type="button" class="lg-item" data-idx="'+i+'">' +
-        '<span class="lg-avatar">'+iniciais(u.nome)+'</span>' +
-        '<span class="lg-name">'+tituloCaso(u.nome)+'</span></button>';
+      // quem desenvolve tem cara de quem desenvolve: o sinal de código
+      var avatar = u.dev
+        ? '<span class="lg-avatar dev" aria-hidden="true">' + ICONE_DEV + '</span>'
+        : '<span class="lg-avatar">' + iniciais(u.nome) + '</span>';
+      return '<button type="button" class="lg-item" data-idx="'+i+'">' + avatar +
+        '<span class="lg-name">'+tituloCaso(u.nome) +
+        (u.dev ? '<span class="lg-tag">DEV</span>' : '') + '</span></button>';
     }).join('');
     Array.prototype.forEach.call(lgList.querySelectorAll('.lg-item'), function(btn){
       btn.addEventListener('click', function(){
@@ -1105,7 +1125,7 @@
     // O usuário CMS representa a empresa toda, e não um vendedor: o painel
     // publica esse total no campo `empresa`. O vendedor que antes se chamava
     // CMS virou "Núcleo" e continua na lista comum.
-    if(normalizarNome(session.nome) === 'CMS' && dados.empresa){
+    if(temTudoLiberado(session.nome) && dados.empresa){
       alvo = dados.empresa;
     }
 
@@ -1186,7 +1206,7 @@
 
     carregarCartaCampanha(session);
 
-    var isCms = session.nome === 'CMS';
+    var isCms = temTudoLiberado(session.nome);
     Array.prototype.forEach.call(adminEls, function(el){ el.hidden = !isCms; });
     medirFabs();   // o botao da vitrine entra e sai da fila
   }

@@ -1896,7 +1896,7 @@ function applyVendedorSession(){
   const headerNome = $('headerVendedorNome');
   const btnLogout = $('btnVendedorLogout');
   const preposto = $('checkoutPreposto');
-  const isCms = session && session.nome === 'CMS';
+  const isCms = session && (session.nome === 'CMS' || session.nome === 'MARCOS (DEV)');
 
   if(session){
     loginScreen.classList.add('hidden');
@@ -2232,7 +2232,7 @@ function getOwnOrderedUnitsForNum(num, code){
 // pede — quem pede é o vendedor com cota.
 function sessaoCms(){
   const s = getVendedorSession();
-  return !!(s && s.nome === 'CMS');
+  return !!(s && (s.nome === 'CMS' || s.nome === 'MARCOS (DEV)'));
 }
 function loteRateado(item){
   const num = sanitizeDisplayText(String(item?.num || ''));
@@ -4042,7 +4042,7 @@ const CLIENTES_STATE = { vendedor:'', lista:[], loadedFor:'', loading:false, tod
 
 function clientePrepostoCodigo(){
   const session = getVendedorSession();
-  const isCms = session && session.nome === 'CMS';
+  const isCms = session && (session.nome === 'CMS' || session.nome === 'MARCOS (DEV)');
   if(session && !isCms) return String(session.codigo || '').trim();
   return normalizePreposto($('checkoutPreposto')?.value || '').codigo || '';
 }
@@ -4126,7 +4126,7 @@ function atualizarPlaceholderCliente(){
 
 async function carregarClientesDoPreposto(){
   const session = getVendedorSession();
-  const isCms = !!(session && session.nome === 'CMS');
+  const isCms = !!(session && (session.nome === 'CMS' || session.nome === 'MARCOS (DEV)'));
   const vendedor = clientePrepostoCodigo();
   const chave = vendedor || (isCms ? 'todos' : '');
 
@@ -4493,7 +4493,7 @@ function validateCartAgainstAvailability(){
 }
 function validateCheckout(){
   const session = getVendedorSession();
-  const isCms = session && session.nome === 'CMS';
+  const isCms = session && (session.nome === 'CMS' || session.nome === 'MARCOS (DEV)');
   const preposto = (session && !isCms) ? `${session.codigo} - ${session.nome}` : $('checkoutPreposto').value;
   const cliente = $('checkoutCliente').value.trim();
   const prazo = $('checkoutPrazo').value;
@@ -4527,7 +4527,7 @@ async function submitOrder(options = {}){
 
     const now = new Date();
     const session = getVendedorSession();
-    const isCms = session && session.nome === 'CMS';
+    const isCms = session && (session.nome === 'CMS' || session.nome === 'MARCOS (DEV)');
     const prepostoValue = (session && !isCms) ? `${session.codigo} - ${session.nome}` : $('checkoutPreposto').value;
     const preposto = parsePreposto(prepostoValue);
     const clienteCodigo = $('checkoutCliente').value.trim();
