@@ -511,7 +511,7 @@
       position:fixed; z-index:45;
       left:calc(16px + env(safe-area-inset-left,0px));
       bottom:calc(16px + env(safe-area-inset-bottom,0px));
-      width:58px; height:58px; border-radius:999px; border:none; padding:0;
+      width:52px; height:52px; border-radius:999px; border:none; padding:0;
       align-items:center; justify-content:center;
       background:linear-gradient(135deg,#22c55e 0%,#15803d 100%);
       color:#fff; font-size:21px; cursor:pointer;
@@ -528,8 +528,9 @@
     }
     .fab-cart-badge.hidden{display:none}
     /* precisa vir DEPOIS da regra base: media query não soma especificidade,
-       então quem estivesse por último venceria */
-    @media (max-width: 767px){ .fab-cart{display:flex} }
+       então quem estivesse por último venceria.
+       Sacola vazia não tem o que abrir: o botão só aparece com item dentro. */
+    @media (max-width: 767px){ body.com-sacola .fab-cart{display:flex} }
     /* A sacola divide o rodapé com a barra de seleção e ficava por baixo dela.
        Enquanto houver produto marcado, sai de cena. Fora de qualquer media
        query: a sacola aparece até 767px, e a regra precisa valer em toda essa
@@ -737,8 +738,12 @@
     /* Fixa, ela cobriria o último card; a folga só existe quando ela aparece. */
     body.com-limpar #cardsWrap, body.com-limpar #listWrap{ padding-bottom:72px; }
     @media (max-width: 767px){
-      .fab-limpar{ bottom:calc(86px + env(safe-area-inset-bottom,0px)); }
-      body.com-limpar #cardsWrap, body.com-limpar #listWrap{ padding-bottom:148px; }
+      /* Sobe só quando há algo embaixo dela — a sacola ou a barra de seleção.
+         Com o rodapé livre, desce para o canto. */
+      body.com-sacola .fab-limpar, body.tem-selecao .fab-limpar{
+        bottom:calc(80px + env(safe-area-inset-bottom,0px));
+      }
+      body.com-limpar #cardsWrap, body.com-limpar #listWrap{ padding-bottom:142px; }
     }
 
     /* ── Botão limpar (×) dentro dos campos ── */
@@ -3187,6 +3192,7 @@ function renderCart(){
     fabBadge.classList.toggle('hidden', items.length === 0);
     fabBadge.textContent = items.length;
   }
+  document.body.classList.toggle('com-sacola', items.length > 0);
   $('cartEmptyState').classList.toggle('hidden', items.length !== 0);
 
   const totalPacks = items.reduce((sum, item)=>sum + Number(item.amount || 0), 0);
