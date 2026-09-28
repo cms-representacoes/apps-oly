@@ -2407,7 +2407,7 @@ if(!MARCAS[MARCA]) MARCA = 'oly';
 const STATE = { produtos:[], filtrados:[], origem:'tudo', categoria:'', busca:'',
                 termos:[], termosIgnorados:0,
                 sel:{ selo:new Set(), chega:new Set(), genero:new Set(), sub:new Set(),
-                      fabrica:new Set(), camp:new Set() },
+                      grade:new Set(), fabrica:new Set(), camp:new Set() },
                 sacola:new Map(), aba:'estoque', marcados:new Set(), soNovos:false,
                 fichas:{},
                 ordem:(() => { try{ return localStorage.getItem('cmspass.ordem') || 'padrao'; }
@@ -3146,6 +3146,34 @@ const chaveLote = r => `${String(r.codigo || '').trim().toUpperCase()}|` +
 const chaveProduto = i => `${String(i.artigo || '').trim().toUpperCase()}|` +
   `${String(i.cor || '').trim().toUpperCase()}`;
 
+/* ── a grade ─────────────────────────────────────────────────────────
+   "Tem cliente que só compra 34/39 e outro que só compra 38/43." A grade é
+   o primeiro e o último tamanho — é assim que o vendedor fala dela. Um
+   produto pode ter mais de uma: o estoque pronto tem a sua e cada lote de
+   repasse tem a dele. Produção ainda não traz grade.                    */
+const ESCALA_TAM = ['PP', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'G3', '2GG', '3GG', 'U'];
+function posTamanho(t){
+  const x = String(t || '').trim().toUpperCase();
+  const n = x.match(/^\d+/);            // 34, e também o 33 de "33/34"
+  if(n) return Number(n[0]);
+  const i = ESCALA_TAM.indexOf(x);
+  return i >= 0 ? 1000 + i : 2000;      // o que não se conhece vai para o fim
+}
+function faixaDeGrade(tamanhos){
+  const ts = [...new Set((tamanhos || []).map(t => String(t || '').trim().toUpperCase()).filter(Boolean))]
+    .sort((a, b) => posTamanho(a) - posTamanho(b));
+  if(!ts.length) return '';
+  return ts.length === 1 ? ts[0] : `${ts[0]}–${ts[ts.length - 1]}`;
+}
+// as grades que aquele produto tem hoje, sem repetir
+function gradesDoProduto(o){
+  const g = new Set();
+  if(o.pronta) g.add(faixaDeGrade(Object.keys(o.pronta.grade || {})));
+  if(o.repasse) for(const l of o.repasse.lotes) g.add(faixaDeGrade(Object.keys(l.grade || {})));
+  g.delete('');
+  return [...g];
+}
+
 function montar(dispo, disponib, produtos, pedidos, oculto){
   const bloq = oculto || { lotes:new Set(), produtos:new Set() };
   const mapa = new Map();
@@ -3274,6 +3302,7 @@ function montar(dispo, disponib, produtos, pedidos, oculto){
     // para mil e duzentos produtos, era o que deixava a digitacao lenta.
     o.hay = norm([o.artigo, o.nome, o.cor, o.categoria, o.genero].join(' '));
     o.sub = subcategoriaDe(o);
+    o.grade = gradesDoProduto(o);
     o.camp = o.campanhas.map(rotuloCampanha);
     // "Chega em" e a prev. faturamento unificada: estoque sai agora, as outras
     // duas origens entram pelo mes. Um produto pode estar em mais de um.
@@ -3405,10 +3434,12 @@ const GRUPOS = [
     ajuda:'Estoque sai agora; repasse e produção entram pelo mês.' },
   { id:'genero',  rot:'Gênero' },
   { id:'sub',     rot:'Tipo de produto' },
+  { id:'grade',   rot:'Grade',
+    ajuda:'Do primeiro ao último tamanho. Estoque e repasse têm grade; produção ainda não.' },
   { id:'fabrica', rot:'Fábrica' },
   { id:'camp',    rot:'Campanha' }
 ];
-const LISTAS = new Set(['chega', 'camp']);   // campos com vários valores por produto
+const LISTAS = new Set(['chega', 'camp', 'grade']);   // campos com vários valores por produto
 const valoresDe = (o, id) => LISTAS.has(id) ? o[id] : (o[id] ? [o[id]] : []);
 function casaGrupo(o, id){
   const sel = STATE.sel[id];
@@ -3521,9 +3552,16 @@ function pintarFiltros(){
 // AZABA são códigos de fábrica e ficam como estão.
 const GEN_ROT = { FEMININO:'Feminino', MASCULINO:'Masculino', UNISSEX:'Unissex',
                   INFANTIL:'Infantil', KIDS:'Kids' };
-const rotuloOpcao = (id, v) => id === 'genero' ? (GEN_ROT[v] || v) : v;
+const rotuloOpcao = (id, v) => id === 'genero' ? (GEN_ROT[v] || v)
+                             : id === 'grade' && v === 'U' ? 'Único' : v;
 
 function ordemOpcoes(id, itens){
+  // Grade se lê em ordem de tamanho, não de quantidade: 34–39 antes de 38–43.
+  if(id === 'grade'){
+    return itens.sort((a, b) =>
+      posTamanho(String(a[0]).split('–')[0]) - posTamanho(String(b[0]).split('–')[0]) ||
+      String(a[0]).localeCompare(String(b[0]), 'pt-BR', { numeric:true }));
+  }
   if(id === 'chega'){
     return itens.sort((a, b) =>
       (a[0] === AGORA ? -1 : distanciaMes(a[0])) - (b[0] === AGORA ? -1 : distanciaMes(b[0])));
