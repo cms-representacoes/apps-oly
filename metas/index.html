@@ -232,9 +232,13 @@ table.m tbody tr.escolhida td:first-child{background:#17518f;box-shadow:inset 3p
     </a>
     <h1 class="titulo">Metas Preposto</h1>
     <div class="topo-dir">
-      <button class="btn primario" id="btnImportar" type="button" hidden>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 16v2.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V16"/></svg>
-        Importar
+      <button class="btn primario" id="btnMetas" type="button" hidden title="Carta Campanha · Simples Conferência, ou o Acompanhamento de Metas — traz a meta do mês">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>
+        Metas
+      </button>
+      <button class="btn" id="btnDiario" type="button" hidden title="Carta Campanha · Conferência Notas — traz o realizado, nota a nota">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9.5 12h6M9.5 16h4"/></svg>
+        Diário
       </button>
       <button class="btn" id="btnBaixar" type="button" hidden title="Baixa o JSON com tudo que está importado, para publicar em metas/dados/metas.json">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg>
@@ -247,7 +251,8 @@ table.m tbody tr.escolhida td:first-child{background:#17518f;box-shadow:inset 3p
     </div>
   </div>
 
-  <input type="file" id="arquivo" accept=".xls,.xlsx" multiple hidden>
+  <input type="file" id="arqMetas" accept=".xls,.xlsx" multiple hidden>
+<input type="file" id="arqDiario" accept=".xls,.xlsx" multiple hidden>
   <div id="avisos"></div>
   <div id="corpo"></div>
   <p class="rodape" id="rodape"></p>
@@ -340,10 +345,84 @@ function vazia(l){
   });
 }
 
+// Cada relatório do EBM tem uma cara. Reconhecer pelo conteúdo evita que
+// um arquivo entre no lugar errado só porque o botão clicado foi o outro.
+function identificar(L){
+  var topo = (L[0] || []).concat(L[1] || []).join(' ').toUpperCase();
+  if(topo.indexOf('NOTA') >= 0) return 'notas';
+  if(topo.indexOf('ACOMPANHAMENTO') >= 0) return 'acompanhamento';
+  return 'conferencia';
+}
+
+// Colunas do CartaCampanhaNotas (0 = A)
+var COLN = { preposto:6, nome:7, movimento:8, data:12, faixa:21, marca:22, valor:25, qtd:26 };
+var MES_NOME = ['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+function mesPeloNome(nome){
+  var limpo = nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  var d = /(\d{2})[-_ ](\d{4})/.exec(limpo);
+  if(d) return d[2] + '-' + d[1];
+  var ano = /(20\d{2})/.exec(limpo);
+  for(var i = 0; i < 12; i++){
+    if(limpo.indexOf(MES_NOME[i]) >= 0){
+      return (ano ? ano[1] : new Date().getFullYear()) + '-' + ('0' + (i + 1)).slice(-2);
+    }
+  }
+  return null;
+}
+
+// O relatório de notas não diz de que apuração é: vale o mês da maioria
+// das notas (a apuração puxa devolução de meses anteriores), e o nome do
+// arquivo manda quando traz o mês.
+function lerNotas(L, nomeArquivo){
+  var contagem = {}, melhor = '', qtdMelhor = 0;
+  L.slice(2).forEach(function(r){
+    var d = txt(r[COLN.data]);
+    if(d.length !== 10) return;
+    var m = d.slice(6, 10) + '-' + d.slice(3, 5);
+    contagem[m] = (contagem[m] || 0) + 1;
+    if(contagem[m] > qtdMelhor){ qtdMelhor = contagem[m]; melhor = m; }
+  });
+  if(!melhor) throw new Error(nomeArquivo + ': não achei data de nota. É o relatório de notas?');
+  var mes = mesPeloNome(nomeArquivo) || melhor;
+
+  var prepostos = {};
+  L.slice(2).forEach(function(r){
+    var cod = txt(r[COLN.preposto]);
+    var faixa = txt(r[COLN.faixa]).toUpperCase();
+    if(!cod || !faixa || faixa === 'OUTROS') return;
+    var marca = txt(r[COLN.marca]).split(' - ')[0].trim().toUpperCase();
+    var p = prepostos[cod] || (prepostos[cod] = { codigo:cod, nome:txt(r[COLN.nome]), linhas:{} });
+    var chave = marca + '|' + faixa;
+    var l = p.linhas[chave] || (p.linhas[chave] = { marca:marca, faixa:faixa,
+      meta_qtd:null, meta_rs:null, pot_qtd:null, pot_rs:null, real_qtd:0, real_rs:0,
+      fat_qtd:0, fat_rs:0, dev_qtd:0, dev_rs:0, pct_cc:null, atingiu:'' });
+    var q = numero(r[COLN.qtd]) || 0, v = numero(r[COLN.valor]) || 0;
+    var onde = txt(r[COLN.movimento]).toUpperCase() === 'DEV' ? 'dev' : 'fat';
+    l.real_qtd += q; l.real_rs += v;
+    l[onde + '_qtd'] += q; l[onde + '_rs'] += v;
+  });
+
+  var lista = Object.keys(prepostos).map(function(cod){
+    var p = prepostos[cod];
+    return { codigo:p.codigo, nome:p.nome, linhas: Object.keys(p.linhas).map(function(k){
+      var l = p.linhas[k];
+      l.real_rs = Math.round(l.real_rs * 100) / 100;
+      l.fat_rs = Math.round(l.fat_rs * 100) / 100;
+      l.dev_rs = Math.round(l.dev_rs * 100) / 100;
+      return l;
+    }) };
+  });
+  if(!lista.length) throw new Error(nomeArquivo + ': nenhuma nota com preposto. O filtro saiu em Todos?');
+  return { mes: mes, origem: nomeArquivo, visao: '', so_realizado: true,
+           importado_em: new Date().toISOString(), prepostos: lista };
+}
+
 function lerRelatorio(buffer, nomeArquivo){
   var wb = XLSX.read(new Uint8Array(buffer), { type:'array' });
   var ws = wb.Sheets[wb.SheetNames[0]];
   var L = XLSX.utils.sheet_to_json(ws, { header:1, raw:false, defval:'' });
+  if(identificar(L) === 'notas') return lerNotas(L, nomeArquivo);
 
   var periodo = '', visao = '';
   for(var i = 0; i < Math.min(6, L.length); i++){
@@ -400,8 +479,46 @@ function gravarLocal(dados){
 function juntar(a, b){
   var porMes = {};
   (a.meses || []).forEach(function(m){ porMes[m.mes] = m; });
-  (b.meses || []).forEach(function(m){ porMes[m.mes] = m; });   // o importado manda
+  (b.meses || []).forEach(function(m){ porMes[m.mes] = combinar(porMes[m.mes], m); });
   return { meses: Object.keys(porMes).sort().map(function(k){ return porMes[k]; }) };
+}
+
+// A conferência traz a meta, o relatório de notas traz o realizado: quem
+// tem o dado preenche, quem não tem respeita o que já estava lá.
+function combinar(antigo, novo){
+  if(!antigo) return novo;
+  var indice = {};
+  (antigo.prepostos || []).forEach(function(p){
+    (p.linhas || []).forEach(function(l){ indice[p.codigo + '|' + l.marca + '|' + l.faixa] = l; });
+  });
+  var usadas = {};
+  novo.prepostos.forEach(function(p){
+    p.linhas.forEach(function(l){
+      var chave = p.codigo + '|' + l.marca + '|' + l.faixa;
+      usadas[chave] = 1;
+      var velha = indice[chave];
+      if(!velha) return;
+      for(var campo in velha){
+        if((l[campo] === null || l[campo] === undefined || l[campo] === '') &&
+           velha[campo] !== null && velha[campo] !== undefined && velha[campo] !== '') l[campo] = velha[campo];
+      }
+    });
+  });
+  var porCod = {};
+  novo.prepostos.forEach(function(p){ porCod[p.codigo] = p; });
+  (antigo.prepostos || []).forEach(function(p){
+    (p.linhas || []).forEach(function(l){
+      if(usadas[p.codigo + '|' + l.marca + '|' + l.faixa]) return;
+      var destino = porCod[p.codigo];
+      if(!destino){ destino = { codigo:p.codigo, nome:p.nome, linhas:[] };
+        porCod[p.codigo] = destino; novo.prepostos.push(destino); }
+      destino.linhas.push(l);
+    });
+  });
+  if(novo.so_realizado && antigo.origem && antigo.origem.indexOf(novo.origem) < 0){
+    novo.origem = antigo.origem + ' + ' + novo.origem;
+  }
+  return novo;
 }
 
 // ════════════════════════════════════════════════════════════════════════
@@ -864,7 +981,7 @@ function desenhar(){
     $('corpo').innerHTML = '<div class="painel" style="text-align:center;padding:30px">' +
       '<p style="font-size:14px;margin-bottom:6px">Nenhum mês importado ainda.</p>' +
       '<p style="color:var(--tinta2);font-size:12.5px">' +
-      (TUDO ? 'Use o botão <b>Importar</b> e escolha o arquivo <b>metas.xls</b> do EBM.' : 'Assim que o escritório publicar, os números aparecem aqui.') +
+      (TUDO ? 'Em <b>Metas</b>, o arquivo da conferência do mês; em <b>Diário</b>, o relatório de notas.' : 'Assim que o escritório publicar, os números aparecem aqui.') +
       '</p></div>';
     return;
   }
@@ -938,7 +1055,9 @@ function importar(arquivos){
       E.mes = ultimo; E.ano = ultimo.slice(0, 4);
       desenhar();
     }
-    var meses = prontos.map(function(m){ return mesRotulo(m.mes); }).join(', ');
+    var meses = prontos.map(function(m){
+      return mesRotulo(m.mes) + (m.so_realizado ? ' (realizado)' : ' (meta)');
+    }).join(', ');
     aviso((prontos.length ? '<b>Importado: ' + esc(meses) + '</b> — guardado neste aparelho; use <b>JSON</b> para publicar para todo mundo.' : '') +
           (erros.length ? (prontos.length ? '<br>' : '') + '<b>Não entraram:</b> ' + esc(erros.join(' · ')) : ''),
           erros.length && !prontos.length);
@@ -979,7 +1098,8 @@ function iniciar(){
   if(!S){ porta(); return; }
   if(SO_DEV && nomeNormal(S.nome) !== nomeNormal(NOME_DEV)){ emProva(); return; }
   TUDO = mandaEmTudo(S);
-  $('btnImportar').hidden = !TUDO;
+  $('btnMetas').hidden = !TUDO;
+  $('btnDiario').hidden = !TUDO;
   $('btnBaixar').hidden = !TUDO;
   if(!TUDO) E.preposto = S.codigo;
 
@@ -1013,10 +1133,13 @@ window.addEventListener('pointerup', function(ev){
   if(ev.pointerType && ev.pointerType !== 'mouse') setTimeout(esconderDica, 2200);
 });
 
-$('btnImportar').addEventListener('click', function(){ $('arquivo').click(); });
-$('arquivo').addEventListener('change', function(e){
-  if(e.target.files && e.target.files.length) importar(e.target.files);
-  e.target.value = '';
+$('btnMetas').addEventListener('click', function(){ $('arqMetas').click(); });
+$('btnDiario').addEventListener('click', function(){ $('arqDiario').click(); });
+['arqMetas', 'arqDiario'].forEach(function(id){
+  $(id).addEventListener('change', function(e){
+    if(e.target.files && e.target.files.length) importar(e.target.files);
+    e.target.value = '';
+  });
 });
 $('btnBaixar').addEventListener('click', baixarJSON);
 
