@@ -7567,7 +7567,10 @@ function zcContorno(im){
   return r;
 }
 function enquadrarZoom(){
-  const img = $('zoomImg'), m = img.parentElement;
+  const img = $('zoomImg'), m = img && img.parentElement;
+  // quando a tela é trocada por um aviso (sem sessão, por exemplo), o
+  // observador continua vivo e o elemento já saiu do DOM
+  if(!img || !m) return;
   const W = m.clientWidth, H = m.clientHeight;
   if(!img.complete || !img.naturalWidth || !W || !H) return;
   const prop = img.naturalHeight / img.naturalWidth, b = zcContorno(img);
