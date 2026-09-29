@@ -81,8 +81,8 @@ button,select,input{font:inherit;color:inherit}
 .cat-dados{flex:1;min-width:0;padding:8px 10px 9px;display:flex;flex-direction:column;align-items:center}
 .cat-nome{font-size:12px;font-weight:600;color:#fff;margin-bottom:2px;text-align:center}
 .cat-gauge{position:relative;width:100%;max-width:120px}
-.cat-gauge svg{width:100%;height:auto;display:block}
-.cat-pct{position:absolute;left:0;right:0;bottom:2px;text-align:center;font-size:15px;font-weight:700}
+.cat-gauge svg{width:100%;height:auto;display:block;overflow:visible}
+.cat-gauge .gpct{fill:#fff;font-family:var(--sans);font-weight:700;font-variant-numeric:tabular-nums}
 .cat-linhas{align-self:flex-start;font-size:10.5px;line-height:1.35;color:var(--tinta2);margin-top:2px}
 .cat-linhas b{color:#fff;font-weight:600}
 
@@ -127,6 +127,8 @@ table.m tbody tr.filha td:first-child{background:#16325c}
 .legenda i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
 svg.chart{width:100%;height:auto;display:block;overflow:visible}
 svg.chart text{font-family:var(--sans);fill:var(--tinta2);font-size:11px}
+svg.chart .r-pct{font-size:10px}
+svg.chart .r-mes{font-size:10.5px}
 svg.chart .eixo{stroke:rgba(255,255,255,.18);stroke-width:1}
 svg.chart .rotulo{fill:#fff;font-size:10px}
 .barra-h{cursor:default}
@@ -194,7 +196,10 @@ table.m tbody tr.escolhida td:first-child{background:#17518f;box-shadow:inset 3p
   .cat-ico svg{width:36px;height:36px}
   .cat-dados{padding:7px 8px 8px}
   .cat-gauge{max-width:104px}
-  .cat-pct{font-size:14px}
+  .cat-gauge{max-width:98px}
+  svg.chart .r-pct{font-size:8.5px}
+  svg.chart .r-mes{font-size:9.5px}
+  svg.chart text{font-size:10px}
   .filtro label{font-size:10px}
   .filtro select{min-width:126px;padding:6px 24px 6px 9px}
   .painel{padding:9px 10px 11px}
@@ -218,7 +223,7 @@ table.m tbody tr.escolhida td:first-child{background:#17518f;box-shadow:inset 3p
   .cat:last-child .cat-dados{display:grid;grid-template-columns:auto 1fr;
     grid-template-areas:"nome nome" "gauge numeros";align-items:center;gap:0 12px}
   .cat:last-child .cat-nome{grid-area:nome}
-  .cat:last-child .cat-gauge{grid-area:gauge;width:96px}
+  .cat:last-child .cat-gauge{grid-area:gauge;width:92px;max-width:92px}
   .cat:last-child .cat-linhas{grid-area:numeros;margin-top:0}
 }
 </style>
@@ -651,12 +656,15 @@ function esconderDica(){ $('dica').style.display = 'none'; }
 function gauge(p, cor){
   // semicírculo de 180°, igual ao do painel: trilho branco e o arco da cor
   var pc = p == null ? 0 : Math.max(0, Math.min(p, 100));
-  var R = 34, cx = 44, cy = 40, C = Math.PI * R;
+  var C = Math.PI * 34;
   var arco = C * pc / 100;
-  return '<svg viewBox="0 0 88 48" role="img" aria-label="' + esc(pct(p)) + ' da meta">' +
+  var rotulo = pct(p);
+  return '<svg viewBox="0 0 88 45" role="img" aria-label="' + esc(pct(p)) + ' da meta">' +
     '<path d="M10 40 A 34 34 0 0 1 78 40" fill="none" stroke="rgba(255,255,255,.88)" stroke-width="9" stroke-linecap="butt"/>' +
     '<path d="M10 40 A 34 34 0 0 1 78 40" fill="none" stroke="' + cor + '" stroke-width="9" stroke-linecap="butt" ' +
       'stroke-dasharray="' + arco.toFixed(1) + ' ' + (C - arco).toFixed(1) + '"/>' +
+    '<text class="gpct" x="44" y="36" text-anchor="middle" font-size="' +
+      (rotulo.length >= 7 ? 10.5 : rotulo.length >= 6 ? 12 : 13) + '">' + esc(rotulo) + '</text>' +
     '</svg>';
 }
 
@@ -669,8 +677,7 @@ function cartoes(prepostos){
       '<div class="cat-ico"><svg viewBox="0 0 24 24" aria-hidden="true">' + ICONES[c.ico] + '</svg></div>' +
       '<div class="cat-dados">' +
         '<div class="cat-nome">' + c.nome + '</div>' +
-        '<div class="cat-gauge">' + gauge(t.pct, c.cor) +
-          '<div class="cat-pct num">' + pct(t.pct) + '</div></div>' +
+        '<div class="cat-gauge">' + gauge(t.pct, c.cor) + '</div>' +
         '<div class="cat-linhas">' +
           'Real: <b class="num">' + fmt(t.real) + '</b><br>' +
           'Meta: <b class="num">' + fmt(t.meta) + '</b><br>' +
@@ -818,9 +825,9 @@ function graficoTempo(){
     return '<g class="barra-mes" data-dica=\'' + esc(JSON.stringify(dica)) + '\'>' +
       '<rect x="' + x + '" y="' + y(d.real) + '" width="' + lb + '" height="' + h + '" fill="' + cor + '" rx="1"' +
         (sel ? ' stroke="#fff" stroke-width="1.5"' : '') + '/>' +
-      '<text x="' + (x + lb / 2) + '" y="' + (y(0) + 13) + '" text-anchor="middle" font-size="10" fill="' + (sel ? '#fff' : 'var(--tinta2)') + '">' +
+      '<text class="r-pct" x="' + (x + lb / 2) + '" y="' + (y(0) + 13) + '" text-anchor="middle" fill="' + (sel ? '#fff' : 'var(--tinta2)') + '">' +
         (d.pct == null ? '' : Math.round(d.pct) + '%') + '</text>' +
-      '<text x="' + (x + lb / 2) + '" y="' + (y(0) + 26) + '" text-anchor="middle" font-size="10.5" fill="' + (sel ? '#fff' : 'var(--tinta3)') + '">' + d.rot + '</text>' +
+      '<text class="r-mes" x="' + (x + lb / 2) + '" y="' + (y(0) + 26) + '" text-anchor="middle" fill="' + (sel ? '#fff' : 'var(--tinta3)') + '">' + d.rot + '</text>' +
       '</g>';
   }).join('');
 
