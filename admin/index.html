@@ -1276,6 +1276,36 @@
     </div>
   </div>
 
+  <style>
+    /* Busca de cliente na correção do pedido: a mesma base que a vitrine
+       usa, com a lista aparecendo embaixo do campo. */
+    .adm-cli-cx{ position:relative; }
+    /* a lista flutua sobre os outros campos, então o fundo precisa ser opaco:
+       no escuro o --card é translúcido e deixaria o Prazo aparecer por trás */
+    .adm-cli-lista{ position:absolute; z-index:5; left:0; right:0; top:calc(100% + 4px);
+      max-height:246px; overflow:auto; border:1px solid var(--line); border-radius:18px;
+      background:#fff; box-shadow:0 18px 44px rgba(15,23,42,.18); padding:5px; }
+    .dark .adm-cli-lista{ background:#151e38; box-shadow:0 18px 44px rgba(0,0,0,.6); }
+    .adm-cli-lista[hidden]{ display:none; }
+    .adm-cli-item{ display:block; width:100%; text-align:left; cursor:pointer; border:0;
+      background:none; border-radius:13px; padding:8px 11px; font:inherit; color:var(--text); }
+    .adm-cli-item:hover, .adm-cli-item.on{ background:var(--muted-soft); }
+    .adm-cli-item b{ display:block; font-size:13px; font-weight:700; }
+    .adm-cli-item span{ font-size:11px; color:var(--muted); font-weight:600; }
+    .adm-cli-vazio{ padding:10px 12px; font-size:12.5px; color:var(--muted); font-weight:600; }
+    .adm-cli-dica{ margin-top:8px; font-size:12.5px; font-weight:600; color:var(--muted);
+      display:flex; align-items:center; gap:8px; flex-wrap:wrap; line-height:1.45; }
+    .adm-cli-dica > span{ flex:1 1 auto; min-width:0; }
+    .adm-cli-dica[hidden]{ display:none; }
+    .adm-cli-usar{ border:0; cursor:pointer; border-radius:999px; padding:5px 13px;
+      font-size:12px; font-weight:800; background:var(--brand); color:#fff; white-space:nowrap; }
+    .adm-cli-usar:hover{ filter:brightness(1.06); }
+    .adm-cli-novo{ display:inline-flex; align-items:center; gap:6px; border:0; cursor:pointer;
+      border-radius:999px; padding:4px 11px; font-size:11.5px; font-weight:700; white-space:nowrap;
+      background:var(--warning-soft); color:var(--warning); font-family:inherit; }
+    .adm-cli-novo:hover{ filter:brightness(.97); }
+  </style>
+
   <!-- ── CORRIGIR O PEDIDO ────────────────────────────────────────────────
        O vendedor erra o prazo e pede alteração; até aqui a CMS só marcava a
        solicitação como resolvida e corrigia por fora, e o pedido na vitrine
@@ -1298,6 +1328,18 @@
              style="background:var(--warning-soft);color:var(--warning)"></div>
 
         <div class="mt-4 grid gap-4">
+          <div>
+            <label class="text-xs font-bold uppercase tracking-[.18em] text-slate-500" style="color:var(--muted)">Cliente</label>
+            <div id="editarPedidoCliAtual" class="mt-2 text-sm font-bold"></div>
+            <div class="adm-cli-cx">
+              <input id="editarPedidoCliBusca" type="search" autocomplete="off"
+                     class="focus-ring mt-2 w-full rounded-[20px] border border-slate-200 px-4 py-3 text-sm font-semibold"
+                     style="background:var(--card);border-color:var(--line);color:var(--text)"
+                     placeholder="Trocar: digite o código ou o nome">
+              <div id="editarPedidoCliLista" class="adm-cli-lista" hidden></div>
+            </div>
+            <div id="editarPedidoCliDica" class="adm-cli-dica" hidden></div>
+          </div>
           <div>
             <label class="text-xs font-bold uppercase tracking-[.18em] text-slate-500" style="color:var(--muted)">Prazo</label>
             <select id="editarPedidoPrazo" class="focus-ring mt-2 w-full rounded-[20px] border border-slate-200 px-4 py-3 text-sm font-semibold"
@@ -2515,12 +2557,268 @@ const PRAZOS = [
 ];
 const CAMPANHAS = ['CO681 +28DD OLY','CO689 +56DD OLY','CO684 +28DD UA','CO690 +56DD UA'];
 
+// ── BASE DE CLIENTES (para trocar o cliente do pedido) ────────────────────────
+// Mesmo mecanismo da vitrine de repasses: o Worker guarda um arquivo por
+// vendedor (data/clientes/<codigo>.json) e aqui, no admin, sempre precisamos de
+// todas as bases — o pedido corrigido pode ser de qualquer vendedor.
+// O cache é o mesmo da vitrine (mesma origem), então quem já abriu a vitrine
+// hoje não espera nada.
+const CLI_CACHE_KEY = 'repasse_clientes_cache_v2';
+const CLI_TTL_MS = 12 * 60 * 60 * 1000;
+const CLI_LIMITE = 40;
+const CLI = { lista:[], prontos:false, carregando:false, matches:[], ativo:-1, sel:null, totalAchados:0 };
+
+// normalizeText do admin só apara espaços; para buscar por nome precisamos de
+// minúsculas e sem acento, como a vitrine faz.
+function cliChave(v){
+  return String(v ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+
+function cliLerCache(){
+  try{
+    const all = JSON.parse(localStorage.getItem(CLI_CACHE_KEY) || '{}');
+    const entry = all['todos'];
+    if(!entry || !Array.isArray(entry.clientes)) return null;
+    if(Date.now() - (entry.ts || 0) > CLI_TTL_MS) return null;
+    return entry.clientes;
+  }catch(_){ return null; }
+}
+function cliGravarCache(clientes){
+  try{
+    const all = JSON.parse(localStorage.getItem(CLI_CACHE_KEY) || '{}');
+    all['todos'] = { ts: Date.now(), clientes };
+    localStorage.setItem(CLI_CACHE_KEY, JSON.stringify(all));
+  }catch(_){ /* cota cheia: segue sem cache, só fica mais lento */ }
+}
+
+async function cliPatch(body){
+  const res = await fetch(WORKER_URL, {
+    method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+  });
+  if(!res.ok) throw new Error(`Worker PATCH falhou (${res.status})`);
+  return res.json();
+}
+
+async function cliCarregar(){
+  if(CLI.prontos || CLI.carregando) return;
+  const cache = cliLerCache();
+  if(cache && cache.length){
+    CLI.lista = cache; CLI.prontos = true;
+    cliPlaceholder();
+    if(_editarId) cliPintarDica();
+    return;
+  }
+
+  CLI.carregando = true;
+  cliPlaceholder();
+  try{
+    let codigos = [];
+    try{
+      const list = await cliPatch({ action:'listClientesVendedores' });
+      codigos = Array.isArray(list?.vendedores)
+        ? list.vendedores.map(v => String(v.codigo || '').trim()).filter(Boolean) : [];
+    }catch(_){ codigos = []; }
+    if(!codigos.length) codigos = Object.keys(PREPOSTO_NAME_BY_CODE);
+
+    // Falha de UMA base não pode passar por sucesso: se faltou alguém, não
+    // guardamos em cache nem marcamos como pronto: na próxima vez tenta de novo.
+    const falhas = [];
+    const buscar = async (codigo, tentativa) => {
+      try{
+        const json = await cliPatch({ action:'getClientes', vendedor: codigo });
+        const lista = Array.isArray(json?.clientes) ? json.clientes : [];
+        return lista.map(c => ({ ...c, _vend: PREPOSTO_NAME_BY_CODE[codigo] || codigo }));
+      }catch(err){
+        if(tentativa < 2) return buscar(codigo, tentativa + 1);
+        falhas.push(PREPOSTO_NAME_BY_CODE[codigo] || codigo);
+        return [];
+      }
+    };
+    const partes = await Promise.all(codigos.map(c => buscar(c, 1)));
+    CLI.lista = partes.flat();
+    CLI.prontos = !falhas.length && CLI.lista.length > 0;
+    if(CLI.prontos) cliGravarCache(CLI.lista);
+    if(falhas.length) console.warn('Bases de clientes que falharam:', falhas.join(', '));
+  }catch(err){
+    console.warn('Base de clientes indisponível:', err);
+  }finally{
+    CLI.carregando = false;
+    cliPlaceholder();
+    if(_editarId) cliPintarDica();
+  }
+}
+
+function cliPlaceholder(){
+  const input = $('editarPedidoCliBusca');
+  if(!input) return;
+  if(CLI.carregando){ input.placeholder = 'Carregando a base de clientes...'; return; }
+  const n = CLI.lista.length;
+  input.placeholder = n
+    ? `Trocar: digite o código ou o nome (${n.toLocaleString('pt-BR')} clientes)`
+    : 'Trocar: digite o código ou o nome';
+}
+
+function cliBuscar(termo){
+  const q = cliChave(termo);
+  if(!q) return [];
+  const soDigitos = /^\d+$/.test(q);
+  const achados = [];
+  for(const c of CLI.lista){
+    const cod = String(c.codigo ?? '').trim();
+    const nome = cliChave(c.nome);
+    let score = -1;
+    if(soDigitos){
+      if(cod === q) score = 0;
+      else if(cod.startsWith(q)) score = 1;
+      else if(cod.includes(q)) score = 2;
+      else if(nome.includes(q)) score = 4;
+    }else{
+      if(nome.startsWith(q)) score = 0;
+      else if(nome.includes(q)) score = 2;
+    }
+    if(score >= 0) achados.push({ c, score });
+  }
+  achados.sort((a,b)=> a.score - b.score || String(a.c.nome||'').localeCompare(String(b.c.nome||'')));
+  CLI.totalAchados = achados.length;
+  return achados.slice(0, CLI_LIMITE).map(x => x.c);
+}
+
+function cliFecharSug(){
+  const box = $('editarPedidoCliLista');
+  if(box){ box.hidden = true; box.innerHTML = ''; }
+  CLI.matches = []; CLI.ativo = -1;
+}
+
+function cliPintarSug(){
+  const box = $('editarPedidoCliLista');
+  if(!box) return;
+  const termo = $('editarPedidoCliBusca').value.trim();
+  if(!termo){ cliFecharSug(); return; }
+  if(!CLI.lista.length){
+    box.innerHTML = `<div class="adm-cli-vazio">${CLI.carregando ? 'Carregando a base...' : 'Base de clientes indisponível.'}</div>`;
+    box.hidden = false; return;
+  }
+  CLI.matches = cliBuscar(termo);
+  CLI.ativo = CLI.matches.length ? 0 : -1;
+  if(!CLI.matches.length){
+    box.innerHTML = `<div class="adm-cli-vazio">Nenhum cliente com “${safeHtml(termo)}”.</div>`;
+    box.hidden = false; return;
+  }
+  const sobra = CLI.totalAchados - CLI.matches.length;
+  box.innerHTML = CLI.matches.map((c, i) => {
+    const cod = safeHtml(String(c.codigo ?? ''));
+    const nome = safeHtml(c.nome || 'sem nome');
+    const onde = [c.cidade, c.estado].filter(Boolean).join('/');
+    const pe = [onde, c._vend ? `base de ${c._vend}` : ''].filter(Boolean).join(' · ');
+    return `<button type="button" class="adm-cli-item${i === 0 ? ' on' : ''}" data-i="${i}">
+      <b>${cod} — ${nome}</b><span>${safeHtml(pe)}</span></button>`;
+  }).join('') + (sobra > 0 ? `<div class="adm-cli-vazio">+${sobra} — refine a busca</div>` : '');
+  box.hidden = false;
+}
+
+function cliMover(passo){
+  if(!CLI.matches.length) return;
+  CLI.ativo = (CLI.ativo + passo + CLI.matches.length) % CLI.matches.length;
+  const box = $('editarPedidoCliLista');
+  [...box.querySelectorAll('.adm-cli-item')].forEach((el, i) => {
+    el.classList.toggle('on', i === CLI.ativo);
+    if(i === CLI.ativo) el.scrollIntoView({ block:'nearest' });
+  });
+}
+
+function cliEscolher(i){
+  const c = CLI.matches[i];
+  if(!c) return;
+  CLI.sel = { codigo: String(c.codigo ?? '').trim(), nome: String(c.nome || '').trim(), vend: c._vend || '' };
+  $('editarPedidoCliBusca').value = '';
+  cliFecharSug();
+  cliPintarAtual();
+}
+
+// O vendedor costuma escrever o código novo no próprio pedido de alteração
+// ("usar o código 4603326"). Em vez de fazer o admin digitar de novo, esse
+// código vira um atalho — mas só quando ele existe mesmo na base.
+function cliCodigoCitado(sol){
+  if(!sol || sol.tipo === 'cancelar') return '';
+  const texto = `${sol.motivo || ''} ${sol.texto || ''}`;
+  const nums = texto.match(/\d{4,}/g) || [];
+  const order = STATE.orders.find(o => o.id === _editarId);
+  const atualCod = order ? normalizeOrder(order).clienteCodigo : '';
+  return nums.find(n => n !== atualCod) || '';
+}
+
+function cliPintarDica(){
+  const el = $('editarPedidoCliDica');
+  if(!el) return;
+  const order = STATE.orders.find(o => o.id === _editarId);
+  const cod = order ? cliCodigoCitado(solicitacaoAberta(normalizeOrder(order))) : '';
+  if(!cod || CLI.sel){ el.hidden = true; el.innerHTML = ''; return; }
+  const achado = CLI.lista.find(c => String(c.codigo ?? '').trim() === cod);
+  // a frase vai num <span> só: o flex do quadro quebraria o texto em pedaços
+  if(CLI.carregando || !CLI.lista.length){
+    el.innerHTML = `<span>O vendedor citou o código <b>${safeHtml(cod)}</b> — conferindo na base…</span>`;
+  }else if(achado){
+    el.innerHTML = `<span>O vendedor citou <b>${safeHtml(cod)} — ${safeHtml(achado.nome || 'sem nome')}</b></span>` +
+      `<button type="button" id="editarPedidoCliUsar" class="adm-cli-usar">usar este cliente</button>`;
+  }else{
+    el.innerHTML = `<span>O vendedor citou o código <b>${safeHtml(cod)}</b>, que não está na base — busque pelo nome.</span>`;
+  }
+  el.hidden = false;
+  $('editarPedidoCliUsar')?.addEventListener('click', () => {
+    CLI.sel = { codigo: cod, nome: String(achado.nome || '').trim(), vend: achado._vend || '' };
+    cliFecharSug();
+    cliPintarAtual();
+  });
+}
+
+function cliPintarAtual(){
+  const el = $('editarPedidoCliAtual');
+  if(!el) return;
+  const order = STATE.orders.find(o => o.id === _editarId);
+  const atual = order ? normalizeOrder(order) : {};
+  const antes = `${safeHtml(atual.clienteCodigo || '—')} — ${safeHtml(atual.clienteNome || 'sem nome')}`;
+  cliPintarDica();
+  if(!CLI.sel){ el.innerHTML = antes; return; }
+  el.innerHTML = `<span style="opacity:.55;text-decoration:line-through">${antes}</span>` +
+    `<span style="margin:0 6px">→</span>` +
+    `<span>${safeHtml(CLI.sel.codigo)} — ${safeHtml(CLI.sel.nome || 'sem nome')}</span>` +
+    `<button type="button" id="editarPedidoCliDesfaz" class="adm-cli-novo" title="Voltar para o cliente original">` +
+    `<i class="fa-solid fa-rotate-left"></i> desfazer</button>`;
+  $('editarPedidoCliDesfaz')?.addEventListener('click', () => { CLI.sel = null; cliPintarAtual(); });
+}
+
+$('editarPedidoCliBusca').addEventListener('input', cliPintarSug);
+$('editarPedidoCliBusca').addEventListener('focus', () => { cliCarregar(); cliPintarSug(); });
+$('editarPedidoCliBusca').addEventListener('keydown', e => {
+  if(e.key === 'ArrowDown'){ e.preventDefault(); cliMover(1); }
+  else if(e.key === 'ArrowUp'){ e.preventDefault(); cliMover(-1); }
+  else if(e.key === 'Enter'){
+    if(CLI.ativo >= 0){ e.preventDefault(); cliEscolher(CLI.ativo); }
+  }
+  else if(e.key === 'Escape'){
+    if(!$('editarPedidoCliLista').hidden){ e.stopPropagation(); cliFecharSug(); }
+  }
+});
+// mousedown no botão tiraria o foco do campo antes do clique
+$('editarPedidoCliLista').addEventListener('mousedown', e => e.preventDefault());
+$('editarPedidoCliLista').addEventListener('click', e => {
+  const btn = e.target.closest('.adm-cli-item');
+  if(btn) cliEscolher(Number(btn.dataset.i));
+});
+
 let _editarId = null;
 function abrirEdicaoPedido(id){
   const order = STATE.orders.find(o => o.id === id);
   if(!order){ showToast('Pedido não encontrado.', 'error'); return; }
   const atual = normalizeOrder(order);
   _editarId = id;
+
+  CLI.sel = null;
+  $('editarPedidoCliBusca').value = '';
+  cliFecharSug();
+  cliPintarAtual();
+  cliPlaceholder();
+  cliCarregar();
 
   $('editarPedidoQuem').textContent =
     `${atual.clienteNome || atual.clienteCodigo || 'cliente'} · ${atual.preposto?.nome || '—'} · ${formatDateTime(atual.createdAt)}`;
@@ -2563,6 +2861,8 @@ function abrirEdicaoPedido(id){
 }
 function fecharEdicaoPedido(){
   _editarId = null;
+  CLI.sel = null;
+  cliFecharSug();
   $('editarPedidoModal').classList.add('hidden');
   document.body.style.overflow = '';
 }
@@ -2578,16 +2878,29 @@ async function salvarEdicaoPedido(){
     campanha: sanitizeDisplayText($('editarPedidoCampanha').value),
     observacoes: sanitizeDisplayText($('editarPedidoObs').value)
   };
+  // O cliente só entra se o admin escolheu outro na lista: digitar sem escolher
+  // não troca nada, para nunca gravar um código que não existe na base.
+  if(CLI.sel && CLI.sel.codigo && CLI.sel.codigo !== (atual.clienteCodigo || '')){
+    novo.clienteCodigo = sanitizeDisplayText(CLI.sel.codigo);
+    novo.clienteNome = sanitizeDisplayText(CLI.sel.nome);
+  }
   const ROT = { prazo:'Prazo', campanha:'Campanha', observacoes:'Observações' };
   const mudou = Object.keys(ROT)
     .filter(k => (atual[k] || '') !== novo[k])
     .map(k => `${ROT[k]}: ${atual[k] || '—'} → ${novo[k] || '—'}`);
+  // Código e nome andam juntos: uma linha só, para o vendedor ler de uma vez.
+  if(novo.clienteCodigo !== undefined){
+    const quem = (cod, nome) => nome ? `${cod} — ${nome}` : (cod || '—');
+    mudou.unshift(`Cliente: ${quem(atual.clienteCodigo, atual.clienteNome)} → ${quem(novo.clienteCodigo, novo.clienteNome)}`);
+  }
 
   const sol = solicitacaoAberta(atual);
   const resolver = sol && sol.tipo !== 'cancelar' && $('editarPedidoResolver').checked;
   if(!mudou.length && !resolver){ showToast('Nada mudou no pedido.', 'info'); return; }
 
   const base = { ...atual, ...novo };
+  // campo legado: se o pedido ainda traz `cliente`, ele acompanha o código novo
+  if(novo.clienteCodigo && 'cliente' in base) base.cliente = novo.clienteCodigo;
   const nota = mudou.join(' · ');
   if(resolver){
     base.solicitacao = { ...sol, estado:'atendida',
