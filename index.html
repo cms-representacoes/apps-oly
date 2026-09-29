@@ -1215,18 +1215,27 @@
 
     var pct = Number(alvo.ratio || 0).toFixed(1).replace('.', ',') + '%';
     var eleg = !!alvo.elegivel;
-    // "atualizado" vem como DD/MM. Se não for hoje, o número na tela é de
-    // outro dia — e sem dizer isso o vendedor decide em cima de dado velho.
+
+    // A data que vale é a da BASE do painel de performance (quando a
+    // planilha foi publicada), e não a hora em que este resumo foi gravado:
+    // um resumo republicado hoje pode estar repetindo números de semana
+    // passada. `base` vem em ISO; `atualizado` é a data do commit, e só
+    // serve de reserva enquanto o painel não publica o formato novo.
     var hoje = new Date();
+    var quando = dados.base ? new Date(dados.base) : null;
+    if(quando && isNaN(quando.getTime())) quando = null;
+    var rotulo = dados.baseRotulo || String(dados.atualizado || '');
     var hojeDDMM = ('0' + hoje.getDate()).slice(-2) + '/' + ('0' + (hoje.getMonth() + 1)).slice(-2);
-    var doDia = String(dados.atualizado || '').indexOf(hojeDDMM) === 0;
+    var doDia = quando ? quando.toDateString() === hoje.toDateString()
+                       : rotulo.indexOf(hojeDDMM) === 0;
     chip.className = 'cc-chip ' + (eleg ? 'cc-ok' : 'cc-no') + (doDia ? '' : ' cc-velho');
     chip.querySelector('.cc-txt').textContent = 'C. Campanha · ' + pct + ' ' + (eleg ? '✓' : '✗') +
-      (doDia ? '' : ' · ' + String(dados.atualizado || '').split(' ')[0]);
+      (doDia ? '' : ' · ' + rotulo.split(' ')[0]);
     chip.title = 'Carta campanha: ' + (eleg ? 'elegível' : 'não elegível') +
                  ' · ' + pct + ' de participação FTW · meta ' + dados.meta + '%' +
                  (dados.trimestre ? ' · ' + dados.trimestre : '') +
-                 (dados.atualizado ? ' · atualizado em ' + dados.atualizado : '');
+                 (rotulo ? ' · dados de ' + rotulo : '') +
+                 (dados.base && dados.atualizado ? ' · resumo publicado em ' + dados.atualizado : '');
     chip.hidden = false;
   }
 
