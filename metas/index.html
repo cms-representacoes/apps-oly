@@ -265,6 +265,10 @@ table.m tbody tr.escolhida td:first-child{background:#17518f;box-shadow:inset 3p
 var SESSION_KEY = 'cms_portal_session_v1';     // a mesma do portal
 var LOCAL_KEY = 'cms_metas_v1';                // o que este aparelho importou
 var MANDA_EM_TUDO = ['CMS', 'MARCOS (DEV)'];   // veem todo mundo e importam
+// Enquanto a tela está em prova, só quem desenvolve entra — nem a CMS,
+// nem os vendedores. Para abrir para todo mundo, troque para false.
+var SO_DEV = true;
+var NOME_DEV = 'MARCOS (DEV)';
 
 function sessao(){
   try{
@@ -964,9 +968,16 @@ function porta(){
     '<a class="btn primario" href="../index.html">Ir para o portal</a></div>';
 }
 
+function emProva(){
+  $('corpo').innerHTML = '<div class="porta"><h2>Em preparação</h2>' +
+    '<p>A tela de metas ainda está em testes. Quando estiver pronta, ela aparece no portal para todo mundo.</p>' +
+    '<a class="btn primario" href="../index.html">Voltar ao portal</a></div>';
+}
+
 function iniciar(){
   S = sessao();
   if(!S){ porta(); return; }
+  if(SO_DEV && nomeNormal(S.nome) !== nomeNormal(NOME_DEV)){ emProva(); return; }
   TUDO = mandaEmTudo(S);
   $('btnImportar').hidden = !TUDO;
   $('btnBaixar').hidden = !TUDO;
