@@ -17,6 +17,7 @@ um mês que não aparece mais na exportação continua disponível.
 """
 import datetime as dt
 import json
+import re
 import os
 import sys
 import warnings
@@ -90,8 +91,12 @@ def codigo(v):
 
 
 def marca_da_carta(nome_carta):
-    """'OLY 2026' -> 'OLY'; 'UA 2026' -> 'UA'."""
-    return (nome_carta.split() or ["?"])[0].upper()
+    """'OLY 2026' -> 'OLY'; 'OLY_2026' -> 'OLY'; 'UA 2026' -> 'UA'.
+
+    A Vulcabras escreveu 'OLY_2026' até junho/26 e 'OLY 2026' de julho em
+    diante: sem cortar nos dois separadores, o mesmo ano viraria duas
+    marcas e o histórico ficaria partido."""
+    return re.split(r"[\s_]+", nome_carta.strip() or "?")[0].upper()
 
 
 def familia(cod_marca, marca):
