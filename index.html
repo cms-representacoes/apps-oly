@@ -485,6 +485,24 @@
     .welcome-chip svg{width:13px;height:13px;color:#64748b;flex:none}
     @media (hover:hover){ .welcome-chip:hover svg{color:#a5b4fc} }
     .admin-only[hidden]{display:none !important}
+    /* Aplicativo em obra: aparece só para quem desenvolve. Quando estiver
+       pronto, é só tirar a classe dev-only do card. */
+    .dev-only[hidden]{display:none !important}
+    .dev-faixa{ display:flex; align-items:center; gap:10px; width:100%; max-width:56rem;
+      margin:18px auto 0; padding:0 2px; }
+    .dev-faixa .linha{ flex:1; height:1px; background:linear-gradient(90deg,transparent,#253248,transparent); }
+    .dev-faixa .rot{ display:inline-flex; align-items:center; gap:7px; font-size:10.5px; font-weight:800;
+      letter-spacing:.14em; text-transform:uppercase; color:#34d399; white-space:nowrap; }
+    .dev-faixa .rot svg{ width:13px; height:13px; }
+    .card-dev{ background:linear-gradient(150deg,#132b2a 0%,#0d1f2a 48%,#070f1a 100%);
+      border:1px dashed rgba(52,211,153,.42); }
+    .card-dev::before{ content:'';position:absolute;inset:0;
+      background:radial-gradient(ellipse at 82% 14%, rgba(52,211,153,.16) 0%, transparent 62%); pointer-events:none; }
+    @media (hover:hover){ .card-dev:hover{ border-color:rgba(52,211,153,.8);
+      box-shadow:0 24px 64px rgba(6,95,70,.45); } }
+    .tag-dev{ background:rgba(52,211,153,.16); color:#34d399; border:1px solid rgba(52,211,153,.3); }
+    .selo-dev{ position:absolute; top:12px; right:12px; z-index:2; padding:2px 8px; border-radius:999px;
+      background:rgba(52,211,153,.14); color:#34d399; font-size:9.5px; font-weight:800; letter-spacing:.1em; }
 
     /* Carta campanha — situação do vendedor logado, no cabeçalho */
     .cc-chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;
@@ -724,6 +742,63 @@
         <div class="portal-card-title"><span class="pc-ico tag-gerador"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></span><span class="pc-nome">Encomendas</span></div>
         <div class="portal-card-desc" style="color:#fed7aa">Da planilha da carteira ao PDF do cliente.</div>
         <div class="portal-card-cta" style="color:#fdba74">
+          Acessar
+          <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </a>
+
+    </div>
+
+    <!-- ═══ EM DESENVOLVIMENTO ═══════════════════════════════════════════
+         Fila dos aplicativos que ainda não foram liberados para a equipe.
+         Só quem desenvolve enxerga (classe dev-only); para soltar um deles,
+         tira-se a classe do card e ele passa para a grade de cima. -->
+    <div class="dev-faixa dev-only fade-up-3" hidden>
+      <span class="linha"></span>
+      <span class="rot">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 8-4 4 4 4"/><path d="m16 8 4 4-4 4"/><path d="m13.5 6-3 12"/></svg>
+        Em desenvolvimento
+      </span>
+      <span class="linha"></span>
+    </div>
+
+    <div id="gradeDev" class="dev-only w-full max-w-4xl grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-5 fade-up-3 mt-3" hidden>
+
+      <a href="https://cms-representacoes.github.io/apps-oly-v2/detalhada/" class="portal-card card-dev focus-ring">
+        <span class="selo-dev">DEV</span>
+        <div class="portal-card-title"><span class="pc-ico tag-dev"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 5h16M4 12h16M4 19h10"/></svg></span><span class="pc-nome">Detalhada</span></div>
+        <div class="portal-card-desc" style="color:#a7f3d0">Carteira e faturamento por produto, com RFV e reativação.</div>
+        <div class="portal-card-cta" style="color:#6ee7b7">
+          Acessar
+          <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </a>
+
+      <a href="https://cms-representacoes.github.io/apps-oly-v2/analise-giro/" class="portal-card card-dev focus-ring">
+        <span class="selo-dev">DEV</span>
+        <div class="portal-card-title"><span class="pc-ico tag-dev"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v6h-6"/><path d="M12 8v4l3 2"/></svg></span><span class="pc-nome">Análise de Giro</span></div>
+        <div class="portal-card-desc" style="color:#a7f3d0">Venda e estoque do cliente, mês a mês, com a carteira ao lado.</div>
+        <div class="portal-card-cta" style="color:#6ee7b7">
+          Acessar
+          <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </a>
+
+      <a href="https://cms-representacoes.github.io/apps-oly-v2/carteira/" class="portal-card card-dev focus-ring">
+        <span class="selo-dev">DEV</span>
+        <div class="portal-card-title"><span class="pc-ico tag-dev"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M16 12h4"/></svg></span><span class="pc-nome">Carteira</span></div>
+        <div class="portal-card-desc" style="color:#a7f3d0">Gestão da carteira comercial, com as ações por encomenda.</div>
+        <div class="portal-card-cta" style="color:#6ee7b7">
+          Acessar
+          <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </a>
+
+      <a href="https://cms-representacoes.github.io/apps-oly-v2/painel-tv/" class="portal-card card-dev focus-ring">
+        <span class="selo-dev">DEV</span>
+        <div class="portal-card-title"><span class="pc-ico tag-dev"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span><span class="pc-nome">Painel TV</span></div>
+        <div class="portal-card-desc" style="color:#a7f3d0">O quadro do escritório: números do dia em tela cheia.</div>
+        <div class="portal-card-cta" style="color:#6ee7b7">
           Acessar
           <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </div>
@@ -1192,12 +1267,14 @@
     var welcomeBar = document.getElementById('welcomeBar');
     var welcomeTxt = document.getElementById('welcomeTxt');
     var adminEls = document.querySelectorAll('.admin-only');
+    var devEls = document.querySelectorAll('.dev-only');
 
     if(!session){
       abrirLogin();
       welcomeBar.hidden = true;
       carregarCartaCampanha(null);
       Array.prototype.forEach.call(adminEls, function(el){ el.hidden = true; });
+      Array.prototype.forEach.call(devEls, function(el){ el.hidden = true; });
       return;
     }
 
@@ -1208,6 +1285,9 @@
 
     var isCms = temTudoLiberado(session.nome);
     Array.prototype.forEach.call(adminEls, function(el){ el.hidden = !isCms; });
+    // A fila do que está em obra é só de quem desenvolve.
+    var ehDev = String(session.nome || '').trim().toUpperCase() === 'MARCOS (DEV)';
+    Array.prototype.forEach.call(devEls, function(el){ el.hidden = !ehDev; });
     medirFabs();   // o botao da vitrine entra e sai da fila
   }
 
