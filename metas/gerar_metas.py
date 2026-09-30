@@ -332,8 +332,23 @@ def combinar(antigo, novo):
                 novo["prepostos"].append(destino)
             destino["linhas"].append(l)
     if novo.get("so_realizado") and antigo.get("origem"):
-        novo["origem"] = antigo["origem"] + " + " + novo["origem"]
+        novo["origem"] = juntar_origem(antigo["origem"], novo["origem"])
     return novo
+
+
+def juntar_origem(antiga, nova):
+    """Soma as fontes sem repetir nome.
+
+    O robô roda todo dia com o mesmo arquivo do mês; emendando às cegas,
+    em um mês o rodapé da tela viraria um parágrafo.
+    """
+    partes = []
+    for texto in (antiga, nova):
+        for parte in str(texto or "").split(" + "):
+            parte = parte.strip()
+            if parte and parte not in partes:
+                partes.append(parte)
+    return " + ".join(partes)
 
 
 def juntar(base, novos):
