@@ -51,7 +51,11 @@ button,select,input{font:inherit;color:inherit}
   box-shadow:0 4px 14px rgba(124,58,237,.4)}
 .titulo{display:flex;align-items:center;gap:10px;font-size:21px;font-weight:600;letter-spacing:.01em}
 .titulo::before{content:"";width:2px;height:24px;background:rgba(255,255,255,.55);border-radius:2px}
-.topo-dir{margin-left:auto;display:flex;align-items:center;gap:8px}
+.tit-bloco{display:flex;flex-direction:column;gap:1px;min-width:0}
+/* Discreta de proposito: quem olha o painel quer o numero, nao a hora.
+   So precisa estar ali quando bater a duvida de "isso e de hoje?". */
+.atual{padding-left:12px;font-size:11px;line-height:1.2;color:var(--tinta3)}
+.topo-dir{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .btn{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(255,255,255,.35);
   background:rgba(255,255,255,.10);color:#fff;border-radius:6px;padding:7px 12px;
   font-size:12.5px;font-weight:600;cursor:pointer;text-decoration:none}
@@ -60,6 +64,10 @@ button,select,input{font:inherit;color:inherit}
 .btn.primario:hover{background:#e8f1ff}
 .btn[hidden]{display:none}
 .btn svg{width:15px;height:15px;flex:none}
+.btn.so-icone{padding:7px 9px}
+.btn.so-icone[aria-expanded="true"]{background:rgba(255,255,255,.28);border-color:rgba(255,255,255,.6)}
+.acoes{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.acoes[hidden]{display:none}
 
 /* ── Filtros ────────────────────────────────────────────────────────── */
 .filtros{display:flex;flex-wrap:wrap;gap:8px 10px;margin-bottom:12px}
@@ -189,6 +197,7 @@ table.m tbody tr.escolhida td:first-child{background:#17518f;box-shadow:inset 3p
 @media (max-width:720px){
   body{font-size:12.5px;padding-inline:max(10px,env(safe-area-inset-left)) max(10px,env(safe-area-inset-right))}
   .titulo{font-size:17px}
+  .atual{padding-left:10px;font-size:10px}
   .topo{gap:8px;margin-bottom:8px}
   .cartoes{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .cat{min-height:98px}
@@ -237,8 +246,16 @@ table.m tbody tr.escolhida td:first-child{background:#17518f;box-shadow:inset 3p
     <a class="marca" href="../index.html" aria-label="Voltar ao portal">
       <span class="cms-badge">CMS</span>
     </a>
-    <h1 class="titulo">Metas Preposto</h1>
+    <div class="tit-bloco">
+      <h1 class="titulo">Metas Preposto</h1>
+      <span class="atual" id="atual" hidden></span>
+    </div>
     <div class="topo-dir">
+      <button class="btn so-icone" id="btnAcoes" type="button" hidden
+        aria-expanded="false" aria-controls="acoes" aria-label="Mostrar importação" title="Mostrar importação">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></svg>
+      </button>
+      <div class="acoes" id="acoes" hidden>
       <button class="btn primario" id="btnMetas" type="button" hidden title="Carta Campanha · Simples Conferência, ou o Acompanhamento de Metas — traz a meta do mês">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>
         Metas
@@ -251,6 +268,7 @@ table.m tbody tr.escolhida td:first-child{background:#17518f;box-shadow:inset 3p
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg>
         JSON
       </button>
+      </div>
       <a class="btn" href="../index.html">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         Portal
@@ -1029,7 +1047,39 @@ function desenhar(){
   casarCongelada();
   var mes = base.meses.filter(function(m){ return m.mes === E.mes; })[0];
   $('rodape').innerHTML = mes ? 'Fonte: ' + esc(mes.origem) + (mes.visao ? ' · ' + esc(mes.visao) : '') +
-    ' · importado em ' + esc(new Date(mes.importado_em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })) : '';
+    ' · importado em ' + esc(dataHora(mes.importado_em)) : '';
+  marcarAtualizacao(base, mes);
+}
+
+function dataHora(iso){
+  var d = new Date(iso);
+  if(isNaN(d)) return '';
+  return d.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric',
+                                     hour:'2-digit', minute:'2-digit' });
+}
+
+// A hora de quando o dado entrou, no topo e em letra pequena. O mes que
+// esta na tela manda; se ele nao guardou a hora, vale a mais recente que
+// existir na base - alguma coisa e melhor que um topo calado.
+function marcarAtualizacao(base, mes){
+  var el = $('atual');
+  if(!el) return;
+  var quando = mes && mes.importado_em;
+  var doMes = !!quando;
+  if(!quando){
+    base.meses.forEach(function(m){
+      if(m.importado_em && (!quando || m.importado_em > quando)) quando = m.importado_em;
+    });
+  }
+  var texto = dataHora(quando);
+  el.hidden = !texto;
+  if(!texto) return;
+  var hoje = new Date().toLocaleDateString('pt-BR');
+  var curto = texto.slice(0, 10) === hoje ? 'hoje, ' + texto.slice(-5) : texto;
+  el.textContent = 'atualizado ' + curto;
+  el.title = doMes
+    ? 'Dados de ' + (mes.mes || '') + ' importados em ' + texto
+    : 'Importação mais recente da base: ' + texto;
 }
 
 // ── importação ───────────────────────────────────────────────────────────
@@ -1110,6 +1160,10 @@ function iniciar(){
   $('btnMetas').hidden = !TUDO;
   $('btnDiario').hidden = !TUDO;
   $('btnBaixar').hidden = !TUDO;
+  $('btnAcoes').hidden = !TUDO;
+  var lembrado = '0';
+  try{ lembrado = localStorage.getItem(ACOES_KEY) || '0'; }catch(_){}
+  mostrarAcoes(TUDO && lembrado === '1');
   if(!TUDO) E.preposto = S.codigo;
 
   fetch('dados/metas.json?t=' + Date.now(), { cache:'no-store' })
@@ -1140,6 +1194,22 @@ window.addEventListener('scroll', esconderDica, true);
 window.addEventListener('pointerup', function(ev){
   // no celular o toque abre a dica; ela sai sozinha logo depois
   if(ev.pointerType && ev.pointerType !== 'mouse') setTimeout(esconderDica, 2200);
+});
+
+// A fila de botões come a largura do cabeçalho — no celular sobrava um
+// "Porta..." cortado. Agora eles ficam atrás do expansor, e a escolha de
+// deixar aberto fica guardada neste aparelho.
+var ACOES_KEY = 'cms_metas_acoes';
+function mostrarAcoes(abrir){
+  $('acoes').hidden = !abrir;
+  $('btnAcoes').setAttribute('aria-expanded', String(abrir));
+  var rotulo = abrir ? 'Ocultar importação' : 'Mostrar importação';
+  $('btnAcoes').setAttribute('aria-label', rotulo);
+  $('btnAcoes').title = rotulo;
+  try{ localStorage.setItem(ACOES_KEY, abrir ? '1' : '0'); }catch(_){}
+}
+$('btnAcoes').addEventListener('click', function(){
+  mostrarAcoes($('acoes').hidden);
 });
 
 $('btnMetas').addEventListener('click', function(){ $('arqMetas').click(); });

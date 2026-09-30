@@ -234,7 +234,7 @@ def mes_pelo_nome(nome):
     limpo = nome.lower()
     for ch, novo in (("ç", "c"), ("ã", "a"), ("á", "a"), ("é", "e"), ("ê", "e"), ("í", "i"), ("ó", "o")):
         limpo = limpo.replace(ch, novo)
-    achado = re.search(r"(\d{2})[-_ ](\d{4})", limpo)
+    achado = re.search(r"(?<!\d[-_/ ])(?<!\d)(\d{2})[-_ ](\d{4})(?!\d)", limpo)
     if achado:
         return "%s-%s" % (achado.group(2), achado.group(1))
     ano = re.search(r"(20\d{2})", limpo)
@@ -352,13 +352,26 @@ def juntar(base, novos):
     return base
 
 
+def tipo_do_xlsx(caminho):
+    """Olha o cabeçalho para saber qual relatório é.
+
+    Pelo nome não dá: o robô salva tudo como "CARTA CAMPANHA - data", e
+    foi assim que o relatório de notas caiu no leitor errado."""
+    import openpyxl
+    ws = openpyxl.load_workbook(str(caminho), data_only=True).worksheets[0]
+    topo = ""
+    for i, linha in enumerate(ws.iter_rows(values_only=True)):
+        topo += " " + " ".join(texto(v).upper() for v in linha if v is not None)
+        if i >= 1:
+            break
+    return "notas" if "NOTA" in topo else "acompanhamento"
+
+
 def ler(caminho):
-    """Escolhe o leitor pelo arquivo: notas, conferência ou acompanhamento."""
-    if "nota" in caminho.name.lower():
-        return ler_notas(caminho)
+    """Escolhe o leitor pelo conteúdo: notas, conferência ou acompanhamento."""
     if caminho.suffix.lower() == ".xls":
         return ler_xls(caminho)
-    return ler_xlsx(caminho)
+    return ler_notas(caminho) if tipo_do_xlsx(caminho) == "notas" else ler_xlsx(caminho)
 
 
 def main():
