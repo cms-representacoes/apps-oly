@@ -204,6 +204,8 @@ table.m tbody tr.escolhida td:first-child{background:#17518f;box-shadow:inset 3p
   .filtro select{min-width:126px;padding:6px 24px 6px 9px}
   .painel{padding:9px 10px 11px}
   .painel-tit{font-size:13.5px}
+  .graficos{display:flex;flex-direction:column}
+  .graficos .g-faixas{order:-1}
   /* a tabela tem 21 colunas: no celular a diferença sai de cena, porque
      ela é a conta entre duas colunas que continuam à vista */
   table.m{min-width:820px;font-size:11px}
@@ -841,7 +843,7 @@ function graficoTempo(){
     return '<circle cx="' + (esq + idx * largura + largura / 2) + '" cy="' + y(d.meta) + '" r="3.2" fill="#fff"/>';
   }).join('');
 
-  return '<div class="painel"><div class="painel-tit">Atingimento metas ao longo do tempo<span>' + esc(ano) + '</span></div>' +
+  return '<div class="painel g-tempo"><div class="painel-tit">Atingimento metas ao longo do tempo<span>' + esc(ano) + '</span></div>' +
     '<div class="legenda"><span><i style="background:var(--selecao)"></i>Bateu a meta</span>' +
       '<span><i style="background:var(--cinza-barra)"></i>Abaixo</span>' +
       '<span><i style="background:#fff"></i>Meta</span></div>' +
@@ -864,7 +866,7 @@ function graficoFaixas(prepostos){
   }).filter(function(f){ return f.meta > 0; })
     .sort(function(a, b){ return (b.pct || 0) - (a.pct || 0); });
 
-  if(!faixas.length) return '<div class="painel"><div class="painel-tit">Atingimento metas calçados por faixa</div>' +
+  if(!faixas.length) return '<div class="painel g-faixas"><div class="painel-tit">Atingimento metas calçados por faixa</div>' +
     '<p style="color:var(--tinta3);font-size:12px">Sem meta de calçados neste recorte.</p></div>';
 
   var max = Math.max.apply(null, faixas.map(function(f){ return f.pct || 0; }).concat([100]));
@@ -886,7 +888,7 @@ function graficoFaixas(prepostos){
       '<text class="rotulo" x="' + (rotuloEsq + Math.max(2, larg) + 7) + '" y="' + (y + 13) + '" font-size="10.5">' + pct(f.pct) + '</text>' +
       '</g>';
   }).join('');
-  return '<div class="painel"><div class="painel-tit">Atingimento metas calçados por faixa' +
+  return '<div class="painel g-faixas"><div class="painel-tit">Atingimento metas calçados por faixa' +
     '<span>' + rotuloMedida() + '</span></div>' +
     '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '">' + corpo + '</svg></div>';
 }
