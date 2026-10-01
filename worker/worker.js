@@ -120,6 +120,9 @@ export default {
     const GITHUB_DESEJOS_BASE = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/desejos`;
     // Status da vitrine (pausada / ativa)
     const GITHUB_VITRINE_STATUS = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/vitrine_status.json`;
+    // Análise de Giro — o que o cliente marcou para cancelar, 1 arquivo por
+    // cliente: { itens: [...], atualizadoEm, por }
+    const GITHUB_GIRO_CORTES = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/giro-cortes`;
     // Carteira CMS — pedidos importados + ações dos vendedores
     const GITHUB_CARTEIRA       = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/carteira-cms.json`;
     // Carteira CMS — apenas as AÇÕES (arquivo pequeno: { acoes: { chave: {acao, repasse} } })
@@ -1421,6 +1424,28 @@ export default {
           const payload = { acoes: mapa, atualizadoEm: new Date().toISOString(), por: String(body.por || "") };
           await saveFile(GITHUB_CARTEIRA_ACOES, payload, sha, `acoes carteira (${body.itens.length}) por ${payload.por || "?"}`);
           return new Response(JSON.stringify({ success: true, total: Object.keys(mapa).length }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getCortesGiro" + cliente → o que já está marcado
+        // para cancelar naquele cliente, venha de que aparelho vier
+        if (body.action === "getCortesGiro" && body.cliente) {
+          const alvo = `${GITHUB_GIRO_CORTES}/${encodeURIComponent(String(body.cliente).toLowerCase())}.json`;
+          const { content } = await getFile(alvo);
+          const itens = (content && Array.isArray(content.itens)) ? content.itens : [];
+          return new Response(JSON.stringify({ itens, atualizadoEm: (content && content.atualizadoEm) || null }),
+            { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"saveCortesGiro" + cliente + itens:[...] → grava a lista inteira
+        if (body.action === "saveCortesGiro" && body.cliente && Array.isArray(body.itens)) {
+          const nome = String(body.cliente).toLowerCase();
+          const alvo = `${GITHUB_GIRO_CORTES}/${encodeURIComponent(nome)}.json`;
+          const { sha } = await getFile(alvo);
+          const payload = { cliente: nome, itens: body.itens,
+                            atualizadoEm: new Date().toISOString(), por: String(body.por || "") };
+          await saveFile(alvo, payload, sha, `giro: ${body.itens.length} para cancelar em ${nome}`);
+          return new Response(JSON.stringify({ success: true, total: body.itens.length }),
+            { status: 200, headers: corsHeaders });
         }
 
         // PATCH com action:"getClientesCadastrados" → retorna { clientes: { cod: {...} } }
