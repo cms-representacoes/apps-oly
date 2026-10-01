@@ -346,9 +346,25 @@ def juntar_origem(antiga, nova):
     for texto in (antiga, nova):
         for parte in str(texto or "").split(" + "):
             parte = parte.strip()
-            if parte and parte not in partes:
+            if not parte:
+                continue
+            # O arquivo do robô traz a data no nome ("CARTA CAMPANHA -
+            # 01-10-2026.xlsx"): sem isso o rodapé ganharia um nome por dia.
+            # A emissão mais nova toma o lugar da anterior da mesma família.
+            fam = familia_arquivo(parte)
+            antigas = [i for i, p in enumerate(partes) if familia_arquivo(p) == fam]
+            if antigas:
+                partes[antigas[0]] = parte
+            else:
                 partes.append(parte)
     return " + ".join(partes)
+
+
+def familia_arquivo(nome):
+    """Nome sem a data: 'CARTA CAMPANHA - 01-10-2026.xlsx' -> 'carta campanha'."""
+    nome = re.sub(r"\.[a-z]+$", "", str(nome).strip(), flags=re.I)
+    nome = re.sub(r"\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{2,4}[-/]\d{1,2}", " ", nome)
+    return re.sub(r"[\s-]+", " ", nome).strip().lower()
 
 
 def juntar(base, novos):
