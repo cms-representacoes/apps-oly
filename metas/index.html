@@ -52,6 +52,12 @@ button,select,input{font:inherit;color:inherit}
 .titulo{display:flex;align-items:center;gap:10px;font-size:21px;font-weight:600;letter-spacing:.01em}
 .titulo::before{content:"";width:2px;height:24px;background:rgba(255,255,255,.55);border-radius:2px}
 .tit-bloco{display:flex;flex-direction:column;gap:1px;min-width:0}
+.tit-linha{display:flex;align-items:center;gap:8px}
+.info-bt{width:19px;height:19px;flex:none;border-radius:50%;cursor:pointer;
+  border:1px solid rgba(255,255,255,.45);background:transparent;color:#fff;
+  font:700 11px/1 ui-sans-serif,system-ui,sans-serif;padding:0}
+.info-bt:hover{background:rgba(255,255,255,.16)}
+.info-bt[aria-expanded="true"]{background:#fff;color:var(--azul-fundo);border-color:#fff}
 /* Discreta de proposito: quem olha o painel quer o numero, nao a hora.
    So precisa estar ali quando bater a duvida de "isso e de hoje?". */
 .atual{padding-left:12px;font-size:11px;line-height:1.2;color:var(--tinta3)}
@@ -247,7 +253,12 @@ table.m tbody tr.escolhida td:first-child{background:#17518f;box-shadow:inset 3p
       <span class="cms-badge">CMS</span>
     </a>
     <div class="tit-bloco">
-      <h1 class="titulo">Metas Preposto</h1>
+      <div class="tit-linha">
+        <h1 class="titulo">Metas Preposto</h1>
+        <button class="info-bt" id="btnAviso" type="button" hidden
+          aria-expanded="false" aria-controls="avisos"
+          aria-label="Sobre estes números" title="Sobre estes números">i</button>
+      </div>
       <span class="atual" id="atual" hidden></span>
     </div>
     <div class="topo-dir">
@@ -552,6 +563,10 @@ function combinar(antigo, novo){
 // preposto = filtro do topo (vale para tudo, tabela inclusive)
 // escolhido = clique na tabela (vale para cartões e gráficos)
 var E = { preposto:'', escolhido:'', abertos:{}, medida:'real', metrica:'qtd', marca:'OLY', segmento:'', faixa:'', ano:'', mes:'' };
+// No começo do mês o realizado é zero e só o potencial (carteira) tem
+// número: abrir no Realizado mostraria a tela inteira zerada. Vale só
+// enquanto o usuário não escolher a medida na mão.
+var medidaEscolhida = false;
 var S = null, TUDO = false;
 
 function mesesDoAno(ano){
@@ -945,11 +960,42 @@ function filtros(){
   }).join('') + '</div>';
 }
 
+function somaCampo(mes, campo){
+  var total = 0;
+  (mes.prepostos || []).forEach(function(p){
+    (p.linhas || []).forEach(function(l){ total += (l[campo] || 0); });
+  });
+  return total;
+}
+
+// O recado não ocupa mais a faixa inteira: fica no "i" ao lado do
+// título e só aparece para quem clicar.
+var avisoAberto = false;
+function mostrarAviso(html){
+  var caixa = $('avisos'), bt = $('btnAviso');
+  caixa.innerHTML = html;
+  var tem = !!html;
+  bt.hidden = !tem;
+  if(!tem) avisoAberto = false;
+  caixa.hidden = !(tem && avisoAberto);
+  bt.setAttribute('aria-expanded', String(avisoAberto));
+}
+
+function ajustarMedida(){
+  if(medidaEscolhida) return;
+  var mes = base.meses.filter(function(m){ return m.mes === E.mes; })[0];
+  if(!mes) return;
+  E.medida = (somaCampo(mes, 'real_qtd') <= 0 && somaCampo(mes, 'pot_qtd') > 0)
+    ? 'pot' : 'real';
+}
+
 function avisos(){
   var partes = [];
   var mes = base.meses.filter(function(m){ return m.mes === E.mes; })[0];
   if(!mes) partes.push('Não há dados de ' + esc(mesRotulo(E.mes || '')) + ' ainda.');
-  else if(mes.origem && !/metas\.xls/i.test(mes.origem))
+  // Pelo dado, não pelo nome do arquivo: o que falta nos meses antigos é
+  // o potencial, e é isso que vale a pena avisar.
+  else if(somaCampo(mes, 'pot_qtd') <= 0 && somaCampo(mes, 'fat_qtd') <= 0)
     // O total do escritório bate com o BI; o que muda nos meses antigos é
     // como cada fonte reparte o realizado entre os prepostos.
     partes.push('<b>' + esc(mesRotulo(mes.mes)) + ' veio do acompanhamento de metas.</b> O total do escritório confere com o BI; a divisão por preposto pode variar alguns pontos, e não há potencial separado.');
@@ -1014,10 +1060,11 @@ function desenhar(){
   }
   if(anos().indexOf(E.ano) < 0) E.ano = anos()[anos().length - 1];
   if(mesesDoAno(E.ano).indexOf(E.mes) < 0) E.mes = mesesDoAno(E.ano).slice(-1)[0];
+  ajustarMedida();
   var ps = prepostosVisiveis(E.mes);
   var naTabela = prepostosVisiveis(E.mes, true);
   if(E.escolhido && !naTabela.some(function(p){ return p.codigo === E.escolhido; })) E.escolhido = '';
-  $('avisos').innerHTML = avisos();
+  mostrarAviso(avisos());
   $('corpo').innerHTML = filtros() + cartoes(ps) + tabela(naTabela) +
     '<div class="graficos">' + graficoTempo() + graficoFaixas(ps) + '</div>';
   Array.prototype.forEach.call(document.querySelectorAll('table.m tbody tr[data-cod]'), function(tr){
@@ -1040,6 +1087,7 @@ function desenhar(){
   Array.prototype.forEach.call(document.querySelectorAll('.filtros select'), function(sel){
     sel.addEventListener('change', function(){
       E[sel.dataset.campo] = sel.value;
+      if(sel.dataset.campo === 'medida') medidaEscolhida = true;
       if(sel.dataset.campo === 'ano') E.mes = '';
       desenhar();
     });
@@ -1208,6 +1256,12 @@ function mostrarAcoes(abrir){
   $('btnAcoes').title = rotulo;
   try{ localStorage.setItem(ACOES_KEY, abrir ? '1' : '0'); }catch(_){}
 }
+$('btnAviso').addEventListener('click', function(){
+  avisoAberto = !avisoAberto;
+  var caixa = $('avisos');
+  caixa.hidden = !avisoAberto;
+  $('btnAviso').setAttribute('aria-expanded', String(avisoAberto));
+});
 $('btnAcoes').addEventListener('click', function(){
   mostrarAcoes($('acoes').hidden);
 });
