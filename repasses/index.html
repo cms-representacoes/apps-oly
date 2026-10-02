@@ -416,6 +416,32 @@
       #multiGradeModalWrap .mg-ft button{ padding:11px 16px; font-size:13px; }
     }
 
+    /* ── No modal de grades, qual lote é do rateio ────────────────────
+       Um produto pode ter um lote separado no rateio (Forecast) e outros
+       abertos a todos, lado a lado na mesma lista. Sem dizer qual é qual,
+       o vendedor escolhe no escuro. */
+    .mg-selo{
+      display:inline-flex; align-items:center; gap:4px; padding:2px 9px; border-radius:999px;
+      background:linear-gradient(135deg,#a78bfa,#7c3aed); color:#fff;
+      font-size:10.5px; font-weight:800; white-space:nowrap;
+      box-shadow:0 3px 9px rgba(124,58,237,.3);
+    }
+    .mg-selo i{ font-size:9px; flex:none; }
+    .mg-livre{
+      display:inline-flex; align-items:center; padding:2px 9px; border-radius:999px;
+      background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0;
+      font-size:10.5px; font-weight:700; white-space:nowrap;
+    }
+    .mg-card.mg-exc{
+      border-color:#c4b5fd !important;
+      box-shadow:0 0 0 2px rgba(124,58,237,.10);
+      background:linear-gradient(180deg,#faf8ff,#fff);
+    }
+    @media(max-width:640px){
+      #multiGradeModalWrap .mg-selo,
+      #multiGradeModalWrap .mg-livre{ font-size:9.5px; padding:2px 7px; }
+    }
+
     .modal-zoom{
       position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.85);
       display:flex; align-items:center; justify-content:center; padding:24px;
@@ -4415,13 +4441,30 @@ function openMultiGradeModal(siblings){
   $('multiGradeTitle').textContent = `${first.produto} / ${first.cor}`;
   // O plural saía como `{}` (objeto vazio) no singular. Nunca apareceu porque
   // o modal só abria com 2+ itens; agora que abre com 1, o defeito ficaria à vista.
-  $('multiGradeSubtitle').textContent = `${siblings.length} disponibilidade${siblings.length>1?'s':''} — selecione as que deseja adicionar`;
+  // Quando um dos lotes é do rateio, o subtítulo já avisa: a diferença
+  // entre eles muda o que o vendedor pode pedir.
+  const doRateio = siblings.filter(ehExclusivo);
+  const nomeRateio = doRateio.length ? seloDe(doRateio[0]) : '';
+  $('multiGradeSubtitle').textContent =
+    `${siblings.length} disponibilidade${siblings.length>1?'s':''} — selecione as que deseja adicionar` +
+    (doRateio.length ? ` · ${doRateio.length} do ${nomeRateio}` : '');
 
   $('multiGradeList').innerHTML = siblings.map((item, i) => {
     const packs = remainingPacks(item);
     const soldout = packs <= 0;
+    const exc = ehExclusivo(item);
+    const selo = seloDe(item);
+    const cota = exc ? cotaExclusivo(item) : 0;
+    const un = item.mode === 'boxed' ? 'cx' : 'un';
+    // o "aberto a todos" só aparece quando há com o que comparar
+    const marca = exc
+      ? `<span class="mg-selo" title="${safeHtml(selo)} · ${sessaoCms()
+          ? 'lote rateado — só acompanhamento' : 'lote separado para você no rateio'}${
+          cota > 0 ? ' · sua cota: ' + cota + ' ' + un : ''}"><i class="fa-solid fa-star"></i>${safeHtml(selo)}${
+          cota > 0 ? ` · ${cota} ${un}` : ''}</span>`
+      : (doRateio.length ? `<span class="mg-livre" title="Sem rateio: disponível para todos os vendedores">Aberto a todos</span>` : '');
     return `
-      <label class="mg-card flex items-start gap-3 rounded-[20px] border ${soldout?'border-slate-100 bg-slate-50 opacity-60':'border-slate-200 bg-white'} p-4 cursor-${soldout?'not-allowed':'pointer'} select-none">
+      <label class="mg-card${exc ? ' mg-exc' : ''} flex items-start gap-3 rounded-[20px] border ${soldout?'border-slate-100 bg-slate-50 opacity-60':'border-slate-200 bg-white'} p-4 cursor-${soldout?'not-allowed':'pointer'} select-none">
         <input type="checkbox" class="mg-check mt-1 h-4 w-4 rounded accent-[var(--brand)]"
           data-key="${safeHtml(item.key)}" ${soldout?'disabled':''} />
         <div class="flex-1 min-w-0">
@@ -4429,7 +4472,10 @@ function openMultiGradeModal(siblings){
             <span class="text-xs font-extrabold text-slate-400">Nº ${safeHtml(item.num)}${item.gci ? ` · <span style="color:var(--brand);font-weight:800">GCI ${safeHtml(item.gci)}</span>` : ''}</span>
             <span class="text-xs font-bold ${soldout?'text-rose-500':'text-emerald-600'}">${soldout?'Esgotado':`${packs} caixa${packs!==1?'s':''} disponív${packs!==1?'eis':'el'}`}</span>
           </div>
-          <div class="mt-1 text-xs font-semibold text-slate-500 mg-prev">Prev. Fat. ${safeHtml(formatDate(item.prevFaturamento))}</div>
+          <div class="mt-1 flex items-center justify-between gap-2 flex-wrap">
+            <span class="text-xs font-semibold text-slate-500 mg-prev">Prev. Fat. ${safeHtml(formatDate(item.prevFaturamento))}</span>
+            ${marca}
+          </div>
           <div class="mt-2 flex flex-wrap gap-1 mg-grade">${gradeHtml(item.grade)}</div>
         </div>
       </label>`;
