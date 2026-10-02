@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prévia · Campanhas de incentivo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+/* Mesmas variáveis do admin (dispo.html) e do dashboard, para a prévia
+   mostrar como vai ficar lá dentro, e não um app diferente. */
+:root{
+  --bg:#f7f8fc; --card:#ffffff; --text:#0e1526; --muted:#6b7488; --line:#e6e9f3;
+  --brand:#2c39e2; --brand-soft:rgba(44,57,226,.09);
+  --success:#15803d; --success-soft:#e6f6ec;
+  --warning:#b45309; --warning-soft:#fdf4dc;
+  --danger:#b91c1c; --danger-soft:#fdeaea;
+  --roxo:#7c3aed; --roxo-soft:#f5f3ff;
+  --shadow:0 0 0 1px rgba(15,23,42,.03),0 1px 2px rgba(15,23,42,.04),0 16px 40px -20px rgba(15,23,42,.16);
+}
+:root:not([data-theme="light"]){ color-scheme:light }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e131d; --card:#161b26; --text:#e8ebf1; --muted:#8e99ad; --line:#2a3242;
+    --brand:#5b69e8; --brand-soft:rgba(91,105,232,.16);
+    --success:#4ade80; --success-soft:rgba(74,222,128,.14);
+    --warning:#fbbf24; --warning-soft:rgba(251,191,36,.14);
+    --danger:#f87171; --danger-soft:rgba(248,113,113,.14);
+    --roxo:#a78bfa; --roxo-soft:rgba(167,139,250,.14);
+    --shadow:0 0 0 1px rgba(0,0,0,.2),0 16px 40px -20px rgba(0,0,0,.6);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e131d; --card:#161b26; --text:#e8ebf1; --muted:#8e99ad; --line:#2a3242;
+  --brand:#5b69e8; --brand-soft:rgba(91,105,232,.16);
+  --success:#4ade80; --success-soft:rgba(74,222,128,.14);
+  --warning:#fbbf24; --warning-soft:rgba(251,191,36,.14);
+  --danger:#f87171; --danger-soft:rgba(248,113,113,.14);
+  --roxo:#a78bfa; --roxo-soft:rgba(167,139,250,.14);
+  --shadow:0 0 0 1px rgba(0,0,0,.2),0 16px 40px -20px rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.num{font-variant-numeric:tabular-nums}
+.wrap{max-width:1060px;margin:0 auto;padding:0 18px 70px}
+h1,h2,h3,.gro{font-family:"Space Grotesk",Inter,sans-serif;letter-spacing:-.01em}
+
+/* ── cabeçalho da prévia ─────────────────────────────────────────── */
+.previa{background:var(--brand);color:#fff;padding:14px 18px}
+.previa .in{max-width:1060px;margin:0 auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.previa b{font-family:"Space Grotesk",sans-serif;font-size:14px}
+.previa span{font-size:12.5px;opacity:.85}
+.previa .spacer{flex:1}
+.previa button{border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.14);color:#fff;
+  border-radius:999px;padding:6px 13px;font:600 12px Inter,sans-serif;cursor:pointer}
+
+.abas{display:flex;gap:6px;padding:16px 0 4px;flex-wrap:wrap}
+.aba{border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:999px;
+  padding:8px 16px;font:700 12.5px "Space Grotesk",sans-serif;cursor:pointer}
+.aba.on{background:var(--brand);border-color:var(--brand);color:#fff}
+
+.tela{display:none}
+.tela.on{display:block}
+
+.topo{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:18px 0 14px}
+.topo h2{margin:0;font-size:21px;font-weight:700}
+.topo .sub{font-size:12.5px;color:var(--muted)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+.pad{padding:18px}
+
+/* ── lista de campanhas no admin ─────────────────────────────────── */
+.cmp{display:flex;gap:14px;align-items:flex-start;padding:16px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.cmp:last-child{border-bottom:0}
+.cmp-ico{width:42px;height:42px;border-radius:13px;flex:none;display:grid;place-items:center;font-size:16px;
+  background:var(--roxo-soft);color:var(--roxo)}
+.cmp-corpo{flex:1;min-width:200px}
+.cmp-nome{font:700 15px "Space Grotesk",sans-serif}
+.cmp-meta{font-size:12.5px;color:var(--muted);margin-top:2px}
+.cmp-prods{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tag{font:700 11px Inter,sans-serif;background:var(--brand-soft);color:var(--brand);border-radius:999px;padding:3px 10px}
+.tag.cinza{background:var(--line);color:var(--muted)}
+.cmp-nums{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+.cmp-num .v{font:800 17px Inter,sans-serif;font-variant-numeric:tabular-nums}
+.cmp-num .r{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+.cmp-acoes{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+
+.pil{font:800 10.5px Inter,sans-serif;border-radius:999px;padding:3px 10px;text-transform:uppercase;letter-spacing:.04em}
+.pil.ativa{background:var(--success-soft);color:var(--success)}
+.pil.agendada{background:var(--warning-soft);color:var(--warning)}
+.pil.encerrada{background:var(--line);color:var(--muted)}
+
+.btn{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;
+  padding:8px 14px;font:700 12.5px Inter,sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.btn:hover{border-color:var(--brand);color:var(--brand)}
+.btn.forte{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.forte:hover{filter:brightness(1.08);color:#fff}
+.btn.fraco{color:var(--muted)}
+.btn.perigo{color:var(--danger);border-color:var(--danger)}
+
+/* ── modal ───────────────────────────────────────────────────────── */
+.fundo{position:fixed;inset:0;z-index:200;background:rgba(2,6,23,.55);display:none;
+  align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto}
+.fundo.on{display:flex}
+.modal{width:100%;max-width:620px;margin:32px 0;background:var(--card);border:1px solid var(--line);
+  border-radius:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5);overflow:hidden}
+.m-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:20px 22px 0}
+.m-eyebrow{font:800 11px Inter,sans-serif;color:var(--brand);text-transform:uppercase;letter-spacing:.05em}
+.m-tit{font:800 18px "Space Grotesk",sans-serif;margin-top:2px}
+.m-sub{font-size:12.5px;color:var(--muted);margin-top:3px}
+.m-x{border:0;background:transparent;color:var(--muted);font-size:26px;line-height:1;cursor:pointer}
+.m-corpo{padding:16px 22px 4px}
+.m-pe{display:flex;gap:10px;flex-wrap:wrap;padding:16px 22px 20px;border-top:1px solid var(--line);margin-top:16px;
+  background:var(--bg)}
+
+label.rot{display:block;font:800 11px Inter,sans-serif;margin:0 0 5px;letter-spacing:.02em}
+.dica{font-size:11.5px;color:var(--muted);margin:5px 0 0}
+input[type=text],input[type=number],input[type=date],select{
+  width:100%;border:1px solid var(--line);border-radius:11px;padding:10px 12px;
+  font:600 13px Inter,sans-serif;background:var(--card);color:var(--text)}
+input:focus,select:focus{outline:2px solid var(--brand);outline-offset:1px;border-color:var(--brand)}
+.linha{display:grid;gap:12px;margin-bottom:14px}
+.l2{grid-template-columns:1fr 1fr}
+.l3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:560px){ .l2,.l3{grid-template-columns:1fr} }
+
+.busca{position:relative}
+.sug{position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--card);border:1px solid var(--line);
+  border-radius:12px;box-shadow:var(--shadow);max-height:210px;overflow-y:auto;z-index:5;display:none}
+.sug.on{display:block}
+.sug button{display:flex;width:100%;gap:10px;align-items:center;border:0;background:transparent;color:var(--text);
+  padding:9px 12px;font:600 12.5px Inter,sans-serif;cursor:pointer;text-align:left;border-bottom:1px solid var(--line)}
+.sug button:last-child{border-bottom:0}
+.sug button:hover{background:var(--brand-soft)}
+.sug .q{margin-left:auto;font-size:11px;color:var(--muted);font-weight:700}
+
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;min-height:4px}
+.chip{display:inline-flex;align-items:center;gap:7px;background:var(--brand-soft);color:var(--brand);
+  border-radius:999px;padding:5px 7px 5px 12px;font:700 12px Inter,sans-serif}
+.chip button{border:0;background:transparent;color:inherit;cursor:pointer;font-size:14px;line-height:1;opacity:.7}
+.chip button:hover{opacity:1}
+.vazio{font-size:12px;color:var(--muted);font-style:italic}
+
+.caixa{background:var(--brand-soft);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:4px 0 14px}
+.caixa .t{font:800 11px Inter,sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--brand)}
+.caixa .v{font:800 19px Inter,sans-serif;font-variant-numeric:tabular-nums;margin-top:3px}
+.caixa .d{font-size:11.5px;color:var(--muted)}
+
+.quem{display:flex;gap:7px;flex-wrap:wrap}
+.quem label{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;
+  padding:7px 13px;font:600 12.5px Inter,sans-serif;cursor:pointer;user-select:none}
+.quem input{accent-color:var(--brand)}
+.quem label:has(input:checked){border-color:var(--brand);background:var(--brand-soft);color:var(--brand);font-weight:700}
+
+/* ── dashboard ───────────────────────────────────────────────────── */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media(max-width:760px){ .kpis{grid-template-columns:repeat(2,1fr)} }
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow)}
+.kpi .r{font:700 10.5px Inter,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.kpi .v{font:700 25px "Space Grotesk",sans-serif;font-variant-numeric:tabular-nums;margin-top:4px}
+.kpi .d{font-size:11.5px;color:var(--muted)}
+.kpi.destaque{background:linear-gradient(135deg,var(--roxo),#5b21b6);border-color:transparent;color:#fff}
+.kpi.destaque .r,.kpi.destaque .d{color:rgba(255,255,255,.8)}
+
+.bloco{margin-top:22px}
+.bloco-cab{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 10px;flex-wrap:wrap}
+.bloco-cab h3{margin:0;font-size:15.5px;font-weight:700}
+.bloco-cab .s{font-size:12px;color:var(--muted)}
+
+.troca{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:var(--card);padding:3px;gap:2px}
+.troca button{border:0;background:none;border-radius:999px;padding:5px 13px;font:700 12px "Space Grotesk",sans-serif;
+  color:var(--muted);cursor:pointer}
+.troca button.on{background:var(--brand);color:#fff}
+
+.graf{position:relative}
+.graf svg{display:block;width:100%;height:auto;overflow:visible}
+.gl{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.gp{stroke-width:0}
+.eixo{font:600 10.5px Inter,sans-serif;fill:var(--muted)}
+.grade{stroke:var(--line);stroke-width:1}
+.cursor{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3;opacity:0}
+.dica-graf{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--line);
+  border-radius:12px;box-shadow:var(--shadow);padding:9px 11px;font-size:12px;display:none;z-index:4;min-width:150px}
+.dica-graf .dia{font:800 11px Inter,sans-serif;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+.dica-graf .l{display:flex;align-items:center;gap:7px;justify-content:space-between;margin-top:3px}
+.dica-graf .l b{font-variant-numeric:tabular-nums}
+.pt{width:9px;height:9px;border-radius:50%;flex:none}
+
+.leg{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}
+.leg span{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);font-weight:600;cursor:pointer}
+.leg span.off{opacity:.35;text-decoration:line-through}
+
+.rank{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--line)}
+.rank:last-child{border-bottom:0}
+.pos{width:26px;height:26px;border-radius:9px;flex:none;display:grid;place-items:center;
+  font:800 12px Inter,sans-serif;background:var(--line);color:var(--muted)}
+.rank:first-child .pos{background:var(--roxo);color:#fff}
+.rank .nome{font-weight:700;font-size:13.5px;min-width:88px}
+.barra{flex:1;height:9px;border-radius:999px;background:var(--line);overflow:hidden;min-width:60px}
+.barra i{display:block;height:100%;border-radius:999px;background:var(--roxo)}
+.rank .vlr{font:800 13.5px Inter,sans-serif;font-variant-numeric:tabular-nums;min-width:86px;text-align:right}
+.rank .sec{font-size:11.5px;color:var(--muted);min-width:66px;text-align:right}
+@media(max-width:560px){ .rank .sec{display:none} }
+
+.nota{display:flex;gap:10px;align-items:flex-start;background:var(--warning-soft);border:1px solid var(--line);
+  border-radius:14px;padding:12px 14px;margin-top:14px;font-size:12.5px;color:var(--text)}
+.nota i{color:var(--warning);margin-top:2px}
+
+/* ── sugestões ───────────────────────────────────────────────────── */
+.sugs{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px}
+@media(max-width:760px){ .sugs{grid-template-columns:1fr} }
+.sgc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px 16px;box-shadow:var(--shadow)}
+.sgc h4{margin:0 0 5px;font:700 13.5px "Space Grotesk",sans-serif;display:flex;align-items:center;gap:8px}
+.sgc h4 i{color:var(--brand)}
+.sgc p{margin:0;font-size:12.5px;color:var(--muted)}
+.sgc .marca{font:800 10px Inter,sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--roxo);
+  background:var(--roxo-soft);border-radius:999px;padding:2px 8px;margin-left:auto}
+</style>
+</head>
+<body>
+
+<div class="previa">
+  <div class="in">
+    <b>Prévia · Campanhas de incentivo</b>
+    <span>nada aqui grava de verdade — é só para você ver e dizer o que muda</span>
+    <span class="spacer"></span>
+    <button type="button" onclick="trocarTema()"><i class="fa-solid fa-circle-half-stroke"></i> Tema</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="abas">
+    <button class="aba on" data-tela="admin">1 · No admin (DISPO)</button>
+    <button class="aba" data-tela="dash">2 · No dashboard</button>
+    <button class="aba" data-tela="ideias">3 · O que eu sugiro a mais</button>
+  </div>
+
+  <!-- ══════════════════ 1. ADMIN ══════════════════ -->
+  <section class="tela on" id="tela-admin">
+    <div class="topo">
+      <div>
+        <h2>Campanhas</h2>
+        <div class="sub">Prêmio por par repassado, por produto e por período. Entra no DISPO, ao lado de Rateio.</div>
+      </div>
+      <button class="btn forte" onclick="abrirModal()"><i class="fa-solid fa-plus"></i> Nova campanha</button>
+    </div>
+
+    <div class="card">
+      <div class="cmp">
+        <div class="cmp-ico"><i class="fa-solid fa-sack-dollar"></i></div>
+        <div class="cmp-corpo">
+          <div class="cmp-nome">Nuvem &amp; Challenger <span class="pil ativa">em andamento</span></div>
+          <div class="cmp-meta">R$ 5,00 por par · 15/09/2026 a 31/10/2026 · faltam 29 dias · todos os vendedores</div>
+          <div class="cmp-prods">
+            <span class="tag">NUVEM</span><span class="tag">NUVEM 2</span><span class="tag">CHALLENGER</span>
+            <span class="tag">CHALLENGER 2</span>
+          </div>
+        </div>
+        <div class="cmp-nums">
+          <div class="cmp-num"><div class="v num">525</div><div class="r">pares</div></div>
+          <div class="cmp-num"><div class="v num" style="color:var(--roxo)">R$ 2.625</div><div class="r">prêmio</div></div>
+        </div>
+        <div class="cmp-acoes">
+          <button class="btn" onclick="abrirModal(true)"><i class="fa-solid fa-pen"></i> Editar</button>
+          <button class="btn fraco"><i class="fa-solid fa-pause"></i> Pausar</button>
+        </div>
+      </div>
+
+      <div class="cmp">
+        <div class="cmp-ico" style="background:var(--warning-soft);color:var(--warning)"><i class="fa-regular fa-clock"></i></div>
+        <div class="cmp-corpo">
+          <div class="cmp-nome">Mochilas de volta às aulas <span class="pil agendada">agendada</span></div>
+          <div class="cmp-meta">R$ 3,00 por par · começa em 01/11/2026 · 2 vendedores</div>
+          <div class="cmp-prods"><span class="tag">MOCHILA PUFF</span><span class="tag">MOCHILA TREINO</span></div>
+        </div>
+        <div class="cmp-nums">
+          <div class="cmp-num"><div class="v num">—</div><div class="r">pares</div></div>
+          <div class="cmp-num"><div class="v num">—</div><div class="r">prêmio</div></div>
+        </div>
+        <div class="cmp-acoes">
+          <button class="btn"><i class="fa-solid fa-pen"></i> Editar</button>
+          <button class="btn perigo"><i class="fa-regular fa-trash-can"></i></button>
+        </div>
+      </div>
+
+      <div class="cmp" style="opacity:.62">
+        <div class="cmp-ico" style="background:var(--line);color:var(--muted)"><i class="fa-solid fa-flag-checkered"></i></div>
+        <div class="cmp-corpo">
+          <div class="cmp-nome">Corre 5 de agosto <span class="pil encerrada">encerrada</span></div>
+          <div class="cmp-meta">R$ 4,00 por par · 01/08/2026 a 31/08/2026</div>
+          <div class="cmp-prods"><span class="tag cinza">CORRE 5</span></div>
+        </div>
+        <div class="cmp-nums">
+          <div class="cmp-num"><div class="v num">2.016</div><div class="r">pares</div></div>
+          <div class="cmp-num"><div class="v num">R$ 8.064</div><div class="r">prêmio</div></div>
+        </div>
+        <div class="cmp-acoes">
+          <button class="btn fraco"><i class="fa-solid fa-file-arrow-down"></i> Apuração</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="nota">
+      <i class="fa-solid fa-lightbulb"></i>
+      <div><b>Por que uma lista, e não um campo só:</b> a diretoria vai lançar outras campanhas, e a de agosto
+        precisa continuar consultável para pagar e conferir. Encerrada, ela congela os números.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ 2. DASHBOARD ══════════════════ -->
+  <section class="tela" id="tela-dash">
+    <div class="topo">
+      <div>
+        <h2>Campanha · Nuvem &amp; Challenger</h2>
+        <div class="sub">R$ 5,00 por par repassado · 15/09 a 31/10/2026 · dados de exemplo</div>
+      </div>
+      <div class="troca" id="trocaUnidade">
+        <button class="on" data-un="pares">Pares</button>
+        <button data-un="reais">R$</button>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="r">Pares na campanha</div><div class="v num" id="kPares">—</div><div class="d">desde 15/09</div></div>
+      <div class="kpi destaque"><div class="r">Prêmio acumulado</div><div class="v num" id="kPremio">—</div><div class="d">a pagar aos vendedores</div></div>
+      <div class="kpi"><div class="r">Vendedores</div><div class="v num">5 de 5</div><div class="d">todos já pontuaram</div></div>
+      <div class="kpi"><div class="r">Faltam</div><div class="v num">29 dias</div><div class="d">termina em 31/10</div></div>
+    </div>
+
+    <div class="bloco">
+      <div class="bloco-cab">
+        <h3>Evolução por vendedor</h3>
+        <span class="s">acumulado dia a dia — toque na linha para ver a data</span>
+      </div>
+      <div class="card pad">
+        <div class="graf" id="graf">
+          <svg id="svg" role="img" aria-label="Evolução acumulada por vendedor"></svg>
+          <div class="dica-graf" id="dicaGraf"></div>
+        </div>
+        <div class="leg" id="leg"></div>
+      </div>
+    </div>
+
+    <div class="bloco">
+      <div class="bloco-cab">
+        <h3>Ranking</h3>
+        <span class="s">pares no período e o que isso virou em prêmio</span>
+      </div>
+      <div class="card pad" id="rank"></div>
+    </div>
+
+    <div class="nota">
+      <i class="fa-solid fa-circle-question"></i>
+      <div><b>O que conta como par repassado:</b> hoje o dashboard soma os pedidos <b>aprovados e atendidos</b>.
+        Pedido pendente aparece à parte, em cinza, para ninguém comemorar o que ainda pode cair —
+        mas isso é uma escolha sua, dá para contar desde a pendência.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ 3. SUGESTÕES ══════════════════ -->
+  <section class="tela" id="tela-ideias">
+    <div class="topo">
+      <div>
+        <h2>O que eu sugiro a mais</h2>
+        <div class="sub">nada disso está no pedido — é o que costuma fazer falta depois da primeira campanha</div>
+      </div>
+    </div>
+    <div class="sugs">
+      <div class="sgc">
+        <h4><i class="fa-solid fa-tag"></i> Selo na vitrine <span class="marca">recomendo</span></h4>
+        <p>O produto em campanha ganha um selo "R$ 5/par" no card, como o do Forecast. O vendedor vê o incentivo
+          na hora de repassar, não só no fim do mês — é o que faz a campanha funcionar.</p>
+      </div>
+      <div class="sgc">
+        <h4><i class="fa-solid fa-sack-xmark"></i> Teto de orçamento <span class="marca">recomendo</span></h4>
+        <p>Um limite em reais para a campanha inteira e, se quiser, por vendedor. Ao chegar perto, o painel avisa.
+          Sem teto, uma campanha boa demais vira uma conta inesperada.</p>
+      </div>
+      <div class="sgc">
+        <h4><i class="fa-solid fa-file-excel"></i> Apuração em xlsx</h4>
+        <p>Um botão que baixa a planilha do período: vendedor, pares, prêmio e os pedidos que entraram na conta.
+          É o documento que o financeiro vai pedir para pagar.</p>
+      </div>
+      <div class="sgc">
+        <h4><i class="fa-solid fa-user-check"></i> Campanha por vendedor</h4>
+        <p>Dá para deixar a campanha só para alguns — útil quando a diretoria quer puxar uma região específica
+          sem premiar quem já vende bem aquele modelo.</p>
+      </div>
+      <div class="sgc">
+        <h4><i class="fa-solid fa-rotate-left"></i> Cancelamento desconta</h4>
+        <p>Pedido cancelado depois de contado tira os pares da campanha. Sem isso, o prêmio paga o que não foi
+          faturado — e a conferência no fim vira discussão.</p>
+      </div>
+      <div class="sgc">
+        <h4><i class="fa-solid fa-mobile-screen"></i> O vendedor vê o próprio número</h4>
+        <p>Um cartão na tela dele: "você fez 112 pares · R$ 560 até agora". Campanha que ninguém acompanha
+          não muda comportamento nenhum.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ══════════════════ MODAL: NOVA CAMPANHA ══════════════════ -->
+<div class="fundo" id="fundo">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTit">
+    <div class="m-topo">
+      <div>
+        <div class="m-eyebrow">Campanha de incentivo</div>
+        <div class="m-tit" id="mTit">Nova campanha</div>
+        <div class="m-sub">Prêmio por par repassado dos produtos escolhidos, dentro do período.</div>
+      </div>
+      <button class="m-x" onclick="fecharModal()" aria-label="Fechar">&times;</button>
+    </div>
+
+    <div class="m-corpo">
+      <div class="linha">
+        <div>
+          <label class="rot" for="cNome">Nome da campanha</label>
+          <input type="text" id="cNome" placeholder="Ex.: Nuvem &amp; Challenger de outubro" value="Nuvem &amp; Challenger">
+          <p class="dica">É o nome que aparece no dashboard e na apuração.</p>
+        </div>
+      </div>
+
+      <div class="linha l3">
+        <div>
+          <label class="rot" for="cValor">Prêmio por par (R$)</label>
+          <input type="number" id="cValor" min="0" step="0.5" value="5" oninput="recalcular()">
+        </div>
+        <div>
+          <label class="rot" for="cIni">Início</label>
+          <input type="date" id="cIni" value="2026-09-15">
+        </div>
+        <div>
+          <label class="rot" for="cFim">Fim</label>
+          <input type="date" id="cFim" value="2026-10-31">
+        </div>
+      </div>
+
+      <div class="linha">
+        <div>
+          <label class="rot" for="cProd">Produtos da campanha</label>
+          <div class="busca">
+            <input type="text" id="cProd" autocomplete="off" placeholder="Digite o nome do produto — ex.: nuvem"
+                   oninput="buscar(this.value)" onfocus="buscar(this.value)">
+            <div class="sug" id="sug"></div>
+          </div>
+          <div class="chips" id="chips"></div>
+          <p class="dica">Vale o modelo inteiro, todas as cores. Para premiar só uma cor, dá para acrescentar depois.</p>
+        </div>
+      </div>
+
+      <div class="linha">
+        <div>
+          <label class="rot">Quem participa</label>
+          <div class="quem" id="quem"></div>
+        </div>
+      </div>
+
+      <div class="linha l2">
+        <div>
+          <label class="rot" for="cConta">O que conta como par repassado</label>
+          <select id="cConta">
+            <option value="aprovado" selected>Pedido aprovado ou atendido</option>
+            <option value="pendente">Qualquer pedido, desde a pendência</option>
+            <option value="faturado">Só o que foi faturado</option>
+          </select>
+          <p class="dica">Aprovado é o meio-termo: já é compromisso, e ainda dá tempo de corrigir engano.</p>
+        </div>
+        <div>
+          <label class="rot" for="cTeto">Teto de prêmio (R$) — opcional</label>
+          <input type="number" id="cTeto" min="0" step="100" placeholder="sem teto">
+          <p class="dica">Ao atingir, a campanha para de acumular e o painel avisa.</p>
+        </div>
+      </div>
+
+      <div class="caixa">
+        <div class="t">Como fica</div>
+        <div class="v" id="prev">R$ 5,00 por par · 4 produtos · 47 dias</div>
+        <div class="d" id="prev2">No ritmo dos últimos 30 dias, a conta fecharia perto de R$ 6.400.</div>
+      </div>
+    </div>
+
+    <div class="m-pe">
+      <button class="btn forte" style="flex:1;min-width:160px;justify-content:center" onclick="salvar()">
+        <i class="fa-solid fa-check"></i> Salvar campanha
+      </button>
+      <button class="btn fraco" onclick="fecharModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── a prévia é só visual: os dados abaixo são inventados ─────────── */
+const PRODUTOS = ['NUVEM','NUVEM 2','NUVEM KIDS','CHALLENGER','CHALLENGER 2','CORRE 5','CORRE MAX 2',
+  'VENUS 3','INDEX 4','POS CORRE','GRAU','MOCHILA PUFF','MOCHILA TREINO'];
+const ESTOQUE = {'NUVEM':812,'NUVEM 2':430,'NUVEM KIDS':96,'CHALLENGER':654,'CHALLENGER 2':210,
+  'CORRE 5':1320,'CORRE MAX 2':880,'VENUS 3':2240,'INDEX 4':492,'POS CORRE':576,'GRAU':408,
+  'MOCHILA PUFF':120,'MOCHILA TREINO':84};
+const VENDEDORES = [
+  {nome:'JORGE',    cor:'#7c3aed'},
+  {nome:'MARIANA',  cor:'#2c39e2'},
+  {nome:'RAFAEL',   cor:'#0d9488'},
+  {nome:'WILLAME',  cor:'#ea580c'},
+  {nome:'LEANDRO',  cor:'#db2777'},
+];
+const VALOR_PAR = 5;
+let escolhidos = ['NUVEM','NUVEM 2','CHALLENGER','CHALLENGER 2'];
+let unidade = 'pares';
+
+/* ── abas e tema ─────────────────────────────────────────────────── */
+document.querySelectorAll('.aba').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.aba').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.tela').forEach(t => t.classList.toggle('on', t.id === 'tela-' + b.dataset.tela));
+  if(b.dataset.tela === 'dash') desenhar();
+});
+function trocarTema(){
+  const r = document.documentElement;
+  const escuro = r.getAttribute('data-theme') === 'dark'
+    || (!r.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches);
+  r.setAttribute('data-theme', escuro ? 'light' : 'dark');
+  desenhar();
+}
+
+/* ── modal ───────────────────────────────────────────────────────── */
+function abrirModal(editar){
+  document.getElementById('mTit').textContent = editar ? 'Editar campanha' : 'Nova campanha';
+  document.getElementById('fundo').classList.add('on');
+  document.body.style.overflow = 'hidden';
+  pintarChips(); pintarQuem(); recalcular();
+}
+function fecharModal(){
+  document.getElementById('fundo').classList.remove('on');
+  document.body.style.overflow = '';
+  document.getElementById('sug').classList.remove('on');
+}
+document.getElementById('fundo').onclick = e => { if(e.target.id === 'fundo') fecharModal(); };
+addEventListener('keydown', e => { if(e.key === 'Escape') fecharModal(); });
+function salvar(){ fecharModal(); }
+
+/* ── escolha de produtos ─────────────────────────────────────────── */
+function buscar(termo){
+  const t = String(termo || '').trim().toUpperCase();
+  const achados = PRODUTOS.filter(p => !escolhidos.includes(p) && (!t || p.includes(t))).slice(0, 7);
+  const sug = document.getElementById('sug');
+  sug.innerHTML = achados.length
+    ? achados.map(p => `<button type="button" onclick="juntar('${p}')">
+         <i class="fa-solid fa-shoe-prints" style="color:var(--muted)"></i> ${p}
+         <span class="q">${(ESTOQUE[p]||0).toLocaleString('pt-BR')} pares em estoque</span></button>`).join('')
+    : `<button type="button" disabled style="color:var(--muted);cursor:default">nenhum produto com esse nome</button>`;
+  sug.classList.add('on');
+}
+function juntar(p){
+  if(!escolhidos.includes(p)) escolhidos.push(p);
+  document.getElementById('cProd').value = '';
+  document.getElementById('sug').classList.remove('on');
+  pintarChips(); recalcular();
+}
+function tirar(p){ escolhidos = escolhidos.filter(x => x !== p); pintarChips(); recalcular(); }
+function pintarChips(){
+  const c = document.getElementById('chips');
+  c.innerHTML = escolhidos.length
+    ? escolhidos.map(p => `<span class="chip">${p}<button type="button" title="Tirar"
+        onclick="tirar('${p}')">&times;</button></span>`).join('')
+    : '<span class="vazio">nenhum produto escolhido ainda</span>';
+}
+function pintarQuem(){
+  document.getElementById('quem').innerHTML =
+    `<label><input type="checkbox" checked onchange="marcarTodos(this.checked)"> Todos os vendedores</label>` +
+    VENDEDORES.map(v => `<label><input type="checkbox" class="qv" checked> ${v.nome}</label>`).join('');
+}
+function marcarTodos(on){ document.querySelectorAll('.qv').forEach(c => c.checked = on); }
+
+function recalcular(){
+  const valor = Number(document.getElementById('cValor').value || 0);
+  const ini = new Date(document.getElementById('cIni').value || Date.now());
+  const fim = new Date(document.getElementById('cFim').value || Date.now());
+  const dias = Math.max(1, Math.round((fim - ini) / 864e5) + 1);
+  const estoque = escolhidos.reduce((s, p) => s + (ESTOQUE[p] || 0), 0);
+  document.getElementById('prev').textContent =
+    `R$ ${valor.toFixed(2).replace('.', ',')} por par · ${escolhidos.length} produto${escolhidos.length !== 1 ? 's' : ''} · ${dias} dias`;
+  document.getElementById('prev2').textContent = escolhidos.length
+    ? `Há ${estoque.toLocaleString('pt-BR')} pares desses produtos em estoque: repassando tudo, o prêmio chegaria a R$ ${(estoque * valor).toLocaleString('pt-BR')}.`
+    : 'Escolha ao menos um produto para ver a estimativa.';
+}
+
+/* ── dados fictícios da evolução ─────────────────────────────────── */
+const DIAS = (() => {
+  const d = [], ini = new Date(2026, 8, 15), hoje = new Date(2026, 9, 2);
+  for(let t = new Date(ini); t <= hoje; t.setDate(t.getDate() + 1)) d.push(new Date(t));
+  return d;
+})();
+// ritmo diferente por vendedor, com fim de semana parado — uma série que
+// não parece gerada por régua
+const SERIES = VENDEDORES.map((v, i) => {
+  const ritmo = [9, 7.5, 6, 4.5, 3][i];
+  let acc = 0; const semente = (i + 3) * 17;
+  return { ...v, pontos: DIAS.map((d, k) => {
+    const fds = d.getDay() === 0 || d.getDay() === 6;
+    const onda = 1 + Math.sin((k + semente) / 2.3) * .45;
+    acc += Math.max(0, Math.round(ritmo * onda * (fds ? .25 : 1) * (1 + k / 40)));
+    return acc;
+  })};
+});
+const fmtDia = d => String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+const fmtNum = n => unidade === 'reais'
+  ? 'R$ ' + (n * VALOR_PAR).toLocaleString('pt-BR')
+  : n.toLocaleString('pt-BR') + ' pares';
+
+document.querySelectorAll('#trocaUnidade button').forEach(b => b.onclick = () => {
+  unidade = b.dataset.un;
+  document.querySelectorAll('#trocaUnidade button').forEach(x => x.classList.toggle('on', x === b));
+  desenhar();
+});
+
+let ocultos = new Set();
+let _ultimoX = null;
+function desenhar(){
+  const svgEl = document.getElementById('svg');
+  const estreito = innerWidth < 640;
+  // uma unidade do viewBox = um pixel na tela: é o que mantém o texto
+  // legível no celular sem esticar a fonte junto com o desenho
+  const W = Math.max(300, Math.round(svgEl.parentElement.clientWidth));
+  const H = estreito ? 230 : 300;
+  const mE = estreito ? 32 : 46;
+  const mD = estreito ? 12 : 74;   // no celular os nomes ficam só na legenda
+  const mT = 14, mB = 26;
+  svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svgEl.style.height = H + 'px';
+  const vivos = SERIES.filter(s => !ocultos.has(s.nome));
+  const topo = Math.max(10, ...vivos.flatMap(s => s.pontos)) * 1.08;
+  const x = i => mE + (W - mE - mD) * (i / (DIAS.length - 1));
+  const y = v => H - mB - (H - mT - mB) * (v / topo);
+  const val = v => unidade === 'reais' ? v * VALOR_PAR : v;
+
+  let g = '';
+  // grade e eixo de valores
+  for(let k = 0; k <= 4; k++){
+    const v = topo * k / 4, yy = y(v);
+    g += `<line class="grade" x1="${mE}" y1="${yy}" x2="${W - mD}" y2="${yy}"/>`;
+    g += `<text class="eixo" x="${mE - 8}" y="${yy + 4}" text-anchor="end">${
+      unidade === 'reais' ? (val(v) >= 1000 ? (val(v) / 1000).toFixed(0) + 'k' : Math.round(val(v)))
+                          : Math.round(v)}</text>`;
+  }
+  // eixo de datas — menos marcas quando a tela é estreita
+  const passo = estreito ? 6 : 4;
+  DIAS.forEach((d, i) => {
+    if(i % passo && i !== DIAS.length - 1) return;
+    g += `<text class="eixo" x="${x(i)}" y="${H - 6}" text-anchor="middle">${fmtDia(d)}</text>`;
+  });
+  // linhas
+  for(const s of vivos){
+    const d = s.pontos.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+    g += `<path class="gl" d="${d}" stroke="${s.cor}"/>`;
+    const ult = s.pontos[s.pontos.length - 1];
+    g += `<circle class="gp" cx="${x(DIAS.length - 1)}" cy="${y(ult)}" r="4" fill="${s.cor}"/>`;
+    if(!estreito) g += `<text x="${x(DIAS.length - 1) + 9}" y="${y(ult) + 4}" fill="${s.cor}"
+            style="font:700 11px Inter,sans-serif">${s.nome}</text>`;
+  }
+  g += `<line class="cursor" id="cursor" x1="0" y1="${mT}" x2="0" y2="${H - mB}"/>`;
+  document.getElementById('svg').innerHTML = g;
+
+  document.getElementById('leg').innerHTML = SERIES.map(s =>
+    `<span data-n="${s.nome}" class="${ocultos.has(s.nome) ? 'off' : ''}">
+       <i class="pt" style="background:${s.cor}"></i>${s.nome}</span>`).join('');
+  document.querySelectorAll('#leg span').forEach(e => e.onclick = () => {
+    const n = e.dataset.n;
+    if(ocultos.has(n)) ocultos.delete(n); else ocultos.add(n);
+    if(ocultos.size === SERIES.length) ocultos.clear();
+    desenhar();
+  });
+
+  // KPIs e ranking
+  const total = SERIES.reduce((s, v) => s + v.pontos[v.pontos.length - 1], 0);
+  document.getElementById('kPares').textContent = total.toLocaleString('pt-BR');
+  document.getElementById('kPremio').textContent = 'R$ ' + (total * VALOR_PAR).toLocaleString('pt-BR');
+
+  const ord = [...SERIES].sort((a, b) => b.pontos[b.pontos.length - 1] - a.pontos[a.pontos.length - 1]);
+  const lider = ord[0].pontos[ord[0].pontos.length - 1];
+  document.getElementById('rank').innerHTML = ord.map((s, i) => {
+    const v = s.pontos[s.pontos.length - 1];
+    const ontem = s.pontos[s.pontos.length - 2] || 0;
+    return `<div class="rank">
+      <span class="pos">${i + 1}</span>
+      <span class="nome">${s.nome}</span>
+      <span class="barra"><i style="width:${(v / lider * 100).toFixed(1)}%;background:${s.cor}"></i></span>
+      <span class="sec num">+${v - ontem} hoje</span>
+      <span class="vlr num">${fmtNum(v)}</span>
+    </div>`;
+  }).join('');
+
+  ligarDica(x, W, mE, mD);
+}
+// o gráfico é desenhado na medida da tela: mudou a medida, desenha de novo
+let _redesenhar;
+addEventListener('resize', () => {
+  clearTimeout(_redesenhar);
+  _redesenhar = setTimeout(() => { if(document.getElementById('tela-dash').classList.contains('on')) desenhar(); }, 120);
+});
+
+function ligarDica(x, W, mE, mD){
+  const svg = document.getElementById('svg'), dica = document.getElementById('dicaGraf'),
+        cursor = document.getElementById('cursor');
+  const sair = () => { dica.style.display = 'none'; if(cursor) cursor.style.opacity = 0; };
+  svg.onmouseleave = sair;
+  svg.onpointerleave = sair;
+  // pointermove atende mouse e dedo com o mesmo código
+  svg.onpointermove = ev => {
+    const r = svg.getBoundingClientRect();
+    const px = (ev.clientX - r.left) / r.width * W;
+    let i = Math.round((px - mE) / (W - mE - mD) * (DIAS.length - 1));
+    i = Math.max(0, Math.min(DIAS.length - 1, i));
+    const vivos = SERIES.filter(s => !ocultos.has(s.nome))
+      .sort((a, b) => b.pontos[i] - a.pontos[i]);
+    dica.innerHTML = `<div class="dia">${fmtDia(DIAS[i])}</div>` + vivos.map(s =>
+      `<div class="l"><span><i class="pt" style="background:${s.cor};display:inline-block;margin-right:6px"></i>${s.nome}</span>
+       <b>${fmtNum(s.pontos[i])}</b></div>`).join('');
+    dica.style.display = 'block';
+    const esq = x(i) / W * r.width;
+    dica.style.left = Math.min(Math.max(0, esq - dica.offsetWidth / 2), r.width - dica.offsetWidth) + 'px';
+    dica.style.top = '6px';
+    if(cursor){ cursor.setAttribute('x1', x(i)); cursor.setAttribute('x2', x(i)); cursor.style.opacity = .6; }
+  };
+}
+
+pintarChips(); pintarQuem(); recalcular(); desenhar();
+</script>
+</body>
+</html>
