@@ -622,6 +622,11 @@
     .cmp-ped .d{ font-weight:700; color:#0f172a; min-width:74px }
     .cmp-ped .c{ flex:1; min-width:0; color:#64748b; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
     .cmp-ped .q{ font-weight:800; color:#7c3aed; font-variant-numeric:tabular-nums }
+    .cmp-ped.espera .q{ color:#b45309 }
+    .cmp-ped .et{ font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.04em;
+      color:#b45309; background:#fdf4dc; border-radius:999px; padding:2px 7px; white-space:nowrap }
+    .cmp-cartao .espera{ background:rgba(251,191,36,.28); color:#fff8e6; border-radius:999px;
+      padding:2px 10px; font-weight:800 }
 
     /* Novidade: verde, o mesmo selo da vitrine CMS. */
     /* à direita da lupa, que já mora no canto de cima */
@@ -3134,18 +3139,23 @@ function renderCampanhas(){
     const lado = mostraValor
       ? `${pares} par${pares === 1 ? '' : 'es'} ${ap ? 'na campanha' : 'seus'}`
       : `par${pares === 1 ? '' : 'es'} ${ap ? 'na campanha' : 'seus'}`;
-    const posicao = (!ap && c.mostrarPosicao !== false && eu.posicao)
+    const posicao = (!ap && c.mostrarPosicao !== false && eu.posicao && eu.pares > 0)
       ? `<span class="bo">${eu.posicao}º de ${eu.participantes}</span>` : '';
-    return `<div class="cmp-cartao${pares ? '' : ' sem'}" data-camp="${safeHtml(c.id)}" role="button" tabindex="0">
+    // o que já foi repassado mas espera aprovação: sem isto o vendedor faz
+    // oito pedidos num dia e o cartão continua dizendo zero
+    const esperando = (ap ? ap.paresPendentes : eu.pendentes) || 0;
+    const chipEspera = esperando
+      ? `<span class="espera">+${esperando} par${esperando === 1 ? '' : 'es'} aguardando aprovação</span>` : '';
+    return `<div class="cmp-cartao${(pares || esperando) ? '' : ' sem'}" data-camp="${safeHtml(c.id)}" role="button" tabindex="0">
       <div class="lado">
         <div class="et"><i class="fa-solid fa-sack-dollar"></i> Campanha · ${INCENTIVO.dinheiro(c.valor)} por par</div>
         <div class="nm">${safeHtml(c.nome || 'Campanha')}</div>
         <div class="vl"><b>${grande}</b><span>${pares ? lado : 'nenhum par ainda'}</span></div>
         <div class="pe">
-          ${posicao}
+          ${posicao}${chipEspera}
           <span>${dias ? `faltam ${dias} dia${dias === 1 ? '' : 's'}` : 'último dia'}</span>
           <span style="flex:1"></span>
-          <span>${pares ? 'ver o que contou' : 'ver os produtos'} <i class="fa-solid fa-chevron-right" style="font-size:9px"></i></span>
+          <span>${(pares || esperando) ? 'ver o que contou' : 'ver os produtos'} <i class="fa-solid fa-chevron-right" style="font-size:9px"></i></span>
         </div>
       </div>
       <div class="prods" style="max-width:220px">
@@ -3175,20 +3185,25 @@ function abrirCampanhaDetalhe(id){
   // Sem pedido ainda: em vez de uma lista vazia, os produtos que valem
   const lista = eu.detalhe.length
     ? eu.detalhe.sort((a, b) => new Date(b.data) - new Date(a.data)).map(d => `
-        <div class="cmp-ped">
+        <div class="cmp-ped${d.conta ? '' : ' espera'}">
           <span class="d">${new Date(d.data).toLocaleDateString('pt-BR')}</span>
           <span class="c">${safeHtml(d.cliente || 'cliente não informado')}</span>
+          ${d.conta ? '' : '<span class="et">esperando</span>'}
           <span class="q">${d.pares} par${d.pares === 1 ? '' : 'es'}</span>
         </div>`).join('')
     : `<div class="py-6 text-center text-sm text-slate-500">
          <div class="font-bold text-slate-700 mb-1">Nenhum pedido seu entrou ainda</div>
          Vale ${INCENTIVO.dinheiro(c.valor)} por par de: ${safeHtml((c.produtos || []).join(', '))}.
        </div>`;
+  // o cartão conta pelo que entrou; o detalhe mostra tudo, inclusive o que espera
   $('campModalLista').innerHTML = lista;
 
   const conta = c.conta === 'tudo' ? 'pedido aprovado e pendente' : 'só pedido aprovado';
+  const esperaDet = eu.pendentes
+    ? ` · ${eu.pendentes} par${eu.pendentes === 1 ? '' : 'es'} ainda esperando aprovação${mostraValor ? ' (' + INCENTIVO.dinheiro(eu.premioPendente) + ')' : ''}`
+    : '';
   $('campModalPe').innerHTML = eu.detalhe.length
-    ? `${eu.pares} pares${mostraValor ? ' · ' + INCENTIVO.dinheiro(eu.premio) : ''} em ${eu.detalhe.length} pedido${eu.detalhe.length === 1 ? '' : 's'} — conta ${conta}.`
+    ? `${eu.pares} pares${mostraValor ? ' · ' + INCENTIVO.dinheiro(eu.premio) : ''} em ${eu.pedidos} pedido${eu.pedidos === 1 ? '' : 's'} — conta ${conta}${esperaDet}.`
     : `Conta ${conta}; cancelado nunca conta.`;
 
   $('campModalWrap').classList.remove('hidden');

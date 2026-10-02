@@ -75,6 +75,11 @@
   .cmp-bar i{display:block;height:100%;border-radius:999px;background:#7c3aed}
   .cmp-mov{font-size:11.5px;color:var(--mute);min-width:78px;text-align:right;font-variant-numeric:tabular-nums}
   .cmp-mov b{color:#15803d;font-weight:700}
+  .cmp-pend{color:#b45309;font-weight:700}
+  [data-theme="dark"] .cmp-pend{color:#fbbf24}
+  .cmp-espera{display:flex;gap:9px;align-items:flex-start;background:#fdf4dc;border:1px solid #f5e3b0;
+    border-radius:12px;padding:10px 13px;margin-top:12px;font-size:12.5px;color:#7a4f06}
+  [data-theme="dark"] .cmp-espera{background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.3);color:#fbbf24}
   .cmp-vl{min-width:96px;text-align:right}
   .cmp-vl b{display:block;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
   .cmp-vl i{display:block;font-size:11px;font-style:normal;color:var(--mute);font-variant-numeric:tabular-nums}
@@ -542,7 +547,7 @@ function renderCampanha(){
 
   document.getElementById('campKpis').innerHTML=`
     <div class="cmp-k"><div class="r">Pares na campanha</div><div class="v">${fmt(ap.pares)}</div>
-      <div class="d">${INCENTIVO.dinheiro(c.valor)} por par</div></div>
+      <div class="d">${ap.paresPendentes ? `<span class="cmp-pend">+ ${fmt(ap.paresPendentes)} aguardando aprovação</span>` : INCENTIVO.dinheiro(c.valor)+' por par'}</div></div>
     <div class="cmp-k premio"><div class="r">Prêmio acumulado</div><div class="v">${INCENTIVO.dinheiro(ap.premio)}</div>
       <div class="d">${ap.estourouTeto?'teto atingido':'a pagar aos vendedores'}</div></div>
     <div class="cmp-k"><div class="r">Vendedores</div><div class="v">${ap.vendedores.length}</div>
@@ -551,22 +556,31 @@ function renderCampanha(){
       <div class="v" style="font-size:${quando.length>12?'17px':'23px'}">${quando}</div>
       <div class="d">${INCENTIVO.diaLocal(c.inicio)?INCENTIVO.diaLocal(c.inicio).toLocaleDateString('pt-BR'):'—'} a ${INCENTIVO.diaLocal(c.fim)?INCENTIVO.diaLocal(c.fim).toLocaleDateString('pt-BR'):'—'}</div></div>`;
 
-  const lider=ap.vendedores[0]?ap.vendedores[0].pares:1;
+  // sem nenhum par contado, a divisão daria NaN e a barra saía cheia
+  const lider=Math.max(1, ap.vendedores[0]?ap.vendedores[0].pares:1);
   document.getElementById('campRank').innerHTML = ap.vendedores.length
     ? ap.vendedores.map((v,i)=>`<div class="cmp-r">
         <span class="cmp-pos">${i+1}</span>
         <span class="cmp-nm">${safeAttr(v.nome)}</span>
         <span class="cmp-bar"><i style="width:${(v.pares/lider*100).toFixed(1)}%"></i></span>
-        <span class="cmp-mov">+${fmt(v.hoje)} hoje<br><b>+${fmt(v.semana)} na semana</b></span>
+        <span class="cmp-mov">${v.pendentes ? `<span class="cmp-pend">${fmt(v.pendentes)} esperando</span><br>` : `+${fmt(v.hoje)} hoje<br>`}<b>+${fmt(v.semana)} na semana</b></span>
         <span class="cmp-vl"><b>${fmt(v.pares)} pares</b><i>${INCENTIVO.dinheiro(v.premio)}</i></span>
       </div>`).join('') +
       `<div class="cmp-tot"><span>Total da campanha</span>
         <span>${fmt(ap.pares)} pares · ${INCENTIVO.dinheiro(ap.premio)}</span></div>` +
+      (ap.paresPendentes ? `<div class="cmp-espera"><i class="fa-regular fa-clock" style="margin-top:2px"></i>
+        <div><b>${fmt(ap.paresPendentes)} pares em ${ap.pedidosPendentes} pedido${ap.pedidosPendentes!==1?'s':''} ainda não entraram</b>
+        — estão pendentes, e esta campanha conta só aprovado. Valeriam ${INCENTIVO.dinheiro(ap.premioPendente)}.
+        Para contá-los, troque "o que conta" no cadastro da campanha, no DISPO.</div></div>` : '') +
       `<div class="cmp-aviso"><i class="fa-regular fa-circle-question" style="margin-top:2px"></i>
         <div>Conta ${c.conta==='tudo'?'<b>pedido aprovado e pendente</b>':'<b>só pedido aprovado</b>'}; cancelado nunca conta.
         ${(c.produtos||[]).join(', ')}${(c.vendedores||[]).length?' · só para quem foi escolhido no cadastro':''}.</div></div>`
     : `<div style="text-align:center;padding:22px;color:var(--mute);font-size:13px">
-         Nenhum par repassado ainda nesta campanha.</div>`;
+         ${ap.paresPendentes
+           ? `<b style="color:#b45309">${fmt(ap.paresPendentes)} pares já repassados estão esperando aprovação</b><br>
+              Esta campanha conta só pedido aprovado — eles entram assim que forem aprovados,
+              ou agora, se você trocar "o que conta" no cadastro.`
+           : 'Nenhum par repassado ainda nesta campanha.'}</div>`;
 }
 
 // ── RANKING DE VENDEDORES ───────────────────────────────────────────────────

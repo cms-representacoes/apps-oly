@@ -73,26 +73,43 @@
     return !cores.length || cores.includes(texto(item.cor));
   }
 
-  /** O pedido conta? Período, status e — se a campanha restringiu — vendedor. */
-  function pedidoDaCampanha(c, pedido) {
-    if (!c || !pedido || pedido.archived) return false;
+  /** Que papel este pedido tem na campanha:
+   *
+   *    'conta'    → entra no prêmio;
+   *    'pendente' → é do período e do produto, mas ainda espera aprovação,
+   *                 e a campanha só conta aprovado;
+   *    'fora'     → não é desta campanha (período, vendedor ou cancelado).
+   *
+   *  O 'pendente' existe porque sumir em silêncio foi o que aconteceu na
+   *  primeira campanha: oito repasses do dia não apareciam em lugar nenhum,
+   *  e de fora parecia que a campanha não tinha enxergado o que já fora
+   *  repassado. Agora o número aparece ao lado, dizendo que ainda não conta.
+   */
+  function papelDoPedido(c, pedido) {
+    if (!c || !pedido || pedido.archived) return 'fora';
     const ini = diaLocal(c.inicio), fim = diaLocal(c.fim, true);
-    if (!ini || !fim) return false;
+    if (!ini || !fim) return 'fora';
     const quando = new Date(pedido.createdAt || pedido.updatedAt || 0);
-    if (isNaN(quando) || quando < ini || quando > fim) return false;
+    if (isNaN(quando) || quando < ini || quando > fim) return 'fora';
 
     // 'faturado' não existe como status de pedido — o que há é Aprovado,
     // Pendente e Cancelado. Cancelado nunca conta, em nenhum modo.
     const st = texto(pedido.status);
-    if (st === 'CANCELADO' || st === 'CANCELADA') return false;
-    const aprovado = ['APROVADO', 'FINALIZADO', 'FATURADO'].includes(st);
-    if ((c.conta || 'aprovado') === 'aprovado' && !aprovado) return false;
+    if (st === 'CANCELADO' || st === 'CANCELADA') return 'fora';
 
     const quem = (c.vendedores || []).map(x => String(x).trim()).filter(Boolean);
-    if (!quem.length) return true;
-    const cod = String((pedido.preposto && pedido.preposto.codigo) || '').trim();
-    return quem.includes(cod);
+    if (quem.length) {
+      const cod = String((pedido.preposto && pedido.preposto.codigo) || '').trim();
+      if (!quem.includes(cod)) return 'fora';
+    }
+
+    const aprovado = ['APROVADO', 'FINALIZADO', 'FATURADO'].includes(st);
+    if ((c.conta || 'aprovado') === 'aprovado' && !aprovado) return 'pendente';
+    return 'conta';
   }
+
+  /** O pedido conta? Período, status e — se a campanha restringiu — vendedor. */
+  const pedidoDaCampanha = (c, pedido) => papelDoPedido(c, pedido) === 'conta';
 
   const paresDoItem = item => {
     const t = Number((item && item.totalUnits) || 0);
@@ -114,11 +131,12 @@
     const inicioDeHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
     const seteDias = new Date(inicioDeHoje.getTime() - 6 * 864e5);
     const porVendedor = new Map();
-    let pares = 0, pedidosContados = 0;
+    let pares = 0, pedidosContados = 0, paresPendentes = 0, pedidosPendentes = 0;
     const detalhe = [];
 
     for (const p of (pedidos || [])) {
-      if (!pedidoDaCampanha(c, p)) continue;
+      const papel = papelDoPedido(c, p);
+      if (papel === 'fora') continue;
       let doPedido = 0;
       for (const it of (p.items || [])) {
         if (!itemDaCampanha(c, it)) continue;
@@ -126,19 +144,28 @@
       }
       if (doPedido <= 0) continue;
 
-      pares += doPedido;
-      pedidosContados++;
+      const conta = papel === 'conta';
       const nome = (p.preposto && (p.preposto.nome || p.preposto.codigo)) || '—';
       const cod = String((p.preposto && p.preposto.codigo) || '').trim();
-      if (!porVendedor.has(nome)) porVendedor.set(nome, { nome, codigo: cod, pares: 0, hoje: 0, semana: 0, pedidos: 0 });
+      if (!porVendedor.has(nome)) porVendedor.set(nome,
+        { nome, codigo: cod, pares: 0, hoje: 0, semana: 0, pedidos: 0, pendentes: 0 });
       const v = porVendedor.get(nome);
-      v.pares += doPedido;
-      v.pedidos++;
-      const quando = new Date(p.createdAt || p.updatedAt || 0);
-      if (quando >= inicioDeHoje) v.hoje += doPedido;
-      if (quando >= seteDias) v.semana += doPedido;
+
+      if (conta) {
+        pares += doPedido;
+        pedidosContados++;
+        v.pares += doPedido;
+        v.pedidos++;
+        const quando = new Date(p.createdAt || p.updatedAt || 0);
+        if (quando >= inicioDeHoje) v.hoje += doPedido;
+        if (quando >= seteDias) v.semana += doPedido;
+      } else {
+        paresPendentes += doPedido;
+        pedidosPendentes++;
+        v.pendentes += doPedido;
+      }
       detalhe.push({ id: p.id, data: p.createdAt, cliente: p.clienteNome || '', status: p.status,
-                     pares: doPedido, vendedor: nome, codigo: cod });
+                     pares: doPedido, vendedor: nome, codigo: cod, conta });
     }
 
     const valor = Number((c && c.valor) || 0);
@@ -147,11 +174,12 @@
     const premio = teto > 0 ? Math.min(bruto, teto) : bruto;
 
     const lista = [...porVendedor.values()]
-      .map(v => ({ ...v, premio: v.pares * valor }))
-      .sort((a, b) => b.pares - a.pares);
+      .map(v => ({ ...v, premio: v.pares * valor, premioPendente: v.pendentes * valor }))
+      .sort((a, b) => (b.pares - a.pares) || (b.pendentes - a.pendentes));
 
     return { pares, premio, bruto, teto, estourouTeto: teto > 0 && bruto > teto,
-             pedidos: pedidosContados, vendedores: lista, detalhe };
+             pedidos: pedidosContados, vendedores: lista, detalhe,
+             paresPendentes, pedidosPendentes, premioPendente: paresPendentes * valor };
   }
 
   /** O que um vendedor fez na campanha, com a posição dele. */
@@ -159,7 +187,9 @@
     const ap = apurarCampanha(c, pedidos, agora);
     const cod = String(codigo || '').trim();
     const i = ap.vendedores.findIndex(v => v.codigo === cod);
-    const eu = i >= 0 ? ap.vendedores[i] : { nome: '', codigo: cod, pares: 0, hoje: 0, semana: 0, pedidos: 0, premio: 0 };
+    const eu = i >= 0 ? ap.vendedores[i]
+      : { nome: '', codigo: cod, pares: 0, hoje: 0, semana: 0, pedidos: 0, premio: 0,
+          pendentes: 0, premioPendente: 0 };
     return { ...eu, posicao: i >= 0 ? i + 1 : 0, participantes: ap.vendedores.length,
              totalPares: ap.pares, detalhe: ap.detalhe.filter(d => d.codigo === cod) };
   }
@@ -184,7 +214,7 @@
     { minimumFractionDigits: Number.isInteger(Number(v)) ? 0 : 2, maximumFractionDigits: 2 });
 
   raiz.INCENTIVO = {
-    statusCampanha, campanhaVale, diasRestantes, itemDaCampanha, pedidoDaCampanha,
+    statusCampanha, campanhaVale, diasRestantes, itemDaCampanha, pedidoDaCampanha, papelDoPedido,
     paresDoItem, apurarCampanha, minhaParteNaCampanha, campanhaDoVendedor,
     campanhaDoProduto, dinheiro, diaLocal,
   };
