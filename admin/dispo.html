@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="../js/campanhas.js?v=1"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 
@@ -597,6 +598,45 @@
     body.theme-premium .rateio-resumo .rateio-selo{ background:#fafafa; color:#3f3f46; border-color:#d4d4d8; }
     .badge-rateio{ display:inline-block; font-size:9px; font-weight:800; background:linear-gradient(135deg,#a78bfa,#7c3aed); color:#fff; border-radius:999px; padding:1px 7px; vertical-align:middle; box-shadow:0 2px 6px rgba(124,58,237,.3); }
     .dark .badge-rateio{ background:rgba(124,58,237,.30); color:#c4b5fd; }
+    /* ── Campanhas de incentivo ─────────────────────────────────── */
+    .cmp-linha{ display:flex;gap:14px;align-items:flex-start;padding:14px 2px;border-bottom:1px solid var(--line);flex-wrap:wrap }
+    .cmp-linha:last-child{ border-bottom:0 }
+    .cmp-ico{ width:40px;height:40px;border-radius:13px;flex:none;display:grid;place-items:center;font-size:15px;
+      background:#f5f3ff;color:#7c3aed }
+    .dark .cmp-ico{ background:rgba(124,58,237,.2);color:#c4b5fd }
+    .cmp-corpo{ flex:1;min-width:190px }
+    .cmp-nome{ font-weight:800;font-size:14.5px;color:var(--text);display:flex;align-items:center;gap:8px;flex-wrap:wrap }
+    .cmp-meta{ font-size:12px;color:var(--muted);margin-top:2px }
+    .cmp-tags{ display:flex;gap:5px;flex-wrap:wrap;margin-top:7px }
+    .cmp-tag{ font-size:10.5px;font-weight:700;background:var(--brand-soft);color:var(--brand);border-radius:999px;padding:2px 9px }
+    .cmp-nums{ display:flex;gap:16px;align-items:center;flex-wrap:wrap }
+    .cmp-num .v{ font-weight:800;font-size:16px;font-variant-numeric:tabular-nums;color:var(--text) }
+    .cmp-num .r{ font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted) }
+    .cmp-pil{ font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;border-radius:999px;padding:2px 9px }
+    .cmp-pil.ativa{ background:#e6f6ec;color:#15803d }
+    .cmp-pil.agendada{ background:#fdf4dc;color:#b45309 }
+    .cmp-pil.pausada{ background:#e8effd;color:#1d4ed8 }
+    .cmp-pil.encerrada{ background:var(--line);color:var(--muted) }
+    .cmp-bt{ border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;
+      padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px }
+    .cmp-bt:hover{ border-color:var(--brand);color:var(--brand) }
+    .cmp-bt.perigo:hover{ border-color:#dc2626;color:#dc2626 }
+    .cmp-chip{ display:inline-flex;align-items:center;gap:6px;background:var(--brand-soft);color:var(--brand);
+      border-radius:999px;padding:4px 7px 4px 11px;font-size:12px;font-weight:700 }
+    .cmp-chip button{ border:0;background:transparent;color:inherit;cursor:pointer;font-size:14px;line-height:1;opacity:.65 }
+    .cmp-chip button:hover{ opacity:1 }
+    .cmp-sug{ position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--card);border:1px solid var(--line);
+      border-radius:12px;box-shadow:var(--shadow);max-height:200px;overflow-y:auto;z-index:6;display:none }
+    .cmp-sug.on{ display:block }
+    .cmp-sug button{ display:flex;width:100%;gap:10px;align-items:center;border:0;background:transparent;color:var(--text);
+      padding:9px 12px;font-size:12.5px;font-weight:600;cursor:pointer;text-align:left;border-bottom:1px solid var(--line) }
+    .cmp-sug button:last-child{ border-bottom:0 }
+    .cmp-sug button:hover{ background:var(--brand-soft) }
+    .cmp-rot{ display:block;font-size:11px;font-weight:800;color:var(--text);margin-bottom:4px }
+    .cmp-dica{ font-size:11px;color:var(--muted);margin-top:4px }
+    .cmp-quem label{ display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;
+      padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;user-select:none;margin:0 6px 6px 0 }
+    .cmp-quem label:has(input:checked){ border-color:var(--brand);background:var(--brand-soft);color:var(--brand);font-weight:700 }
     .rateio-inp{ -moz-appearance:textfield; }
     .rateio-inp::-webkit-outer-spin-button, .rateio-inp::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
 
@@ -721,6 +761,13 @@
                 <i class="fa-solid fa-xmark text-xs"></i>
               </button>
             </div>
+
+            <button id="btnCampanhas" onclick="abrirCampanhas()" title="Campanhas de incentivo — prêmio por par repassado"
+              class="focus-ring relative h-9 w-9 rounded-full flex items-center justify-center text-white transition-transform hover:-translate-y-0.5"
+              style="background:linear-gradient(135deg,#a78bfa,#7c3aed);box-shadow:0 4px 14px rgba(124,58,237,.35)">
+              <i class="fa-solid fa-sack-dollar text-sm"></i>
+              <span id="campBadge" class="hidden absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white">0</span>
+            </button>
 
             <a id="btnDesmembramentos" href="./dispo_consulta.html" title="Consultar desmembramentos"
               class="focus-ring h-9 w-9 rounded-full flex items-center justify-center text-white transition-transform hover:-translate-y-0.5"
@@ -1019,7 +1066,8 @@ const STATE = {
   searchQuery: '',
   filtroMes: '',      // AAAA-MM da Prev. Fat, ou 'sem' para linhas sem data
   filtroNum: '',      // pedaço do Nº digitado na coluna
-  rateio: {}
+  rateio: {},
+  campanhas: []
 };
 
 // ── UTILITIES ─────────────────────────────────────────────────────────────────
@@ -1259,6 +1307,7 @@ async function loadDispo(){
       const rr = await workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'getRateio' }) });
       if(rr.ok){ const rj = await rr.json(); STATE.rateio = (rj && typeof rj==='object' && !Array.isArray(rj)) ? rj : {}; }
     }catch(e){ console.warn('Falha ao carregar rateio', e); }
+    await carregarCampanhas();
     _bannerShownThisLoad = false;
     $('dispoNotLoaded').classList.add('hidden');
     atualizarBadgeOcultos();
@@ -1562,6 +1611,277 @@ const PREPOSTOS_RATEIO = [
   {codigo:'25745', nome:'LEANDRO'}, {codigo:'3616654', nome:'MARCOS'},
   {codigo:'25846', nome:'CMS'}
 ];
+/* ════════════════════════════════════════════════════════════════════════
+   CAMPANHAS DE INCENTIVO
+   A regra de apuração vive em ../js/campanhas.js, a mesma que o dashboard e
+   a vitrine usam — aqui só se cadastra e se confere.
+   ════════════════════════════════════════════════════════════════════════ */
+// o nome do produto entra dentro de aspas simples no onclick: aspa e aspa
+// dupla precisam sair, senão um produto com apóstrofo quebra o atributo
+const campAttr = v => String(v == null ? '' : v).replaceAll("'", "\\'").replaceAll('"', '&quot;');
+let _campEditando = null;      // id da campanha aberta no formulário
+let _campProdutos = [];        // produtos escolhidos no formulário
+
+async function carregarCampanhas(){
+  try{
+    const r = await workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'getCampanhas' }) });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    STATE.campanhas = Array.isArray(j) ? j : [];
+  }catch(e){
+    // Worker antigo ainda sem a ação: a tela abre vazia em vez de quebrar.
+    console.warn('Falha ao carregar campanhas', e);
+    STATE.campanhas = [];
+  }
+  atualizarBadgeCampanhas();
+}
+
+function atualizarBadgeCampanhas(){
+  const b = $('campBadge');
+  if(!b) return;
+  const n = (STATE.campanhas||[]).filter(c => INCENTIVO.statusCampanha(c) === 'ativa').length;
+  b.textContent = n;
+  b.classList.toggle('hidden', n === 0);
+}
+
+function abrirCampanhas(){
+  renderCampanhas();
+  $('campModal').style.display = 'flex';
+}
+function fecharCampanhas(){ $('campModal').style.display = 'none'; }
+
+const _fmtData = iso => {
+  const d = INCENTIVO.diaLocal(iso);
+  return d ? d.toLocaleDateString('pt-BR') : '—';
+};
+
+function renderCampanhas(){
+  const lista = $('campLista');
+  const cs = [...(STATE.campanhas||[])];
+  if(!cs.length){
+    lista.innerHTML = `<div style="text-align:center;padding:26px 10px;color:var(--muted);font-size:13px">
+      <i class="fa-solid fa-sack-dollar" style="font-size:26px;opacity:.35;display:block;margin-bottom:8px"></i>
+      Nenhuma campanha ainda. A primeira define o prêmio por par, os produtos e o período.</div>`;
+    return;
+  }
+  // em andamento primeiro, encerrada por último — é a ordem em que se procura
+  const peso = { ativa:0, agendada:1, pausada:2, encerrada:3, rascunho:4 };
+  cs.sort((a,b) => (peso[INCENTIVO.statusCampanha(a)] - peso[INCENTIVO.statusCampanha(b)])
+                || String(b.inicio||'').localeCompare(String(a.inicio||'')));
+
+  lista.innerHTML = cs.map(c => {
+    const st = INCENTIVO.statusCampanha(c);
+    const ap = INCENTIVO.apurarCampanha(c, STATE.orders);
+    const ico = { ativa:'fa-sack-dollar', agendada:'fa-regular fa-clock', pausada:'fa-pause', encerrada:'fa-flag-checkered' }[st] || 'fa-sack-dollar';
+    const rot = { ativa:'em andamento', agendada:'agendada', pausada:'pausada', encerrada:'encerrada', rascunho:'sem data' }[st];
+    const quem = (c.vendedores||[]).length ? `${c.vendedores.length} vendedor${c.vendedores.length>1?'es':''}` : 'todos os vendedores';
+    const quando = st === 'agendada' ? `começa em ${_fmtData(c.inicio)}`
+      : st === 'encerrada' ? `${_fmtData(c.inicio)} a ${_fmtData(c.fim)}`
+      : `${_fmtData(c.inicio)} a ${_fmtData(c.fim)} · faltam ${INCENTIVO.diasRestantes(c)} dias`;
+    return `<div class="cmp-linha" style="${st==='encerrada'?'opacity:.62':''}">
+      <div class="cmp-ico"><i class="fa-solid ${ico}"></i></div>
+      <div class="cmp-corpo">
+        <div class="cmp-nome">${safeHtml(c.nome||'Campanha')} <span class="cmp-pil ${st}">${rot}</span></div>
+        <div class="cmp-meta">${INCENTIVO.dinheiro(c.valor)} por par · ${quando} · ${quem}</div>
+        <div class="cmp-tags">${(c.produtos||[]).map(x=>`<span class="cmp-tag">${safeHtml(x)}</span>`).join('')}</div>
+      </div>
+      <div class="cmp-nums">
+        <div class="cmp-num"><div class="v">${ap.pares.toLocaleString('pt-BR')}</div><div class="r">pares</div></div>
+        <div class="cmp-num"><div class="v" style="color:#7c3aed">${INCENTIVO.dinheiro(ap.premio)}</div><div class="r">prêmio</div></div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="cmp-bt" onclick="abrirCampForm('${c.id}')"><i class="fa-solid fa-pen"></i> Editar</button>
+        ${st==='encerrada' ? '' : `<button class="cmp-bt" onclick="pausarCampanha('${c.id}')" title="${c.pausada?'Voltar a valer':'Parar de contar sem apagar'}"><i class="fa-solid fa-${c.pausada?'play':'pause'}"></i></button>`}
+        <button class="cmp-bt perigo" onclick="excluirCampanha('${c.id}')" title="Apagar"><i class="fa-regular fa-trash-can"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── formulário ─────────────────────────────────────────────────────── */
+function abrirCampForm(id){
+  const c = id ? (STATE.campanhas||[]).find(x => x.id === id) : null;
+  _campEditando = c ? c.id : null;
+  _campProdutos = c ? [...(c.produtos||[])] : [];
+  $('campFormTitulo').textContent = c ? 'Editar campanha' : 'Nova campanha';
+  $('campNome').value = c ? (c.nome||'') : '';
+  $('campValor').value = c ? (c.valor||0) : 5;
+  const hoje = new Date();
+  const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  $('campIni').value = c ? (c.inicio||'') : iso(hoje);
+  $('campFim').value = c ? (c.fim||'') : iso(new Date(hoje.getFullYear(), hoje.getMonth()+1, 0));
+  $('campConta').value = (c && c.conta) || 'aprovado';
+  $('campTeto').value = c && Number(c.teto) ? c.teto : '';
+  $('campMostrarValor').checked = c ? c.mostrarValor !== false : true;
+  $('campMostrarPosicao').checked = c ? c.mostrarPosicao !== false : true;
+  pintarQuemCampanha(c ? (c.vendedores||[]) : []);
+  pintarChipsCampanha();
+  previaCampanha();
+  $('campFormModal').style.display = 'flex';
+}
+function fecharCampForm(){
+  $('campFormModal').style.display = 'none';
+  $('campSug').classList.remove('on');
+  _campEditando = null;
+}
+
+// Os nomes vêm da própria DISPO: é o que existe para repassar.
+function produtosConhecidos(){
+  const set = new Set();
+  for(const r of (STATE.dispoRows||[])){
+    const n = String(r.produto||'').trim().toUpperCase();
+    if(n) set.add(n);
+  }
+  return [...set].sort();
+}
+function buscarProdCampanha(termo){
+  const t = String(termo||'').trim().toUpperCase();
+  const achados = produtosConhecidos().filter(x => !_campProdutos.includes(x) && (!t || x.includes(t))).slice(0, 8);
+  const sug = $('campSug');
+  sug.innerHTML = achados.length
+    ? achados.map(x => `<button type="button" onclick="juntarProdCampanha('${campAttr(x)}')">
+        <i class="fa-solid fa-shoe-prints" style="color:var(--muted)"></i> ${safeHtml(x)}</button>`).join('')
+    : `<button type="button" style="color:var(--muted);cursor:default">nenhum produto com esse nome na DISPO</button>`;
+  sug.classList.add('on');
+}
+function juntarProdCampanha(nome){
+  const n = String(nome||'').trim().toUpperCase();
+  if(n && !_campProdutos.includes(n)) _campProdutos.push(n);
+  $('campProd').value = '';
+  $('campSug').classList.remove('on');
+  pintarChipsCampanha();
+  previaCampanha();
+}
+function tirarProdCampanha(nome){
+  _campProdutos = _campProdutos.filter(x => x !== nome);
+  pintarChipsCampanha();
+  previaCampanha();
+}
+function pintarChipsCampanha(){
+  $('campChips').innerHTML = _campProdutos.length
+    ? _campProdutos.map(x => `<span class="cmp-chip">${safeHtml(x)}
+        <button type="button" title="Tirar" onclick="tirarProdCampanha('${campAttr(x)}')">&times;</button></span>`).join('')
+    : `<span style="font-size:12px;color:var(--muted);font-style:italic">nenhum produto escolhido ainda</span>`;
+}
+function pintarQuemCampanha(escolhidos){
+  const todos = !escolhidos.length;
+  $('campQuem').innerHTML =
+    `<label><input type="checkbox" id="campTodos" ${todos?'checked':''} onchange="marcarTodosCampanha(this.checked)"> Todos os vendedores</label>` +
+    PREPOSTOS_RATEIO.filter(p => p.nome !== 'CMS').map(p =>
+      `<label><input type="checkbox" class="campV" value="${p.codigo}" ${todos||escolhidos.includes(p.codigo)?'checked':''}
+         onchange="sincronizarTodosCampanha()"> ${safeHtml(p.nome)}</label>`).join('');
+}
+function marcarTodosCampanha(on){
+  document.querySelectorAll('.campV').forEach(c => c.checked = on || c.checked);
+  if(!on) document.querySelectorAll('.campV').forEach(c => c.checked = true);
+}
+function sincronizarTodosCampanha(){
+  const todos = [...document.querySelectorAll('.campV')].every(c => c.checked);
+  $('campTodos').checked = todos;
+}
+
+function previaCampanha(){
+  const valor = Number($('campValor').value || 0);
+  const ini = INCENTIVO.diaLocal($('campIni').value), fim = INCENTIVO.diaLocal($('campFim').value, true);
+  const dias = (ini && fim) ? Math.max(0, Math.round((fim - ini) / 864e5) + 1) : 0;
+  $('campPrev').textContent = `${INCENTIVO.dinheiro(valor)} por par · ${_campProdutos.length} produto${_campProdutos.length!==1?'s':''} · ${dias} dia${dias!==1?'s':''}`;
+  // o estoque desses produtos é o teto natural da conta
+  const pares = (STATE.dispoRows||[])
+    .filter(r => _campProdutos.includes(String(r.produto||'').trim().toUpperCase()))
+    .reduce((s, r) => s + Number(r.saldo||0), 0);
+  $('campPrev2').textContent = _campProdutos.length
+    ? `Há ${pares.toLocaleString('pt-BR')} pares desses produtos na DISPO: repassando tudo, o prêmio chegaria a ${INCENTIVO.dinheiro(pares*valor)}.`
+    : 'Escolha ao menos um produto para ver a estimativa.';
+}
+
+/* ── gravação ───────────────────────────────────────────────────────── */
+async function gravarCampanhas(lista, aviso){
+  const btn = $('campBtnSalvar'); const antes = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = 'Salvando...'; }
+  try{
+    const r = await workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'saveCampanhas', data: lista }) });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if(!j.success) throw new Error(j.error || 'Erro');
+    STATE.campanhas = lista;
+    atualizarBadgeCampanhas();
+    renderCampanhas();
+    renderDispo();
+    showToast(aviso || 'Campanha salva.', 'success');
+    return true;
+  }catch(err){
+    console.error(err);
+    showToast('Não foi possível salvar a campanha.', 'error');
+    return false;
+  }finally{ if(btn){ btn.disabled = false; btn.textContent = antes; } }
+}
+
+async function salvarCampanha(){
+  const nome = String($('campNome').value||'').trim();
+  const valor = Number($('campValor').value||0);
+  const inicio = $('campIni').value, fim = $('campFim').value;
+  if(!nome){ showToast('Dê um nome à campanha.', 'error'); return; }
+  if(!(valor > 0)){ showToast('O prêmio por par precisa ser maior que zero.', 'error'); return; }
+  if(!_campProdutos.length){ showToast('Escolha ao menos um produto.', 'error'); return; }
+  if(!inicio || !fim){ showToast('Informe início e fim.', 'error'); return; }
+  if(INCENTIVO.diaLocal(fim, true) < INCENTIVO.diaLocal(inicio)){ showToast('O fim não pode ser antes do início.', 'error'); return; }
+
+  const marcados = [...document.querySelectorAll('.campV')].filter(c => c.checked).map(c => c.value);
+  const todos = marcados.length === document.querySelectorAll('.campV').length;
+  const atual = (STATE.campanhas||[]).find(x => x.id === _campEditando);
+  const nova = {
+    id: _campEditando || ('c' + Date.now()),
+    nome, valor, inicio, fim,
+    produtos: [..._campProdutos],
+    cores: (atual && atual.cores) || [],
+    vendedores: todos ? [] : marcados,
+    conta: $('campConta').value || 'aprovado',
+    teto: Number($('campTeto').value||0) || 0,
+    mostrarValor: $('campMostrarValor').checked,
+    mostrarPosicao: $('campMostrarPosicao').checked,
+    pausada: !!(atual && atual.pausada),
+    criadaEm: (atual && atual.criadaEm) || new Date().toISOString(),
+  };
+  const lista = _campEditando
+    ? (STATE.campanhas||[]).map(x => x.id === _campEditando ? nova : x)
+    : [...(STATE.campanhas||[]), nova];
+  if(await gravarCampanhas(lista, _campEditando ? 'Campanha atualizada.' : 'Campanha criada.')) fecharCampForm();
+}
+
+async function pausarCampanha(id){
+  const lista = (STATE.campanhas||[]).map(c => c.id === id ? { ...c, pausada: !c.pausada } : c);
+  const c = lista.find(x => x.id === id);
+  await gravarCampanhas(lista, c && c.pausada ? 'Campanha pausada — para de contar.' : 'Campanha voltou a valer.');
+}
+
+async function excluirCampanha(id){
+  const c = (STATE.campanhas||[]).find(x => x.id === id);
+  if(!c) return;
+  const ok = await uiConfirm({ title:'Apagar campanha',
+    message:`Apagar "${c.nome}"? O histórico dela some junto — se for só para parar de contar, use pausar.`,
+    okText:'Apagar' });
+  if(!ok) return;
+  await gravarCampanhas((STATE.campanhas||[]).filter(x => x.id !== id), 'Campanha apagada.');
+}
+
+// Clicar fora fecha, Esc também. Os modais ficam DEPOIS deste script no
+// arquivo, então ligar os eventos agora acharia null: espera o DOM.
+document.addEventListener('DOMContentLoaded', () => {
+  $('campModal').addEventListener('click', e => { if(e.target.id === 'campModal') fecharCampanhas(); });
+  $('campFormModal').addEventListener('click', e => { if(e.target.id === 'campFormModal') fecharCampForm(); });
+});
+document.addEventListener('keydown', e => {
+  if(e.key !== 'Escape') return;
+  if($('campFormModal') && $('campFormModal').style.display === 'flex') fecharCampForm();
+  else if($('campModal') && $('campModal').style.display === 'flex') fecharCampanhas();
+});
+document.addEventListener('click', e => {
+  if(!e.target.closest || e.target.closest('#campProd') || e.target.closest('#campSug')) return;
+  const sug = $('campSug'); if(sug) sug.classList.remove('on');
+});
+
 let _rateioNum = null, _rateioPack = 12, _rateioMaxPares = 0;
 // O rateio de uma linha da DISPO (null se não tiver cota nenhuma).
 function rateioDaLinha(row){
@@ -2874,6 +3194,110 @@ loadDispo();
     </div>
   </div>
 </div>
+<!-- MODAL: LISTA DE CAMPANHAS -->
+<div id="campModal" style="position:fixed;inset:0;z-index:200;background:rgba(2,6,23,.55);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
+  <div style="width:100%;max-width:720px;margin-top:40px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px">
+      <div>
+        <div style="font-size:11px;font-weight:800;color:#7c3aed;text-transform:uppercase;letter-spacing:.04em">Campanhas de incentivo</div>
+        <div style="font-size:17px;font-weight:900;color:var(--text)">Prêmio por par repassado</div>
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-top:2px">Vale para os produtos escolhidos, dentro do período. Aparece no dashboard e na vitrine do vendedor.</div>
+      </div>
+      <button onclick="fecharCampanhas()" style="border:0;background:transparent;color:var(--muted);font-size:24px;cursor:pointer;line-height:1">&times;</button>
+    </div>
+    <div id="campLista"></div>
+    <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+      <button onclick="abrirCampForm()" style="flex:1;min-width:150px;background:var(--brand);color:#fff;border:0;border-radius:999px;padding:11px;font-weight:800;font-size:14px;cursor:pointer">
+        <i class="fa-solid fa-plus"></i> Nova campanha</button>
+      <button onclick="fecharCampanhas()" style="background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:11px 16px;font-weight:700;font-size:13px;cursor:pointer">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CADASTRO DE CAMPANHA -->
+<div id="campFormModal" style="position:fixed;inset:0;z-index:201;background:rgba(2,6,23,.6);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
+  <div style="width:100%;max-width:620px;margin-top:40px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px">
+      <div>
+        <div style="font-size:11px;font-weight:800;color:#7c3aed;text-transform:uppercase;letter-spacing:.04em">Campanha de incentivo</div>
+        <div id="campFormTitulo" style="font-size:17px;font-weight:900;color:var(--text)">Nova campanha</div>
+      </div>
+      <button onclick="fecharCampForm()" style="border:0;background:transparent;color:var(--muted);font-size:24px;cursor:pointer;line-height:1">&times;</button>
+    </div>
+
+    <label class="cmp-rot" for="campNome">Nome da campanha</label>
+    <input id="campNome" type="text" maxlength="48" placeholder="Ex.: Nuvem &amp; Challenger de outubro"
+      style="width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-weight:700;font-size:13px;background:var(--card);color:var(--text)">
+    <p class="cmp-dica" style="margin-bottom:12px">É o nome que o vendedor vê no cartão e o que sai na apuração.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+      <div>
+        <label class="cmp-rot" for="campValor">Prêmio por par (R$)</label>
+        <input id="campValor" type="number" min="0" step="0.5" value="5" oninput="previaCampanha()"
+          style="width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-weight:700;font-size:13px;background:var(--card);color:var(--text)">
+      </div>
+      <div>
+        <label class="cmp-rot" for="campIni">Início</label>
+        <input id="campIni" type="date" onchange="previaCampanha()"
+          style="width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-weight:700;font-size:13px;background:var(--card);color:var(--text)">
+      </div>
+      <div>
+        <label class="cmp-rot" for="campFim">Fim</label>
+        <input id="campFim" type="date" onchange="previaCampanha()"
+          style="width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-weight:700;font-size:13px;background:var(--card);color:var(--text)">
+      </div>
+    </div>
+
+    <label class="cmp-rot" for="campProd">Produtos da campanha</label>
+    <div style="position:relative">
+      <input id="campProd" type="text" autocomplete="off" placeholder="Digite o nome do produto — ex.: nuvem"
+        oninput="buscarProdCampanha(this.value)" onfocus="buscarProdCampanha(this.value)"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();juntarProdCampanha(this.value)}"
+        style="width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-weight:600;font-size:13px;background:var(--card);color:var(--text)">
+      <div class="cmp-sug" id="campSug"></div>
+    </div>
+    <div class="cmp-tags" id="campChips" style="margin-top:9px"></div>
+    <p class="cmp-dica" style="margin-bottom:12px">Vale o modelo inteiro, todas as cores.</p>
+
+    <label class="cmp-rot">Quem participa</label>
+    <div class="cmp-quem" id="campQuem" style="margin-bottom:12px"></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div>
+        <label class="cmp-rot" for="campConta">O que conta como par repassado</label>
+        <select id="campConta" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-weight:600;font-size:13px;background:var(--card);color:var(--text)">
+          <option value="aprovado">Só pedido aprovado</option>
+          <option value="tudo">Aprovado e pendente</option>
+        </select>
+        <p class="cmp-dica">Cancelado nunca conta, nos dois modos.</p>
+      </div>
+      <div>
+        <label class="cmp-rot" for="campTeto">Teto de prêmio (R$) — opcional</label>
+        <input id="campTeto" type="number" min="0" step="100" placeholder="sem teto"
+          style="width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-weight:700;font-size:13px;background:var(--card);color:var(--text)">
+        <p class="cmp-dica">Ao atingir, o painel avisa e o prêmio para de subir.</p>
+      </div>
+    </div>
+
+    <label class="cmp-rot">Na tela do vendedor</label>
+    <div class="cmp-quem" style="margin-bottom:12px">
+      <label><input type="checkbox" id="campMostrarValor" checked> Mostrar em reais</label>
+      <label><input type="checkbox" id="campMostrarPosicao" checked> Mostrar a posição no ranking</label>
+    </div>
+
+    <div style="background:var(--brand-soft);border:1px solid var(--line);border-radius:14px;padding:11px 14px;margin-bottom:4px">
+      <div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--brand)">Como fica</div>
+      <div id="campPrev" style="font-weight:800;font-size:15px;color:var(--text);margin-top:2px"></div>
+      <div id="campPrev2" style="font-size:11.5px;color:var(--muted)"></div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+      <button id="campBtnSalvar" onclick="salvarCampanha()" style="flex:1;min-width:150px;background:var(--brand);color:#fff;border:0;border-radius:999px;padding:11px;font-weight:800;font-size:14px;cursor:pointer">Salvar campanha</button>
+      <button onclick="fecharCampForm()" style="background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:11px 16px;font-weight:700;font-size:13px;cursor:pointer">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL DE EDIÇÃO DE PRODUTO -->
 <div id="editarProdutoModal" style="position:fixed;inset:0;z-index:200;background:rgba(2,6,23,.55);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
   <div style="width:100%;max-width:520px;margin-top:40px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">

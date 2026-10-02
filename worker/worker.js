@@ -39,6 +39,7 @@ export default {
       "saveClientesCadastrados",
       "saveFaturados",
       "saveRateio",
+      "saveCampanhas",
       "resolverMatrizPendente",
       "cadastrarMatrizItem",
       "deleteMatrizItens",
@@ -106,6 +107,8 @@ export default {
     // Ficha técnica vinda do Trade Squash: { "ARTIGO|COR": {...} }
     const GITHUB_FICHAS        = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/fichas.json`;
     const GITHUB_RATEIO        = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/rateio.json`;
+    // Campanhas de incentivo: prêmio por par repassado, por produto e período
+    const GITHUB_CAMPANHAS     = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/campanhas.json`;
     const GITHUB_PREPOSTOS     = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/prepostos.json`;
     // Histórico de pedidos do Catálogo Digital — 1 arquivo por comissionista
     const GITHUB_CAT_HIST_BASE = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/catalogo-historico`;
@@ -1350,6 +1353,22 @@ export default {
           const { sha } = await getFile(GITHUB_RATEIO);
           const data = (body.data && typeof body.data === "object" && !Array.isArray(body.data)) ? body.data : {};
           await saveFile(GITHUB_RATEIO, data, sha, "update rateio");
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getCampanhas" → campanhas de incentivo (lista). Público:
+        // o vendedor precisa ler para saber o que está valendo.
+        if (body.action === "getCampanhas") {
+          const { content } = await getFile(GITHUB_CAMPANHAS);
+          const lista = Array.isArray(content) ? content : [];
+          return new Response(JSON.stringify(lista), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"saveCampanhas" → grava a lista inteira (write, exige admin)
+        if (body.action === "saveCampanhas" && body.data !== undefined) {
+          const { sha } = await getFile(GITHUB_CAMPANHAS);
+          const lista = Array.isArray(body.data) ? body.data : [];
+          await saveFile(GITHUB_CAMPANHAS, lista, sha, "update campanhas");
           return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
         }
 

@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<script src="../js/campanhas.js?v=1"></script>
 <style>
   :root{
     --ink:#0E1726; --navy:#15233B; --slate:#5B6678; --mute:#8A93A3;
@@ -51,6 +52,38 @@
   .periodo-btn.active{background:var(--ftw);color:var(--ftw-ink)}
   .refresh-spin{animation:spin .8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* campanha de incentivo */
+  .cmp-sel{border:1px solid var(--line);background:var(--card);color:var(--navy);border-radius:8px;
+    padding:6px 10px;font-family:"Space Grotesk",sans-serif;font-size:12px;font-weight:600;cursor:pointer}
+  .cmp-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+  @media(max-width:760px){.cmp-kpis{grid-template-columns:repeat(2,1fr)}}
+  .cmp-k{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 15px}
+  .cmp-k .r{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+  .cmp-k .v{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:23px;
+    font-variant-numeric:tabular-nums;margin-top:3px}
+  .cmp-k .d{font-size:11.5px;color:var(--mute)}
+  .cmp-k.premio{background:linear-gradient(135deg,#7c3aed,#5b21b6);border-color:transparent;color:#fff}
+  .cmp-k.premio .r,.cmp-k.premio .d{color:rgba(255,255,255,.82)}
+  .cmp-r{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--line)}
+  .cmp-r:last-of-type{border-bottom:0}
+  .cmp-pos{width:26px;height:26px;border-radius:9px;flex:none;display:grid;place-items:center;
+    font-size:12px;font-weight:700;background:var(--line);color:var(--slate)}
+  .cmp-r:first-of-type .cmp-pos{background:#7c3aed;color:#fff}
+  .cmp-nm{font-weight:700;font-size:13.5px;min-width:92px}
+  .cmp-bar{flex:1;height:9px;border-radius:999px;background:var(--line);overflow:hidden;min-width:50px}
+  .cmp-bar i{display:block;height:100%;border-radius:999px;background:#7c3aed}
+  .cmp-mov{font-size:11.5px;color:var(--mute);min-width:78px;text-align:right;font-variant-numeric:tabular-nums}
+  .cmp-mov b{color:#15803d;font-weight:700}
+  .cmp-vl{min-width:96px;text-align:right}
+  .cmp-vl b{display:block;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+  .cmp-vl i{display:block;font-size:11px;font-style:normal;color:var(--mute);font-variant-numeric:tabular-nums}
+  .cmp-tot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 4px 2px;
+    margin-top:4px;border-top:2px solid var(--line);font-size:13px;font-weight:700}
+  .cmp-tot span:last-child{font-variant-numeric:tabular-nums}
+  .cmp-aviso{display:flex;gap:9px;align-items:flex-start;background:var(--line-2);border-radius:12px;
+    padding:10px 13px;margin-top:12px;font-size:12.5px;color:var(--slate)}
+  @media(max-width:560px){.cmp-mov{display:none}.cmp-nm{min-width:70px;font-size:13px}}
 
   /* hero */
   .hero{padding:20px 0 16px;display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
@@ -185,6 +218,23 @@
     <div class="kpi">
       <div class="kpi-label">Pares repassados</div>
       <div class="kpi-val num" id="kAprovPares">—</div>
+    </div>
+  </div>
+
+  <!-- CAMPANHA DE INCENTIVO -->
+  <div class="block" id="blocoCampanha" style="display:none">
+    <div class="block-head">
+      <h3>Campanha</h3>
+      <select id="campSelect" class="cmp-sel" onchange="renderCampanha()"></select>
+    </div>
+    <div class="cmp-kpis" id="campKpis"></div>
+    <div class="card">
+      <div class="rank-col-head" style="gap:12px;padding-left:4px;padding-right:4px">
+        <div style="width:26px;flex-shrink:0"></div>
+        <div style="flex:1">Vendedor</div>
+        <div style="min-width:96px;text-align:right;flex-shrink:0">Pares · prêmio</div>
+      </div>
+      <div id="campRank"></div>
     </div>
   </div>
 
@@ -393,6 +443,7 @@ async function loadAll(){
       STATE.dispoRows=(Array.isArray(d)?d:[]).map(desinverterCodProd);
     }
   }catch(e){ console.error(e); }
+  await carregarCampanhasDash();
   icon.className='fa-solid fa-rotate';
   const now=new Date();
   document.getElementById('headerSub').textContent=`Atualizado às ${now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
@@ -401,6 +452,7 @@ async function loadAll(){
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 function render(){
+  if(CAMPANHAS_LISTA.length && document.getElementById('campSelect').value) renderCampanha();
   const orders=ordersInPeriod();
   const pares=o=>(o.items||[]).reduce((ss,i)=>ss+getItemUnits(i),0);
   // Cancelado nao e repasse: sai da conta.
@@ -444,6 +496,77 @@ function buildDispoMaps(){
     }
   }
   return{pendMap,aprovMap};
+}
+
+/* ── CAMPANHA DE INCENTIVO ──────────────────────────────────────────────────
+   O período escolhido na barra do dashboard não vale aqui: a campanha tem
+   período próprio, e o que interessa é como ela está indo do começo ao fim.
+   Por isso a apuração usa a lista inteira de pedidos. */
+let CAMPANHAS_LISTA = [];
+
+async function carregarCampanhasDash(){
+  try{
+    const r = await fetch(WORKER_URL, { method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'getCampanhas' }) });
+    CAMPANHAS_LISTA = r.ok ? await r.json() : [];
+    if(!Array.isArray(CAMPANHAS_LISTA)) CAMPANHAS_LISTA = [];
+  }catch(e){ CAMPANHAS_LISTA = []; }
+  montarSeletorCampanha();
+}
+
+function montarSeletorCampanha(){
+  const bloco=document.getElementById('blocoCampanha'), sel=document.getElementById('campSelect');
+  const peso={ativa:0,pausada:1,agendada:2,encerrada:3,rascunho:4};
+  const cs=[...CAMPANHAS_LISTA].sort((a,b)=>
+    (peso[INCENTIVO.statusCampanha(a)]-peso[INCENTIVO.statusCampanha(b)]) ||
+    String(b.inicio||'').localeCompare(String(a.inicio||'')));
+  if(!cs.length){ bloco.style.display='none'; return; }
+  bloco.style.display='';
+  const rot={ativa:'',pausada:' (pausada)',agendada:' (agendada)',encerrada:' (encerrada)',rascunho:''};
+  const antes=sel.value;
+  sel.innerHTML=cs.map(c=>`<option value="${c.id}">${safeAttr(c.nome||'Campanha')}${rot[INCENTIVO.statusCampanha(c)]}</option>`).join('');
+  if(antes && cs.some(c=>c.id===antes)) sel.value=antes;
+  renderCampanha();
+}
+
+function renderCampanha(){
+  const c=CAMPANHAS_LISTA.find(x=>x.id===document.getElementById('campSelect').value);
+  if(!c) return;
+  const st=INCENTIVO.statusCampanha(c);
+  const ap=INCENTIVO.apurarCampanha(c, STATE.orders||[]);
+  const dias=INCENTIVO.diasRestantes(c);
+  const quando = st==='encerrada' ? 'campanha encerrada'
+    : st==='agendada' ? 'ainda não começou'
+    : st==='pausada' ? 'pausada — não está contando'
+    : `${dias} dia${dias!==1?'s':''}`;
+
+  document.getElementById('campKpis').innerHTML=`
+    <div class="cmp-k"><div class="r">Pares na campanha</div><div class="v">${fmt(ap.pares)}</div>
+      <div class="d">${INCENTIVO.dinheiro(c.valor)} por par</div></div>
+    <div class="cmp-k premio"><div class="r">Prêmio acumulado</div><div class="v">${INCENTIVO.dinheiro(ap.premio)}</div>
+      <div class="d">${ap.estourouTeto?'teto atingido':'a pagar aos vendedores'}</div></div>
+    <div class="cmp-k"><div class="r">Vendedores</div><div class="v">${ap.vendedores.length}</div>
+      <div class="d">${fmt(ap.pedidos)} pedido${ap.pedidos!==1?'s':''}</div></div>
+    <div class="cmp-k"><div class="r">${st==='encerrada'||st==='agendada'||st==='pausada'?'Situação':'Faltam'}</div>
+      <div class="v" style="font-size:${quando.length>12?'17px':'23px'}">${quando}</div>
+      <div class="d">${INCENTIVO.diaLocal(c.inicio)?INCENTIVO.diaLocal(c.inicio).toLocaleDateString('pt-BR'):'—'} a ${INCENTIVO.diaLocal(c.fim)?INCENTIVO.diaLocal(c.fim).toLocaleDateString('pt-BR'):'—'}</div></div>`;
+
+  const lider=ap.vendedores[0]?ap.vendedores[0].pares:1;
+  document.getElementById('campRank').innerHTML = ap.vendedores.length
+    ? ap.vendedores.map((v,i)=>`<div class="cmp-r">
+        <span class="cmp-pos">${i+1}</span>
+        <span class="cmp-nm">${safeAttr(v.nome)}</span>
+        <span class="cmp-bar"><i style="width:${(v.pares/lider*100).toFixed(1)}%"></i></span>
+        <span class="cmp-mov">+${fmt(v.hoje)} hoje<br><b>+${fmt(v.semana)} na semana</b></span>
+        <span class="cmp-vl"><b>${fmt(v.pares)} pares</b><i>${INCENTIVO.dinheiro(v.premio)}</i></span>
+      </div>`).join('') +
+      `<div class="cmp-tot"><span>Total da campanha</span>
+        <span>${fmt(ap.pares)} pares · ${INCENTIVO.dinheiro(ap.premio)}</span></div>` +
+      `<div class="cmp-aviso"><i class="fa-regular fa-circle-question" style="margin-top:2px"></i>
+        <div>Conta ${c.conta==='tudo'?'<b>pedido aprovado e pendente</b>':'<b>só pedido aprovado</b>'}; cancelado nunca conta.
+        ${(c.produtos||[]).join(', ')}${(c.vendedores||[]).length?' · só para quem foi escolhido no cadastro':''}.</div></div>`
+    : `<div style="text-align:center;padding:22px;color:var(--mute);font-size:13px">
+         Nenhum par repassado ainda nesta campanha.</div>`;
 }
 
 // ── RANKING DE VENDEDORES ───────────────────────────────────────────────────
