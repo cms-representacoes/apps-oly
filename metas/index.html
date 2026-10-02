@@ -179,11 +179,31 @@ table.m tbody tr.escolhida td:first-child{background:#17518f;box-shadow:inset 3p
   display:flex;gap:9px;align-items:flex-start}
 .aviso svg{flex:none;margin-top:1px}
 .aviso b{font-weight:700}
+button.marca{background:none;border:0;padding:0;cursor:pointer;font:inherit}
+button.marca:hover .cms-badge{filter:brightness(1.12)}
+.modal{position:fixed;inset:0;z-index:60;display:grid;place-items:center;
+  background:rgba(8,20,44,.62);padding:18px}
+/* display explícito vence o atributo hidden: sem isto o modal fica
+   aberto para sempre e a logo escondida continua ocupando lugar. */
+.modal[hidden], .marca[hidden]{display:none}
+.modal-cx{width:100%;max-width:430px;background:var(--painel);border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);padding:18px 18px 20px;
+  box-shadow:0 24px 60px rgba(0,0,0,.45)}
+.modal-topo{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.modal-tit{font-size:16px;font-weight:700}
+.modal-x{width:30px;height:30px;flex:none;border-radius:9px;cursor:pointer;
+  border:1px solid rgba(255,255,255,.22);background:transparent;color:var(--tinta);
+  display:grid;place-items:center;padding:0}
+.modal-x:hover{background:rgba(255,255,255,.12)}
+.modal-x svg{width:16px;height:16px}
+.modal-sub{font-size:12px;color:var(--tinta2);margin:6px 0 14px;line-height:1.45}
+.modal-botoes{display:flex;flex-direction:column;gap:8px}
+.modal-botoes .btn{justify-content:flex-start;width:100%}
 .porta{max-width:460px;margin:12vh auto;text-align:center;background:var(--painel);
   border:1px solid var(--painel-linha);border-radius:10px;padding:26px 22px}
 .porta h2{font-size:18px;font-weight:700;margin-bottom:8px}
 .porta p{font-size:13px;color:var(--tinta2);margin-bottom:16px}
-.rodape{margin-top:12px;text-align:center;font-size:11px;color:var(--tinta3)}
+.rodape{margin-top:12px;text-align:center;font-size:10px;color:var(--tinta3);opacity:.75}
 
 /* ── Tablet e celular ───────────────────────────────────────────────────
    Fora do desktop os oito filtros viravam três fileiras e empurravam o
@@ -249,9 +269,13 @@ table.m tbody tr.escolhida td:first-child{background:#17518f;box-shadow:inset 3p
 <div class="pagina" id="pagina">
 
   <div class="topo">
-    <a class="marca" href="../index.html" aria-label="Voltar ao portal">
+    <a class="marca" id="marcaLink" href="../index.html" aria-label="Voltar ao portal">
       <span class="cms-badge">CMS</span>
     </a>
+    <button class="marca" id="marcaBt" type="button" hidden aria-haspopup="dialog"
+      aria-label="Importar dados" title="Importar dados">
+      <span class="cms-badge">CMS</span>
+    </button>
     <div class="tit-bloco">
       <div class="tit-linha">
         <h1 class="titulo">Metas Preposto</h1>
@@ -262,24 +286,6 @@ table.m tbody tr.escolhida td:first-child{background:#17518f;box-shadow:inset 3p
       <span class="atual" id="atual" hidden></span>
     </div>
     <div class="topo-dir">
-      <button class="btn so-icone" id="btnAcoes" type="button" hidden
-        aria-expanded="false" aria-controls="acoes" aria-label="Mostrar importação" title="Mostrar importação">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></svg>
-      </button>
-      <div class="acoes" id="acoes" hidden>
-      <button class="btn primario" id="btnMetas" type="button" hidden title="Carta Campanha · Simples Conferência, ou o Acompanhamento de Metas — traz a meta do mês">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>
-        Metas
-      </button>
-      <button class="btn" id="btnDiario" type="button" hidden title="Carta Campanha · Conferência Notas — traz o realizado, nota a nota">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9.5 12h6M9.5 16h4"/></svg>
-        Diário
-      </button>
-      <button class="btn" id="btnBaixar" type="button" hidden title="Baixa o JSON com tudo que está importado, para publicar em metas/dados/metas.json">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg>
-        JSON
-      </button>
-      </div>
       <a class="btn" href="../index.html">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         Portal
@@ -292,6 +298,37 @@ table.m tbody tr.escolhida td:first-child{background:#17518f;box-shadow:inset 3p
   <div id="avisos"></div>
   <div id="corpo"></div>
   <p class="rodape" id="rodape"></p>
+</div>
+
+<!-- Importação: mora atrás da logo, e só CMS e DEV chegam nela. O robô
+     traz os dois relatórios todo dia às 8h15; isto aqui é para adiantar
+     um arquivo ou corrigir um mês. -->
+<div class="modal" id="modalImp" hidden role="dialog" aria-modal="true"
+     aria-labelledby="modalTit">
+  <div class="modal-cx" role="document">
+    <div class="modal-topo">
+      <h2 class="modal-tit" id="modalTit">Importar relatórios</h2>
+      <button class="modal-x" id="btnFechaImp" type="button" aria-label="Fechar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <p class="modal-sub">O robô atualiza sozinho todo dia, de manhã. Use aqui
+      para adiantar um arquivo ou acertar um mês.</p>
+    <div class="modal-botoes">
+      <button class="btn primario" id="btnMetas" type="button" title="Carta Campanha · Simples Conferência, ou o Acompanhamento de Metas — traz a meta e o potencial">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>
+        Metas
+      </button>
+      <button class="btn" id="btnDiario" type="button" title="Carta Campanha · Conferência Notas — traz o realizado, nota a nota">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9.5 12h6M9.5 16h4"/></svg>
+        Diário
+      </button>
+      <button class="btn" id="btnBaixar" type="button" title="Baixa o JSON com tudo que está importado, para publicar em metas/dados/metas.json">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg>
+        JSON
+      </button>
+    </div>
+  </div>
 </div>
 <div class="dica" id="dica" role="status" aria-live="polite"></div>
 
@@ -306,9 +343,9 @@ table.m tbody tr.escolhida td:first-child{background:#17518f;box-shadow:inset 3p
 var SESSION_KEY = 'cms_portal_session_v1';     // a mesma do portal
 var LOCAL_KEY = 'cms_metas_v1';                // o que este aparelho importou
 var MANDA_EM_TUDO = ['CMS', 'MARCOS (DEV)'];   // veem todo mundo e importam
-// Enquanto a tela está em prova, só quem desenvolve entra — nem a CMS,
-// nem os vendedores. Para abrir para todo mundo, troque para false.
-var SO_DEV = true;
+// A tela está aberta no portal: cada vendedor vê o que é dele, CMS e
+// DEV veem todo mundo. Para fechar de novo, troque para true.
+var SO_DEV = false;
 var NOME_DEV = 'MARCOS (DEV)';
 
 function sessao(){
@@ -934,7 +971,10 @@ function opcoes(lista, sel){
 }
 function filtros(){
   var listaPrep = todosPrepostos();
-  var prep = [{ v:'', t:'Todos' }].concat(listaPrep.map(function(p){
+  // O vendedor não precisa ver a lista dos colegas nem no seletor
+  // travado: fica só o nome dele.
+  if(!TUDO) listaPrep = listaPrep.filter(function(p){ return p.codigo === S.codigo; });
+  var prep = (TUDO ? [{ v:'', t:'Todos' }] : []).concat(listaPrep.map(function(p){
     return { v:p.codigo, t:nomeProprio(p.nome) };
   }));
   var travado = !TUDO;
@@ -1094,8 +1134,10 @@ function desenhar(){
   });
   casarCongelada();
   var mes = base.meses.filter(function(m){ return m.mes === E.mes; })[0];
-  $('rodape').innerHTML = mes ? 'Fonte: ' + esc(mes.origem) + (mes.visao ? ' · ' + esc(mes.visao) : '') +
-    ' · importado em ' + esc(dataHora(mes.importado_em)) : '';
+  // O nome do arquivo e a visão da campanha não dizem nada a quem usa a
+  // tela; o que importa é de onde veio e de quando é.
+  var quando = mes && dataHora(mes.importado_em);
+  $('rodape').textContent = quando ? 'EBM Vulcabras · ' + quando : '';
   marcarAtualizacao(base, mes);
 }
 
@@ -1205,13 +1247,10 @@ function iniciar(){
   if(!S){ porta(); return; }
   if(SO_DEV && nomeNormal(S.nome) !== nomeNormal(NOME_DEV)){ emProva(); return; }
   TUDO = mandaEmTudo(S);
-  $('btnMetas').hidden = !TUDO;
-  $('btnDiario').hidden = !TUDO;
-  $('btnBaixar').hidden = !TUDO;
-  $('btnAcoes').hidden = !TUDO;
-  var lembrado = '0';
-  try{ lembrado = localStorage.getItem(ACOES_KEY) || '0'; }catch(_){}
-  mostrarAcoes(TUDO && lembrado === '1');
+  // Para CMS e DEV a logo abre a importação; para o vendedor ela
+  // continua sendo o caminho de volta ao portal.
+  $('marcaBt').hidden = !TUDO;
+  $('marcaLink').hidden = TUDO;
   if(!TUDO) E.preposto = S.codigo;
 
   fetch('dados/metas.json?t=' + Date.now(), { cache:'no-store' })
@@ -1244,33 +1283,32 @@ window.addEventListener('pointerup', function(ev){
   if(ev.pointerType && ev.pointerType !== 'mouse') setTimeout(esconderDica, 2200);
 });
 
-// A fila de botões come a largura do cabeçalho — no celular sobrava um
-// "Porta..." cortado. Agora eles ficam atrás do expansor, e a escolha de
-// deixar aberto fica guardada neste aparelho.
-var ACOES_KEY = 'cms_metas_acoes';
-function mostrarAcoes(abrir){
-  $('acoes').hidden = !abrir;
-  $('btnAcoes').setAttribute('aria-expanded', String(abrir));
-  var rotulo = abrir ? 'Ocultar importação' : 'Mostrar importação';
-  $('btnAcoes').setAttribute('aria-label', rotulo);
-  $('btnAcoes').title = rotulo;
-  try{ localStorage.setItem(ACOES_KEY, abrir ? '1' : '0'); }catch(_){}
+// A importação não divide mais espaço com o cabeçalho: fica atrás da
+// logo, onde só CMS e DEV chegam, e o topo do vendedor tem só o Portal.
+function abrirImp(abrir){
+  $('modalImp').hidden = !abrir;
+  if(abrir) $('btnFechaImp').focus();
+  else if($('marcaBt') && !$('marcaBt').hidden) $('marcaBt').focus();
 }
+$('marcaBt').addEventListener('click', function(){ abrirImp(true); });
+$('btnFechaImp').addEventListener('click', function(){ abrirImp(false); });
+$('modalImp').addEventListener('click', function(ev){
+  if(ev.target === this) abrirImp(false);        // clique no fundo fecha
+});
+document.addEventListener('keydown', function(ev){
+  if(ev.key === 'Escape' && !$('modalImp').hidden) abrirImp(false);
+});
 $('btnAviso').addEventListener('click', function(){
   avisoAberto = !avisoAberto;
   var caixa = $('avisos');
   caixa.hidden = !avisoAberto;
   $('btnAviso').setAttribute('aria-expanded', String(avisoAberto));
 });
-$('btnAcoes').addEventListener('click', function(){
-  mostrarAcoes($('acoes').hidden);
-});
-
 $('btnMetas').addEventListener('click', function(){ $('arqMetas').click(); });
 $('btnDiario').addEventListener('click', function(){ $('arqDiario').click(); });
 ['arqMetas', 'arqDiario'].forEach(function(id){
   $(id).addEventListener('change', function(e){
-    if(e.target.files && e.target.files.length) importar(e.target.files);
+    if(e.target.files && e.target.files.length){ abrirImp(false); importar(e.target.files); }
     e.target.value = '';
   });
 });
