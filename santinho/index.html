@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Minha Cola Eleitoral</title>
+<meta name="description" content="Monte sua cola para a urna: digite o nome do candidato e veja número e foto, na ordem de votação. Dados abertos do TSE, Maranhão 2026.">
+<meta name="theme-color" content="#f4f1ea" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16171a" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icone.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f1ea; --card:#fffdf8; --ink:#1b1c1f; --ink2:#5d5f66; --ink3:#8d8f96;
+  --line:#e2ddd1; --box:#ecf1e6; --boxline:#b8c4ad;
+  --confirma:#1f8a4c; --corrige:#e07b24; --aviso-bg:#fdf0dc; --aviso:#9a5a0a;
+  --sombra:0 1px 2px rgba(30,25,10,.06),0 4px 14px rgba(30,25,10,.05);
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#16171a; --card:#202227; --ink:#eceae4; --ink2:#a9abb2; --ink3:#7b7e86;
+  --line:#33363d; --box:#1c2a20; --boxline:#3b5a44;
+  --confirma:#3fbf74; --corrige:#f0954a; --aviso-bg:#3a2a12; --aviso:#f3c27a;
+  --sombra:0 1px 2px rgba(0,0,0,.3); color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#16171a; --card:#202227; --ink:#eceae4; --ink2:#a9abb2; --ink3:#7b7e86;
+  --line:#33363d; --box:#1c2a20; --boxline:#3b5a44;
+  --confirma:#3fbf74; --corrige:#f0954a; --aviso-bg:#3a2a12; --aviso:#f3c27a;
+  --sombra:0 1px 2px rgba(0,0,0,.3); color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.35 Archivo,system-ui,sans-serif;-webkit-font-smoothing:antialiased;
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+button{font:inherit;color:inherit;cursor:pointer}
+.wrap{max-width:560px;margin:0 auto;padding:18px 16px 32px}
+
+header h1{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:4px 0 2px}
+header .sub{color:var(--ink2);font-size:14px}
+.dica{margin:14px 0 18px;padding:10px 12px;border-radius:10px;background:var(--card);border:1px solid var(--line);
+  font-size:13.5px;color:var(--ink2);display:flex;gap:10px;align-items:flex-start}
+.dica b{color:var(--ink)}
+.dica svg{flex:none;margin-top:1px}
+
+ol.urna{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.voto{display:grid;grid-template-columns:64px 1fr;gap:12px;align-items:center;width:100%;text-align:left;
+  background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--sombra)}
+.voto:active{transform:scale(.995)}
+.voto:focus-visible,.opcao:focus-visible,.bt:focus-visible{outline:3px solid var(--confirma);outline-offset:2px}
+.foto{width:64px;height:85px;border-radius:8px;background:var(--box);object-fit:cover;display:grid;place-items:center;
+  color:var(--ink3);font-weight:700;font-size:20px;overflow:hidden}
+.foto.vazia{border:1.5px dashed var(--boxline);background:transparent}
+.cargo{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);display:flex;gap:8px;align-items:center}
+.cargo .ordem{color:var(--ink3);font-weight:600}
+.nome{font-size:17px;font-weight:700;margin:3px 0 1px;line-height:1.2;overflow-wrap:anywhere}
+.nome.vazio{color:var(--ink3);font-weight:500;font-size:15px}
+.partido{font-size:13px;color:var(--ink2)}
+.digitos{display:flex;gap:5px;margin-top:8px}
+.digitos span{width:30px;height:38px;border:1.5px solid var(--boxline);background:var(--box);border-radius:6px;
+  display:grid;place-items:center;font:700 22px var(--mono);color:var(--ink)}
+.digitos.vazio span{background:transparent;border-style:dashed}
+.check{width:18px;height:18px;border-radius:50%;background:var(--confirma);display:inline-grid;place-items:center;flex:none}
+.aviso{display:inline-block;margin-top:5px;font-size:12px;font-weight:600;color:var(--aviso);background:var(--aviso-bg);
+  padding:2px 7px;border-radius:5px}
+
+.acoes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:18px}
+.bt{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:13px 10px;font-weight:700;font-size:15px;
+  display:flex;gap:8px;align-items:center;justify-content:center;min-height:48px}
+.bt.pri{background:var(--confirma);border-color:var(--confirma);color:#fff}
+.bt:disabled{opacity:.45;cursor:default}
+.bt.lim{grid-column:1/-1;background:transparent;border:none;color:var(--ink3);font-weight:600;font-size:14px;min-height:40px}
+.rodape{margin-top:18px;font-size:12px;color:var(--ink3);text-align:center;line-height:1.5}
+
+/* busca */
+.folha{position:fixed;inset:0;background:var(--bg);z-index:10;display:flex;flex-direction:column;
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+.folha[hidden]{display:none}
+.topo{max-width:560px;width:100%;margin:0 auto;padding:12px 16px 10px;border-bottom:1px solid var(--line)}
+.topo .lin{display:flex;align-items:center;gap:8px}
+.topo h2{font-size:18px;margin:0;flex:1}
+.fechar{border:none;background:transparent;width:44px;height:44px;margin-left:-10px;display:grid;place-items:center;border-radius:10px}
+.campo{margin-top:10px;position:relative}
+.campo input{width:100%;font:500 17px Archivo,system-ui,sans-serif;padding:13px 14px 13px 42px;border-radius:12px;
+  border:1.5px solid var(--line);background:var(--card);color:var(--ink);outline:none}
+.campo input:focus{border-color:var(--confirma)}
+.campo svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--ink3)}
+.conta{font-size:12.5px;color:var(--ink3);margin-top:8px}
+.lista{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}
+.lista ul{list-style:none;margin:0 auto;padding:8px 16px 24px;max-width:560px}
+.opcao{display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:center;width:100%;text-align:left;
+  border:none;background:transparent;padding:9px 6px;border-radius:10px}
+.opcao:hover{background:var(--card)}
+.opcao.sel{background:var(--box)}
+.opcao img,.opcao .foto{width:48px;height:64px;border-radius:6px}
+.opcao .nm{font-weight:700;font-size:15.5px;line-height:1.2}
+.opcao .cv{font-size:12.5px;color:var(--ink2);margin-top:2px;overflow-wrap:anywhere}
+.opcao .num{font:700 20px var(--mono);letter-spacing:.04em}
+.nada{padding:28px 16px;text-align:center;color:var(--ink2)}
+mark{background:none;color:inherit;text-decoration:underline;text-decoration-color:var(--confirma);text-decoration-thickness:2px;text-underline-offset:2px}
+
+@media (min-width:700px){
+  .wrap{padding-top:32px}
+  header h1{font-size:34px}
+}
+@media print{
+  body{background:#fff;color:#000}
+  .dica,.acoes,.folha,.rodape .so-tela{display:none!important}
+  .voto{box-shadow:none;break-inside:avoid;border-color:#999}
+  .digitos span{background:#fff;border-color:#000}
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <div class="sub" id="eleicao">Eleições 2026 · Maranhão</div>
+    <h1>Minha cola</h1>
+    <div class="sub">Na ordem em que a urna pede. Toque em cada cargo e digite o nome.</div>
+  </header>
+  <div class="dica" role="note">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+    <div>O <b>celular não entra na cabine</b>. Leve a cola impressa ou anotada em papel, que é permitido.</div>
+  </div>
+  <ol class="urna" id="urna"></ol>
+  <div class="acoes">
+    <button class="bt pri" id="btCompartilhar" type="button">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>
+      Salvar imagem</button>
+    <button class="bt" id="btImprimir" type="button">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2"/><path d="M6 14h12v7H6z"/></svg>
+      Imprimir</button>
+    <button class="bt lim" id="btLimpar" type="button">Limpar todas as escolhas</button>
+  </div>
+  <p class="rodape" id="rodape"></p>
+</main>
+
+<section class="folha" id="folha" hidden aria-modal="true" role="dialog" aria-labelledby="folhaTitulo">
+  <div class="topo">
+    <div class="lin">
+      <button class="fechar" id="fechar" type="button" aria-label="Voltar">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <h2 id="folhaTitulo"></h2>
+    </div>
+    <div class="campo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="busca" type="search" inputmode="search" autocomplete="off" autocorrect="off" spellcheck="false"
+        placeholder="Nome, número ou partido" aria-label="Buscar candidato">
+    </div>
+    <div class="conta" id="conta"></div>
+  </div>
+  <div class="lista" id="lista"><ul id="opcoes"></ul></div>
+</section>
+
+<script>
+const VOTOS = [
+  {id:"df",  cargo:"df", titulo:"Deputado federal",  dig:4},
+  {id:"de",  cargo:"de", titulo:"Deputado estadual", dig:5},
+  {id:"se1", cargo:"se", titulo:"Senador · 1ª vaga", dig:3},
+  {id:"se2", cargo:"se", titulo:"Senador · 2ª vaga", dig:3},
+  {id:"gv",  cargo:"gv", titulo:"Governador",        dig:2},
+  {id:"pr",  cargo:"pr", titulo:"Presidente",        dig:2},
+];
+const CHAVE = "santinho-ma-2026";
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const norm = s => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
+
+let DADOS = null, porSq = {}, escolhas = {}, aberto = null;
+
+function lerEscolhas(){ try { return JSON.parse(localStorage.getItem(CHAVE)) || {}; } catch { return {}; } }
+function gravar(){ try { localStorage.setItem(CHAVE, JSON.stringify(escolhas)); } catch {} }
+
+function iniciais(nome){
+  return esc(nome.split(/\s+/).filter(p => p.length > 2).slice(0, 2).map(p => p[0]).join("") || nome[0]);
+}
+function foto(k, cls = "foto"){
+  return k.foto
+    ? `<img class="${cls}" src="fotos/${k.sq}.jpg" alt="" loading="lazy" decoding="async">`
+    : `<div class="${cls}" aria-hidden="true">${iniciais(k.u)}</div>`;
+}
+const partido = k => esc(k.p);
+
+function desenhar(){
+  $("#urna").innerHTML = VOTOS.map((v, i) => {
+    const k = porSq[escolhas[v.id]];
+    const digitos = k ? k.n.split("") : Array(v.dig).fill("");
+    return `<li><button class="voto" type="button" data-voto="${v.id}"
+        aria-label="${esc(v.titulo)}: ${k ? esc(k.u + ", número " + k.n.split("").join(" ")) : "nenhum escolhido"}. Toque para ${k ? "trocar" : "escolher"}.">
+      ${k ? foto(k) : `<div class="foto vazia" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div>`}
+      <div>
+        <div class="cargo"><span class="ordem">${i + 1}º</span>${esc(v.titulo)}
+          ${k ? `<span class="check" aria-hidden="true"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>` : ""}</div>
+        ${k ? `<div class="nome">${esc(k.u)}</div><div class="partido">${partido(k)}</div>`
+            : `<div class="nome vazio">Toque para escolher</div>`}
+        ${k && k.aviso ? `<span class="aviso">${esc(k.aviso)}</span>` : ""}
+        <div class="digitos${k ? "" : " vazio"}" aria-hidden="true">${digitos.map(d => `<span>${d}</span>`).join("")}</div>
+      </div></button></li>`;
+  }).join("");
+  const feitos = VOTOS.filter(v => porSq[escolhas[v.id]]).length;
+  $("#btCompartilhar").disabled = $("#btImprimir").disabled = !feitos;
+  $("#btLimpar").hidden = !feitos;
+}
+
+/* ---- busca ---- */
+function abrir(id){
+  aberto = VOTOS.find(v => v.id === id);
+  $("#folhaTitulo").textContent = aberto.titulo;
+  $("#busca").value = "";
+  $("#folha").hidden = false;
+  document.body.style.overflow = "hidden";
+  history.pushState({folha: id}, "");
+  listar();
+  setTimeout(() => $("#busca").focus(), 30);
+}
+function fechar(voltar = true){
+  if ($("#folha").hidden) return;
+  $("#folha").hidden = true;
+  document.body.style.overflow = "";
+  const id = aberto && aberto.id;
+  aberto = null;
+  if (voltar && history.state && history.state.folha) history.back();
+  const bt = document.querySelector(`[data-voto="${id}"]`);
+  if (bt) bt.focus({preventScroll: true});
+}
+addEventListener("popstate", () => fechar(false));
+
+function destacar(texto, termos){
+  let h = esc(texto);
+  if (!termos.length) return h;
+  // marca na versão sem acento e devolve o trecho original
+  const n = norm(texto), marcas = new Array(texto.length).fill(false);
+  termos.forEach(t => { let i = n.indexOf(t); while (i >= 0){ for (let j = i; j < i + t.length; j++) marcas[j] = true; i = n.indexOf(t, i + t.length); } });
+  if (n.length !== texto.length) return h;
+  let out = "", dentro = false;
+  for (let i = 0; i < texto.length; i++){
+    if (marcas[i] !== dentro){ out += marcas[i] ? "<mark>" : "</mark>"; dentro = marcas[i]; }
+    out += esc(texto[i]);
+  }
+  return out + (dentro ? "</mark>" : "");
+}
+
+function listar(){
+  const v = aberto; if (!v) return;
+  const termos = norm($("#busca").value).trim().split(/\s+/).filter(Boolean);
+  const outro = v.cargo === "se" ? escolhas[v.id === "se1" ? "se2" : "se1"] : null;
+  const todos = DADOS.candidatos.filter(k => k.c === v.cargo && k.sq !== outro);
+  const achados = todos.filter(k => termos.every(t => /^\d+$/.test(t) ? k.n.startsWith(t) : k._busca.includes(t)));
+  $("#conta").textContent = termos.length
+    ? `${achados.length} de ${todos.length} candidatos`
+    : `${todos.length} candidatos${v.cargo === "se" && outro ? " (sem o que você já escolheu na outra vaga)" : ""}`;
+  const atual = escolhas[v.id];
+  const LIM = 80;
+  $("#opcoes").innerHTML = achados.length
+    ? achados.slice(0, LIM).map(k => `<li><button class="opcao${k.sq === atual ? " sel" : ""}" type="button" data-sq="${k.sq}">
+        ${foto(k)}
+        <div><div class="nm">${destacar(k.u, termos)}</div>
+          <div class="cv">${destacar(k.nm, termos)} · ${destacar(k.p, termos)}</div>
+          ${k.aviso ? `<span class="aviso">${esc(k.aviso)}</span>` : ""}</div>
+        <div class="num">${esc(k.n)}</div></button></li>`).join("")
+      + (achados.length > LIM ? `<li class="nada">Mostrando ${LIM} de ${achados.length}. Digite mais letras do nome.</li>` : "")
+      + (atual ? `<li><button class="bt" type="button" data-sq="" style="width:100%;margin-top:12px;color:var(--corrige)">Tirar a escolha deste cargo</button></li>` : "")
+    : `<li class="nada">Ninguém com “${esc($("#busca").value)}” para ${esc(v.titulo.toLowerCase())}.<br>Tente só o primeiro nome ou o número.</li>`;
+  $("#lista").scrollTop = 0;
+}
+
+$("#busca").addEventListener("input", listar);
+$("#busca").addEventListener("keydown", e => {
+  if (e.key === "Enter"){ const b = $("#opcoes .opcao"); if (b) b.click(); }
+  if (e.key === "Escape") fechar();
+});
+$("#fechar").addEventListener("click", () => fechar());
+$("#opcoes").addEventListener("click", e => {
+  const b = e.target.closest("[data-sq]"); if (!b || !aberto) return;
+  if (b.dataset.sq) escolhas[aberto.id] = b.dataset.sq; else delete escolhas[aberto.id];
+  gravar(); desenhar(); fechar();
+});
+$("#urna").addEventListener("click", e => { const b = e.target.closest("[data-voto]"); if (b) abrir(b.dataset.voto); });
+$("#btLimpar").addEventListener("click", () => {
+  if (!confirm("Apagar todas as escolhas?")) return;
+  escolhas = {}; gravar(); desenhar();
+});
+$("#btImprimir").addEventListener("click", () => print());
+
+/* ---- imagem para salvar/compartilhar ---- */
+function carregar(src){
+  return new Promise(ok => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; });
+}
+async function gerarImagem(){
+  await document.fonts.ready;
+  const W = 1080, LIN = 196, TOPO = 200, H = TOPO + VOTOS.length * LIN + 90;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const g = cv.getContext("2d");
+  g.fillStyle = "#f4f1ea"; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#5d5f66"; g.font = "500 30px Archivo, sans-serif";
+  g.fillText("Eleições 2026 · Maranhão · 1º turno · 04/10", 60, 80);
+  g.fillStyle = "#1b1c1f"; g.font = "800 66px Archivo, sans-serif";
+  g.fillText("Minha cola", 60, 150);
+  for (let i = 0; i < VOTOS.length; i++){
+    const v = VOTOS[i], k = porSq[escolhas[v.id]], y = TOPO + i * LIN;
+    g.fillStyle = "#fffdf8"; g.strokeStyle = "#e2ddd1"; g.lineWidth = 2;
+    g.beginPath(); g.roundRect(40, y, W - 80, LIN - 20, 22); g.fill(); g.stroke();
+    if (k && k.foto){
+      const im = await carregar(`fotos/${k.sq}.jpg`);
+      if (im){ g.save(); g.beginPath(); g.roundRect(64, y + 22, 99, 132, 12); g.clip(); g.drawImage(im, 64, y + 22, 99, 132); g.restore(); }
+    }
+    const x = 190;
+    g.fillStyle = "#5d5f66"; g.font = "700 25px Archivo, sans-serif";
+    g.fillText(`${i + 1}º  ${v.titulo.toUpperCase()}`, x, y + 52);
+    g.fillStyle = k ? "#1b1c1f" : "#8d8f96"; g.font = (k ? "700 38px" : "500 32px") + " Archivo, sans-serif";
+    // número em caixinhas, alinhado à direita; o nome encolhe até caber antes dele
+    const digs = k ? k.n.split("") : Array(v.dig).fill(""), bw = 62, gap = 10;
+    let bx = W - 64 - digs.length * bw - (digs.length - 1) * gap;
+    let nome = k ? k.u : "Em branco na cola", corte = false;
+    while (g.measureText(nome + (corte ? "…" : "")).width > bx - x - 24 && nome.length > 4){ nome = nome.slice(0, -1).trimEnd(); corte = true; }
+    g.fillText(nome + (corte ? "…" : ""), x, y + 100);
+    if (k){ g.fillStyle = "#5d5f66"; g.font = "500 26px Archivo, sans-serif"; g.fillText(k.p, x, y + 140); }
+    for (const d of digs){
+      g.fillStyle = k ? "#ecf1e6" : "#fffdf8"; g.strokeStyle = "#b8c4ad"; g.lineWidth = 3;
+      g.setLineDash(k ? [] : [8, 6]);
+      g.beginPath(); g.roundRect(bx, y + 52, bw, 78, 10); g.fill(); g.stroke();
+      g.setLineDash([]);
+      g.fillStyle = "#1b1c1f"; g.font = "700 48px 'JetBrains Mono', monospace"; g.textAlign = "center";
+      g.fillText(d, bx + bw / 2, y + 108); g.textAlign = "left";
+      bx += bw + gap;
+    }
+  }
+  g.fillStyle = "#8d8f96"; g.font = "500 24px Archivo, sans-serif";
+  g.fillText("Dados abertos do TSE. Celular não entra na cabine: leve em papel.", 60, H - 40);
+  return new Promise(ok => cv.toBlob(ok, "image/png"));
+}
+$("#btCompartilhar").addEventListener("click", async () => {
+  const bt = $("#btCompartilhar"); bt.disabled = true;
+  try {
+    const blob = await gerarImagem();
+    const arq = new File([blob], "minha-cola-2026.png", {type: "image/png"});
+    if (navigator.canShare && navigator.canShare({files: [arq]})){
+      try { await navigator.share({files: [arq], title: "Minha cola"}); } catch (e) { if (e.name !== "AbortError") throw e; }
+    } else {
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = arq.name; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    }
+  } catch (e) { alert("Não consegui gerar a imagem. Use o Imprimir ou tire um print da tela."); }
+  bt.disabled = false;
+});
+
+/* ---- início ---- */
+fetch("dados/candidatos.json", {cache: "no-cache"}).then(r => r.json()).then(d => {
+  DADOS = d;
+  d.candidatos.forEach(k => { k._busca = norm([k.u, k.nm, k.p, k.f].join(" ")); porSq[k.sq] = k; });
+  escolhas = lerEscolhas();
+  for (const id in escolhas) if (!porSq[escolhas[id]]) delete escolhas[id];
+  $("#eleicao").textContent = "Eleições 2026 · Maranhão · 1º turno · domingo, 04/10";
+  $("#rodape").innerHTML = `Candidatos na urna segundo os dados abertos do TSE, gerados em ${esc(d.gerado_tse)}.<br>`
+    + `<span class="so-tela">Suas escolhas ficam só neste aparelho.</span>`;
+  desenhar();
+}).catch(() => {
+  $("#urna").innerHTML = `<li class="nada">Não consegui carregar a lista de candidatos. Verifique a internet e abra de novo.</li>`;
+});
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>
