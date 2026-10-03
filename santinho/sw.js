@@ -1,7 +1,7 @@
 // Guarda a tela e a lista para abrir sem internet. A lista é buscada de novo
 // quando há rede (pode mudar até a véspera); as fotos ficam guardadas conforme
 // aparecem.
-const CACHE = "santinho-v1";
+const CACHE = "santinho-v2";
 const BASE = ["./", "index.html", "dados/candidatos.json", "manifest.webmanifest", "icone.svg"];
 
 self.addEventListener("install", e => {

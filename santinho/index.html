@@ -5,112 +5,146 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Minha Cola Eleitoral</title>
 <meta name="description" content="Monte sua cola para a urna: digite o nome do candidato e veja número e foto, na ordem de votação. Dados abertos do TSE, Maranhão 2026.">
-<meta name="theme-color" content="#f4f1ea" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#16171a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#eef0f2">
+<meta name="color-scheme" content="light only">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icone.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
 <style>
+/* Só modo claro, com a paleta do site do TSE: cinzas frios, tinta #1b1f24,
+   amarelo #fdc300 e a faixa colorida verde/amarelo/laranja/azul. */
 :root{
-  --bg:#f4f1ea; --card:#fffdf8; --ink:#1b1c1f; --ink2:#5d5f66; --ink3:#8d8f96;
-  --line:#e2ddd1; --box:#ecf1e6; --boxline:#b8c4ad;
-  --confirma:#1f8a4c; --corrige:#e07b24; --aviso-bg:#fdf0dc; --aviso:#9a5a0a;
-  --sombra:0 1px 2px rgba(30,25,10,.06),0 4px 14px rgba(30,25,10,.05);
+  --bg:#eef0f2; --bg2:#e6e8eb; --card:#fff; --ink:#1b1f24; --ink2:#4a5259; --ink3:#7d8790;
+  --line:#dde1e5; --box:#f6f7f8; --boxline:#c9cfd5;
+  --amarelo:#fdc300; --laranja:#f07e26; --verde:#95c11f; --verde2:#5f8722;
+  --azul:#398cb0; --azul2:#6cabd0; --ardosia:#6287aa;
+  --corrige:#c8601a; --aviso-bg:#fff4cc; --aviso:#7a5400;
+  --faixa:linear-gradient(90deg,#95c11f 0 24%,#5f8722 24% 33%,#ffde13 33% 42%,#fdc300 42% 51%,#f07e26 51% 67%,#6cabd0 67% 84%,#398cb0 84% 93%,#6287aa 93% 100%);
+  --grao:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .12 0 0 0 0 .14 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --sombra:0 1px 1px rgba(27,31,36,.04),0 2px 6px rgba(27,31,36,.05),0 10px 24px -12px rgba(27,31,36,.14);
+  --sombra2:0 1px 1px rgba(27,31,36,.05),0 6px 14px rgba(27,31,36,.08),0 22px 40px -18px rgba(27,31,36,.25);
   --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
   color-scheme:light;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#16171a; --card:#202227; --ink:#eceae4; --ink2:#a9abb2; --ink3:#7b7e86;
-  --line:#33363d; --box:#1c2a20; --boxline:#3b5a44;
-  --confirma:#3fbf74; --corrige:#f0954a; --aviso-bg:#3a2a12; --aviso:#f3c27a;
-  --sombra:0 1px 2px rgba(0,0,0,.3); color-scheme:dark;
-}}
-:root[data-theme="dark"]{
-  --bg:#16171a; --card:#202227; --ink:#eceae4; --ink2:#a9abb2; --ink3:#7b7e86;
-  --line:#33363d; --box:#1c2a20; --boxline:#3b5a44;
-  --confirma:#3fbf74; --corrige:#f0954a; --aviso-bg:#3a2a12; --aviso:#f3c27a;
-  --sombra:0 1px 2px rgba(0,0,0,.3); color-scheme:dark;
-}
 *{box-sizing:border-box}
 html,body{margin:0}
-body{background:var(--bg);color:var(--ink);font:16px/1.35 Archivo,system-ui,sans-serif;-webkit-font-smoothing:antialiased;
-  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+body{background:var(--grao),radial-gradient(1200px 500px at 50% -120px,#fff 0,rgba(255,255,255,0) 70%),var(--bg);
+  color:var(--ink);font:16px/1.35 Archivo,system-ui,sans-serif;-webkit-font-smoothing:antialiased;
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);min-height:100vh}
+body::before{content:"";position:fixed;top:0;left:0;right:0;height:5px;background:var(--faixa);background-size:540px 100%;z-index:20}
 button{font:inherit;color:inherit;cursor:pointer}
-.wrap{max-width:560px;margin:0 auto;padding:18px 16px 32px}
+.wrap{max-width:560px;margin:0 auto;padding:24px 16px 32px}
 
-header h1{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:4px 0 2px}
+header h1{font-size:30px;font-weight:800;letter-spacing:-.025em;margin:6px 0 4px}
 header .sub{color:var(--ink2);font-size:14px}
-.dica{margin:14px 0 18px;padding:10px 12px;border-radius:10px;background:var(--card);border:1px solid var(--line);
-  font-size:13.5px;color:var(--ink2);display:flex;gap:10px;align-items:flex-start}
-.dica b{color:var(--ink)}
-.dica svg{flex:none;margin-top:1px}
+header .selo{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)}
+header .selo i{width:22px;height:4px;border-radius:2px;background:var(--faixa);background-size:540px 100%;flex:none}
+.dica{margin:16px 0 18px;padding:11px 13px;border-radius:12px;background:#fffbea;border:1px solid #f3e3a4;
+  font-size:13.5px;color:#5c4a12;display:flex;gap:10px;align-items:flex-start}
+.dica b{color:#3b2f06}
+.dica svg{flex:none;margin-top:1px;color:#b58a00}
 
-ol.urna{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-.voto{display:grid;grid-template-columns:64px 1fr;gap:12px;align-items:center;width:100%;text-align:left;
-  background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--sombra)}
-.voto:active{transform:scale(.995)}
-.voto:focus-visible,.opcao:focus-visible,.bt:focus-visible{outline:3px solid var(--confirma);outline-offset:2px}
-.foto{width:64px;height:85px;border-radius:8px;background:var(--box);object-fit:cover;display:grid;place-items:center;
-  color:var(--ink3);font-weight:700;font-size:20px;overflow:hidden}
-.foto.vazia{border:1.5px dashed var(--boxline);background:transparent}
-.cargo{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);display:flex;gap:8px;align-items:center}
-.cargo .ordem{color:var(--ink3);font-weight:600}
-.nome{font-size:17px;font-weight:700;margin:3px 0 1px;line-height:1.2;overflow-wrap:anywhere}
+ol.urna{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.voto{position:relative;isolation:isolate;overflow:hidden;display:grid;grid-template-columns:64px 1fr;gap:13px;align-items:center;
+  width:100%;text-align:left;padding:13px 13px 13px 18px;border-radius:16px;border:1px solid var(--line);
+  background:
+    repeating-linear-gradient(135deg,rgba(27,31,36,.03) 0 1px,transparent 1px 7px) right top/46% 100% no-repeat,
+    var(--grao),
+    linear-gradient(180deg,#fff 0,#fbfbfc 100%);
+  box-shadow:inset 0 1px 0 #fff,var(--sombra);
+  transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s ease,border-color .25s ease}
+.voto::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--ac)}
+.voto::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--ac) 10%,transparent),transparent 55%)}
+@media (hover:hover){.voto:hover{transform:translateY(-2px);box-shadow:inset 0 1px 0 #fff,var(--sombra2);border-color:#cfd5db}}
+.voto:active{transform:scale(.985)}
+.voto:focus-visible,.opcao:focus-visible,.bt:focus-visible,.fechar:focus-visible{outline:3px solid var(--azul);outline-offset:2px}
+.brilho{position:absolute;inset:0;pointer-events:none;z-index:2;
+  background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.8) 50%,transparent 65%);transform:translateX(-120%)}
+.foto{width:64px;height:85px;border-radius:9px;background:var(--box);object-fit:cover;display:grid;place-items:center;
+  color:var(--ink3);font-weight:700;font-size:20px;overflow:hidden;box-shadow:0 0 0 1px rgba(27,31,36,.08),0 3px 8px -3px rgba(27,31,36,.25)}
+.foto.vazia{border:1.5px dashed var(--boxline);background:rgba(255,255,255,.6);box-shadow:none;color:var(--ink3)}
+.cargo{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink2);display:flex;gap:7px;align-items:center}
+.cargo .ordem{display:inline-grid;place-items:center;min-width:22px;height:20px;padding:0 5px;border-radius:6px;background:var(--ink);color:#fff;font-size:11px;letter-spacing:0}
+.nome{font-size:17px;font-weight:700;margin:4px 0 1px;line-height:1.2;overflow-wrap:anywhere}
 .nome.vazio{color:var(--ink3);font-weight:500;font-size:15px}
-.partido{font-size:13px;color:var(--ink2)}
-.digitos{display:flex;gap:5px;margin-top:8px}
-.digitos span{width:30px;height:38px;border:1.5px solid var(--boxline);background:var(--box);border-radius:6px;
-  display:grid;place-items:center;font:700 22px var(--mono);color:var(--ink)}
-.digitos.vazio span{background:transparent;border-style:dashed}
-.check{width:18px;height:18px;border-radius:50%;background:var(--confirma);display:inline-grid;place-items:center;flex:none}
-.aviso{display:inline-block;margin-top:5px;font-size:12px;font-weight:600;color:var(--aviso);background:var(--aviso-bg);
+.partido{font-size:13px;color:var(--ink2);font-weight:600}
+.digitos{display:flex;gap:5px;margin-top:9px}
+.digitos span{width:30px;height:39px;border:1.5px solid var(--boxline);border-bottom:3px solid var(--ac);background:var(--box);border-radius:6px;
+  display:grid;place-items:center;font:700 22px var(--mono);color:var(--ink);box-shadow:inset 0 1px 2px rgba(27,31,36,.06)}
+.digitos.vazio span{background:transparent;border:1.5px dashed var(--boxline);box-shadow:none}
+.check{width:18px;height:18px;border-radius:50%;background:var(--verde2);display:inline-grid;place-items:center;flex:none}
+.aviso{display:inline-block;margin-top:5px;font-size:12px;font-weight:700;color:var(--aviso);background:var(--aviso-bg);
   padding:2px 7px;border-radius:5px}
 
-.acoes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:18px}
-.bt{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:13px 10px;font-weight:700;font-size:15px;
-  display:flex;gap:8px;align-items:center;justify-content:center;min-height:48px}
-.bt.pri{background:var(--confirma);border-color:var(--confirma);color:#fff}
+/* animações */
+@keyframes subir{from{opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes digito{0%{opacity:0;transform:translateY(-10px) scale(.7)}60%{opacity:1;transform:translateY(2px) scale(1.06)}100%{opacity:1;transform:none}}
+@keyframes foto{0%{opacity:0;transform:scale(.8) rotate(-3deg)}100%{opacity:1;transform:none}}
+@keyframes brilho{to{transform:translateX(120%)}}
+@keyframes pulso{0%{box-shadow:inset 0 1px 0 #fff,0 0 0 0 color-mix(in srgb,var(--ac) 50%,transparent),var(--sombra)}
+  100%{box-shadow:inset 0 1px 0 #fff,0 0 0 14px transparent,var(--sombra)}}
+@keyframes folha{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+@keyframes item{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+.entrada .voto{animation:subir .55s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i) * 70ms)}
+.voto.novo{animation:pulso .9s ease-out}
+.voto.novo .foto{animation:foto .45s cubic-bezier(.2,.9,.3,1.3) both}
+.voto.novo .digitos span{animation:digito .42s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(180ms + var(--d) * 90ms)}
+.voto.novo .brilho{animation:brilho 1s .35s ease-in-out}
+.folha:not([hidden]) .topo,.folha:not([hidden]) .lista{animation:folha .3s cubic-bezier(.2,.8,.2,1) both}
+.lista li{animation:item .3s ease both;animation-delay:calc(var(--j,0) * 25ms)}
+
+.acoes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:20px}
+.bt{border:1px solid var(--line);background:linear-gradient(180deg,#fff,#f7f8f9);border-radius:12px;padding:13px 10px;font-weight:700;font-size:15px;
+  display:flex;gap:8px;align-items:center;justify-content:center;min-height:48px;box-shadow:inset 0 1px 0 #fff,0 1px 2px rgba(27,31,36,.06);
+  transition:transform .15s ease,box-shadow .2s ease}
+.bt:active{transform:scale(.97)}
+.bt.pri{background:linear-gradient(180deg,#2a3038,#1b1f24);border-color:#1b1f24;color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 6px 16px -6px rgba(27,31,36,.5)}
 .bt:disabled{opacity:.45;cursor:default}
-.bt.lim{grid-column:1/-1;background:transparent;border:none;color:var(--ink3);font-weight:600;font-size:14px;min-height:40px}
+.bt.lim{grid-column:1/-1;background:transparent;border:none;box-shadow:none;color:var(--ink3);font-weight:600;font-size:14px;min-height:40px}
 .rodape{margin-top:18px;font-size:12px;color:var(--ink3);text-align:center;line-height:1.5}
 
 /* busca */
-.folha{position:fixed;inset:0;background:var(--bg);z-index:10;display:flex;flex-direction:column;
+.folha{position:fixed;inset:0;background:var(--grao),var(--bg);z-index:30;display:flex;flex-direction:column;
   padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+.folha::before{content:"";height:5px;background:var(--faixa);background-size:540px 100%;flex:none}
 .folha[hidden]{display:none}
-.topo{max-width:560px;width:100%;margin:0 auto;padding:12px 16px 10px;border-bottom:1px solid var(--line)}
+.topo{max-width:560px;width:100%;margin:0 auto;padding:10px 16px 10px;border-bottom:1px solid var(--line)}
 .topo .lin{display:flex;align-items:center;gap:8px}
 .topo h2{font-size:18px;margin:0;flex:1}
 .fechar{border:none;background:transparent;width:44px;height:44px;margin-left:-10px;display:grid;place-items:center;border-radius:10px}
 .campo{margin-top:10px;position:relative}
 .campo input{width:100%;font:500 17px Archivo,system-ui,sans-serif;padding:13px 14px 13px 42px;border-radius:12px;
-  border:1.5px solid var(--line);background:var(--card);color:var(--ink);outline:none}
-.campo input:focus{border-color:var(--confirma)}
+  border:1.5px solid var(--line);background:#fff;color:var(--ink);outline:none;box-shadow:0 1px 2px rgba(27,31,36,.05)}
+.campo input:focus{border-color:var(--amarelo);box-shadow:0 0 0 4px rgba(253,195,0,.25)}
 .campo svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--ink3)}
 .conta{font-size:12.5px;color:var(--ink3);margin-top:8px}
 .lista{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}
 .lista ul{list-style:none;margin:0 auto;padding:8px 16px 24px;max-width:560px}
 .opcao{display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:center;width:100%;text-align:left;
-  border:none;background:transparent;padding:9px 6px;border-radius:10px}
-.opcao:hover{background:var(--card)}
-.opcao.sel{background:var(--box)}
-.opcao img,.opcao .foto{width:48px;height:64px;border-radius:6px}
+  border:1px solid transparent;background:transparent;padding:9px 8px;border-radius:12px;transition:background .15s ease,border-color .15s ease}
+.opcao:hover{background:#fff;border-color:var(--line)}
+.opcao.sel{background:#fffbea;border-color:#f3e3a4}
+.opcao img,.opcao .foto{width:48px;height:64px;border-radius:7px}
 .opcao .nm{font-weight:700;font-size:15.5px;line-height:1.2}
 .opcao .cv{font-size:12.5px;color:var(--ink2);margin-top:2px;overflow-wrap:anywhere}
 .opcao .num{font:700 20px var(--mono);letter-spacing:.04em}
 .nada{padding:28px 16px;text-align:center;color:var(--ink2)}
-mark{background:none;color:inherit;text-decoration:underline;text-decoration-color:var(--confirma);text-decoration-thickness:2px;text-underline-offset:2px}
+mark{background:linear-gradient(transparent 58%,rgba(253,195,0,.55) 58%);color:inherit}
 
 @media (min-width:700px){
-  .wrap{padding-top:32px}
-  header h1{font-size:34px}
+  .wrap{padding-top:40px}
+  header h1{font-size:36px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
 }
 @media print{
   body{background:#fff;color:#000}
-  .dica,.acoes,.folha,.rodape .so-tela{display:none!important}
-  .voto{box-shadow:none;break-inside:avoid;border-color:#999}
+  body::before,.dica,.acoes,.folha,.rodape .so-tela,.brilho{display:none!important}
+  .voto{box-shadow:none;break-inside:avoid;border-color:#999;background:#fff}
   .digitos span{background:#fff;border-color:#000}
 }
 </style>
@@ -118,7 +152,7 @@ mark{background:none;color:inherit;text-decoration:underline;text-decoration-col
 <body>
 <main class="wrap">
   <header>
-    <div class="sub" id="eleicao">Eleições 2026 · Maranhão</div>
+    <div class="selo"><i></i><span id="eleicao">Eleições 2026 · Maranhão</span></div>
     <h1>Minha cola</h1>
     <div class="sub">Na ordem em que a urna pede. Toque em cada cargo e digite o nome.</div>
   </header>
@@ -159,12 +193,12 @@ mark{background:none;color:inherit;text-decoration:underline;text-decoration-col
 
 <script>
 const VOTOS = [
-  {id:"df",  cargo:"df", titulo:"Deputado federal",  dig:4},
-  {id:"de",  cargo:"de", titulo:"Deputado estadual", dig:5},
-  {id:"se1", cargo:"se", titulo:"Senador · 1ª vaga", dig:3},
-  {id:"se2", cargo:"se", titulo:"Senador · 2ª vaga", dig:3},
-  {id:"gv",  cargo:"gv", titulo:"Governador",        dig:2},
-  {id:"pr",  cargo:"pr", titulo:"Presidente",        dig:2},
+  {id:"df",  cargo:"df", titulo:"Deputado federal",  dig:4, ac:"#95c11f"},
+  {id:"de",  cargo:"de", titulo:"Deputado estadual", dig:5, ac:"#5f8722"},
+  {id:"se1", cargo:"se", titulo:"Senador · 1ª vaga", dig:3, ac:"#fdc300"},
+  {id:"se2", cargo:"se", titulo:"Senador · 2ª vaga", dig:3, ac:"#f07e26"},
+  {id:"gv",  cargo:"gv", titulo:"Governador",        dig:2, ac:"#6cabd0"},
+  {id:"pr",  cargo:"pr", titulo:"Presidente",        dig:2, ac:"#398cb0"},
 ];
 const CHAVE = "santinho-ma-2026";
 const $ = s => document.querySelector(s);
@@ -186,11 +220,16 @@ function foto(k, cls = "foto"){
 }
 const partido = k => esc(k.p);
 
-function desenhar(){
-  $("#urna").innerHTML = VOTOS.map((v, i) => {
+// entrada: os cartões sobem em cascata (só na abertura). novo: o voto recém-
+// escolhido, que ganha a foto, os dígitos "digitados" e um brilho passando.
+function desenhar(entrada = false, novo = null){
+  const ol = $("#urna");
+  ol.classList.toggle("entrada", entrada);
+  if (entrada) setTimeout(() => ol.classList.remove("entrada"), 1200);
+  ol.innerHTML = VOTOS.map((v, i) => {
     const k = porSq[escolhas[v.id]];
     const digitos = k ? k.n.split("") : Array(v.dig).fill("");
-    return `<li><button class="voto" type="button" data-voto="${v.id}"
+    return `<li style="--i:${i};--ac:${v.ac}"><button class="voto${k && v.id === novo ? " novo" : ""}" type="button" data-voto="${v.id}"
         aria-label="${esc(v.titulo)}: ${k ? esc(k.u + ", número " + k.n.split("").join(" ")) : "nenhum escolhido"}. Toque para ${k ? "trocar" : "escolher"}.">
       ${k ? foto(k) : `<div class="foto vazia" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div>`}
       <div>
@@ -199,8 +238,8 @@ function desenhar(){
         ${k ? `<div class="nome">${esc(k.u)}</div><div class="partido">${partido(k)}</div>`
             : `<div class="nome vazio">Toque para escolher</div>`}
         ${k && k.aviso ? `<span class="aviso">${esc(k.aviso)}</span>` : ""}
-        <div class="digitos${k ? "" : " vazio"}" aria-hidden="true">${digitos.map(d => `<span>${d}</span>`).join("")}</div>
-      </div></button></li>`;
+        <div class="digitos${k ? "" : " vazio"}" aria-hidden="true">${digitos.map((d, j) => `<span style="--d:${j}">${d}</span>`).join("")}</div>
+      </div><span class="brilho" aria-hidden="true"></span></button></li>`;
   }).join("");
   const feitos = VOTOS.filter(v => porSq[escolhas[v.id]]).length;
   $("#btCompartilhar").disabled = $("#btImprimir").disabled = !feitos;
@@ -257,7 +296,7 @@ function listar(){
   const atual = escolhas[v.id];
   const LIM = 80;
   $("#opcoes").innerHTML = achados.length
-    ? achados.slice(0, LIM).map(k => `<li><button class="opcao${k.sq === atual ? " sel" : ""}" type="button" data-sq="${k.sq}">
+    ? achados.slice(0, LIM).map((k, j) => `<li style="--j:${Math.min(j, 12)}"><button class="opcao${k.sq === atual ? " sel" : ""}" type="button" data-sq="${k.sq}">
         ${foto(k)}
         <div><div class="nm">${destacar(k.u, termos)}</div>
           <div class="cv">${destacar(k.nm, termos)} · ${destacar(k.p, termos)}</div>
@@ -277,8 +316,11 @@ $("#busca").addEventListener("keydown", e => {
 $("#fechar").addEventListener("click", () => fechar());
 $("#opcoes").addEventListener("click", e => {
   const b = e.target.closest("[data-sq]"); if (!b || !aberto) return;
-  if (b.dataset.sq) escolhas[aberto.id] = b.dataset.sq; else delete escolhas[aberto.id];
-  gravar(); desenhar(); fechar();
+  const id = aberto.id;
+  if (b.dataset.sq) escolhas[id] = b.dataset.sq; else delete escolhas[id];
+  gravar(); fechar(); desenhar(false, id);
+  const bt = document.querySelector(`[data-voto="${id}"]`);
+  if (bt){ bt.focus({preventScroll: true}); bt.scrollIntoView({block: "nearest", behavior: "smooth"}); }
 });
 $("#urna").addEventListener("click", e => { const b = e.target.closest("[data-voto]"); if (b) abrir(b.dataset.voto); });
 $("#btLimpar").addEventListener("click", () => {
@@ -296,41 +338,45 @@ async function gerarImagem(){
   const W = 1080, LIN = 196, TOPO = 200, H = TOPO + VOTOS.length * LIN + 90;
   const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
   const g = cv.getContext("2d");
-  g.fillStyle = "#f4f1ea"; g.fillRect(0, 0, W, H);
-  g.fillStyle = "#5d5f66"; g.font = "500 30px Archivo, sans-serif";
+  g.fillStyle = "#eef0f2"; g.fillRect(0, 0, W, H);
+  const faixa = [["#95c11f",24],["#5f8722",9],["#ffde13",9],["#fdc300",9],["#f07e26",16],["#6cabd0",17],["#398cb0",9],["#6287aa",7]];
+  for (let fx = 0; fx < W;) for (const [c, pct] of faixa){ const w = pct / 100 * 540; g.fillStyle = c; g.fillRect(fx, 0, w + 1, 12); fx += w; }
+  g.fillStyle = "#4a5259"; g.font = "500 30px Archivo, sans-serif";
   g.fillText("Eleições 2026 · Maranhão · 1º turno · 04/10", 60, 80);
-  g.fillStyle = "#1b1c1f"; g.font = "800 66px Archivo, sans-serif";
+  g.fillStyle = "#1b1f24"; g.font = "800 66px Archivo, sans-serif";
   g.fillText("Minha cola", 60, 150);
   for (let i = 0; i < VOTOS.length; i++){
     const v = VOTOS[i], k = porSq[escolhas[v.id]], y = TOPO + i * LIN;
-    g.fillStyle = "#fffdf8"; g.strokeStyle = "#e2ddd1"; g.lineWidth = 2;
+    g.fillStyle = "#ffffff"; g.strokeStyle = "#dde1e5"; g.lineWidth = 2;
     g.beginPath(); g.roundRect(40, y, W - 80, LIN - 20, 22); g.fill(); g.stroke();
+    g.save(); g.clip(); g.fillStyle = v.ac; g.fillRect(40, y, 9, LIN - 20); g.restore();
     if (k && k.foto){
       const im = await carregar(`fotos/${k.sq}.jpg`);
       if (im){ g.save(); g.beginPath(); g.roundRect(64, y + 22, 99, 132, 12); g.clip(); g.drawImage(im, 64, y + 22, 99, 132); g.restore(); }
     }
     const x = 190;
-    g.fillStyle = "#5d5f66"; g.font = "700 25px Archivo, sans-serif";
+    g.fillStyle = "#4a5259"; g.font = "700 25px Archivo, sans-serif";
     g.fillText(`${i + 1}º  ${v.titulo.toUpperCase()}`, x, y + 52);
-    g.fillStyle = k ? "#1b1c1f" : "#8d8f96"; g.font = (k ? "700 38px" : "500 32px") + " Archivo, sans-serif";
+    g.fillStyle = k ? "#1b1f24" : "#7d8790"; g.font = (k ? "700 38px" : "500 32px") + " Archivo, sans-serif";
     // número em caixinhas, alinhado à direita; o nome encolhe até caber antes dele
     const digs = k ? k.n.split("") : Array(v.dig).fill(""), bw = 62, gap = 10;
     let bx = W - 64 - digs.length * bw - (digs.length - 1) * gap;
     let nome = k ? k.u : "Em branco na cola", corte = false;
     while (g.measureText(nome + (corte ? "…" : "")).width > bx - x - 24 && nome.length > 4){ nome = nome.slice(0, -1).trimEnd(); corte = true; }
     g.fillText(nome + (corte ? "…" : ""), x, y + 100);
-    if (k){ g.fillStyle = "#5d5f66"; g.font = "500 26px Archivo, sans-serif"; g.fillText(k.p, x, y + 140); }
+    if (k){ g.fillStyle = "#4a5259"; g.font = "500 26px Archivo, sans-serif"; g.fillText(k.p, x, y + 140); }
     for (const d of digs){
-      g.fillStyle = k ? "#ecf1e6" : "#fffdf8"; g.strokeStyle = "#b8c4ad"; g.lineWidth = 3;
+      g.fillStyle = k ? "#f6f7f8" : "#ffffff"; g.strokeStyle = "#c9cfd5"; g.lineWidth = 3;
       g.setLineDash(k ? [] : [8, 6]);
       g.beginPath(); g.roundRect(bx, y + 52, bw, 78, 10); g.fill(); g.stroke();
       g.setLineDash([]);
-      g.fillStyle = "#1b1c1f"; g.font = "700 48px 'JetBrains Mono', monospace"; g.textAlign = "center";
+      if (k){ g.fillStyle = v.ac; g.fillRect(bx + 2, y + 124, bw - 4, 5); }
+      g.fillStyle = "#1b1f24"; g.font = "700 48px 'JetBrains Mono', monospace"; g.textAlign = "center";
       g.fillText(d, bx + bw / 2, y + 108); g.textAlign = "left";
       bx += bw + gap;
     }
   }
-  g.fillStyle = "#8d8f96"; g.font = "500 24px Archivo, sans-serif";
+  g.fillStyle = "#7d8790"; g.font = "500 24px Archivo, sans-serif";
   g.fillText("Dados abertos do TSE. Celular não entra na cabine: leve em papel.", 60, H - 40);
   return new Promise(ok => cv.toBlob(ok, "image/png"));
 }
@@ -357,8 +403,9 @@ fetch("dados/candidatos.json", {cache: "no-cache"}).then(r => r.json()).then(d =
   for (const id in escolhas) if (!porSq[escolhas[id]]) delete escolhas[id];
   $("#eleicao").textContent = "Eleições 2026 · Maranhão · 1º turno · domingo, 04/10";
   $("#rodape").innerHTML = `Candidatos na urna segundo os dados abertos do TSE, gerados em ${esc(d.gerado_tse)}.<br>`
+    + `Não é um serviço oficial do TSE.<br>`
     + `<span class="so-tela">Suas escolhas ficam só neste aparelho.</span>`;
-  desenhar();
+  desenhar(true);
 }).catch(() => {
   $("#urna").innerHTML = `<li class="nada">Não consegui carregar a lista de candidatos. Verifique a internet e abra de novo.</li>`;
 });
