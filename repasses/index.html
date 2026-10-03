@@ -94,6 +94,13 @@
 
     /* no desktop os dois botoes seguem empilhados, como antes */
     .filtros-acoes{ display:grid; gap:12px; }
+    #filtersVeu{display:none}
+    @media (max-width: 1023px){
+      body.filters-open #filtersVeu{
+        display:block; position:fixed; inset:0; z-index:59;
+        background:rgba(15,23,42,.28); backdrop-filter:blur(1px);
+      }
+    }
     .filters-collapsed #filtersPanel{display:none}
     body.filters-open #filtersPanel{display:block !important}
     .filters-collapsed #catalogShell{grid-template-columns:minmax(0,1fr)}
@@ -743,10 +750,31 @@
        São duas dúzias delas, e o vendedor marca as do cliente. Lista curta
        e rolável, agrupada por família, para não empurrar o resto do painel
        para fora da tela. */
-    .grade-lista{
+    /* A lista de grades ocupava meia tela de painel. Agora ela abre a partir
+       de um botão, que diz o que está escolhido sem precisar abrir. */
+    .grade-dd{ position:relative; }
+    .grade-botao{
+      display:flex; align-items:center; gap:10px; width:100%;
       border:1px solid var(--line); border-radius:16px; background:#fff;
-      max-height:216px; overflow:auto; padding:4px 5px 6px;
-      overscroll-behavior:contain;
+      padding:12px 16px; font-size:14px; font-weight:600; color:#0f172a; cursor:pointer;
+      text-align:left;
+    }
+    .grade-botao i{ margin-left:auto; flex:none; font-size:11px; color:#94a3b8; transition:transform .18s ease; }
+    .grade-botao[aria-expanded="true"] i{ transform:rotate(180deg); }
+    .grade-botao.tem{ border-color:var(--brand); color:var(--brand); background:var(--brand-soft); }
+    .grade-lista{
+      position:absolute; left:0; right:0; top:calc(100% + 6px); z-index:30;
+      border:1px solid var(--line); border-radius:16px; background:#fff;
+      max-height:260px; overflow:auto; padding:4px 5px 6px;
+      overscroll-behavior:contain; box-shadow:0 18px 36px -18px rgba(15,23,42,.45);
+    }
+    .grade-lista[hidden]{ display:none; }
+    /* No celular o painel inteiro rola, e um balão solto seria cortado na
+       borda dele: ali a lista abre embaixo do botão, empurrando o resto. */
+    @media (max-width: 1023px){
+      .grade-lista{
+        position:static; margin-top:6px; box-shadow:none; max-height:200px;
+      }
     }
     .grade-fam{
       position:sticky; top:0; z-index:1; background:#fff;
@@ -770,6 +798,7 @@
       .grade-lista input[type="checkbox"]{ font-size:13px !important; }
       .grade-op{ padding:8px; font-size:14px; }
       .grade-lista{ max-height:240px; }
+      .grade-botao{ padding:8px 12px; border-radius:12px; font-size:14px; }
     }
 
     /* ── Limpar filtros: pílula flutuante ────────────────────────────────
@@ -970,6 +999,10 @@
 
     <div id="catalogWrap" class="hidden filters-collapsed">
       <div id="catalogShell">
+        <!-- Véu do painel flutuante: fecha ao tocar fora e, principalmente,
+             impede que esse mesmo toque abra o card que estava atrás. -->
+        <div id="filtersVeu" hidden></div>
+
         <aside id="filtersPanel" class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-soft h-fit">
           <div class="flex items-center justify-between gap-3">
             <div>
@@ -994,7 +1027,13 @@
             </div>
             <div>
               <label class="text-xs font-bold text-slate-500 filtros-lbl">Grade</label>
-              <div id="gradeLista" class="grade-lista mt-1" role="group" aria-label="Grades"></div>
+              <div class="grade-dd mt-1" id="gradeDd">
+                <button type="button" id="gradeBotao" class="focus-ring grade-botao" aria-expanded="false" aria-controls="gradeLista">
+                  <span id="gradeResumo">Todas as grades</span>
+                  <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div id="gradeLista" class="grade-lista" role="group" aria-label="Grades" hidden></div>
+              </div>
             </div>
             <div>
               <label class="text-xs font-bold text-slate-500 filtros-lbl">Prev. Faturamento</label>
@@ -1003,6 +1042,8 @@
             <div>
               <label class="text-xs font-bold text-slate-500 filtros-lbl">Ordenação</label>
               <select id="sortBy" class="focus-ring mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold">
+                <option value="novos">Novidades primeiro</option>
+                <option value="exclusivos">Forecast primeiro</option>
                 <option value="produto">Produto A-Z</option>
                 <option value="saldoDesc">Maior saldo</option>
                 <option value="saldoAsc">Menor saldo</option>
@@ -1591,7 +1632,10 @@ const STATE = {
   search: '',
   // grade é um conjunto: o cliente que compra 34/39 muitas vezes também
   // compra 35/40, e o vendedor quer as duas na mesma tela
-  filters: { categoria:'', segmento:'', genero:'', grade:new Set(), prevFat:'', sort:'entregaAsc', novos:false },
+  // 'novos' abre a vitrine com o que acabou de entrar, que era o efeito de
+  // antes — só que agora é uma escolha visível no campo de ordenação, e não
+  // um empurrão fixo por cima do que o vendedor pediu.
+  filters: { categoria:'', segmento:'', genero:'', grade:new Set(), prevFat:'', sort:'novos', novos:false },
   cart: new Map(),
   orders: [],
   ocultos: new Set(),
@@ -2761,33 +2805,54 @@ function cotaExclusivo(item){
   return item.mode === 'boxed' ? Math.floor(rc.cap / (item.packSize || 12)) : rc.cap;
 }
 
+/* Prev. faturamento em milissegundos, para ordenar.
+ *
+ *  A data chega como "dd/mm/aaaa" — e `new Date` dessa string lê o dia como
+ *  mês: "01/11/2026" virava 11 de janeiro e "30/09/2026" virava data
+ *  inválida, que ia para o fim da fila. Metade da vitrine ordenava pelo mês
+ *  trocado e a outra metade não ordenava. Agora a conversão passa por
+ *  formatDate, que já entende serial do Excel e texto, e o que sai dali é
+ *  lido campo a campo. Sem data, vai para o fim. */
+function msPrevFat(v){
+  const m = String(formatDate(v) || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if(!m) return 9e15;
+  const [, dd, mm, aaaa] = m;
+  return new Date(Number(aaaa), Number(mm) - 1, Number(dd)).getTime();
+}
+
+/* A ordem da vitrine.
+ *
+ *  Antes, qualquer que fosse a escolha, a lista saía com os lotes do rateio
+ *  na frente e as novidades logo atrás — e só então o que o vendedor pediu.
+ *  Com duas dezenas de novidades na vitrine, escolher "maior saldo" não
+ *  mudava nada do que cabia na tela, e o filtro parecia quebrado. Agora o
+ *  que destaca é escolha dele: Novidades e Forecast viraram duas ordens. */
+const ORDENA_PRODUTO = (a, b) =>
+  String(a.produto).localeCompare(String(b.produto), 'pt-BR', { sensitivity:'base' });
+
 function sortView(items){
   const arr = [...items];
   switch(STATE.filters.sort){
     case 'saldoDesc': arr.sort((a,b)=>remainingUnits(b)-remainingUnits(a)); break;
     case 'saldoAsc': arr.sort((a,b)=>remainingUnits(a)-remainingUnits(b)); break;
-    case 'entregaAsc': arr.sort((a,b)=>{
-      const toMs = v => {
-        if(!v) return 9e15;
-        const n = Number(v);
-        if(!isNaN(n) && n > 40000 && n < 60000){
-          const d = new Date(Date.UTC(1899,11,30)); d.setUTCDate(d.getUTCDate()+n); return d.getTime();
-        }
-        const t = new Date(v).getTime();
-        return isNaN(t) ? 9e15 : t;
-      };
-      return toMs(a.prevFaturamento) - toMs(b.prevFaturamento);
-    }); break;
-    default: arr.sort((a,b)=>String(a.produto).localeCompare(String(b.produto), 'pt-BR', { sensitivity:'base' })); break;
+    case 'entregaAsc': arr.sort((a,b)=>msPrevFat(a.prevFaturamento) - msPrevFat(b.prevFaturamento)); break;
+
+    case 'exclusivos': {
+      // o lote separado no rateio na frente; entre eles, e no resto, A-Z
+      arr.sort(ORDENA_PRODUTO);
+      const exc = arr.filter(ehExclusivo);
+      return [...exc, ...arr.filter(x => !ehExclusivo(x))];
+    }
+    case 'novos': {
+      // o que acabou de entrar na frente, do mais recente para o mais antigo
+      arr.sort(ORDENA_PRODUTO);
+      const novos = arr.filter(grupoTemNovo)
+        .sort((a, b) => String(diaDoNovo(b)).localeCompare(String(diaDoNovo(a))));
+      return [...novos, ...arr.filter(x => !grupoTemNovo(x))];
+    }
+    default: arr.sort(ORDENA_PRODUTO); break;
   }
-  // Os exclusivos do vendedor abrem a vitrine, na ordem escolhida entre
-  // eles; logo atrás vem o que acabou de entrar, o mais recente primeiro; o
-  // resto segue na ordem de sempre.
-  const exc = arr.filter(ehExclusivo);
-  const resto = arr.filter(x => !ehExclusivo(x));
-  const novos = resto.filter(grupoTemNovo)
-    .sort((a, b) => String(diaDoNovo(b)).localeCompare(String(diaDoNovo(a))));
-  return [...exc, ...novos, ...resto.filter(x => !grupoTemNovo(x))];
+  return arr;
 }
 // Valores normalizados ficam guardados no proprio item. STATE.raw e
 // reconstruido a cada carga, entao o cache morre junto e nao envelhece.
@@ -2902,6 +2967,7 @@ function atualizarOpcoesFiltros(){
           <span>${safeHtml(rotuloGrade(g))}</span><b>${n}</b></label>`;
       }).join('')).join('');
     lista.scrollTop = rolagem;   // repintar não pode fazer a lista pular
+    pintarBotaoGrade();
   }
 
   // Meses: só os que ainda têm produto e nunca os que já passaram.
@@ -2922,6 +2988,29 @@ function atualizarOpcoesFiltros(){
       ordenados.map(([k,l]) => `<option value="${safeHtml(k)}"${k === atual ? ' selected' : ''}>${safeHtml(l)}</option>`).join('');
     sel.value = atual || '';
   }
+}
+
+/* O botão fechado precisa contar o que a lista aberta mostraria — senão,
+   recolher a lista esconde o filtro que está valendo. */
+function fecharFiltros(){
+  document.body.classList.remove('filters-open');
+  abrirGrades(false);
+}
+function pintarBotaoGrade(){
+  const bt = $('gradeBotao'), rotulo = $('gradeResumo');
+  if(!bt || !rotulo) return;
+  const g = [...STATE.filters.grade];
+  bt.classList.toggle('tem', g.length > 0);
+  rotulo.textContent = !g.length ? 'Todas as grades'
+    : g.length === 1 ? rotuloGrade(g[0])
+    : `${g.length} grades escolhidas`;
+}
+function abrirGrades(abrir){
+  const lista = $('gradeLista'), bt = $('gradeBotao');
+  if(!lista || !bt) return;
+  const vai = abrir === undefined ? lista.hidden : abrir;
+  lista.hidden = !vai;
+  bt.setAttribute('aria-expanded', vai ? 'true' : 'false');
 }
 
 function applyFilters(){
@@ -5660,6 +5749,10 @@ function bindEvents(){
   });
   $('filterPrevFat').addEventListener('change', e=>{ STATE.filters.prevFat = e.target.value; applyFilters(); });
   $('sortBy').addEventListener('change', e=>{ STATE.filters.sort = e.target.value; applyFilters(); });
+  // o campo tem de abrir mostrando a ordem que está valendo: enquanto ele
+  // exibia a primeira opção e a lista vinha ordenada por outra, escolher o
+  // que já parecia escolhido não disparava nada — e a ordenação parecia morta
+  $('sortBy').value = STATE.filters.sort;
 
   $('chipNovos').addEventListener('click', ()=>{
     STATE.filters.novos = !STATE.filters.novos;
@@ -5678,7 +5771,7 @@ function bindEvents(){
   $('fabLimpar').addEventListener('click', ()=> $('btnClearFilters').click());
   $('btnClearFilters').addEventListener('click', ()=>{
     STATE.search = '';
-    STATE.filters = { categoria:'', segmento:'', genero:'', grade:new Set(), prevFat:'', sort:'produto', exclusivos:'', novos:false };
+    STATE.filters = { categoria:'', segmento:'', genero:'', grade:new Set(), prevFat:'', sort:'novos', exclusivos:'', novos:false };
     $('searchInputTop').value = '';
     $('btnClearSearchTop').classList.add('hidden');
     $('searchShell').classList.remove('expanded');
@@ -5686,7 +5779,7 @@ function bindEvents(){
     $('filterSegmento').value = '';
     $('filterGenero').value = '';
     $('filterPrevFat').value = '';
-    $('sortBy').value = 'produto';
+    $('sortBy').value = 'novos';
     applyFilters();
   });
 
@@ -5696,8 +5789,24 @@ function bindEvents(){
     }else{
       $('catalogWrap').classList.toggle('filters-collapsed');
     }
+    abrirGrades(false);
   });
-  $('btnCloseFilters').addEventListener('click', ()=>document.body.classList.remove('filters-open'));
+  $('btnCloseFilters').addEventListener('click', ()=>fecharFiltros());
+
+  // A lista de grades abre a partir do botão e fecha sozinha ao escolher
+  // fora dela — é um campo de formulário, não um painel.
+  $('gradeBotao').addEventListener('click', ()=> abrirGrades());
+
+  /* Tocar fora fecha o painel de filtros.
+     No celular quem recebe o toque é o véu — e é ele que impede o toque de
+     seguir para o card que estava atrás. No computador o painel é coluna
+     fixa da tela: fechá-la a cada clique na vitrine seria um estorvo, então
+     lá nada fecha sozinho. */
+  $('filtersVeu').addEventListener('click', fecharFiltros);
+  // a lista de grades é um campo, não um painel: fecha a qualquer clique fora
+  document.addEventListener('pointerdown', (e)=>{
+    if(!(e.target.closest && e.target.closest('#gradeDd'))) abrirGrades(false);
+  });
 
   $('btnOrdersScopePendente').addEventListener('click', ()=>{ setOrdersScope('Pendente'); renderOrders(); });
   $('btnOrdersScopeAprovado').addEventListener('click', ()=>{ setOrdersScope('Aprovado'); renderOrders(); });
