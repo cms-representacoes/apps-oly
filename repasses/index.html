@@ -3011,6 +3011,27 @@ function abrirGrades(abrir){
   const vai = abrir === undefined ? lista.hidden : abrir;
   lista.hidden = !vai;
   bt.setAttribute('aria-expanded', vai ? 'true' : 'false');
+  if(!vai) return;
+
+  // Numa tela baixa — tablet deitado, por exemplo — a lista aberta passava
+  // do rodapé e as últimas grades ficavam fora do alcance. Ela se ajusta ao
+  // espaço que existe e, se couber melhor para cima, abre para cima.
+  if(getComputedStyle(lista).position !== 'absolute'){
+    lista.style.maxHeight = lista.style.top = lista.style.bottom = '';
+    return;
+  }
+  const r = bt.getBoundingClientRect();
+  const abaixo = innerHeight - r.bottom - 16;
+  const acima = r.top - 16;
+  if(abaixo < 170 && acima > abaixo){
+    lista.style.top = 'auto';
+    lista.style.bottom = 'calc(100% + 6px)';
+    lista.style.maxHeight = Math.min(260, acima) + 'px';
+  }else{
+    lista.style.top = '';
+    lista.style.bottom = '';
+    lista.style.maxHeight = Math.max(120, Math.min(260, abaixo)) + 'px';
+  }
 }
 
 function applyFilters(){
