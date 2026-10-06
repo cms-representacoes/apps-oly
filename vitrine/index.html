@@ -2912,7 +2912,8 @@ async function carregar(){
     const [dispo, disponib, produtos, pedidos, oculto] = await Promise.all([
       json('dispo.json'), json('disponibilidades.json'),
       json('produtos.json'), json('pedidos.json').catch(() => []),
-      bloqueios()
+      bloqueios(),
+      carregarFaixas()          // precisa estar em FAIXAS antes do montar()
     ]);
     STATE.fontes = { dispo, disponib, produtos, pedidos, oculto };
     STATE.produtos = montar(dispo, disponib, produtos, pedidos, oculto);
@@ -3338,14 +3339,8 @@ function montar(dispo, disponib, produtos, pedidos, oculto){
     // para mil e duzentos produtos, era o que deixava a digitacao lenta.
     o.hay = norm([o.artigo, o.nome, o.cor, o.categoria, o.genero].join(' '));
     o.sub = subcategoriaDe(o);
-    // A faixa (Corrida, Treino, Caminhada…) só existe no cadastro de
-    // produtos; nem a DISPO nem as disponibilidades trazem. Sai da linha da
-    // cor exata e, na falta dela, de qualquer cor do mesmo artigo — é um
-    // dado do artigo, não da cor.
-    if(!o.faixa){
-      const r = refCor.get(o.k) || refArt.get(o.artigo);
-      o.faixa = rotuloFaixaCadastro(r && r.segmento);
-    }
+    // A faixa é do artigo, não da cor: o de-para é por referência.
+    o.faixa = FAIXAS[o.artigo] || '';
     o.grade = gradesDoProduto(o);
     o.camp = o.campanhas.map(rotuloCampanha);
     // "Chega em" e a prev. faturamento unificada: estoque sai agora, as outras
@@ -3417,17 +3412,22 @@ const SUBCATEGORIAS = [
   ['Blusas e jaquetas',  /^(BLUSA|JAQUETA|JAQ[\s.]|QUEBRA|CORTA|MOLETOM|MOL[\s.]|MTL\b|CJ[\s.]?AGASAL|AGASAL)/],
   ['Luvas e acessórios', /^(LUVA|MANGUITO|FAIXA|POCHETE)/]
 ];
-/* O cadastro escreve a mesma faixa de três jeitos — "Corrida", "corrida",
-   "CHINELOS" —, e cada grafia viraria uma opção diferente no filtro. */
-const FAIXA_ROT = { CORRIDA:'Corrida', TREINO:'Treino', CAMINHADA:'Caminhada',
-                    CLASSICOS:'Clássicos', CASUAL:'Casual', CHINELOS:'Chinelos',
-                    PERFORMANCE:'Performance', BASQUETE:'Basquete' };
-function rotuloFaixaCadastro(v){
-  const k = norm(v);
-  if(!k) return '';
-  if(FAIXA_ROT[k]) return FAIXA_ROT[k];
-  // desconhecida: primeira maiúscula e o resto minúsculo, para não gritar
-  return k.charAt(0) + k.slice(1).toLowerCase();
+/* ── faixa da fábrica ────────────────────────────────────────────────
+   CORRE, CONF_FEM, MEIA OLY, CORRIDA/TREINO: é a mesma faixa que a
+   Detalhada filtra, calculada lá do cruzamento FAIXA + CATEGORIA + GÊNERO
+   da fábrica. Não existe no cadastro de produtos — o `segmento` de lá é
+   outra coisa (Corrida, Treino, Casual) e cobre um décimo da Under Armour.
+
+   Como a base da Detalhada tem 4 MB, a vitrine não a carrega: lê um
+   de-para de artigo para faixa, com 9 KB, publicado em data/faixas.json.
+   O arquivo sai da base do dia pelo mesmo script que a publica. */
+let FAIXAS = {};
+
+async function carregarFaixas(){
+  try{
+    const d = await json('faixas.json');
+    FAIXAS = (d && typeof d.faixa === 'object') ? d.faixa : {};
+  }catch(_){ FAIXAS = {}; }   // sem o arquivo, o filtro simplesmente não aparece
 }
 
 function subcategoriaDe(o){
@@ -3492,7 +3492,7 @@ const GRUPOS = [
   { id:'genero',  rot:'Gênero' },
   { id:'sub',     rot:'Tipo de produto' },
   { id:'faixa',   rot:'Faixa', lista:true,
-    ajuda:'A linha de uso do cadastro: corrida, treino, caminhada.' },
+    ajuda:'A mesma faixa da Detalhada. Artigo que ainda não teve venda fica sem.' },
   { id:'grade',   rot:'Grade', lista:true,
     ajuda:'Do primeiro ao último tamanho. Estoque e repasse têm grade; produção ainda não.' },
   { id:'fabrica', rot:'Fábrica' },
