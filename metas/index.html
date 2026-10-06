@@ -1020,6 +1020,18 @@ function mostrarAviso(html){
   bt.setAttribute('aria-expanded', String(avisoAberto));
 }
 
+// Com os meses que ainda vão acontecer no arquivo, o último deixou de
+// ser o mês de hoje: a tela abre no mês corrente, e só cai no último
+// quando ele ainda não foi importado.
+function escolherMesInicial(){
+  var hoje = new Date();
+  var atual = hoje.getFullYear() + '-' + ('0' + (hoje.getMonth() + 1)).slice(-2);
+  var tem = base.meses.filter(function(m){ return m.mes === atual; }).length;
+  var alvo = tem ? atual : base.meses[base.meses.length - 1].mes;
+  E.mes = alvo;
+  E.ano = alvo.slice(0, 4);
+}
+
 function ajustarMedida(){
   if(medidaEscolhida) return;
   var mes = base.meses.filter(function(m){ return m.mes === E.mes; })[0];
@@ -1259,10 +1271,7 @@ function iniciar(){
     .catch(function(){ return { meses:[] }; })
     .then(function(publicado){
       base = juntar(publicado || { meses:[] }, lerLocal());
-      if(base.meses.length){
-        var ultimo = base.meses[base.meses.length - 1].mes;
-        E.mes = ultimo; E.ano = ultimo.slice(0, 4);
-      }
+      if(base.meses.length) escolherMesInicial();
       desenhar();
     });
 }
