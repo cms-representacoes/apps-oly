@@ -1584,7 +1584,7 @@
             </div>
 
             <label class="dt-opcao" id="dtOpcDispo">
-              <input type="checkbox" id="dtTambemDispo" checked>
+              <input type="checkbox" id="dtTambemDispo" checked onchange="dtPintarBotoes()">
               <span><b>Atualizar também o lote na DISPO.</b>
                 O estoque e as duas vitrines leem a data do lote, não a do pedido —
                 sem isto, só os pedidos mudam.</span>
@@ -5563,7 +5563,7 @@ function resolveNumDispo(item, gciMap){
    no momento do repasse. Como o lote só fatura a 100% repassado, o aberto e o
    feito têm que falar a mesma data; esta tela acerta o lado que não se acerta
    sozinho, de uma vez, pelo Nº da DISPO. */
-const DT = { lista: [], marcados: new Set(), aplicadas: 0 };
+const DT = { lista: [], marcados: new Set(), aplicadas: 0, lotes: new Set(), dataLote: '' };
 
 function dtBR(iso){
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
@@ -5595,7 +5595,7 @@ async function abrirAjusteDatas(){
   }catch(e){ console.error(e); }
   if(bt){ bt.disabled = false; bt.innerHTML = antes; }
 
-  DT.lista = []; DT.marcados.clear(); DT.aplicadas = 0;
+  DT.lista = []; DT.marcados.clear(); DT.aplicadas = 0; DT.lotes = new Set(); DT.dataLote = '';
   $('dtNums').value = '';
   $('dtNovaData').value = '';
   $('dtAchado').hidden = true;
@@ -5677,6 +5677,7 @@ function dtPesquisar(){
   DT.lista = dtMontarLista(pedidos);
   DT.marcados.clear();
   DT.aplicadas = 0;
+  DT.lotes = new Set();
 
   const achados = new Set(DT.lista.map(i => i.num));
   const semNada = pedidos.filter(n => !achados.has(String(n)));
@@ -5779,11 +5780,30 @@ function dtPintarBotoes(){
       + 'A data que está lá foi a que o vendedor passou ao cliente — mudando aqui, vale avisá-lo.';
   }
 
-  $('dtBtSalvar').disabled = DT.aplicadas === 0;
-  $('dtRotuloSalvar').textContent = DT.aplicadas
-    ? `Salvar ${DT.aplicadas} alteraç${DT.aplicadas === 1 ? 'ão' : 'ões'}`
+  // Pedido já certo e lote para trás é um caso real: quem ajustou antes de a
+  // tela gravar os dois lados cai nele, e o Salvar não pode ficar travado.
+  const comDispo = $('dtTambemDispo') && $('dtTambemDispo').checked;
+  const nLotes = comDispo ? (DT.lotes ? DT.lotes.size : 0) : 0;
+  $('dtBtSalvar').disabled = DT.aplicadas === 0 && nLotes === 0;
+  $('dtRotuloSalvar').textContent =
+    DT.aplicadas && nLotes ? `Salvar ${DT.aplicadas} pedido(s) e ${nLotes} lote(s)`
+    : DT.aplicadas ? `Salvar ${DT.aplicadas} alteraç${DT.aplicadas === 1 ? 'ão' : 'ões'}`
+    : nLotes ? `Salvar ${nLotes} lote(s) na DISPO`
     : 'Salvar';
-  $('dtRodape').textContent = DT.aplicadas ? 'as mudancas ainda não foram gravadas' : '';
+  $('dtRodape').textContent = (DT.aplicadas || nLotes) ? 'as mudanças ainda não foram gravadas' : '';
+}
+
+/* Lotes marcados cuja data na DISPO não é a que a tela vai aplicar. É o
+   que falta quando os pedidos já estão certos e só o lote ficou para trás. */
+function dtLotesAMudar(br){
+  const nums = new Set();
+  for(const k of DT.marcados){
+    const i = DT.lista[k];
+    if(!i) continue;
+    const r = dtResumoLote(i.num);
+    if(r.achou && r.dispo && r.dispo !== br) nums.add(String(i.num));
+  }
+  return nums;
 }
 
 function dtAplicar(){
@@ -5797,10 +5817,13 @@ function dtAplicar(){
     n++;
   }
   DT.aplicadas = DT.lista.filter(i => i.nova).length;
+  DT.lotes = dtLotesAMudar(br);
+  DT.dataLote = br;
   $('dtPronto').hidden = false;
   $('dtProntoTxt').innerHTML =
     `<b>${n} ${n === 1 ? 'pedido recebeu' : 'pedidos receberam'} a data ${br}.</b> `
     + (iguais ? `${iguais} já ${iguais === 1 ? 'estava' : 'estavam'} nela e ${iguais === 1 ? 'ficou' : 'ficaram'} como ${iguais === 1 ? 'está' : 'estão'}. ` : '')
+    + (DT.lotes.size ? `<b>${DT.lotes.size} lote(s)</b> também vão da data da DISPO para ${br}. ` : '')
     + 'Confira na tabela e clique em <b>Salvar</b> — até lá, nada foi gravado.';
   dtPintarTabela();
 }
@@ -5837,7 +5860,8 @@ async function dtGravarDispo(porNum){
    itens tocados mudam — e um registro no histórico de quem fez e quando. */
 async function dtSalvar(){
   const mudancas = DT.lista.filter(i => i.nova);
-  if(!mudancas.length) return;
+  const soLote = !mudancas.length && DT.lotes && DT.lotes.size;
+  if(!mudancas.length && !soLote) return;
 
   const bt = $('dtBtSalvar');
   const antes = bt.innerHTML;
@@ -5853,7 +5877,7 @@ async function dtSalvar(){
   }
 
   const alvos = [];
-  for(const [orderId, itens] of porPedido){
+  for(const [orderId, itens] of porPedido){   // vazio quando só o lote muda
     const idx = STATE.orders.findIndex(o => o && o.id === orderId);
     if(idx === -1) continue;
     const anterior = STATE.orders[idx];
@@ -5877,7 +5901,7 @@ async function dtSalvar(){
     STATE.orders[t.idx] = { ...t.anterior, ...t.campos, updatedAt: agora,
       history: [...(t.anterior.history || []), t.historyAppend] };
   }
-  const falhas = await _gravarLote(alvos);
+  const falhas = alvos.length ? await _gravarLote(alvos) : [];
 
   bt.innerHTML = antes;
   if(falhas.length){
@@ -5892,6 +5916,8 @@ async function dtSalvar(){
   if($('dtTambemDispo') && $('dtTambemDispo').checked){
     const porNum = new Map();
     for(const m of mudancas) porNum.set(String(m.num), m.nova);
+    // lote cujo pedido já estava certo: só ele precisa ir
+    if(DT.lotes && DT.dataLote) for(const n of DT.lotes) if(!porNum.has(n)) porNum.set(n, DT.dataLote);
     try{ lotes = await dtGravarDispo(porNum); }
     catch(e){ console.error(e); erroDispo = e.message || 'erro ao salvar a DISPO'; }
   }
@@ -5899,10 +5925,11 @@ async function dtSalvar(){
   if(erroDispo){
     showToast(`Pedidos salvos, mas o lote na DISPO não: ${erroDispo}`, 'error');
   }else{
-    showToast(`${mudancas.length} item(ns) em ${alvos.length} pedido(s)` +
+    showToast((mudancas.length ? `${mudancas.length} item(ns) em ${alvos.length} pedido(s)` : 'Nenhum pedido mudou') +
       (lotes ? ` · ${lotes} linha(s) da DISPO` : '') + ' atualizados.', 'success');
   }
   DT.aplicadas = 0;
+  DT.lotes = new Set();
   DT.lista.forEach(i => { if(i.nova){ i.prevFat = i.nova; i.nova = ''; } });
   dtPintarTabela();
   renderList();
