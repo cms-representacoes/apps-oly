@@ -3487,12 +3487,14 @@ function combina(o, termos){
 }
 
 // Origem e categoria ficam no topo; estes cinco vivem no painel.
+/* A ordem aqui é a ordem na tela. Ordenar não é um grupo — é um bloco
+   fixo — e entra logo depois de Ação, na montagem do painel. */
 const GRUPOS = [
   { id:'selo',    rot:'Ação' },
   { id:'chega',   rot:'Prev. Fat.' },
+  { id:'faixa',   rot:'Faixa', lista:true },
   { id:'genero',  rot:'Gênero' },
   { id:'sub',     rot:'Tipo de produto' },
-  { id:'faixa',   rot:'Faixa', lista:true },
   { id:'grade',   rot:'Grade', lista:true },
   { id:'fabrica', rot:'Fábrica' },
   { id:'camp',    rot:'Campanha', lista:true }
@@ -3647,10 +3649,12 @@ function pintarPainel(){
   $('pnAtivos').hidden = !chips.length;
   $('pnAtivos').innerHTML = chips.join('');
 
-  $('pnCorpo').innerHTML = `<section class="gr"><h3>Ordenar</h3><div class="ops ordem">` +
+  const ordenar = `<section class="gr"><h3>Ordenar</h3><div class="ops ordem">` +
     ORDENS.map(([id, rot]) => `<button class="${STATE.ordem === id ? 'on' : ''}"
       data-ord="${id}" aria-pressed="${STATE.ordem === id}">${esc(rot)}</button>`).join('') +
-    `</div></section>` + GRUPOS.map(g => {
+    `</div></section>`;
+
+  const secoes = GRUPOS.map(g => {
     const c = new Map();
     for(const o of STATE.produtos){
       if(!passa(o, g.id)) continue;
@@ -3677,7 +3681,14 @@ function pintarPainel(){
     if(g.lista) return secaoLista(g, ordemOpcoes(g.id, [...c]));
     return `<section class="gr"><h3>${esc(g.rot)}</h3>` +
       `<div class="ops${g.id === 'camp' ? ' linhas' : ''}">${ops}</div></section>`;
-  }).join('');
+  });
+
+  // Ação é a primeira e Ordenar vem logo atrás. Quando não há lote rateado,
+  // Ação some e Ordenar abre o painel — é o que já acontecia.
+  const fora = GRUPOS.findIndex(g => g.id === 'selo');
+  const antes = secoes.slice(0, fora + 1).join('');
+  const depois = secoes.slice(fora + 1).join('');
+  $('pnCorpo').innerHTML = antes + ordenar + depois;
 
   rolarAteADD();
 }
