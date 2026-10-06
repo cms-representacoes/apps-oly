@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prévia · Cancelar lote da DISPO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+/* as mesmas variáveis do DISPO e do dashboard, para a prévia mostrar como
+   vai ficar lá dentro e não um app diferente */
+:root{
+  --bg:#f7f8fc; --card:#ffffff; --text:#0e1526; --muted:#6b7488; --line:#e6e9f3;
+  --brand:#2c39e2; --brand-soft:rgba(44,57,226,.09);
+  --ok:#15803d; --ok-bg:#e6f6ec;
+  --aviso:#b45309; --aviso-bg:#fdf4dc;
+  --perigo:#b91c1c; --perigo-bg:#fdeaea; --perigo-forte:#dc2626;
+  --shadow:0 0 0 1px rgba(15,23,42,.03),0 1px 2px rgba(15,23,42,.04),0 16px 40px -20px rgba(15,23,42,.16);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e131d; --card:#161b26; --text:#e8ebf1; --muted:#8e99ad; --line:#2a3242;
+    --brand:#5b69e8; --brand-soft:rgba(91,105,232,.16);
+    --ok:#4ade80; --ok-bg:rgba(74,222,128,.14);
+    --aviso:#fbbf24; --aviso-bg:rgba(251,191,36,.14);
+    --perigo:#f87171; --perigo-bg:rgba(248,113,113,.14); --perigo-forte:#ef4444;
+    --shadow:0 0 0 1px rgba(0,0,0,.2),0 16px 40px -20px rgba(0,0,0,.6);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e131d; --card:#161b26; --text:#e8ebf1; --muted:#8e99ad; --line:#2a3242;
+  --brand:#5b69e8; --brand-soft:rgba(91,105,232,.16);
+  --ok:#4ade80; --ok-bg:rgba(74,222,128,.14);
+  --aviso:#fbbf24; --aviso-bg:rgba(251,191,36,.14);
+  --perigo:#f87171; --perigo-bg:rgba(248,113,113,.14); --perigo-forte:#ef4444;
+  --shadow:0 0 0 1px rgba(0,0,0,.2),0 16px 40px -20px rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.num{font-variant-numeric:tabular-nums}
+.wrap{max-width:1080px;margin:0 auto;padding:0 18px 70px}
+h1,h2,h3,.gro{font-family:"Space Grotesk",Inter,sans-serif;letter-spacing:-.01em}
+
+.previa{background:var(--perigo-forte);color:#fff;padding:14px 18px}
+.previa .in{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.previa b{font-family:"Space Grotesk",sans-serif;font-size:14px}
+.previa span{font-size:12.5px;opacity:.9}
+.previa .spacer{flex:1}
+.previa button{border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.16);color:#fff;
+  border-radius:999px;padding:6px 13px;font:600 12px Inter,sans-serif;cursor:pointer}
+
+.abas{display:flex;gap:6px;padding:16px 0 4px;flex-wrap:wrap}
+.aba{border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:999px;
+  padding:8px 16px;font:700 12.5px "Space Grotesk",sans-serif;cursor:pointer}
+.aba.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.tela{display:none}
+.tela.on{display:block}
+
+.topo{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:18px 0 14px}
+.topo h2{margin:0;font-size:21px;font-weight:700}
+.topo .sub{font-size:12.5px;color:var(--muted);max-width:70ch}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+.pad{padding:18px}
+
+/* ── tabela do DISPO ─────────────────────────────────────────────── */
+.tab{width:100%;border-collapse:collapse;font-size:12.5px}
+.tab th{font:700 10px Inter,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+  text-align:left;padding:10px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tab td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tab tr:last-child td{border-bottom:0}
+.tab .dir{text-align:right;font-variant-numeric:tabular-nums}
+.tab .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--muted)}
+.prod{font-weight:700}
+.linha-cancelada td{background:var(--perigo-bg)}
+.linha-cancelada .prod{text-decoration:line-through;opacity:.75}
+.linha-parcial td{background:var(--aviso-bg)}
+
+.chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 9px;
+  font:700 10.5px Inter,sans-serif;white-space:nowrap}
+.chip.ok{background:var(--ok-bg);color:var(--ok)}
+.chip.aviso{background:var(--aviso-bg);color:var(--aviso)}
+.chip.perigo{background:var(--perigo-bg);color:var(--perigo)}
+.bt-ico{border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:9px;
+  width:30px;height:28px;cursor:pointer;font-size:12px}
+.bt-ico:hover{border-color:var(--brand);color:var(--brand)}
+.bt-ico.perigo:hover{border-color:var(--perigo-forte);color:var(--perigo-forte)}
+
+/* ── modal ───────────────────────────────────────────────────────── */
+.fundo{position:fixed;inset:0;z-index:200;background:rgba(2,6,23,.55);display:none;
+  align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto}
+.fundo.on{display:flex}
+.modal{width:100%;max-width:560px;margin:34px 0;background:var(--card);border:1px solid var(--line);
+  border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)}
+.m-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
+.m-eyebrow{font:800 11px Inter,sans-serif;color:var(--brand);text-transform:uppercase;letter-spacing:.05em}
+.m-tit{font:900 17px Inter,sans-serif;margin-top:2px}
+.m-x{border:0;background:transparent;color:var(--muted);font-size:24px;line-height:1;cursor:pointer}
+.campos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:560px){ .campos{grid-template-columns:1fr} }
+label.rot{display:block;font:700 11px Inter,sans-serif;color:var(--muted);margin-bottom:3px}
+input[type=text],input[type=number],select,textarea{
+  width:100%;border:1px solid var(--line);border-radius:10px;padding:8px 10px;
+  font:600 13px Inter,sans-serif;background:var(--bg);color:var(--text)}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--brand);outline-offset:1px}
+
+/* o bloco novo dentro do modal */
+.canc{border:1px solid var(--line);border-radius:16px;margin-top:16px;overflow:hidden}
+.canc-cab{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;
+  background:var(--perigo-bg)}
+.canc-cab i.ico{color:var(--perigo-forte)}
+.canc-cab .t{font:800 13px Inter,sans-serif;color:var(--perigo)}
+.canc-cab .s{font-size:11.5px;color:var(--muted)}
+.canc-cab .seta{margin-left:auto;color:var(--muted);font-size:12px;transition:transform .18s}
+.canc.aberto .canc-cab .seta{transform:rotate(180deg)}
+.canc-corpo{display:none;padding:14px;border-top:1px solid var(--line)}
+.canc.aberto .canc-corpo{display:block}
+
+.opcs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+@media(max-width:520px){ .opcs{grid-template-columns:1fr} }
+.opc{display:flex;gap:10px;align-items:flex-start;border:1.5px solid var(--line);border-radius:13px;
+  padding:11px 13px;cursor:pointer;background:var(--card)}
+.opc:hover{border-color:var(--perigo-forte)}
+.opc input{margin-top:3px;accent-color:var(--perigo-forte)}
+.opc b{display:block;font:800 13px Inter,sans-serif}
+.opc small{font-size:11px;color:var(--muted)}
+.opc.on{border-color:var(--perigo-forte);background:var(--perigo-bg)}
+
+.qtd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.qtd .passo{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.qtd .passo button{border:0;background:var(--bg);color:var(--text);width:34px;height:36px;font-size:15px;cursor:pointer}
+.qtd .passo button:hover{background:var(--brand-soft);color:var(--brand)}
+.qtd .passo input{width:68px;border:0;border-left:1px solid var(--line);border-right:1px solid var(--line);
+  border-radius:0;text-align:center;font:800 14px Inter,sans-serif}
+.qtd .eq{font-size:12.5px;color:var(--muted);font-weight:600}
+.qtd .eq b{color:var(--text);font-variant-numeric:tabular-nums}
+
+.resumo-canc{display:flex;gap:16px;flex-wrap:wrap;background:var(--bg);border:1px solid var(--line);
+  border-radius:13px;padding:11px 14px;margin:12px 0}
+.resumo-canc div{min-width:92px}
+.resumo-canc .r{font:700 10px Inter,sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.resumo-canc .v{font:800 17px Inter,sans-serif;font-variant-numeric:tabular-nums;margin-top:2px}
+.resumo-canc .v.menos{color:var(--perigo)}
+.resumo-canc .v.fica{color:var(--ok)}
+
+.alerta{display:flex;gap:10px;align-items:flex-start;background:var(--aviso-bg);border:1px solid var(--line);
+  border-radius:13px;padding:11px 13px;font-size:12.5px;margin-bottom:12px}
+.alerta i{color:var(--aviso);margin-top:2px}
+.alerta b{font-weight:800}
+
+.grade-canc{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:8px;margin:10px 0 4px}
+.grade-canc div{text-align:center}
+.grade-canc label{font:700 10px Inter,sans-serif;color:var(--muted)}
+.grade-canc input{text-align:center;padding:6px 4px;font-size:12px}
+
+.acoes{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+.bt{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;
+  padding:11px 16px;font:800 13px Inter,sans-serif;cursor:pointer}
+.bt.perigo{background:var(--perigo-forte);border-color:var(--perigo-forte);color:#fff}
+.bt.perigo:disabled{opacity:.45;cursor:not-allowed}
+.bt.fraco{color:var(--muted);font-weight:700}
+.bt.largo{flex:1;min-width:150px;text-align:center}
+
+/* histórico dentro do modal */
+.hist{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+.hist-l{display:flex;gap:10px;align-items:center;font-size:12px;padding:5px 0;flex-wrap:wrap}
+.hist-l .q{font-weight:800;color:var(--perigo);font-variant-numeric:tabular-nums}
+.hist-l .m{color:var(--muted)}
+.hist-l .d{color:var(--muted);margin-left:auto;font-variant-numeric:tabular-nums}
+
+/* ── dashboard ───────────────────────────────────────────────────── */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media(max-width:760px){ .kpis{grid-template-columns:repeat(2,1fr)} }
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:14px 16px;box-shadow:var(--shadow)}
+.kpi .r{font:700 10.5px Inter,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.kpi .v{font:700 24px "Space Grotesk",sans-serif;font-variant-numeric:tabular-nums;margin-top:3px}
+.kpi .d{font-size:11.5px;color:var(--muted)}
+.kpi.vermelho{background:linear-gradient(135deg,#dc2626,#7f1d1d);border-color:transparent;color:#fff}
+.kpi.vermelho .r,.kpi.vermelho .d{color:rgba(255,255,255,.82)}
+
+.bloco{margin-top:22px}
+.bloco-cab{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 10px;flex-wrap:wrap}
+.bloco-cab h3{margin:0;font-size:15.5px;font-weight:700}
+.bloco-cab .s{font-size:12px;color:var(--muted)}
+.barra-l{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--line)}
+.barra-l:last-child{border-bottom:0}
+.barra-l .nm{font-weight:700;font-size:13px;min-width:132px}
+.barra-l .bar{flex:1;height:9px;border-radius:999px;background:var(--line);overflow:hidden;min-width:60px}
+.barra-l .bar i{display:block;height:100%;border-radius:999px;background:var(--perigo-forte)}
+.barra-l .vl{font-weight:800;font-size:13px;min-width:92px;text-align:right;font-variant-numeric:tabular-nums}
+.barra-l .pc{font-size:11.5px;color:var(--muted);min-width:46px;text-align:right}
+
+.ideias{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px}
+@media(max-width:760px){ .ideias{grid-template-columns:1fr} }
+.ide{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px 16px;box-shadow:var(--shadow)}
+.ide h4{margin:0 0 5px;font:700 13.5px "Space Grotesk",sans-serif;display:flex;align-items:center;gap:8px}
+.ide h4 i{color:var(--perigo-forte)}
+.ide p{margin:0;font-size:12.5px;color:var(--muted)}
+.ide .marca{font:800 10px Inter,sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--perigo);
+  background:var(--perigo-bg);border-radius:999px;padding:2px 8px;margin-left:auto}
+.nota{display:flex;gap:10px;align-items:flex-start;background:var(--aviso-bg);border:1px solid var(--line);
+  border-radius:14px;padding:12px 14px;margin-top:14px;font-size:12.5px}
+.nota i{color:var(--aviso);margin-top:2px}
+</style>
+</head>
+<body>
+
+<div class="previa">
+  <div class="in">
+    <b>Prévia · Cancelar lote da DISPO</b>
+    <span>nada aqui grava de verdade — é para você ver e dizer o que muda</span>
+    <span class="spacer"></span>
+    <button type="button" onclick="trocarTema()"><i class="fa-solid fa-circle-half-stroke"></i> Tema</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="abas">
+    <button class="aba on" data-tela="dispo">1 · No DISPO</button>
+    <button class="aba" data-tela="dash">2 · No dashboard</button>
+    <button class="aba" data-tela="ideias">3 · O que eu sugiro</button>
+  </div>
+
+  <!-- ══════════════ 1. DISPO ══════════════ -->
+  <section class="tela on" id="tela-dispo">
+    <div class="topo">
+      <div>
+        <h2>Cancelamento no estoque</h2>
+        <div class="sub">A fábrica cancela um lote inteiro ou parte dele. O cancelamento desconta o saldo
+          na hora — o vendedor deixa de ver o que não existe mais — e fica registrado, com quem fez, quando e por quê.</div>
+      </div>
+    </div>
+
+    <div class="card" style="overflow-x:auto">
+      <table class="tab">
+        <thead>
+          <tr>
+            <th>Nº</th><th>GCI</th><th>Produto</th><th>Cor</th><th>Prev. Fat</th>
+            <th class="dir">Saldo DISPO</th><th class="dir">Cancelado</th><th class="dir">Saldo real</th>
+            <th>Situação</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="corpoTab"></tbody>
+      </table>
+    </div>
+
+    <div class="nota">
+      <i class="fa-solid fa-lightbulb"></i>
+      <div><b>Por que descontar e não só marcar:</b> enquanto o saldo continuar na DISPO, a vitrine oferece
+        o produto e o vendedor pede o que a fábrica já cancelou. O número que ele vê tem de ser o que existe.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════ 2. DASHBOARD ══════════════ -->
+  <section class="tela" id="tela-dash">
+    <div class="topo">
+      <div>
+        <h2>Cancelamentos</h2>
+        <div class="sub">bloco novo no dashboard, logo abaixo do estoque · dados de exemplo</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted)">últimos 30 dias</div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="r">Lotes atingidos</div><div class="v" id="kLotes">—</div><div class="d">de 304 na DISPO</div></div>
+      <div class="kpi vermelho"><div class="r">Pares cancelados</div><div class="v" id="kPares">—</div><div class="d">no período</div></div>
+      <div class="kpi"><div class="r">Cancelamento total</div><div class="v" id="kTotal">—</div><div class="d">lotes que sumiram inteiros</div></div>
+      <div class="kpi"><div class="r">Sobre o estoque</div><div class="v" id="kPerc">—</div><div class="d">do que havia no período</div></div>
+    </div>
+
+    <div class="bloco">
+      <div class="bloco-cab"><h3>Por motivo</h3><span class="s">é o que o diretor pergunta primeiro</span></div>
+      <div class="card pad" id="porMotivo"></div>
+    </div>
+
+    <div class="bloco">
+      <div class="bloco-cab"><h3>Produtos mais cancelados</h3><span class="s">pares, no período</span></div>
+      <div class="card pad" id="porProduto"></div>
+    </div>
+
+    <div class="bloco">
+      <div class="bloco-cab"><h3>Últimos cancelamentos</h3><span class="s">quem fez e quando</span></div>
+      <div class="card" style="overflow-x:auto">
+        <table class="tab">
+          <thead><tr><th>Quando</th><th>Nº · GCI</th><th>Produto</th><th class="dir">Cancelado</th><th>Motivo</th><th>Por</th></tr></thead>
+          <tbody id="ultimos"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ 3. SUGESTÕES ══════════════ -->
+  <section class="tela" id="tela-ideias">
+    <div class="topo">
+      <div>
+        <h2>O que eu sugiro</h2>
+        <div class="sub">decisões que mudam o jeito de fazer — melhor acertar antes de implementar</div>
+      </div>
+    </div>
+    <div class="ideias">
+      <div class="ide">
+        <h4><i class="fa-solid fa-rotate-left"></i> Desfazer o cancelamento <span class="marca">recomendo</span></h4>
+        <p>Cancelamento é digitado às pressas e erra-se o Nº. Com o registro guardado, desfazer devolve o saldo
+          exatamente como estava — sem isso, só refazendo a importação da DISPO inteira.</p>
+      </div>
+      <div class="ide">
+        <h4><i class="fa-solid fa-triangle-exclamation"></i> Avisar quando há pedido no lote <span class="marca">recomendo</span></h4>
+        <p>Se o lote já tem pedido pendente ou aprovado, cancelar deixa vendedor e cliente com um pedido que
+          não será atendido. O modal mostra quanto está comprometido antes de confirmar.</p>
+      </div>
+      <div class="ide">
+        <h4><i class="fa-solid fa-list-check"></i> Cancelar vários de uma vez</h4>
+        <p>A DISPO já tem seleção em lote. Quando a fábrica cancela um pedido mãe inteiro, são dezenas de linhas —
+          um cancelamento por vez vira digitação.</p>
+      </div>
+      <div class="ide">
+        <h4><i class="fa-solid fa-file-excel"></i> Relatório em xlsx</h4>
+        <p>O mesmo que já existe nas outras telas: baixar o período com Nº, GCI, produto, pares, motivo e autor,
+          para a conversa com a fábrica.</p>
+      </div>
+      <div class="ide">
+        <h4><i class="fa-solid fa-bell"></i> Avisar o vendedor que perdeu o lote</h4>
+        <p>Se o lote cancelado estava rateado para alguém, ou tinha pedido dele, vale um aviso na vitrine —
+          melhor do que descobrir quando o pedido não chegar.</p>
+      </div>
+      <div class="ide">
+        <h4><i class="fa-solid fa-clock-rotate-left"></i> Cancelado não some da tela</h4>
+        <p>A linha fica na DISPO com saldo zero e a tarja "cancelado", em vez de desaparecer. Some só na vitrine
+          do vendedor. É o que permite conferir depois o que foi cancelado e quando.</p>
+      </div>
+    </div>
+
+    <div class="nota">
+      <i class="fa-solid fa-circle-question"></i>
+      <div><b>Três coisas que preciso que você decida:</b>
+        (1) o cancelamento parcial é em <b>caixas</b> — é assim que o vendedor compra — ou você quer poder mexer
+        tamanho a tamanho? (2) o motivo deve ser <b>obrigatório</b>? (3) quem pode cancelar: só a CMS, ou o DEV também?</div>
+    </div>
+  </section>
+</div>
+
+<!-- ══════════════ MODAL ══════════════ -->
+<div class="fundo" id="fundo">
+  <div class="modal">
+    <div class="m-topo">
+      <div>
+        <div class="m-eyebrow">Editar produto</div>
+        <div class="m-tit" id="mTit">—</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px" id="mSub">—</div>
+      </div>
+      <button class="m-x" onclick="fechar()" aria-label="Fechar">&times;</button>
+    </div>
+
+    <!-- os campos de hoje, resumidos: o que muda é o bloco de baixo -->
+    <div class="campos">
+      <div><label class="rot">Produto</label><input type="text" id="fProduto"></div>
+      <div><label class="rot">Cor</label><input type="text" id="fCor"></div>
+      <div><label class="rot">Nº</label><input type="text" id="fNum"></div>
+      <div><label class="rot">GCI</label><input type="text" id="fGci"></div>
+      <div><label class="rot">Prev. Faturamento</label><input type="text" id="fPrev"></div>
+      <div><label class="rot">Saldo DISPO</label><input type="number" id="fSaldo"></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">
+      <i class="fa-solid fa-circle-info"></i> os demais campos (código, filial, pedido mãe e a grade) seguem como hoje.
+    </div>
+
+    <!-- ── o bloco novo ── -->
+    <div class="canc" id="blocoCanc">
+      <div class="canc-cab" onclick="document.getElementById('blocoCanc').classList.toggle('aberto')">
+        <i class="fa-solid fa-ban ico"></i>
+        <div>
+          <div class="t">Cancelar lote</div>
+          <div class="s">total ou parte — desconta o saldo e fica registrado</div>
+        </div>
+        <i class="fa-solid fa-chevron-down seta"></i>
+      </div>
+
+      <div class="canc-corpo">
+        <div class="alerta" id="alertaPedidos" hidden>
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <div id="txtAlerta"></div>
+        </div>
+
+        <div class="opcs">
+          <label class="opc on" id="opcTudo">
+            <input type="radio" name="tipo" value="tudo" checked onchange="trocarTipo()">
+            <span><b>Cancelar tudo</b><small id="subTudo">o lote inteiro</small></span>
+          </label>
+          <label class="opc" id="opcParte">
+            <input type="radio" name="tipo" value="parte" onchange="trocarTipo()">
+            <span><b>Cancelar parte</b><small>escolher quantas caixas</small></span>
+          </label>
+        </div>
+
+        <div id="areaParcial" hidden>
+          <label class="rot">Quantas caixas cancelar</label>
+          <div class="qtd">
+            <span class="passo">
+              <button type="button" onclick="passo(-1)">−</button>
+              <input type="number" id="qCaixas" min="1" value="1" oninput="recalcular()">
+              <button type="button" onclick="passo(1)">+</button>
+            </span>
+            <span class="eq">de <b id="totCaixas">—</b> caixas · <b id="paresCanc">—</b> pares</span>
+          </div>
+        </div>
+
+        <div class="resumo-canc">
+          <div><div class="r">Saldo hoje</div><div class="v num" id="rHoje">—</div></div>
+          <div><div class="r">Cancelando</div><div class="v menos num" id="rMenos">—</div></div>
+          <div><div class="r">Fica com</div><div class="v fica num" id="rFica">—</div></div>
+        </div>
+
+        <div class="campos">
+          <div>
+            <label class="rot">Motivo</label>
+            <select id="fMotivo" onchange="recalcular()">
+              <option value="">Escolha…</option>
+              <option>Cancelado pela fábrica</option>
+              <option>Ruptura de material</option>
+              <option>Reprogramação de entrega</option>
+              <option>Erro de digitação na DISPO</option>
+              <option>Pedido mãe cancelado</option>
+              <option>Outro</option>
+            </select>
+          </div>
+          <div>
+            <label class="rot">Observação (opcional)</label>
+            <input type="text" id="fObs" placeholder="nº do e-mail, quem avisou…">
+          </div>
+        </div>
+
+        <div class="hist" id="hist"></div>
+
+        <div class="acoes">
+          <button class="bt perigo largo" id="btCancelar" onclick="confirmar()">
+            <i class="fa-solid fa-ban"></i> <span id="rotuloBt">Cancelar o lote inteiro</span>
+          </button>
+          <button class="bt fraco" onclick="document.getElementById('blocoCanc').classList.remove('aberto')">Voltar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="acoes">
+      <button class="bt largo" style="background:var(--brand);border-color:var(--brand);color:#fff" onclick="fechar()">Salvar alterações</button>
+      <button class="bt fraco" onclick="fechar()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── dados de exemplo: linhas reais da DISPO, com cancelamentos inventados ── */
+const LOTES = [
+  { num:'46',  gci:'5333311',  produto:'VENUS 3', cor:'PTO/PT', prev:'31/07/2026', saldo:120, cx:10, porCx:12, pend:0,  aprov:0,  canc:[] },
+  { num:'48',  gci:'13740447', produto:'NUVEM',   cor:'PRETO',  prev:'01/11/2026', saldo:240, cx:20, porCx:12, pend:12, aprov:24, canc:[] },
+  { num:'51',  gci:'13740451', produto:'NUVEM',   cor:'PRETO',  prev:'01/11/2026', saldo:144, cx:12, porCx:12, pend:0,  aprov:0,
+    canc:[{ cx:8, pares:96, motivo:'Ruptura de material', por:'CMS', em:'02/10/2026 14:12' }] },
+  { num:'52',  gci:'13740450', produto:'NUVEM',   cor:'PRETO',  prev:'01/11/2026', saldo:0,   cx:0,  porCx:12, pend:0,  aprov:0,
+    canc:[{ cx:18, pares:216, motivo:'Pedido mãe cancelado', por:'CMS', em:'29/09/2026 09:40' }] },
+  { num:'56',  gci:'13738378', produto:'NUVEM',   cor:'PTO/PT', prev:'31/10/2026', saldo:156, cx:13, porCx:12, pend:0,  aprov:36, canc:[] },
+];
+
+const nf = n => Number(n || 0).toLocaleString('pt-BR');
+let atual = null;
+
+/* ── abas e tema ── */
+document.querySelectorAll('.aba').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.aba').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.tela').forEach(t => t.classList.toggle('on', t.id === 'tela-' + b.dataset.tela));
+});
+function trocarTema(){
+  const r = document.documentElement;
+  const escuro = r.getAttribute('data-theme') === 'dark'
+    || (!r.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches);
+  r.setAttribute('data-theme', escuro ? 'light' : 'dark');
+}
+
+/* ── tabela do DISPO ── */
+function pintarTabela(){
+  document.getElementById('corpoTab').innerHTML = LOTES.map((l, i) => {
+    const cancelado = l.canc.reduce((s, c) => s + c.pares, 0);
+    const real = Math.max(0, l.saldo - l.pend - l.aprov);
+    const tudo = l.saldo === 0 && cancelado > 0;
+    const parcial = cancelado > 0 && l.saldo > 0;
+    const sit = tudo
+      ? `<span class="chip perigo"><i class="fa-solid fa-ban"></i> Cancelado</span>`
+      : parcial
+        ? `<span class="chip aviso"><i class="fa-solid fa-scissors"></i> Cancelado em parte</span>`
+        : `<span class="chip ok">Saudável</span>`;
+    return `<tr class="${tudo ? 'linha-cancelada' : parcial ? 'linha-parcial' : ''}">
+      <td class="mono">${l.num}</td>
+      <td class="mono">${l.gci}</td>
+      <td class="prod">${l.produto}</td>
+      <td>${l.cor}</td>
+      <td class="mono">${l.prev}</td>
+      <td class="dir"><b>${nf(l.saldo)}</b></td>
+      <td class="dir">${cancelado ? `<span style="color:var(--perigo);font-weight:800">−${nf(cancelado)}</span>` : '—'}</td>
+      <td class="dir">${nf(real)}</td>
+      <td>${sit}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="bt-ico" title="Editar produto" onclick="abrir(${i})"><i class="fa-solid fa-pen"></i></button>
+        <button class="bt-ico perigo" title="Cancelar lote" onclick="abrir(${i}, true)"><i class="fa-solid fa-ban"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+/* ── modal ── */
+function abrir(i, jaAberto){
+  atual = LOTES[i];
+  document.getElementById('mTit').textContent = `${atual.produto} · ${atual.cor}`;
+  document.getElementById('mSub').textContent = `Nº ${atual.num} · GCI ${atual.gci}`;
+  document.getElementById('fProduto').value = atual.produto;
+  document.getElementById('fCor').value = atual.cor;
+  document.getElementById('fNum').value = atual.num;
+  document.getElementById('fGci').value = atual.gci;
+  document.getElementById('fPrev').value = atual.prev;
+  document.getElementById('fSaldo').value = atual.saldo;
+
+  document.getElementById('subTudo').textContent = `as ${atual.cx} caixas · ${nf(atual.saldo)} pares`;
+  document.getElementById('totCaixas').textContent = atual.cx;
+  const q = document.getElementById('qCaixas');
+  q.max = atual.cx; q.value = Math.min(1, atual.cx) || 1;
+  document.querySelector('input[name=tipo][value=tudo]').checked = true;
+  document.getElementById('fMotivo').value = '';
+  document.getElementById('fObs').value = '';
+
+  // o alerta de pedidos é o ponto que evita estrago
+  const comprometido = atual.pend + atual.aprov;
+  const al = document.getElementById('alertaPedidos');
+  al.hidden = comprometido === 0;
+  if(comprometido){
+    document.getElementById('txtAlerta').innerHTML =
+      `<b>Este lote tem pedido.</b> ${nf(atual.aprov)} pares aprovados` +
+      (atual.pend ? ` e ${nf(atual.pend)} pendentes` : '') +
+      ` já foram prometidos a clientes. Cancelando, alguém vai ficar sem — avise o vendedor.`;
+  }
+
+  // histórico do que já foi cancelado neste lote
+  const h = document.getElementById('hist');
+  h.innerHTML = atual.canc.length
+    ? `<div style="font:700 11px Inter,sans-serif;color:var(--muted);margin-bottom:4px">JÁ CANCELADO NESTE LOTE</div>` +
+      atual.canc.map(c => `<div class="hist-l">
+        <span class="q">−${nf(c.pares)} pares</span>
+        <span class="m">${c.cx} cx · ${c.motivo} · por ${c.por}</span>
+        <span class="d">${c.em}</span>
+        <button class="bt-ico" title="Desfazer este cancelamento"><i class="fa-solid fa-rotate-left"></i></button>
+      </div>`).join('')
+    : '';
+
+  trocarTipo();
+  document.getElementById('blocoCanc').classList.toggle('aberto', !!jaAberto);
+  document.getElementById('fundo').classList.add('on');
+  document.body.style.overflow = 'hidden';
+}
+function fechar(){
+  document.getElementById('fundo').classList.remove('on');
+  document.body.style.overflow = '';
+}
+document.getElementById('fundo').onclick = e => { if(e.target.id === 'fundo') fechar(); };
+addEventListener('keydown', e => { if(e.key === 'Escape') fechar(); });
+
+function trocarTipo(){
+  const tudo = document.querySelector('input[name=tipo]:checked').value === 'tudo';
+  document.getElementById('opcTudo').classList.toggle('on', tudo);
+  document.getElementById('opcParte').classList.toggle('on', !tudo);
+  document.getElementById('areaParcial').hidden = tudo;
+  recalcular();
+}
+function passo(d){
+  const q = document.getElementById('qCaixas');
+  q.value = Math.max(1, Math.min(atual.cx, Number(q.value || 0) + d));
+  recalcular();
+}
+function recalcular(){
+  if(!atual) return;
+  const tudo = document.querySelector('input[name=tipo]:checked').value === 'tudo';
+  const cx = tudo ? atual.cx : Math.max(0, Math.min(atual.cx, Number(document.getElementById('qCaixas').value || 0)));
+  const pares = cx * atual.porCx;
+  document.getElementById('paresCanc').textContent = nf(pares);
+  document.getElementById('rHoje').textContent = nf(atual.saldo);
+  document.getElementById('rMenos').textContent = '−' + nf(pares);
+  document.getElementById('rFica').textContent = nf(Math.max(0, atual.saldo - pares));
+  document.getElementById('rotuloBt').textContent = tudo
+    ? 'Cancelar o lote inteiro'
+    : `Cancelar ${cx} caixa${cx === 1 ? '' : 's'} · ${nf(pares)} pares`;
+  // motivo em branco trava o botão: é o que o dashboard vai mostrar depois
+  document.getElementById('btCancelar').disabled = !document.getElementById('fMotivo').value || pares <= 0;
+}
+function confirmar(){
+  const tudo = document.querySelector('input[name=tipo]:checked').value === 'tudo';
+  const cx = tudo ? atual.cx : Number(document.getElementById('qCaixas').value || 0);
+  alert(`(prévia — nada foi gravado)\n\nCancelaria ${cx} caixa(s) · ${nf(cx * atual.porCx)} pares\n` +
+        `do Nº ${atual.num} · ${atual.produto} ${atual.cor}\n` +
+        `Motivo: ${document.getElementById('fMotivo').value}`);
+}
+
+/* ── dashboard de exemplo ── */
+const CANCELAMENTOS = [
+  { em:'02/10 14:12', num:'51',  gci:'13740451', produto:'NUVEM · PRETO',   cx:8,  pares:96,  motivo:'Ruptura de material',      por:'CMS' },
+  { em:'29/09 09:40', num:'52',  gci:'13740450', produto:'NUVEM · PRETO',   cx:18, pares:216, motivo:'Pedido mãe cancelado',     por:'CMS' },
+  { em:'24/09 16:05', num:'118', gci:'13738401', produto:'CORRE 5 · LUNBEG',cx:10, pares:120, motivo:'Cancelado pela fábrica',   por:'CMS' },
+  { em:'21/09 11:28', num:'203', gci:'5502390',  produto:'APOLIS · BRSMRT', cx:6,  pares:72,  motivo:'Reprogramação de entrega', por:'MARCOS (DEV)' },
+  { em:'18/09 08:50', num:'77',  gci:'13740500', produto:'VENUS 3 · MARFIM',cx:4,  pares:48,  motivo:'Erro de digitação na DISPO', por:'CMS' },
+  { em:'15/09 17:33', num:'265', gci:'5534820',  produto:'INDEX 4 · MRTMHO',cx:21, pares:252, motivo:'Cancelado pela fábrica',   por:'CMS' },
+];
+
+function pintarDash(){
+  const totalPares = CANCELAMENTOS.reduce((s, c) => s + c.pares, 0);
+  const totais = CANCELAMENTOS.filter(c => c.cx >= 18).length;
+  document.getElementById('kLotes').textContent = CANCELAMENTOS.length;
+  document.getElementById('kPares').textContent = nf(totalPares);
+  document.getElementById('kTotal').textContent = totais;
+  document.getElementById('kPerc').textContent = (totalPares / 13740 * 100).toFixed(1).replace('.', ',') + '%';
+
+  const porMotivo = new Map();
+  for(const c of CANCELAMENTOS) porMotivo.set(c.motivo, (porMotivo.get(c.motivo) || 0) + c.pares);
+  const maiorM = Math.max(...porMotivo.values());
+  document.getElementById('porMotivo').innerHTML = [...porMotivo.entries()]
+    .sort((a, b) => b[1] - a[1]).map(([m, q]) => `<div class="barra-l">
+      <span class="nm">${m}</span>
+      <span class="bar"><i style="width:${(q / maiorM * 100).toFixed(1)}%"></i></span>
+      <span class="pc">${(q / totalPares * 100).toFixed(0)}%</span>
+      <span class="vl">${nf(q)} pares</span>
+    </div>`).join('');
+
+  const porProd = new Map();
+  for(const c of CANCELAMENTOS) porProd.set(c.produto, (porProd.get(c.produto) || 0) + c.pares);
+  const maiorP = Math.max(...porProd.values());
+  document.getElementById('porProduto').innerHTML = [...porProd.entries()]
+    .sort((a, b) => b[1] - a[1]).map(([p, q]) => `<div class="barra-l">
+      <span class="nm" style="min-width:160px">${p}</span>
+      <span class="bar"><i style="width:${(q / maiorP * 100).toFixed(1)}%"></i></span>
+      <span class="vl">${nf(q)} pares</span>
+    </div>`).join('');
+
+  document.getElementById('ultimos').innerHTML = CANCELAMENTOS.map(c => `<tr>
+    <td class="mono">${c.em}</td>
+    <td class="mono">${c.num} · ${c.gci}</td>
+    <td class="prod">${c.produto}</td>
+    <td class="dir"><b style="color:var(--perigo)">−${nf(c.pares)}</b> <span style="color:var(--muted);font-size:11px">${c.cx} cx</span></td>
+    <td>${c.motivo}</td>
+    <td>${c.por}</td>
+  </tr>`).join('');
+}
+
+pintarTabela();
+pintarDash();
+</script>
+</body>
+</html>
