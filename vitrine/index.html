@@ -3488,10 +3488,8 @@ function combina(o, termos){
 
 // Origem e categoria ficam no topo; estes cinco vivem no painel.
 const GRUPOS = [
-  { id:'selo',    rot:'Ação',
-    ajuda:'Lotes rateados: só aparecem aqui os que têm cota para você.' },
-  { id:'chega',   rot:'Prev. Fat.',
-    ajuda:'Estoque sai agora; repasse e produção entram pelo mês.' },
+  { id:'selo',    rot:'Ação' },
+  { id:'chega',   rot:'Prev. Fat.' },
   { id:'genero',  rot:'Gênero' },
   { id:'sub',     rot:'Tipo de produto' },
   { id:'faixa',   rot:'Faixa', lista:true },
@@ -3678,7 +3676,6 @@ function pintarPainel(){
     // vendedor quiser marcar.
     if(g.lista) return secaoLista(g, ordemOpcoes(g.id, [...c]));
     return `<section class="gr"><h3>${esc(g.rot)}</h3>` +
-      (g.ajuda ? `<p>${esc(g.ajuda)}</p>` : '') +
       `<div class="ops${g.id === 'camp' ? ' linhas' : ''}">${ops}</div></section>`;
   }).join('');
 
@@ -3710,7 +3707,6 @@ function secaoLista(g, itens){
       <span class="q">${nf(q)}</span></button>`;
   }).join('');
   return `<section class="gr"><h3>${esc(g.rot)}</h3>` +
-    (g.ajuda ? `<p>${esc(g.ajuda)}</p>` : '') +
     `<div class="dd${aberta ? ' aberta' : ''}">
       <button class="dd-campo${marcadas.length && !todas ? ' tem' : ''}" data-dd="${esc(g.id)}"
         aria-haspopup="listbox" aria-expanded="${aberta}">
