@@ -1005,6 +1005,40 @@ button{font:inherit}
   box-shadow:0 3px 10px color-mix(in srgb,var(--marca) 30%,transparent),
              inset 0 1px 0 rgba(255,255,255,.26)}
 .ops button.on .q{color:rgba(255,255,255,.78)}
+/* ── lista suspensa de marcar vários (Faixa e Grade) ──────────────────
+   Uma pílula por opção não serve quando são vinte grades: o painel virava
+   uma parede de botões e a Campanha, logo abaixo, só aparecia rolando. */
+.dd{position:relative;margin-top:9px}
+.dd-campo{display:flex;align-items:center;gap:8px;width:100%;
+  border:1px solid var(--linha);background:var(--carta);color:var(--texto);
+  border-radius:10px;padding:9px 11px;font-size:12.5px;font-weight:600;cursor:pointer;text-align:left}
+.dd-campo:hover{border-color:var(--linha-forte)}
+.dd-campo:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+.dd-campo .dd-txt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dd-campo svg{flex:none;opacity:.55;transition:transform .16s ease}
+.dd.aberta .dd-campo{border-color:var(--marca)}
+.dd.aberta .dd-campo svg{transform:rotate(180deg)}
+/* com a lista fechada, o campo é a única pista do que está escolhido */
+.dd-campo.tem{border-color:var(--marca);color:var(--marca)}
+.dd-lista{margin-top:5px;border:1px solid var(--linha);border-radius:10px;background:var(--carta);
+  max-height:238px;overflow-y:auto;padding:4px;display:flex;flex-direction:column;gap:1px;
+  box-shadow:0 8px 22px rgba(16,18,20,.09)}
+.dd-lista[hidden]{display:none}
+.dd-op{display:flex;align-items:center;gap:9px;width:100%;border:0;background:none;
+  color:var(--texto);border-radius:7px;padding:7px 8px;font-size:12.5px;font-weight:600;
+  cursor:pointer;text-align:left}
+.dd-op:hover{background:var(--papel)}
+.dd-op .dd-rot{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dd-op .q{font-size:10.5px;font-weight:600;color:var(--tenue);font-variant-numeric:tabular-nums}
+.dd-cx{flex:none;width:15px;height:15px;border:1.5px solid var(--linha-forte);border-radius:4px;
+  position:relative}
+.dd-op.on .dd-cx{background:var(--marca);border-color:var(--marca)}
+.dd-op.on .dd-cx::after{content:'';position:absolute;left:4.5px;top:1px;width:4px;height:8px;
+  border:solid #fff;border-width:0 2px 2px 0;transform:rotate(43deg)}
+.dd-op.on{color:var(--marca)}
+.dd-todas{border-bottom:1px solid var(--linha);border-radius:7px 7px 0 0;margin-bottom:2px;
+  padding-bottom:8px;font-weight:700}
+
 /* Campanha carrega dois dados (tabela e MKP), então vira linha, não pílula. */
 .ops.linhas{flex-direction:column;gap:5px}
 .ops.linhas button{width:100%;justify-content:space-between;border-radius:9px;padding:8px 10px}
@@ -2404,10 +2438,10 @@ let MARCA = (new URLSearchParams(location.search).get('marca') || 'oly').toLower
 if(!MARCAS[MARCA]) MARCA = 'oly';
 
 /* ── estado ─────────────────────────────────────────────────────── */
-const STATE = { produtos:[], filtrados:[], origem:'tudo', categoria:'', busca:'',
+const STATE = { produtos:[], filtrados:[], origem:'tudo', categoria:'', busca:'', ddAberto:'',
                 termos:[], termosIgnorados:0,
                 sel:{ selo:new Set(), chega:new Set(), genero:new Set(), sub:new Set(),
-                      grade:new Set(), fabrica:new Set(), camp:new Set() },
+                      faixa:new Set(), grade:new Set(), fabrica:new Set(), camp:new Set() },
                 sacola:new Map(), aba:'estoque', marcados:new Set(), soNovos:false,
                 fichas:{},
                 ordem:(() => { try{ return localStorage.getItem('cmspass.ordem') || 'padrao'; }
@@ -3191,7 +3225,7 @@ function montar(dispo, disponib, produtos, pedidos, oculto){
     if(!mapa.has(k)) mapa.set(k, {
       k, artigo:norm(artigo), cor:String(cor||'').trim().toUpperCase(),
       nome:'', marca:'', pdv:0, categoria:'', genero:'', imagem:'', fabrica:'',
-      sub:'', camp:[], chega:[], campanhas:[],
+      sub:'', faixa:'', camp:[], chega:[], campanhas:[],
       pronta:null, repasse:null, meta:null
     });
     return mapa.get(k);
@@ -3304,6 +3338,14 @@ function montar(dispo, disponib, produtos, pedidos, oculto){
     // para mil e duzentos produtos, era o que deixava a digitacao lenta.
     o.hay = norm([o.artigo, o.nome, o.cor, o.categoria, o.genero].join(' '));
     o.sub = subcategoriaDe(o);
+    // A faixa (Corrida, Treino, Caminhada…) só existe no cadastro de
+    // produtos; nem a DISPO nem as disponibilidades trazem. Sai da linha da
+    // cor exata e, na falta dela, de qualquer cor do mesmo artigo — é um
+    // dado do artigo, não da cor.
+    if(!o.faixa){
+      const r = refCor.get(o.k) || refArt.get(o.artigo);
+      o.faixa = rotuloFaixaCadastro(r && r.segmento);
+    }
     o.grade = gradesDoProduto(o);
     o.camp = o.campanhas.map(rotuloCampanha);
     // "Chega em" e a prev. faturamento unificada: estoque sai agora, as outras
@@ -3375,6 +3417,19 @@ const SUBCATEGORIAS = [
   ['Blusas e jaquetas',  /^(BLUSA|JAQUETA|JAQ[\s.]|QUEBRA|CORTA|MOLETOM|MOL[\s.]|MTL\b|CJ[\s.]?AGASAL|AGASAL)/],
   ['Luvas e acessórios', /^(LUVA|MANGUITO|FAIXA|POCHETE)/]
 ];
+/* O cadastro escreve a mesma faixa de três jeitos — "Corrida", "corrida",
+   "CHINELOS" —, e cada grafia viraria uma opção diferente no filtro. */
+const FAIXA_ROT = { CORRIDA:'Corrida', TREINO:'Treino', CAMINHADA:'Caminhada',
+                    CLASSICOS:'Clássicos', CASUAL:'Casual', CHINELOS:'Chinelos',
+                    PERFORMANCE:'Performance', BASQUETE:'Basquete' };
+function rotuloFaixaCadastro(v){
+  const k = norm(v);
+  if(!k) return '';
+  if(FAIXA_ROT[k]) return FAIXA_ROT[k];
+  // desconhecida: primeira maiúscula e o resto minúsculo, para não gritar
+  return k.charAt(0) + k.slice(1).toLowerCase();
+}
+
 function subcategoriaDe(o){
   if(!CATS_COM_SUB.test(o.categoria)) return '';
   const d = norm(o.nome);
@@ -3436,7 +3491,9 @@ const GRUPOS = [
     ajuda:'Estoque sai agora; repasse e produção entram pelo mês.' },
   { id:'genero',  rot:'Gênero' },
   { id:'sub',     rot:'Tipo de produto' },
-  { id:'grade',   rot:'Grade',
+  { id:'faixa',   rot:'Faixa', lista:true,
+    ajuda:'A linha de uso do cadastro: corrida, treino, caminhada.' },
+  { id:'grade',   rot:'Grade', lista:true,
     ajuda:'Do primeiro ao último tamanho. Estoque e repasse têm grade; produção ainda não.' },
   { id:'fabrica', rot:'Fábrica' },
   { id:'camp',    rot:'Campanha' }
@@ -3615,10 +3672,62 @@ function pintarPainel(){
       return `<button class="${on.trim()}" ${attr}>` +
         `${esc(rotuloOpcao(g.id, v))}<span class="q">${nf(q)}</span></button>`;
     }).join('');
+    // Faixa e Grade têm opção demais para virarem pílulas: em vez de uma
+    // parede de botões, um campo que abre a lista e aceita quantas o
+    // vendedor quiser marcar.
+    if(g.lista) return secaoLista(g, ordemOpcoes(g.id, [...c]));
     return `<section class="gr"><h3>${esc(g.rot)}</h3>` +
       (g.ajuda ? `<p>${esc(g.ajuda)}</p>` : '') +
       `<div class="ops${g.id === 'camp' ? ' linhas' : ''}">${ops}</div></section>`;
   }).join('');
+
+  rolarAteADD();
+}
+
+/* Uma lista suspensa de marcar vários. Fechada, o campo diz o que está
+   escolhido; aberta, mostra tudo com "Todas" no alto. */
+function secaoLista(g, itens){
+  const sel = STATE.sel[g.id];
+  const marcadas = itens.filter(([v]) => sel.has(v)).map(([v]) => rotuloOpcao(g.id, v));
+  const resumo = !marcadas.length || marcadas.length === itens.length
+               ? `Todas (${nf(itens.length)})`
+               : marcadas.length === 1 ? marcadas[0]
+               : `${marcadas.length} escolhidas`;
+  const aberta = STATE.ddAberto === g.id;
+  const todas = marcadas.length === 0 || marcadas.length === itens.length;
+  const linhas = itens.map(([v, q]) => {
+    const on = sel.has(v);
+    return `<button class="dd-op${on ? ' on' : ''}" data-g="${esc(g.id)}" data-v="${esc(v)}"
+        role="option" aria-selected="${on}">
+      <span class="dd-cx" aria-hidden="true"></span>
+      <span class="dd-rot">${esc(rotuloOpcao(g.id, v))}</span>
+      <span class="q">${nf(q)}</span></button>`;
+  }).join('');
+  return `<section class="gr"><h3>${esc(g.rot)}</h3>` +
+    (g.ajuda ? `<p>${esc(g.ajuda)}</p>` : '') +
+    `<div class="dd${aberta ? ' aberta' : ''}">
+      <button class="dd-campo${marcadas.length && !todas ? ' tem' : ''}" data-dd="${esc(g.id)}"
+        aria-haspopup="listbox" aria-expanded="${aberta}">
+        <span class="dd-txt">${esc(resumo)}</span>
+        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M6 9l6 6 6-6"
+          fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="dd-lista" role="listbox" aria-multiselectable="true"${aberta ? '' : ' hidden'}>
+        <button class="dd-op dd-todas${todas ? ' on' : ''}" data-todas="${esc(g.id)}" role="option" aria-selected="${todas}">
+          <span class="dd-cx" aria-hidden="true"></span>
+          <span class="dd-rot">Todas</span>
+          <span class="q">${nf(itens.length)}</span></button>
+        ${linhas}
+      </div>
+    </div></section>`;
+}
+
+/* A lista abre para baixo e, no fim do painel, nasceria escondida atrás do
+   botão "Ver N produtos". Depois de pintar, ela se puxa para a vista. */
+function rolarAteADD(){
+  if(!STATE.ddAberto) return;
+  const dd = $('pnCorpo').querySelector('.dd.aberta');
+  if(dd) requestAnimationFrame(() => dd.scrollIntoView({ block:'nearest', behavior:'smooth' }));
 }
 
 function alternarFiltro(id, v){
@@ -3632,10 +3741,20 @@ function ligarCliques(el){
   el.addEventListener('click', e => {
     const o = e.target.closest('button[data-ord]');
     if(o){ setOrdem(o.dataset.ord); return; }
+    const dd = e.target.closest('button[data-dd]');
+    if(dd){ STATE.ddAberto = STATE.ddAberto === dd.dataset.dd ? '' : dd.dataset.dd; pintarPainel(); return; }
+    // "Todas" é o estado sem nada marcado: limpa e a lista volta inteira
+    const t = e.target.closest('button[data-todas]');
+    if(t){ STATE.sel[t.dataset.todas].clear(); aplicar(); return; }
     const b = e.target.closest('button[data-g]');
     if(b) alternarFiltro(b.dataset.g, b.dataset.v);
   });
 }
+// Clicar fora fecha a lista aberta. Dentro dela, não: marcar várias é o
+// ponto, e fechar a cada escolha obrigaria a reabrir.
+$('pnCorpo').addEventListener('click', e => {
+  if(STATE.ddAberto && !e.target.closest('.dd')){ STATE.ddAberto = ''; pintarPainel(); }
+}, true);
 ligarCliques($('pnCorpo'));
 ligarCliques($('pnAtivos'));
 function limparFiltros(){
