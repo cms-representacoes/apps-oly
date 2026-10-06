@@ -1397,6 +1397,11 @@
     .dt-pronto{display:flex;gap:10px;align-items:center;background:var(--info-soft);border:1px solid var(--line);
       border-radius:14px;padding:11px 14px;font-size:12.5px;margin-top:12px;color:var(--text)}
     .dt-pronto i{color:var(--info)}
+    .dt-opcao{display:flex;gap:10px;align-items:flex-start;margin-top:12px;padding:11px 14px;
+      border:1px solid var(--line);border-radius:14px;background:var(--card);
+      font-size:12.5px;color:var(--text);cursor:pointer}
+    .dt-opcao input{width:16px;height:16px;accent-color:var(--brand);margin-top:1px;flex:none}
+    .dt-opcao b{font-weight:800}
     @media (min-width:641px) and (max-width:900px){
       .dt-tab td.c-gci,.dt-tab td.c-cor,.dt-tab thead th:nth-child(3),.dt-tab thead th:nth-child(5){display:none}
     }
@@ -1577,6 +1582,13 @@
               </button>
               <span class="dt-conta" id="dtConta"></span>
             </div>
+
+            <label class="dt-opcao" id="dtOpcDispo">
+              <input type="checkbox" id="dtTambemDispo" checked>
+              <span><b>Atualizar também o lote na DISPO.</b>
+                O estoque e as duas vitrines leem a data do lote, não a do pedido —
+                sem isto, só os pedidos mudam.</span>
+            </label>
 
             <div class="dt-aviso" id="dtAvisoPedido" hidden>
               <i class="fa-solid fa-triangle-exclamation"></i>
@@ -5474,6 +5486,16 @@ async function marcarComoExportado(orders){
   }
 }
 
+/* Gravar na DISPO é ação de escrita no worker e pede o token do admin — o
+   mesmo que o dispo.html usa. Esta tela só lia; agora o ajuste de datas
+   também escreve o lote. */
+const ADMIN_TOKEN = '1b489c97-7bc7-466a-a675-f559e1226371d9bea53d-a920-4059-a31c-6bc0b6d8c4c8';
+function workerFetchAdmin(opts = {}){
+  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  if(ADMIN_TOKEN && ADMIN_TOKEN !== '__COLAR_TOKEN_AQUI__') headers['X-Admin-Token'] = ADMIN_TOKEN;
+  return fetch(WORKER_URL, { ...opts, headers });
+}
+
 // ── DISPO GCI→NÚM MAP ────────────────────────────────────────────────────────
 let _dispoGciMap = null;  // cache: Map<gci, num>
 let _dispoRows = null;    // cache: array bruto do DISPO (pra comparar Prev. Fat.)
@@ -5684,8 +5706,7 @@ function dtPintarTabela(){
         ${r.achou
           ? `<span class="aberto">${formatInt(r.aberto)} pares em aberto</span><span class="sep">·</span>`
             + `<span>DISPO <span class="dispo">${safeHtml(r.dispo || '—')}</span>${r.varias ? ' (há mais de uma data neste Nº)' : ''}</span>`
-            + `<span class="sep">·</span><span>esse lado já sai certo da importação</span>`
-          : `<span>sem linha na DISPO — o lote pode já ter saído do estoque</span>`}
+          : `<span>sem linha na DISPO — o lote saiu do estoque, só os pedidos mudam</span>`}
         <button type="button" class="dt-grupo-bt" onclick="dtMarcarLote('${safeHtml(i.num)}')">marcar o lote</button>
       </div></td></tr>`;
     }
@@ -5784,6 +5805,34 @@ function dtAplicar(){
   dtPintarTabela();
 }
 
+/* A data do lote na DISPO. É dela que saem o estoque, a vitrine do
+   Repasses e a CMS PASS: o pedido guarda a sua cópia, feita no momento do
+   repasse, e mudar só o pedido deixava as outras telas na data velha. */
+async function dtGravarDispo(porNum){
+  if(!_dispoRows || !_dispoRows.length) throw new Error('A DISPO não está carregada');
+  let tocadas = 0;
+  for(const r of _dispoRows){
+    const nova = porNum.get(String(r.num ?? '').trim());
+    if(!nova) continue;
+    if(formatDate(r.dataEntrega) === nova) continue;   // já está nessa data
+    r.dataEntrega = nova;
+    tocadas++;
+  }
+  if(!tocadas) return 0;
+  const res = await workerFetchAdmin({ method:'PATCH', body: JSON.stringify({
+    action:'saveDispo', data: _dispoRows.map(r => ({
+      num: r.num, ebm: r.ebm, gci: r.gci, filial: r.filial,
+      codigo: r.codigo, produto: r.produto, cor: r.cor,
+      dataEntrega: r.dataEntrega, pedidoMae: r.pedidoMae,
+      saldo: r.saldo, grade: r.grade || {}
+    }))
+  })});
+  if(!res.ok) throw new Error('A DISPO não salvou (HTTP ' + res.status + ')');
+  const j = await res.json();
+  if(!j.success) throw new Error(j.error || 'A DISPO não salvou');
+  return tocadas;
+}
+
 /* Grava num commit só. Cada pedido vai com o array items inteiro — só os
    itens tocados mudam — e um registro no histórico de quem fez e quando. */
 async function dtSalvar(){
@@ -5837,7 +5886,22 @@ async function dtSalvar(){
     return;
   }
 
-  showToast(`${mudancas.length} item(ns) atualizados em ${alvos.length} pedido(s).`, 'success');
+  // O lote na DISPO vai depois dos pedidos: se ele falhar, os pedidos já
+  // estão salvos e a tela diz exatamente o que faltou.
+  let lotes = 0, erroDispo = '';
+  if($('dtTambemDispo') && $('dtTambemDispo').checked){
+    const porNum = new Map();
+    for(const m of mudancas) porNum.set(String(m.num), m.nova);
+    try{ lotes = await dtGravarDispo(porNum); }
+    catch(e){ console.error(e); erroDispo = e.message || 'erro ao salvar a DISPO'; }
+  }
+
+  if(erroDispo){
+    showToast(`Pedidos salvos, mas o lote na DISPO não: ${erroDispo}`, 'error');
+  }else{
+    showToast(`${mudancas.length} item(ns) em ${alvos.length} pedido(s)` +
+      (lotes ? ` · ${lotes} linha(s) da DISPO` : '') + ' atualizados.', 'success');
+  }
   DT.aplicadas = 0;
   DT.lista.forEach(i => { if(i.nova){ i.prevFat = i.nova; i.nova = ''; } });
   dtPintarTabela();
