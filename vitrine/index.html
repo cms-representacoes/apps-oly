@@ -990,8 +990,8 @@ button{font:inherit}
 .pn-corpo{flex:1;overflow-y:auto;padding:2px 14px 14px}
 .gr{padding:13px 0;border-bottom:1px solid var(--linha)}
 .gr:last-child{border-bottom:0}
-.gr h3{margin:0;font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;
-  color:var(--fraco)}
+.gr h3{margin:0;font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--tinta)}
 .gr p{margin:3px 0 0;font-size:10.5px;color:var(--tenue);line-height:1.4}
 .ops{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
 .ops button{border:1px solid var(--linha);background:var(--carta);color:var(--texto);
@@ -1030,6 +1030,9 @@ button{font:inherit}
 .dd-op:hover{background:var(--papel)}
 .dd-op .dd-rot{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dd-op .q{font-size:10.5px;font-weight:600;color:var(--tenue);font-variant-numeric:tabular-nums}
+.dd-mkp{font-size:10.5px;font-weight:800;color:var(--texto);font-variant-numeric:tabular-nums;
+  background:var(--papel);border-radius:999px;padding:1px 7px;white-space:nowrap}
+.dd-op.on .dd-mkp{background:transparent}
 .dd-cx{flex:none;width:15px;height:15px;border:1.5px solid var(--linha-forte);border-radius:4px;
   position:relative}
 .dd-op.on .dd-cx{background:var(--marca);border-color:var(--marca)}
@@ -3487,16 +3490,14 @@ function combina(o, termos){
 const GRUPOS = [
   { id:'selo',    rot:'Ação',
     ajuda:'Lotes rateados: só aparecem aqui os que têm cota para você.' },
-  { id:'chega',   rot:'Chega em',
+  { id:'chega',   rot:'Prev. Fat.',
     ajuda:'Estoque sai agora; repasse e produção entram pelo mês.' },
   { id:'genero',  rot:'Gênero' },
   { id:'sub',     rot:'Tipo de produto' },
-  { id:'faixa',   rot:'Faixa', lista:true,
-    ajuda:'A mesma faixa da Detalhada. Artigo que ainda não teve venda fica sem.' },
-  { id:'grade',   rot:'Grade', lista:true,
-    ajuda:'Do primeiro ao último tamanho. Estoque e repasse têm grade; produção ainda não.' },
+  { id:'faixa',   rot:'Faixa', lista:true },
+  { id:'grade',   rot:'Grade', lista:true },
   { id:'fabrica', rot:'Fábrica' },
-  { id:'camp',    rot:'Campanha' }
+  { id:'camp',    rot:'Campanha', lista:true }
 ];
 const LISTAS = new Set(['chega', 'camp', 'grade']);   // campos com vários valores por produto
 const valoresDe = (o, id) => LISTAS.has(id) ? o[id] : (o[id] ? [o[id]] : []);
@@ -3688,7 +3689,8 @@ function pintarPainel(){
    escolhido; aberta, mostra tudo com "Todas" no alto. */
 function secaoLista(g, itens){
   const sel = STATE.sel[g.id];
-  const marcadas = itens.filter(([v]) => sel.has(v)).map(([v]) => rotuloOpcao(g.id, v));
+  const marcadas = itens.filter(([v]) => sel.has(v))
+    .map(([v]) => g.id === 'camp' ? String(v).split(' · MKP ')[0] : rotuloOpcao(g.id, v));
   const resumo = !marcadas.length || marcadas.length === itens.length
                ? `Todas (${nf(itens.length)})`
                : marcadas.length === 1 ? marcadas[0]
@@ -3697,10 +3699,14 @@ function secaoLista(g, itens){
   const todas = marcadas.length === 0 || marcadas.length === itens.length;
   const linhas = itens.map(([v, q]) => {
     const on = sel.has(v);
+    // Campanha vem como "TABELA · MKP 2,8": o MKP é o que o vendedor compara,
+    // e ele fica à direita, no lugar da contagem.
+    const [tab, mkp] = g.id === 'camp' ? String(v).split(' · MKP ') : [null, null];
     return `<button class="dd-op${on ? ' on' : ''}" data-g="${esc(g.id)}" data-v="${esc(v)}"
         role="option" aria-selected="${on}">
       <span class="dd-cx" aria-hidden="true"></span>
-      <span class="dd-rot">${esc(rotuloOpcao(g.id, v))}</span>
+      <span class="dd-rot">${esc(tab !== null ? tab : rotuloOpcao(g.id, v))}</span>
+      ${mkp ? `<span class="dd-mkp">MKP ${esc(mkp)}</span>` : ''}
       <span class="q">${nf(q)}</span></button>`;
   }).join('');
   return `<section class="gr"><h3>${esc(g.rot)}</h3>` +
