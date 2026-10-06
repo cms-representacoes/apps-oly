@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prévia · Ajustar prev. faturamento em bloco</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+/* variáveis do admin, para a prévia parecer o que vai ser */
+:root{
+  --bg:#f7f8fc; --card:#ffffff; --text:#0e1526; --muted:#6b7488; --line:#e6e9f3;
+  --brand:#2c39e2; --brand-soft:rgba(44,57,226,.09);
+  --ok:#15803d; --ok-bg:#e6f6ec;
+  --aviso:#b45309; --aviso-bg:#fdf4dc;
+  --novo:#0d9488; --novo-bg:#ccfbf1;
+  --shadow:0 0 0 1px rgba(15,23,42,.03),0 1px 2px rgba(15,23,42,.04),0 16px 40px -20px rgba(15,23,42,.16);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e131d; --card:#161b26; --text:#e8ebf1; --muted:#8e99ad; --line:#2a3242;
+    --brand:#5b69e8; --brand-soft:rgba(91,105,232,.16);
+    --ok:#4ade80; --ok-bg:rgba(74,222,128,.14);
+    --aviso:#fbbf24; --aviso-bg:rgba(251,191,36,.14);
+    --novo:#2dd4bf; --novo-bg:rgba(45,212,191,.16);
+    --shadow:0 0 0 1px rgba(0,0,0,.2),0 16px 40px -20px rgba(0,0,0,.6);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e131d; --card:#161b26; --text:#e8ebf1; --muted:#8e99ad; --line:#2a3242;
+  --brand:#5b69e8; --brand-soft:rgba(91,105,232,.16);
+  --ok:#4ade80; --ok-bg:rgba(74,222,128,.14);
+  --aviso:#fbbf24; --aviso-bg:rgba(251,191,36,.14);
+  --novo:#2dd4bf; --novo-bg:rgba(45,212,191,.16);
+  --shadow:0 0 0 1px rgba(0,0,0,.2),0 16px 40px -20px rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1040px;margin:0 auto;padding:0 18px 70px}
+h1,h2,h3{font-family:"Space Grotesk",Inter,sans-serif;letter-spacing:-.01em}
+.num{font-variant-numeric:tabular-nums}
+
+.previa{background:var(--brand);color:#fff;padding:14px 18px}
+.previa .in{max-width:1040px;margin:0 auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.previa b{font-family:"Space Grotesk",sans-serif;font-size:14px}
+.previa span{font-size:12.5px;opacity:.88}
+.previa .spacer{flex:1}
+.previa button{border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.15);color:#fff;
+  border-radius:999px;padding:6px 13px;font:600 12px Inter,sans-serif;cursor:pointer}
+
+.topo{padding:22px 0 14px}
+.topo h2{margin:0;font-size:21px;font-weight:700}
+.topo .sub{font-size:13px;color:var(--muted);max-width:76ch;margin-top:4px}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;
+  padding:11px 18px;font:800 13px Inter,sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.btn:hover{border-color:var(--brand);color:var(--brand)}
+.btn.forte{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.forte:hover{filter:brightness(1.08);color:#fff}
+.btn.fraco{color:var(--muted);font-weight:700}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* ── modal ── */
+.fundo{position:fixed;inset:0;z-index:140;background:rgba(2,6,23,.55);display:none;
+  align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto}
+.fundo.on{display:flex}
+.modal{width:100%;max-width:980px;margin:28px 0;background:var(--card);border:1px solid var(--line);
+  border-radius:24px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5);overflow:hidden}
+.m-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:20px 22px 0}
+.m-eyebrow{font:800 11px Inter,sans-serif;color:var(--brand);text-transform:uppercase;letter-spacing:.05em}
+.m-tit{font:800 19px "Space Grotesk",sans-serif;margin-top:2px}
+.m-sub{font-size:12.5px;color:var(--muted);margin-top:3px}
+.m-x{border:0;background:transparent;color:var(--muted);font-size:26px;line-height:1;cursor:pointer}
+.m-corpo{padding:16px 22px 0}
+.m-pe{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:14px 22px;border-top:1px solid var(--line);
+  background:var(--bg);margin-top:16px}
+
+/* passo 1 */
+.passo{display:flex;align-items:center;gap:8px;font:800 11px Inter,sans-serif;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.06em;margin:4px 0 7px}
+.passo i{display:grid;place-items:center;width:19px;height:19px;border-radius:7px;background:var(--brand-soft);
+  color:var(--brand);font-size:10px;font-style:normal;font-weight:800}
+.busca{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
+textarea#nums{flex:1;min-width:260px;min-height:62px;resize:vertical;border:1px solid var(--line);
+  border-radius:14px;padding:11px 14px;font:600 13.5px ui-monospace,SFMono-Regular,Menlo,monospace;
+  background:var(--bg);color:var(--text);letter-spacing:.02em}
+textarea#nums:focus{outline:2px solid var(--brand);outline-offset:1px}
+.dica{font-size:11.5px;color:var(--muted);margin-top:6px}
+.atalho{background:none;border:0;color:var(--brand);font:700 11.5px Inter,sans-serif;cursor:pointer;padding:0;text-decoration:underline}
+
+.achado{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:12px 0 0;font-size:12.5px}
+.achado .ok{color:var(--ok);font-weight:700}
+.achado .nao{color:var(--aviso);font-weight:700}
+
+/* tabela */
+.barra-sel{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;
+  border:1px solid var(--line);border-radius:12px;padding:8px 13px;background:var(--bg)}
+.barra-sel label{display:flex;align-items:center;gap:8px;font:700 12.5px Inter,sans-serif;cursor:pointer;user-select:none}
+.barra-sel span{margin-left:auto;font-size:12px;color:var(--muted)}
+.tab-wrap{margin-top:9px;border:1px solid var(--line);border-radius:16px;overflow:auto;max-height:46vh}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+thead th{position:sticky;top:0;background:var(--card);z-index:1;font:700 10px Inter,sans-serif;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;
+  padding:10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr.marcada td{background:var(--brand-soft)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--muted)}
+.prod{font-weight:700}
+.dir{text-align:right;font-variant-numeric:tabular-nums}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--brand);cursor:pointer}
+.de{color:var(--muted);text-decoration:line-through}
+.para{color:var(--novo);font-weight:800}
+.seta{color:var(--muted);margin:0 5px;font-size:10px}
+.ja{color:var(--muted);font-size:10.5px;margin-left:6px;font-style:italic}
+.chip{display:inline-flex;align-items:center;border-radius:999px;padding:2px 9px;font:700 10.5px Inter,sans-serif}
+.chip.ap{background:var(--ok-bg);color:var(--ok)}
+.chip.pe{background:var(--aviso-bg);color:var(--aviso)}
+.chip.mud{background:var(--aviso-bg);color:var(--aviso);margin-left:6px}
+
+/* passo 3 */
+.aplicar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:14px;
+  background:var(--bg);border:1px solid var(--line);border-radius:16px;padding:13px 15px}
+.aplicar label{display:block;font:700 11px Inter,sans-serif;color:var(--muted);margin-bottom:4px}
+.aplicar input[type=date]{border:1px solid var(--line);border-radius:12px;padding:9px 12px;
+  font:700 13px Inter,sans-serif;background:var(--card);color:var(--text)}
+.aplicar .conta{font-size:12.5px;color:var(--muted);margin-left:auto}
+.aplicar .conta b{color:var(--text)}
+.sugs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.sug{border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:999px;
+  padding:4px 11px;font:700 11.5px Inter,sans-serif;cursor:pointer}
+.sug:hover{border-color:var(--brand);color:var(--brand)}
+
+.aviso{display:flex;gap:10px;align-items:flex-start;background:var(--aviso-bg);border:1px solid var(--line);
+  border-radius:14px;padding:11px 14px;font-size:12.5px;margin-top:12px}
+.aviso i{color:var(--aviso);margin-top:2px}
+.pronto{display:flex;gap:10px;align-items:center;background:var(--novo-bg);border:1px solid var(--line);
+  border-radius:14px;padding:11px 14px;font-size:12.5px;margin-top:12px;color:var(--text)}
+.pronto i{color:var(--novo)}
+
+.nota{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--line);
+  border-radius:16px;padding:14px 16px;margin-top:16px;font-size:13px;box-shadow:var(--shadow)}
+.nota i{color:var(--brand);margin-top:3px}
+
+/* ── tablet: tira GCI e cor para a data caber sem rolar ── */
+@media (min-width:641px) and (max-width:900px){
+  td.c-gci,td.c-cor,thead th:nth-child(3),thead th:nth-child(5){display:none}
+}
+
+/* ── celular: cada pedido vira um cartão, para não rolar para o lado ── */
+@media (max-width:640px){
+  .modal{border-radius:20px;margin:10px 0}
+  .m-topo,.m-corpo,.m-pe{padding-left:15px;padding-right:15px}
+  .tab-wrap{max-height:50vh}
+  thead{display:none}
+  tbody tr{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:1px 9px;
+    padding:11px 12px;border-bottom:1px solid var(--line);align-items:start}
+  tbody tr td{display:block;border:0;padding:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  td.c-chk{grid-column:1;grid-row:1/5;padding-top:2px}
+  td.c-num{grid-column:2;grid-row:1;font-weight:800;color:var(--text);font-size:12px}
+  td.c-num::before{content:"Nº ";color:var(--muted);font-weight:600}
+  td.c-st{grid-column:3;grid-row:1;text-align:right}
+  td.c-prod{grid-column:2/4;grid-row:2;font-size:13px}
+  td.c-cli{grid-column:2;grid-row:3;font-size:11.5px;color:var(--muted)}
+  td.c-vend{grid-column:3;grid-row:3;font-size:11.5px;color:var(--muted);text-align:right}
+  td.c-dt{grid-column:2;grid-row:4;margin-top:4px;white-space:normal}
+  td.c-par{grid-column:3;grid-row:4;margin-top:4px;text-align:right;font-size:11.5px;color:var(--muted)}
+  td.c-par::after{content:" pares"}
+  td.c-gci,td.c-cor{display:none}
+  tbody tr.marcada{background:var(--brand-soft)}
+  tbody tr.marcada td{background:transparent}
+  .aplicar{align-items:stretch}
+  .aplicar input[type=date],.aplicar .btn{width:100%;justify-content:center}
+  .aplicar .conta{margin-left:0;text-align:center}
+  .m-pe .btn{flex:1;justify-content:center}
+}
+</style>
+</head>
+<body>
+
+<div class="previa">
+  <div class="in">
+    <b>Prévia · Ajustar prev. faturamento em bloco</b>
+    <span>nada grava de verdade — os dados são os pedidos reais de hoje</span>
+    <span class="spacer"></span>
+    <button type="button" onclick="trocarTema()"><i class="fa-solid fa-circle-half-stroke"></i> Tema</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="topo">
+    <h2>Ajustar a previsão de faturamento de vários pedidos</h2>
+    <div class="sub">A fábrica remarca um lote e todos os pedidos daquele Nº ficam com a data velha.
+      Em vez de abrir um por um, cola-se a lista de números, confere-se na tela e aplica-se a data nova de uma vez.</div>
+    <div style="margin-top:16px">
+      <button class="btn forte" onclick="abrir()"><i class="fa-regular fa-calendar-check"></i> Ajustar datas em bloco</button>
+    </div>
+  </div>
+
+  <div class="nota">
+    <i class="fa-solid fa-circle-info"></i>
+    <div>Hoje, nos pedidos de verdade, <b>22 números</b> estão com data diferente da DISPO e eles arrastam
+      <b>79 pedidos</b>. É por isso que o campo aceita vários números: um só desses — o 256 — já resolve 16 pedidos.</div>
+  </div>
+</div>
+
+<!-- ══════════════ MODAL ══════════════ -->
+<div class="fundo" id="fundo">
+  <div class="modal">
+    <div class="m-topo">
+      <div>
+        <div class="m-eyebrow">Repasses · pedidos</div>
+        <div class="m-tit">Ajustar prev. faturamento</div>
+        <div class="m-sub">Procure pelos números da DISPO, marque o que vai mudar e aplique a data nova.</div>
+      </div>
+      <button class="m-x" onclick="fechar()" aria-label="Fechar">&times;</button>
+    </div>
+
+    <div class="m-corpo">
+      <!-- 1. os números -->
+      <div class="passo"><i>1</i> Números dos pedidos</div>
+      <div class="busca">
+        <textarea id="nums" placeholder="Cole aqui os números separados por vírgula — ex.: 256, 219, 259"></textarea>
+        <button class="btn forte" onclick="pesquisar()" style="min-width:140px;justify-content:center">
+          <i class="fa-solid fa-magnifying-glass"></i> Pesquisar
+        </button>
+      </div>
+      <div class="dica">
+        Vale vírgula, espaço ou uma linha para cada. ·
+        <button class="atalho" onclick="trazerDefasados()">trazer os 22 que estão com data diferente da DISPO</button>
+      </div>
+      <div class="achado" id="achado" hidden></div>
+
+      <!-- 2. a lista -->
+      <div id="areaLista" hidden>
+        <div class="passo" style="margin-top:16px"><i>2</i> Pedidos encontrados</div>
+        <div class="barra-sel">
+          <label><input type="checkbox" id="chkTodos" onchange="marcarTodos(this.checked)"> Marcar todos</label>
+          <span id="contaTopo"></span>
+        </div>
+        <div class="tab-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:34px"></th>
+                <th>Nº</th><th>GCI</th><th>Produto</th><th>Cor</th><th>Cliente</th><th>Vendedor</th>
+                <th class="dir">Pares</th><th>Status</th><th>Prev. faturamento</th>
+              </tr>
+            </thead>
+            <tbody id="corpo"></tbody>
+          </table>
+        </div>
+
+        <!-- 3. a data nova -->
+        <div class="passo" style="margin-top:16px"><i>3</i> Nova data</div>
+        <div class="aplicar">
+          <div>
+            <label for="novaData">Prev. faturamento nova</label>
+            <input type="date" id="novaData" onchange="pintarBotoes()">
+            <div class="sugs" id="sugs"></div>
+          </div>
+          <button class="btn forte" id="btAplicar" onclick="aplicar()" disabled>
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Aplicar aos marcados
+          </button>
+          <span class="conta" id="conta"></span>
+        </div>
+
+        <div class="aviso" id="avisoPedido" hidden>
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <div id="avisoTxt"></div>
+        </div>
+        <div class="pronto" id="pronto" hidden>
+          <i class="fa-solid fa-circle-check"></i>
+          <div id="prontoTxt"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="m-pe">
+      <button class="btn forte" id="btSalvar" onclick="salvar()" disabled>
+        <i class="fa-solid fa-floppy-disk"></i> <span id="rotuloSalvar">Salvar</span>
+      </button>
+      <button class="btn fraco" onclick="fechar()">Fechar</button>
+      <span style="margin-left:auto;font-size:11.5px;color:var(--muted)" id="rodape"></span>
+    </div>
+  </div>
+</div>
+
+<script src="./preview-datas-dados.js"></script>
+<script>
+/* ── a prévia é visual: nada é gravado ───────────────────────────── */
+let LISTA = [];          // o que a pesquisa trouxe
+const marcados = new Set();
+let aplicadas = 0;
+
+const fmtData = iso => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+};
+const paraISO = br => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(br || '');
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+};
+
+function trocarTema(){
+  const r = document.documentElement;
+  const escuro = r.getAttribute('data-theme') === 'dark'
+    || (!r.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches);
+  r.setAttribute('data-theme', escuro ? 'light' : 'dark');
+}
+function abrir(){
+  document.getElementById('fundo').classList.add('on');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('nums').focus();
+}
+function fechar(){
+  document.getElementById('fundo').classList.remove('on');
+  document.body.style.overflow = '';
+}
+document.getElementById('fundo').onclick = e => { if(e.target.id === 'fundo') fechar(); };
+addEventListener('keydown', e => { if(e.key === 'Escape') fechar(); });
+
+function trazerDefasados(){
+  document.getElementById('nums').value = DADOS.lotesMudados.join(', ');
+  pesquisar();
+}
+
+/* ── 1. pesquisar ── */
+function pesquisar(){
+  const texto = document.getElementById('nums').value || '';
+  const pedidos = [...new Set(texto.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean))];
+  if(!pedidos.length) return;
+
+  LISTA = DADOS.itens
+    .filter(i => pedidos.includes(String(i.num)))
+    .map(i => ({ ...i, nova: '' }))
+    .sort((a, b) => Number(a.num) - Number(b.num)
+      || String(a.cliente).localeCompare(String(b.cliente), 'pt-BR'));
+
+  const achados = new Set(LISTA.map(i => String(i.num)));
+  const semNada = pedidos.filter(n => !achados.has(n));
+
+  const el = document.getElementById('achado');
+  el.hidden = false;
+  el.innerHTML =
+    `<span class="ok"><i class="fa-solid fa-circle-check"></i> ${achados.size} número${achados.size === 1 ? '' : 's'} · ` +
+    `${LISTA.length} ${LISTA.length === 1 ? 'pedido' : 'pedidos'}</span>` +
+    (semNada.length ? `<span class="nao"><i class="fa-solid fa-circle-exclamation"></i> sem pedido: ${semNada.join(', ')}</span>` : '');
+
+  marcados.clear();
+  aplicadas = 0;
+  document.getElementById('areaLista').hidden = LISTA.length === 0;
+  document.getElementById('pronto').hidden = true;
+  document.getElementById('chkTodos').checked = false;
+  pintarSugestoes();
+  pintarTabela();
+}
+
+/* ── 2. a tabela ── */
+function pintarTabela(){
+  document.getElementById('corpo').innerHTML = LISTA.map((i, k) => {
+    const defasado = i.dispoAtual && i.prevFat !== i.dispoAtual;
+    const data = i.nova
+      ? `<span class="de">${i.prevFat || '—'}</span><i class="fa-solid fa-arrow-right seta"></i><span class="para">${i.nova}</span>`
+      : `${i.prevFat || '—'}`
+        + (i.ja ? `<span class="ja">já estava nessa data</span>` : '')
+        + (defasado && !i.ja ? `<span class="chip mud" title="a DISPO está em ${i.dispoAtual}">DISPO: ${i.dispoAtual}</span>` : '');
+    return `<tr class="${marcados.has(k) ? 'marcada' : ''}">
+      <td class="c-chk"><input type="checkbox" ${marcados.has(k) ? 'checked' : ''} onchange="marcar(${k}, this.checked)"></td>
+      <td class="c-num mono">${i.num}</td>
+      <td class="c-gci mono">${i.gci || '—'}</td>
+      <td class="c-prod prod">${i.produto || '—'}</td>
+      <td class="c-cor">${i.cor || '—'}</td>
+      <td class="c-cli">${i.cliente || '—'}</td>
+      <td class="c-vend">${i.vendedor || '—'}</td>
+      <td class="c-par dir">${i.pares}</td>
+      <td class="c-st"><span class="chip ${/aprov/i.test(i.status) ? 'ap' : 'pe'}">${i.status}</span></td>
+      <td class="c-dt" style="white-space:nowrap">${data}</td>
+    </tr>`;
+  }).join('');
+  pintarBotoes();
+}
+
+function marcar(k, on){
+  if(on) marcados.add(k); else marcados.delete(k);
+  document.getElementById('chkTodos').checked = marcados.size === LISTA.length && LISTA.length > 0;
+  pintarTabela();
+}
+function marcarTodos(on){
+  marcados.clear();
+  if(on) LISTA.forEach((_, k) => marcados.add(k));
+  pintarTabela();
+}
+
+/* as datas que a DISPO já tem para esses números viram atalho */
+function pintarSugestoes(){
+  const datas = [...new Set(LISTA.map(i => i.dispoAtual).filter(Boolean))].sort();
+  document.getElementById('sugs').innerHTML = datas.length
+    ? datas.slice(0, 4).map(d => `<button class="sug" onclick="usarData('${d}')">
+        <i class="fa-solid fa-arrow-turn-up" style="font-size:9px"></i> ${d} (DISPO)</button>`).join('')
+    : '';
+}
+function usarData(br){
+  document.getElementById('novaData').value = paraISO(br);
+  pintarBotoes();
+}
+
+function pintarBotoes(){
+  const data = document.getElementById('novaData').value;
+  const n = marcados.size;
+  document.getElementById('btAplicar').disabled = !data || n === 0;
+  const conta = n ? `<b>${n}</b> marcado${n === 1 ? '' : 's'} de ${LISTA.length}` : `nenhum marcado`;
+  document.getElementById('conta').innerHTML = conta;
+  document.getElementById('contaTopo').innerHTML = conta;
+
+  // aviso quando o que está marcado já foi aprovado: a data foi prometida ao cliente
+  const aprovados = [...marcados].filter(k => /aprov/i.test(LISTA[k].status)).length;
+  const av = document.getElementById('avisoPedido');
+  av.hidden = aprovados === 0;
+  if(aprovados){
+    document.getElementById('avisoTxt').innerHTML =
+      `<b>${aprovados} ${aprovados === 1 ? 'pedido já aprovado' : 'pedidos já aprovados'}.</b> ` +
+      `A data que está lá foi a que o vendedor passou ao cliente — mudando aqui, vale avisá-lo.`;
+  }
+
+  document.getElementById('btSalvar').disabled = aplicadas === 0;
+  document.getElementById('rotuloSalvar').textContent = aplicadas
+    ? `Salvar ${aplicadas} alteraç${aplicadas === 1 ? 'ão' : 'ões'}`
+    : 'Salvar';
+  document.getElementById('rodape').textContent = aplicadas
+    ? 'as mudanças ainda não foram gravadas'
+    : '';
+}
+
+/* ── 3. aplicar ── */
+function aplicar(){
+  const br = fmtData(document.getElementById('novaData').value);
+  if(!br || !marcados.size) return;
+  let n = 0, iguais = 0;
+  for(const k of marcados){
+    if(LISTA[k].prevFat === br){ LISTA[k].ja = true; iguais++; continue; }  // já está nessa data
+    LISTA[k].nova = br;
+    LISTA[k].ja = false;
+    n++;
+  }
+  aplicadas = LISTA.filter(i => i.nova).length;
+  const pr = document.getElementById('pronto');
+  pr.hidden = false;
+  document.getElementById('prontoTxt').innerHTML =
+    `<b>${n} ${n === 1 ? 'pedido recebeu' : 'pedidos receberam'} a data ${br}.</b> ` +
+    (iguais ? `${iguais} já ${iguais === 1 ? 'estava' : 'estavam'} nela e ${iguais === 1 ? 'ficou' : 'ficaram'} como ${iguais === 1 ? 'está' : 'estão'}. ` : '') +
+    `Confira na tabela e clique em <b>Salvar</b> — até lá, nada foi gravado.`;
+  pintarTabela();
+}
+
+function salvar(){
+  const porData = {};
+  LISTA.filter(i => i.nova).forEach(i => { porData[i.nova] = (porData[i.nova] || 0) + 1; });
+  alert('(prévia — nada foi gravado)\n\n' +
+    Object.entries(porData).map(([d, n]) => `${n} pedido(s) passariam para ${d}`).join('\n') +
+    '\n\nCada pedido também guardaria no histórico quem mudou e quando.');
+}
+</script>
+</body>
+</html>
