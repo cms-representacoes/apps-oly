@@ -102,8 +102,9 @@ button{font:inherit}
    caminho dos olhos antes do primeiro produto, sem disputar o cabecalho. */
 /* flex: como bloco comum, a caixa de linha do inline-flex somava um descida
    de fonte e abria um vao fantasma antes do primeiro card */
-.faixa-upd{display:flex;max-width:1180px;margin:0 auto;padding:8px 13px 0}
-@media(min-width:700px){ .faixa-upd{padding:11px 18px 0} }
+/* A faixa nasceu como bloco próprio; agora ela divide a linha com o botão
+   Metas, então não carrega mais largura nem respiro de bloco. */
+.faixa-upd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0;padding:0}
 .upd{display:inline-flex;align-items:center;max-width:100%;
   font-size:10.5px;font-weight:700;color:var(--tenue);white-space:nowrap;
   line-height:1.1;letter-spacing:0;overflow:hidden}
@@ -961,6 +962,125 @@ button{font:inherit}
 .lk-acoes{display:flex;gap:7px;margin-top:9px}
 .lk-acoes > *{flex:1;margin-top:0;text-align:center;justify-content:center;
   padding:8px 6px;font-size:11.5px}
+
+/* ── barra de metas ──────────────────────────────────────────────────
+   Entre o cabeçalho e a grade: diz quanto falta para a meta do mês e
+   quanto a vitrine tem daquilo. Recolhe como os números da Detalhada, e
+   clicar num quadro filtra a vitrine. As cores são as três da casa —
+   verde é o que faturou, azul é o que está em carteira. */
+.mt{background:transparent}
+.mt[hidden]{display:none}
+.mt-in{max-width:1180px;margin:0 auto;padding:0 13px}
+@media(min-width:700px){ .mt-in{padding:0 18px} }
+.mt-topo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0 0}
+.mt.fechada .mt-topo{padding:10px 0}
+/* O próprio "Metas" abre e fecha: fechado, a barra é só este chip e a
+   vitrine começa logo abaixo. */
+.mt-tit{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:800;
+  color:var(--tinta);text-transform:uppercase;letter-spacing:.09em;font-family:inherit;
+  border:1px solid var(--linha);background:var(--carta);border-radius:999px;
+  padding:5px 13px;cursor:pointer}
+.mt-tit:hover{border-color:var(--linha-forte)}
+.mt-tit:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+.mt-tit svg{color:var(--marca);transition:transform .18s ease}
+.mt.fechada .mt-tit{color:var(--fraco)}
+.mt.fechada .mt-tit svg{transform:scale(.88)}
+.mt-sel{display:flex;align-items:center;gap:6px}
+.mt-sel select{border:1px solid var(--linha);background:var(--carta);color:var(--tinta);
+  border-radius:999px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+.mt-resumo{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap}
+.mt-resumo .cx{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:999px;
+  background:var(--carta);border:1px solid var(--linha);font-size:12.5px;font-weight:700;color:var(--tinta)}
+.mt-resumo .cx small{font-weight:600;color:var(--fraco);font-size:11px}
+/* Fechada, some tudo menos o botão: mês, prepostos, resumo e os quadros. */
+.mt.fechada .mt-corpo,
+.mt.fechada .mt-sel,
+.mt.fechada .mt-resumo{display:none}
+.mt.fechada .mt-topo{padding:7px 0}
+.mt-corpo{padding:11px 0 14px}
+.mt-cats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.mt-cat{border:1px solid var(--linha);border-radius:14px;background:var(--carta);padding:10px 11px;
+  cursor:pointer;text-align:left;font-family:inherit;overflow:hidden}
+.mt-cat:hover{border-color:var(--linha-forte)}
+.mt-cat.on{border-color:var(--marca);box-shadow:0 0 0 1px var(--marca) inset}
+.mt-cat .nm{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--tinta)}
+.mt-cat .pc{display:block;font-size:22px;font-weight:800;margin-top:2px;letter-spacing:-.02em;
+  line-height:1.1;color:var(--tinta)}
+.mt-cat.ok .pc{color:var(--pronta)}
+.mt-cat .ba{display:block;height:6px;border-radius:999px;background:var(--barra);overflow:hidden;
+  margin-top:7px;position:relative}
+.mt-cat .ba i{position:absolute;top:0;height:6px;border-radius:999px}
+.mt-cat .ba .real{left:0;background:var(--repasse)}
+.mt-cat.ok .ba .real{background:var(--pronta)}
+.mt-cat .pe{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:7px;
+  font-size:12px;font-weight:700;color:var(--texto);line-height:1.2}
+.mt-cat .pe .fa.zero{color:var(--pronta)}
+.mt-cat .pe .tem{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;
+  color:var(--repasse);background:var(--repasse-fundo);border-radius:999px;padding:2px 8px}
+.mt-cat .pe .tem.vazio{color:var(--tenue);background:var(--barra)}
+.mt-fx{margin-top:8px;background:var(--carta);border:1px solid var(--linha);
+  border-radius:14px;padding:11px 13px}
+.mt-fx-tit{font-size:11px;font-weight:700;color:var(--fraco);text-transform:uppercase;
+  letter-spacing:.07em;margin-bottom:8px}
+.fxs{display:grid;grid-template-columns:repeat(2,1fr);gap:6px 18px}
+.mt-fx-l{display:grid;grid-template-columns:118px 1fr auto;align-items:center;gap:9px;border:0;
+  background:none;padding:5px 6px;border-radius:10px;cursor:pointer;font-family:inherit;text-align:left}
+.mt-fx-l:hover{background:var(--barra)}
+.mt-fx-l.on{background:var(--repasse-fundo)}
+.mt-fx-l .nm{display:block;font-size:12px;font-weight:700;color:var(--tinta);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mt-fx-l .ba{display:block;height:7px;border-radius:999px;background:var(--barra);
+  overflow:hidden;position:relative}
+.mt-fx-l .ba i{position:absolute;left:0;top:0;height:7px;border-radius:999px}
+.mt-fx-l .ba .real{background:var(--repasse)}
+.mt-fx-l.ok .ba .real{background:var(--pronta)}
+.mt-fx-l .dir{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.mt-fx-l .pc{font-size:13px;font-weight:800;min-width:46px;text-align:right;color:var(--tinta)}
+.mt-fx-l.ok .pc{color:var(--pronta)}
+.mt-fx-l .tem{font-size:11px;font-weight:700;color:var(--repasse);background:var(--repasse-fundo);
+  border-radius:999px;padding:2px 8px}
+.mt-fx-l .tem.vazio{color:var(--tenue);background:var(--barra)}
+@media(max-width:900px){
+  .mt-cats{grid-template-columns:repeat(3,1fr)}
+  .fxs{grid-template-columns:1fr}
+}
+/* iPhone SE 2 (375x667) é o menor alvo: o dado não encolhe, some o enfeite */
+@media(max-width:560px){
+  .mt-cats{display:flex;gap:7px;overflow-x:auto;scroll-snap-type:x mandatory;
+    padding:2px 13px 4px;margin:0 -13px}
+  .mt-cats::-webkit-scrollbar{display:none}
+  .mt-cat{flex:0 0 136px;scroll-snap-align:start;padding:9px 10px}
+  .mt-cat .pc{font-size:17px}
+  .mt-cat .pe{flex-direction:column;align-items:flex-start;gap:2px;font-size:11.5px}
+  .mt-resumo{width:100%;margin-left:0;order:3}
+  .mt-sel{order:4;width:100%}
+  .mt-sel select{flex:1;min-width:0;font-size:12.5px;padding:5px 9px}
+  .mt-topo{padding:8px 0;gap:8px}
+  .mt-fx-l{grid-template-columns:96px 1fr auto;gap:8px;padding:5px 4px}
+  .mt-fx-l .nm{font-size:11.5px}
+  .mt-fx-l .pc{min-width:42px}
+}
+@media(max-width:400px){ .mt-cat{flex:0 0 132px} }
+
+/* ── balão das metas ─────────────────────────────────────────────────
+   O title nativo punha tudo numa linha só e os números se confundiam. Aqui
+   cada um fica na sua linha, com o rótulo à esquerda e o valor à direita. */
+.mt-dica{position:fixed;z-index:95;pointer-events:none;opacity:0;transform:translateY(3px);
+  transition:opacity .12s ease,transform .12s ease;
+  /* cores fixas: o balão é sempre escuro, aconteça o que acontecer com o
+     tema da página, senão o verde e o vermelho dos valores somem */
+  background:#1A1D20;color:#fff;border-radius:12px;padding:9px 11px;
+  box-shadow:0 10px 30px rgba(22,24,26,.22),0 2px 6px rgba(22,24,26,.12);
+  min-width:166px;max-width:230px}
+.mt-dica.on{opacity:1;transform:translateY(0)}
+.mt-dica .t{font-size:12px;font-weight:800;letter-spacing:-.01em;margin-bottom:6px;
+  padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.16)}
+.mt-dica .l{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  font-size:11.5px;line-height:1.75}
+.mt-dica .l span{opacity:.72;font-weight:500}
+.mt-dica .l b{font-weight:700;font-variant-numeric:tabular-nums}
+.mt-dica .l.destaque b{color:#7FE3B5}
+.mt-dica .l.falta b{color:#FFB4A6}
 
 /* ── painel de filtros ───────────────────────────────────────────── */
 .pn-bg{position:fixed;inset:0;background:rgba(16,18,20,.5);backdrop-filter:blur(2px);
@@ -1862,14 +1982,46 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
   </div>
 </header>
 
-<div class="faixa-upd">
-  <span class="upd" id="updChip" hidden>
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
-    <span class="pal">atualizado&nbsp;</span><span id="updTxt"></span></span>
-  <button type="button" class="upd-novos" id="updNovos" hidden onclick="alternarNovidades()"></button>
+
+<!-- ── metas do mês: o que falta vender e o que a vitrine tem disso ── -->
+<div class="mt" id="mtBarra" hidden>
+  <div class="mt-in">
+    <div class="mt-topo">
+      <button type="button" class="mt-tit" id="mtToggle" aria-expanded="true"
+              title="Mostrar ou esconder as metas do mês">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.3" aria-hidden="true"><circle cx="12" cy="12" r="9"/>
+          <circle cx="12" cy="12" r="4"/></svg> Metas</button>
+      <div class="mt-sel">
+        <select id="mtMes" aria-label="Mês"></select>
+        <select id="mtPrep" aria-label="Preposto"></select>
+        <select id="mtMedida" aria-label="Visualizar por">
+          <option value="pot" selected>Potencial</option>
+          <option value="real">Realizado</option>
+          <option value="fat">Faturamento</option>
+        </select>
+      </div>
+      <!-- o aviso de novidades divide a linha com o botão Metas -->
+      <div class="faixa-upd">
+        <span class="upd" id="updChip" hidden>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+          <span class="pal">atualizado&nbsp;</span><span id="updTxt"></span></span>
+        <button type="button" class="upd-novos" id="updNovos" hidden onclick="alternarNovidades()"></button>
+      </div>
+      <div class="mt-resumo" id="mtResumo"></div>
+    </div>
+    <div class="mt-corpo" id="mtCorpo">
+      <div class="mt-cats" id="mtCats"></div>
+      <div class="mt-fx">
+        <div class="mt-fx-tit">Calçados por faixa</div>
+        <div class="fxs" id="mtFxs"></div>
+      </div>
+    </div>
+  </div>
 </div>
+
 
 <button type="button" class="topo-fab" id="topoFab" hidden aria-label="Voltar ao topo" title="Voltar ao topo"
         onclick="window.scrollTo({ top:0, behavior: matchMedia('(prefers-reduced-motion:reduce)').matches ? 'auto' : 'smooth' })">
@@ -2922,6 +3074,7 @@ async function carregar(){
     STATE.produtos = montar(dispo, disponib, produtos, pedidos, oculto);
     STATE.assinatura = assinaturaRepasse(STATE.produtos);
     await carregarNovidades();
+    carregarMetas();          // a barra não segura a vitrine: entra quando chegar
     carregarVistos();
     $('estado').innerHTML = '';
     aplicar();
@@ -3340,6 +3493,7 @@ function montar(dispo, disponib, produtos, pedidos, oculto){
   for(const o of mapa.values()){
     // O texto de busca e montado uma vez aqui; refazer isso a cada tecla,
     // para mil e duzentos produtos, era o que deixava a digitacao lenta.
+    o.categoria = categoriaNormal(o.categoria, o.nome);
     o.hay = norm([o.artigo, o.nome, o.cor, o.categoria, o.genero].join(' '));
     o.sub = subcategoriaDe(o);
     // A faixa é do artigo, não da cor: o de-para é por referência.
@@ -3431,6 +3585,25 @@ async function carregarFaixas(){
     const d = await json('faixas.json');
     FAIXAS = (d && typeof d.faixa === 'object') ? d.faixa : {};
   }catch(_){ FAIXAS = {}; }   // sem o arquivo, o filtro simplesmente não aparece
+}
+
+/* ── a categoria do produto ──────────────────────────────────────────
+   Duas fontes, dois vocabulários: as disponibilidades mandam TENIS,
+   CHINELO, VESTUARIO, ACESSORIO, MEIA; o cadastro de produtos manda FTW,
+   CHI, V&A, ACC, MEIA. Sem traduzir, 22 produtos ficavam com "FTW" e não
+   entravam em filtro nenhum.
+
+   E a meia Olympikus está cadastrada como ACESSÓRIO — 86 produtos. Com
+   isso o filtro Meias vinha vazio, elas apareciam em Acessórios, e a meta
+   de meias parecia impossível enquanto a de acessórios sobrava. */
+const CAT_TRADUZ = { FTW:'TENIS', CHI:'CHINELO', 'V&A':'VESTUARIO', ACC:'ACESSORIO',
+                     MEIA:'MEIA', TENIS:'TENIS', CHINELO:'CHINELO',
+                     VESTUARIO:'VESTUARIO', ACESSORIO:'ACESSORIO' };
+const EH_MEIA = n => /\bMEIAS?\b|SOCK|TRIPK|TRIPACK/i.test(String(n || ''));
+function categoriaNormal(cat, nome){
+  const c = String(cat || '').toUpperCase().trim();
+  const t = CAT_TRADUZ[c] || c;
+  return (t === 'ACESSORIO' && EH_MEIA(nome)) ? 'MEIA' : t;
 }
 
 function subcategoriaDe(o){
@@ -3814,6 +3987,312 @@ $('painel').onclick = e => { if(e.target.id === 'painel') fecharPainel(); };
 
 function setOrigem(id){ STATE.origem = id; aplicar(); }
 function setCategoria(id){ STATE.categoria = (STATE.categoria === id) ? '' : id; aplicar(); }
+/* ── METAS DO MÊS ─────────────────────────────────────────────────────
+   A meta vem da Carta Campanha (Metas Preposto) e a oferta é o que está
+   aqui: estoque mais repasse. Produção fica de fora — é capacidade da
+   fábrica, não coisa que dá para vender hoje.
+
+   O ponto da barra é ligar as duas pontas: a faixa que falta bater é a
+   mesma faixa que filtra a vitrine, num clique. */
+let METAS = null;        // { meses:[...] } cru, como o Metas Preposto lê
+const MT = { cat:'', fx:'', fechada:false, medida:'pot' };
+/* A meta separa as categorias pelo prefixo da marca; a vitrine, pela
+   categoria do produto. */
+const MT_CAT_META = { OLY:'calcados', CHOLY:'chinelos', CFOLY:'vestuario',
+                      ACOLY:'acessorios', MEOLY:'meias' };
+const MT_ROTULO = { calcados:'Calçados', chinelos:'Chinelos', vestuario:'Vestuário',
+                    acessorios:'Acessórios', meias:'Meias' };
+const MT_CAT_PRODUTO = { TENIS:'calcados', CHINELO:'chinelos', VESTUARIO:'vestuario',
+                         ACESSORIO:'acessorios', MEIA:'meias' };
+/* A categoria já chega normalizada de montar(), inclusive a meia que o
+   cadastro põe em acessórios. */
+const MT_CAT_VITRINE = { calcados:'TENIS', chinelos:'CHINELO', vestuario:'VESTUARIO',
+                         acessorios:'ACESSORIO', meias:'MEIA' };
+const MT_MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+const mtRotMes = m => MT_MESES[+m.slice(5, 7) - 1] + '/' + m.slice(2, 4);
+/* A mesma conta do Metas Preposto: a medida escolhida contra a meta. Lá o
+   Potencial é o que abre, e aqui também — é o número que a equipe usa no
+   acompanhamento, porque inclui o que está vendido e ainda não faturou. */
+const MT_ROT_MEDIDA = { pot:'Potencial', real:'Realizado', fat:'Faturamento' };
+const mtPos = g => g[MT.medida] || 0;
+const mtPc = g => g.meta ? Math.round(100 * mtPos(g) / g.meta) : null;
+const mtFalta = g => Math.max(0, (g.meta || 0) - mtPos(g));
+
+/* A mesma base do Metas Preposto, lida do mesmo lugar e juntada do mesmo
+   jeito: o publicado mais o que este aparelho importou. Assim o número que a
+   diretoria vê aqui é o mesmo que o preposto vê lá — se divergisse, uma das
+   duas telas estaria mentindo. */
+async function carregarMetas(){
+  let publicado = { meses: [] };
+  try{
+    const r = await fetch('../metas/dados/metas.json?t=' + Date.now(), { cache:'no-store' });
+    if(r.ok) publicado = await r.json();
+  }catch(_){}
+  let local = { meses: [] };
+  try{ local = JSON.parse(localStorage.getItem('cms_metas_v1') || 'null') || { meses: [] }; }catch(_){}
+  const base = juntarMetas(publicado, local);
+  METAS = (base.meses && base.meses.length) ? base : null;
+  if(METAS) montarBarraMetas();
+}
+
+/* O mês importado no aparelho vale mais que o publicado — é a mesma regra
+   do Metas Preposto, onde a importação do dia ainda não subiu. */
+function juntarMetas(a, b){
+  const porMes = {};
+  for(const m of (a.meses || [])) porMes[m.mes] = m;
+  for(const m of (b.meses || [])) porMes[m.mes] = m;
+  return { meses: Object.values(porMes).sort((x, y) => String(x.mes).localeCompare(String(y.mes))) };
+}
+
+/* Agrega o mês cru por categoria e por faixa, para o preposto escolhido.
+   'TODOS' soma o time inteiro, que é a visão da diretoria. */
+function metasDoMes(mes, codigo){
+  const m = METAS.meses.find(x => x.mes === mes);
+  if(!m) return null;
+  const zero = () => ({ meta:0, real:0, pot:0, fat:0 });
+  const soma = (a, l) => {
+    a.meta += l.meta_qtd || 0;
+    a.real += l.real_qtd || 0;
+    a.pot  += l.pot_qtd  || 0;
+    a.fat  += l.fat_qtd  || 0;
+  };
+  const cat = {}, fx = {};
+  for(const p of (m.prepostos || [])){
+    if(codigo !== 'TODOS' && String(p.codigo) !== String(codigo)) continue;
+    for(const l of (p.linhas || [])){
+      const c = MT_CAT_META[l.marca];
+      if(!c) continue;
+      soma(cat[c] = cat[c] || zero(), l);
+      if(c === 'calcados') soma(fx[l.faixa] = fx[l.faixa] || zero(), l);
+    }
+  }
+  return { cat, fx };
+}
+
+/* O que a vitrine tem para vender daquilo: sai dela mesma, não de um arquivo
+   à parte — assim o número bate com o que o vendedor vê na tela, já com
+   rateio, ocultos e marca aplicados. Produção fica de fora: é capacidade da
+   fábrica, não coisa que dá para pedir hoje. */
+function ofertaDaVitrine(){
+  const cat = {}, fx = {};
+  const soma = (o, k, q) => { if(k) o[k] = (o[k] || 0) + q; };
+  for(const o of STATE.produtos){
+    if(!daMarca(o)) continue;
+    const q = (o.pronta ? o.pronta.total : 0) + (o.repasse ? o.repasse.total : 0);
+    if(!q) continue;
+    soma(cat, MT_CAT_PRODUTO[o.categoria], q);
+    soma(fx, o.faixa, q);
+  }
+  return { cat, fx };
+}
+
+function montarBarraMetas(){
+  const barra = $('mtBarra');
+  if(!barra || !METAS) return;
+  const hoje = new Date();
+  const atual = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
+  const mes = $('mtMes');
+  mes.innerHTML = METAS.meses.map(m =>
+    `<option value="${esc(m.mes)}"${m.mes === atual ? ' selected' : ''}>${esc(mtRotMes(m.mes))}</option>`).join('');
+  if(!mes.value) mes.value = METAS.meses[METAS.meses.length - 1].mes;
+
+  const prep = $('mtPrep');
+  montarPrepostosMetas();
+
+  // Trocar o mês não pode remontar o próprio seletor — ele voltaria para o
+  // mês corrente e a escolha se perdia. Só a lista de prepostos é refeita.
+  mes.onchange = () => { montarPrepostosMetas(); pintarMetas(); };
+  prep.onchange = pintarMetas;
+  $('mtMedida').value = MT.medida;
+  $('mtMedida').onchange = e => { MT.medida = e.target.value; pintarMetas(); };
+  $('mtToggle').onclick = () => {
+    MT.fechada = !MT.fechada;
+    barra.classList.toggle('fechada', MT.fechada);
+    $('mtToggle').setAttribute('aria-expanded', String(!MT.fechada));
+    try{ localStorage.setItem('cms_metas_barra', MT.fechada ? 'fechada' : 'aberta'); }catch(_){}
+  };
+  // no celular nasce fechada: a vitrine tem de começar na primeira dobra
+  let guardado = null;
+  try{ guardado = localStorage.getItem('cms_metas_barra'); }catch(_){}
+  // Fechada por padrão: a vitrine é o que ele veio ver; as metas abrem no clique.
+  MT.fechada = guardado ? guardado === 'fechada' : true;
+  barra.classList.toggle('fechada', MT.fechada);
+  $('mtToggle').setAttribute('aria-expanded', String(!MT.fechada));
+  barra.hidden = false;
+  pintarMetas();
+}
+
+/* O vendedor vê a meta dele; a CMS escolhe de quem quer ver. A lista é
+   refeita a cada mês porque um preposto pode entrar ou sair do quadro. */
+function montarPrepostosMetas(){
+  const prep = $('mtPrep');
+  const base = METAS.meses.find(m => m.mes === $('mtMes').value) || METAS.meses[0];
+  const escolhido = prep.value;
+  const eu = meuCodigo();
+  const souCms = ehCmsSessao();
+  const lista = (base.prepostos || []).map(p => ({ cod: String(p.codigo), nome: p.nome }));
+  const visiveis = souCms ? [{ cod:'TODOS', nome:'Todos os prepostos' }, ...lista]
+                          : lista.filter(x => x.cod === eu);
+  prep.innerHTML = (visiveis.length ? visiveis : lista)
+    .sort((a, b) => a.cod === 'TODOS' ? -1 : b.cod === 'TODOS' ? 1 : a.nome.localeCompare(b.nome, 'pt-BR'))
+    .map(x => `<option value="${esc(x.cod)}">${esc(x.cod === 'TODOS' ? 'Todos os prepostos'
+      : nomeCurtoMeta(x.nome))}</option>`).join('');
+  if(escolhido && [...prep.options].some(o => o.value === escolhido)) prep.value = escolhido;
+  else if(!souCms && visiveis.length) prep.value = eu;
+  prep.disabled = !souCms;
+}
+
+const nomeCurtoMeta = n => String(n).split(' ').slice(0, 2)
+  .map(x => x.charAt(0) + x.slice(1).toLowerCase()).join(' ');
+
+function pintarMetas(){
+  if(!METAS || !$('mtMes')) return;
+  const p = metasDoMes($('mtMes').value, $('mtPrep').value);
+  if(!p) return;
+  const OF = ofertaDaVitrine();
+
+  let meta = 0, feito = 0, temTudo = 0;
+  for(const g of Object.values(p.cat)){ meta += g.meta; feito += mtPos(g); }
+  for(const q of Object.values(OF.cat)) temTudo += q;
+  const pcG = meta ? Math.round(100 * feito / meta) : 0;
+  const faltaG = Math.max(0, meta - feito);
+  $('mtResumo').innerHTML =
+    `<span class="cx"${pcG >= 100 ? ' style="color:var(--pronta)"' : ''}>${pcG}% <small>da meta</small></span>` +
+    (faltaG ? `<span class="cx">${nf(faltaG)} <small>a vender</small></span>` : '') +
+    `<span class="cx" style="color:var(--repasse)">${nf(temTudo)} <small>na vitrine</small></span>`;
+
+  const ordem = ['calcados','chinelos','vestuario','acessorios','meias'];
+  $('mtCats').innerHTML = ordem.map(c => {
+    const g = p.cat[c] || { meta:0, real:0, pot:0 };
+    const tem = OF.cat[c] || 0;
+    const f = mtFalta(g), v = mtPc(g);
+    const w = g.meta ? Math.min(100, 100 * mtPos(g) / g.meta) : 0;
+    const dica = linhasDaDica(MT_ROTULO[c], g, f, tem);
+    return `<button type="button" class="mt-cat${f ? '' : ' ok'}${MT.cat === c ? ' on' : ''}"
+        data-mtcat="${esc(c)}" data-dica="${esc(dica)}">
+      <span class="nm">${esc(MT_ROTULO[c])}</span>
+      <span class="pc">${v === null ? '—' : v + '%'}</span>
+      <span class="ba"><i class="real" style="width:${w}%"></i></span>
+      <span class="pe"><span class="fa${f ? '' : ' zero'}">${f ? '−' + nf(f) : '✓'}</span>
+        <span class="tem${tem ? '' : ' vazio'}">${tem ? nf(tem) : '—'}</span></span>
+    </button>`;
+  }).join('');
+
+  const fx = p.fx || {};
+  $('mtFxs').innerHTML = Object.entries(fx)
+    .sort((a, b) => mtFalta(b[1]) - mtFalta(a[1]) || b[1].meta - a[1].meta)
+    .map(([nome, g]) => {
+      const tem = OF.fx[nome] || 0;
+      const f = mtFalta(g), v = mtPc(g) || 0;
+      const w = g.meta ? Math.min(100, 100 * mtPos(g) / g.meta) : 0;
+      const dica = linhasDaDica(nome, g, f, tem);
+      return `<button type="button" class="mt-fx-l${f ? '' : ' ok'}${MT.fx === nome ? ' on' : ''}"
+          data-mtfx="${esc(nome)}" data-dica="${esc(dica)}">
+        <span class="nm">${esc(nome)}</span>
+        <span class="ba"><i class="real" style="width:${w}%"></i></span>
+        <span class="dir"><span class="pc">${v}%</span>
+          <span class="tem${tem ? '' : ' vazio'}">${tem ? nf(tem) : '—'}</span></span>
+      </button>`;
+    }).join('');
+}
+
+/* Clicar num quadro filtra a vitrine de verdade: a categoria vai para o
+   mesmo filtro da fita de cima, a faixa para o do painel. */
+document.addEventListener('click', e => {
+  const c = e.target.closest('[data-mtcat]');
+  if(c){
+    const id = c.dataset.mtcat;
+    MT.cat = MT.cat === id ? '' : id;
+    MT.fx = '';
+    STATE.sel.faixa.clear();
+    STATE.categoria = MT.cat ? (MT_CAT_VITRINE[MT.cat] || '') : '';
+    aplicar();
+    pintarMetas();
+    return;
+  }
+  const f = e.target.closest('[data-mtfx]');
+  if(f){
+    const id = f.dataset.mtfx;
+    MT.fx = MT.fx === id ? '' : id;
+    MT.cat = '';
+    STATE.categoria = '';
+    STATE.sel.faixa.clear();
+    if(MT.fx) STATE.sel.faixa.add(MT.fx);
+    aplicar();
+    pintarMetas();
+  }
+});
+
+/* As linhas do balão. A medida escolhida vem em destaque, porque é dela
+   que sai o % do quadro. */
+function linhasDaDica(titulo, g, falta, tem){
+  const l = [titulo + '|Meta::' + nf(g.meta)];
+  l.push('*' + MT_ROT_MEDIDA[MT.medida] + '::' + nf(mtPos(g)));
+  l.push((falta ? '!Faltam::' : 'Diferença::') + (falta ? nf(falta) : '+' + nf(mtPos(g) - g.meta)));
+  l.push('Na vitrine::' + (tem ? nf(tem) : '—'));
+  return l.join('|');
+}
+
+let _mtDica = null;
+function balaoMetas(){
+  if(!_mtDica){
+    _mtDica = document.createElement('div');
+    _mtDica.className = 'mt-dica';
+    _mtDica.setAttribute('role', 'tooltip');
+    document.body.appendChild(_mtDica);
+  }
+  return _mtDica;
+}
+function mostrarDicaMeta(el, ev){
+  const d = String(el.dataset.dica || '');
+  if(!d) return;
+  const [titulo, ...linhas] = d.split('|');
+  const b = balaoMetas();
+  b.innerHTML = `<div class="t">${esc(titulo)}</div>` + linhas.map(x => {
+    let cls = '';
+    if(x[0] === '*'){ cls = ' destaque'; x = x.slice(1); }
+    else if(x[0] === '!'){ cls = ' falta'; x = x.slice(1); }
+    const [r, v] = x.split('::');
+    return `<div class="l${cls}"><span>${esc(r)}</span><b>${esc(v)}</b></div>`;
+  }).join('');
+  b.classList.add('on');
+  moverDicaMeta(ev, el);
+}
+function moverDicaMeta(ev, el){
+  const b = balaoMetas();
+  const r = el.getBoundingClientRect();
+  const w = b.offsetWidth, h = b.offsetHeight;
+  // em cima do quadro; sem espaço lá, embaixo
+  let x = (ev && ev.clientX ? ev.clientX : r.left + r.width / 2) - w / 2;
+  let y = r.top - h - 8;
+  if(y < 8) y = r.bottom + 8;
+  x = Math.max(8, Math.min(x, innerWidth - w - 8));
+  b.style.left = Math.round(x) + 'px';
+  b.style.top = Math.round(y) + 'px';
+}
+function esconderDicaMeta(){ if(_mtDica) _mtDica.classList.remove('on'); }
+
+document.addEventListener('pointerover', e => {
+  const el = e.target.closest && e.target.closest('[data-dica]');
+  if(el) mostrarDicaMeta(el, e); else esconderDicaMeta();
+});
+document.addEventListener('pointermove', e => {
+  const el = e.target.closest && e.target.closest('[data-dica]');
+  if(el) moverDicaMeta(e, el);
+});
+document.addEventListener('pointerdown', e => {
+  // no toque, o balão aparece e sai sozinho
+  const el = e.target.closest && e.target.closest('[data-dica]');
+  if(el && e.pointerType && e.pointerType !== 'mouse'){
+    mostrarDicaMeta(el, e);
+    setTimeout(esconderDicaMeta, 2400);
+  }
+});
+addEventListener('scroll', esconderDicaMeta, true);
+
+/* Trocar de marca muda a oferta: a barra tem de acompanhar. */
+function metasAcompanhamVitrine(){ if(METAS) pintarMetas(); }
+
 function alternarNovidades(){ STATE.soNovos = !STATE.soNovos; aplicar(); window.scrollTo({ top:0, behavior:'smooth' }); }
 // O chip de Novidades fica no fim da fila de categorias, fora da tela no
 // celular. Este atalho anuncia a novidade onde já se lê a hora da base.

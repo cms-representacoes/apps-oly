@@ -1062,6 +1062,61 @@
   // ── Login único do Portal — sessão compartilhada entre todos os apps ──────
   // A mesma localStorage (cms_portal_session_v1) é lida pelos demais apps
   // (ex: Repasses), então logar aqui já libera o acesso neles também.
+  /* Rodando na própria máquina, os cartões apontam para o site publicado: o
+     primeiro clique tirava o desenvolvedor do ambiente e ele acabava testando
+     o que já está no ar. Aqui o clique é interceptado — não basta reescrever
+     o href, porque outros trechos desta página o reescrevem depois, e alguns
+     cartões navegam por onclick. No endereço publicado nada disto roda. */
+  (function(){
+    var h = location.hostname;
+    if(h !== 'localhost' && h !== '127.0.0.1' && h !== '') return;
+    var BASE = location.protocol + '//' + location.host + '/';
+    var V2 = location.protocol + '//' + location.hostname + ':5504/';
+    function local(u){
+      u = String(u || '');
+      if(u.indexOf('cms-representacoes.github.io') < 0) return null;
+      if(u.indexOf('/apps-oly-v2/') >= 0) return u.split('/apps-oly-v2/')[1]
+        ? V2 + u.split('/apps-oly-v2/')[1] : V2;
+      if(u.indexOf('/apps-oly/') >= 0) return u.split('/apps-oly/')[1]
+        ? BASE + u.split('/apps-oly/')[1] : BASE;
+      return null;
+    }
+    document.addEventListener('click', function(e){
+      var a = e.target.closest && e.target.closest('a[href]');
+      if(a){
+        var alvo = local(a.href);
+        if(alvo){ e.preventDefault(); e.stopPropagation(); location.href = alvo; return; }
+      }
+      // cartões que navegam por onclick, não por href
+      var el = e.target.closest && e.target.closest('[onclick]');
+      if(el){
+        var m = String(el.getAttribute('onclick') || '')
+          .match(/https:\/\/cms-representacoes\.github\.io\/[^'"\s]+/);
+        if(m){
+          var destino = local(m[0]);
+          if(destino){ e.preventDefault(); e.stopPropagation(); location.href = destino; }
+        }
+      }
+    }, true);
+    var abrir = window.open;
+    window.open = function(u){
+      var alvo = local(u);
+      return abrir.apply(window, [alvo || u].concat([].slice.call(arguments, 1)));
+    };
+    function selo(){
+      if(document.getElementById('_selo_local')) return;
+      var d = document.createElement('div');
+      d.id = '_selo_local';
+      d.textContent = 'ambiente local';
+      d.style.cssText = 'position:fixed;left:10px;bottom:10px;z-index:99999;background:#0E6B47;' +
+        'color:#fff;font:700 11px Inter,system-ui,sans-serif;padding:4px 10px;border-radius:999px;' +
+        'opacity:.9;pointer-events:none';
+      document.body.appendChild(d);
+    }
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', selo);
+    else selo();
+  })();
+
   var SESSION_KEY = 'cms_portal_session_v1';
   var SESSION_DAYS = 15;
   var USERS = [
