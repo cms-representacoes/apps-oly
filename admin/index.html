@@ -623,6 +623,14 @@
               <span class="hdr-lbl">Estoque</span>
             </a>
 
+            <button id="btnAjustarDatas" type="button" onclick="abrirAjusteDatas()"
+              title="Ajustar a prev. faturamento de vários pedidos pelo Nº da DISPO"
+              class="focus-ring rounded-full px-4 py-2 text-sm font-bold text-white flex items-center gap-2 transition-transform hover:-translate-y-0.5"
+              style="background:linear-gradient(135deg,#38bdf8,#0369a1);box-shadow:0 4px 14px rgba(3,105,161,.35)">
+              <i class="fa-regular fa-calendar-check"></i>
+              <span class="hdr-lbl">Datas</span>
+            </button>
+
             <button id="btnIrConfig" title="Configurações do painel"
               class="focus-ring h-9 w-9 rounded-full flex items-center justify-center text-white transition-transform hover:-translate-y-0.5"
               style="background:linear-gradient(135deg,#a78bfa,#7c3aed);box-shadow:0 4px 14px rgba(124,58,237,.35)">
@@ -1304,6 +1312,122 @@
       border-radius:999px; padding:4px 11px; font-size:11.5px; font-weight:700; white-space:nowrap;
       background:var(--warning-soft); color:var(--warning); font-family:inherit; }
     .adm-cli-novo:hover{ filter:brightness(.97); }
+    /* ── Ajustar prev. faturamento em bloco ──────────────────────────────── */
+    .dt-caixa{width:100%;max-width:980px;margin:14px 0;background:var(--card);border:1px solid var(--line);
+      border-radius:24px;box-shadow:0 30px 70px -20px rgba(0,0,0,.5);overflow:hidden}
+    .dt-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:20px 22px 0}
+    .dt-eyebrow{font:800 11px Inter,sans-serif;color:var(--brand);text-transform:uppercase;letter-spacing:.05em}
+    .dt-tit{font:800 19px Inter,sans-serif;margin-top:2px;color:var(--text)}
+    .dt-sub{font-size:12.5px;color:var(--muted);margin-top:3px}
+    .dt-x{border:0;background:transparent;color:var(--muted);font-size:26px;line-height:1;cursor:pointer}
+    .dt-corpo{padding:16px 22px 0}
+    .dt-pe{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:14px 22px;border-top:1px solid var(--line);
+      background:var(--bg);margin-top:16px}
+    .dt-rodape{margin-left:auto;font-size:11.5px;color:var(--muted)}
+    .dt-bt{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;
+      padding:11px 18px;font:800 13px Inter,sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+    .dt-bt:hover{border-color:var(--brand);color:var(--brand)}
+    .dt-bt-forte{background:var(--brand);border-color:var(--brand);color:#fff}
+    .dt-bt-forte:hover{filter:brightness(1.08);color:#fff}
+    .dt-bt-fraco{color:var(--muted);font-weight:700}
+    .dt-bt:disabled{opacity:.45;cursor:not-allowed}
+    .dt-passo{display:flex;align-items:center;gap:8px;font:800 11px Inter,sans-serif;color:var(--muted);
+      text-transform:uppercase;letter-spacing:.06em;margin:4px 0 7px}
+    .dt-passo i{display:grid;place-items:center;width:19px;height:19px;border-radius:7px;background:var(--brand-soft);
+      color:var(--brand);font-size:10px;font-style:normal;font-weight:800}
+    .dt-busca{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
+    #dtNums{flex:1;min-width:240px;min-height:62px;resize:vertical;border:1px solid var(--line);
+      border-radius:14px;padding:11px 14px;font:600 13.5px ui-monospace,SFMono-Regular,Menlo,monospace;
+      background:var(--bg);color:var(--text);letter-spacing:.02em}
+    .dt-busca .dt-bt{min-width:140px;justify-content:center}
+    .dt-dica{font-size:11.5px;color:var(--muted);margin-top:6px}
+    .dt-atalho{background:none;border:0;color:var(--brand);font:700 11.5px Inter,sans-serif;cursor:pointer;
+      padding:0;text-decoration:underline}
+    .dt-achado{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:12px 0 0;font-size:12.5px}
+    .dt-achado .ok{color:var(--success);font-weight:700}
+    .dt-achado .nao{color:var(--warning);font-weight:700}
+    .dt-barra-sel{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;
+      border:1px solid var(--line);border-radius:12px;padding:8px 13px;background:var(--bg)}
+    .dt-barra-sel label{display:flex;align-items:center;gap:8px;font:700 12.5px Inter,sans-serif;cursor:pointer;user-select:none}
+    .dt-barra-sel span{margin-left:auto;font-size:12px;color:var(--muted)}
+    .dt-tab-wrap{margin-top:9px;border:1px solid var(--line);border-radius:16px;overflow:auto;max-height:46vh}
+    .dt-tab{width:100%;border-collapse:collapse;font-size:12.5px;color:var(--text)}
+    .dt-tab thead th{position:sticky;top:0;background:var(--card);z-index:2;font:700 10px Inter,sans-serif;
+      text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;
+      padding:10px;border-bottom:1px solid var(--line);white-space:nowrap}
+    .dt-tab td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+    .dt-tab tbody tr:last-child td{border-bottom:0}
+    .dt-tab tbody tr.marcada td{background:var(--brand-soft)}
+    .dt-tab .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--muted)}
+    .dt-tab .prod{font-weight:700}
+    .dt-dir{text-align:right;font-variant-numeric:tabular-nums}
+    .dt-tab input[type=checkbox],.dt-barra-sel input[type=checkbox]{width:16px;height:16px;accent-color:var(--brand);cursor:pointer}
+    .dt-de{color:var(--muted);text-decoration:line-through}
+    .dt-para{color:var(--info);font-weight:800}
+    .dt-seta{color:var(--muted);margin:0 5px;font-size:10px}
+    .dt-ja{color:var(--muted);font-size:10.5px;margin-left:6px;font-style:italic}
+    .dt-chip{display:inline-flex;align-items:center;border-radius:999px;padding:2px 9px;font:700 10.5px Inter,sans-serif}
+    .dt-chip.ap{background:var(--success-soft);color:var(--success)}
+    .dt-chip.pe{background:var(--warning-soft);color:var(--warning)}
+    .dt-chip.mud{background:var(--warning-soft);color:var(--warning);margin-left:6px}
+    /* cabeçalho de cada lote: o saldo em aberto já sai da DISPO, não precisa de ação */
+    .dt-tab tr.dt-grupo td{background:var(--bg);border-bottom:1px solid var(--line);padding:8px 10px}
+    .dt-grupo-in{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}
+    .dt-grupo-in b{color:var(--text);font-size:12.5px}
+    .dt-grupo-in .sep{opacity:.45}
+    .dt-grupo-in .aberto{color:var(--info);font-weight:700}
+    .dt-grupo-in .dispo{font-weight:700}
+    .dt-grupo-bt{margin-left:auto;border:1px solid var(--line);background:var(--card);color:var(--muted);
+      border-radius:999px;padding:3px 11px;font:700 11px Inter,sans-serif;cursor:pointer;white-space:nowrap}
+    .dt-grupo-bt:hover{border-color:var(--brand);color:var(--brand)}
+    .dt-aplicar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:14px;
+      background:var(--bg);border:1px solid var(--line);border-radius:16px;padding:13px 15px}
+    .dt-aplicar label{display:block;font:700 11px Inter,sans-serif;color:var(--muted);margin-bottom:4px}
+    #dtNovaData{border:1px solid var(--line);border-radius:12px;padding:9px 12px;
+      font:700 13px Inter,sans-serif;background:var(--card);color:var(--text)}
+    .dt-conta{font-size:12.5px;color:var(--muted);margin-left:auto}
+    .dt-conta b{color:var(--text)}
+    .dt-sugs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .dt-sug{border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:999px;
+      padding:4px 11px;font:700 11.5px Inter,sans-serif;cursor:pointer}
+    .dt-sug:hover{border-color:var(--brand);color:var(--brand)}
+    .dt-aviso{display:flex;gap:10px;align-items:flex-start;background:var(--warning-soft);border:1px solid var(--line);
+      border-radius:14px;padding:11px 14px;font-size:12.5px;margin-top:12px;color:var(--text)}
+    .dt-aviso i{color:var(--warning);margin-top:2px}
+    .dt-pronto{display:flex;gap:10px;align-items:center;background:var(--info-soft);border:1px solid var(--line);
+      border-radius:14px;padding:11px 14px;font-size:12.5px;margin-top:12px;color:var(--text)}
+    .dt-pronto i{color:var(--info)}
+    @media (min-width:641px) and (max-width:900px){
+      .dt-tab td.c-gci,.dt-tab td.c-cor,.dt-tab thead th:nth-child(3),.dt-tab thead th:nth-child(5){display:none}
+    }
+    @media (max-width:640px){
+      .dt-caixa{border-radius:20px;margin:8px 0}
+      .dt-topo,.dt-corpo,.dt-pe{padding-left:15px;padding-right:15px}
+      .dt-tab-wrap{max-height:50vh}
+      .dt-tab thead{display:none}
+      .dt-tab tbody tr{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:1px 9px;
+        padding:11px 12px;border-bottom:1px solid var(--line);align-items:start}
+      .dt-tab tbody tr td{display:block;border:0;padding:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .dt-tab td.c-chk{grid-column:1;grid-row:1/5;padding-top:2px}
+      .dt-tab td.c-num{grid-column:2;grid-row:1;font-weight:800;color:var(--text);font-size:12px}
+      .dt-tab td.c-num::before{content:"Nº ";color:var(--muted);font-weight:600}
+      .dt-tab td.c-st{grid-column:3;grid-row:1;text-align:right}
+      .dt-tab td.c-prod{grid-column:2/4;grid-row:2;font-size:13px}
+      .dt-tab td.c-cli{grid-column:2;grid-row:3;font-size:11.5px;color:var(--muted)}
+      .dt-tab td.c-vend{grid-column:3;grid-row:3;font-size:11.5px;color:var(--muted);text-align:right}
+      .dt-tab td.c-dt{grid-column:2;grid-row:4;margin-top:4px;white-space:normal}
+      .dt-tab td.c-par{grid-column:3;grid-row:4;margin-top:4px;text-align:right;font-size:11.5px;color:var(--muted)}
+      .dt-tab td.c-par::after{content:" pares"}
+      .dt-tab td.c-gci,.dt-tab td.c-cor{display:none}
+      .dt-tab tbody tr.marcada{background:var(--brand-soft)}
+      .dt-tab tbody tr.marcada td{background:transparent}
+      .dt-tab tbody tr.dt-grupo{display:block;padding:8px 12px}
+      .dt-aplicar{align-items:stretch}
+      #dtNovaData,.dt-aplicar .dt-bt{width:100%;justify-content:center}
+      .dt-conta{margin-left:0;text-align:center}
+      .dt-pe .dt-bt{flex:1;justify-content:center}
+      .dt-rodape{width:100%;margin-left:0;text-align:center}
+    }
   </style>
 
   <!-- ── CORRIGIR O PEDIDO ────────────────────────────────────────────────
@@ -1390,6 +1514,87 @@
         <div class="mt-5 flex flex-wrap justify-end gap-2">
           <button id="btnVoltarSolRecusa" type="button" class="focus-ring rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700" style="background:var(--card);border-color:var(--line);color:var(--muted)">Voltar</button>
           <button id="btnConfirmarSolRecusa" type="button" class="focus-ring rounded-2xl border border-slate-200 bg-slate-800 px-5 py-3 text-sm font-extrabold text-white">Recusar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── AJUSTAR PREV. FATURAMENTO EM BLOCO ───────────────────────────────── -->
+  <div id="datasModal" class="hidden fixed inset-0 z-[140] bg-slate-950/55 p-4" style="overflow-y:auto">
+    <div class="flex min-h-full items-start justify-center">
+      <div class="dt-caixa">
+        <div class="dt-topo">
+          <div>
+            <div class="dt-eyebrow">Repasses · pedidos</div>
+            <div class="dt-tit">Ajustar prev. faturamento</div>
+            <div class="dt-sub">Procure pelos números da DISPO, marque o que vai mudar e aplique a data nova.</div>
+          </div>
+          <button type="button" class="dt-x" onclick="fecharAjusteDatas()" aria-label="Fechar">&times;</button>
+        </div>
+
+        <div class="dt-corpo">
+          <div class="dt-passo"><i>1</i> Números dos pedidos</div>
+          <div class="dt-busca">
+            <textarea id="dtNums" placeholder="Cole aqui os números separados por vírgula — ex.: 256, 219, 259"></textarea>
+            <button type="button" class="dt-bt dt-bt-forte" onclick="dtPesquisar()">
+              <i class="fa-solid fa-magnifying-glass"></i> Pesquisar
+            </button>
+          </div>
+          <div class="dt-dica">
+            Vale vírgula, espaço ou uma linha para cada. ·
+            <button type="button" class="dt-atalho" onclick="dtTrazerDefasados()">trazer os que estão com data diferente da DISPO</button>
+          </div>
+          <div class="dt-achado" id="dtAchado" hidden></div>
+
+          <div id="dtAreaLista" hidden>
+            <div class="dt-passo" style="margin-top:16px"><i>2</i> Pedidos encontrados</div>
+            <div class="dt-barra-sel">
+              <label><input type="checkbox" id="dtChkTodos" onchange="dtMarcarTodos(this.checked)"> Marcar todos</label>
+              <span id="dtContaTopo"></span>
+            </div>
+            <div class="dt-tab-wrap">
+              <table class="dt-tab">
+                <thead>
+                  <tr>
+                    <th style="width:34px"></th>
+                    <th>Nº</th><th>GCI</th><th>Produto</th><th>Cor</th><th>Cliente</th><th>Vendedor</th>
+                    <th class="dt-dir">Pares</th><th>Status</th><th>Prev. faturamento</th>
+                  </tr>
+                </thead>
+                <tbody id="dtCorpo"></tbody>
+              </table>
+            </div>
+
+            <div class="dt-passo" style="margin-top:16px"><i>3</i> Nova data</div>
+            <div class="dt-aplicar">
+              <div>
+                <label for="dtNovaData">Prev. faturamento nova</label>
+                <input type="date" id="dtNovaData" onchange="dtPintarBotoes()">
+                <div class="dt-sugs" id="dtSugs"></div>
+              </div>
+              <button type="button" class="dt-bt dt-bt-forte" id="dtBtAplicar" onclick="dtAplicar()" disabled>
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Aplicar aos marcados
+              </button>
+              <span class="dt-conta" id="dtConta"></span>
+            </div>
+
+            <div class="dt-aviso" id="dtAvisoPedido" hidden>
+              <i class="fa-solid fa-triangle-exclamation"></i>
+              <div id="dtAvisoTxt"></div>
+            </div>
+            <div class="dt-pronto" id="dtPronto" hidden>
+              <i class="fa-solid fa-circle-check"></i>
+              <div id="dtProntoTxt"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dt-pe">
+          <button type="button" class="dt-bt dt-bt-forte" id="dtBtSalvar" onclick="dtSalvar()" disabled>
+            <i class="fa-solid fa-floppy-disk"></i> <span id="dtRotuloSalvar">Salvar</span>
+          </button>
+          <button type="button" class="dt-bt dt-bt-fraco" onclick="fecharAjusteDatas()">Fechar</button>
+          <span class="dt-rodape" id="dtRodape"></span>
         </div>
       </div>
     </div>
@@ -1781,10 +1986,17 @@ function formatDateTime(value){
   return `${d.toLocaleDateString('pt-BR')} • ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
 }
 
+// Data de calendário (31/10/2026, 2026-10-31, serial do Excel) é montada em
+// UTC pelo parseDate. Exibi-la no fuso local jogava para o dia anterior: a
+// DISPO dizia 30/10 e o admin mostrava 29/10, enquanto a vitrine — que não
+// desloca — mostrava 30/10 ao vendedor. Aqui a data pura sai em UTC; o que
+// tem hora (createdAt) continua no fuso de quem olha.
 function formatDate(value){
   const d = parseDate(value);
   if(!d) return '—';
-  return d.toLocaleDateString('pt-BR');
+  const puro = !(value instanceof Date)
+    && /^(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}|\d{4}-\d{2}-\d{2}|\d+(\.\d+)?)$/.test(String(value).trim());
+  return d.toLocaleDateString('pt-BR', puro ? { timeZone:'UTC' } : undefined);
 }
 
 function formatInt(value){
@@ -2933,6 +3145,13 @@ async function salvarEdicaoPedido(){
 $('btnFecharEditar').addEventListener('click', fecharEdicaoPedido);
 $('btnVoltarEditar').addEventListener('click', fecharEdicaoPedido);
 $('btnSalvarEditar').addEventListener('click', salvarEdicaoPedido);
+$('datasModal').addEventListener('click', e => {
+  if(e.target === $('datasModal')) fecharAjusteDatas();
+});
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape' && !$('datasModal').classList.contains('hidden')) fecharAjusteDatas();
+});
+
 $('editarPedidoModal').addEventListener('click', e => {
   if(e.target === $('editarPedidoModal')) fecharEdicaoPedido();
 });
@@ -5293,8 +5512,14 @@ function getDispoRowAtual(item){
 
 // Compara a Prev. Faturamento gravada no pedido com a atual do DISPO.
 // Retorna {mudou:true, de, para} se houver diferença, senão {mudou:false}.
+// A comparação é pela linha do MESMO Nº. O código do produto como reserva
+// casava qualquer lote do mesmo artigo e marcava "faturamento atualizado" em
+// pedido cujo lote nem está mais no estoque — e é essa etiqueta que manda o
+// vendedor procurar a data certa.
 function checkPrevFaturamentoMudou(item){
-  const atual = getDispoRowAtual(item);
+  const num = String(resolveNumDispo(item, _dispoGciMap || new Map()));
+  const linhas = (num && num !== '—') ? dtLinhasDispo(num) : [];
+  const atual = linhas.length ? linhas[0] : null;
   if(!atual || !atual.dataEntrega) return { mudou:false };
   const gravada = formatDate(item.prevFaturamento) || '—';
   const atualFmt = formatDate(atual.dataEntrega) || '—';
@@ -5307,6 +5532,317 @@ function resolveNumDispo(item, gciMap){
   const gci = String(item.gci||'').trim();
   const ebm = String(item.ebm||'').trim();
   return gciMap.get(gci) || gciMap.get(ebm) || '—';
+}
+
+/* ── AJUSTAR PREV. FATURAMENTO EM BLOCO ───────────────────────────────────
+   A fábrica remarca um lote e, do lado da vitrine, o saldo em aberto já sai
+   certo: a vitrine lê a DATA ENTREGA da DISPO a cada importação. O que fica
+   congelado é o pedido já feito — ali a data foi copiada para dentro do item
+   no momento do repasse. Como o lote só fatura a 100% repassado, o aberto e o
+   feito têm que falar a mesma data; esta tela acerta o lado que não se acerta
+   sozinho, de uma vez, pelo Nº da DISPO. */
+const DT = { lista: [], marcados: new Set(), aplicadas: 0 };
+
+function dtBR(iso){
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+}
+function dtISO(br){
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(br || '');
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+}
+
+/* Linhas da DISPO de um Nº. O mesmo Nº pode ter mais de uma linha. */
+function dtLinhasDispo(num){
+  if(!_dispoRows) return [];
+  return _dispoRows.filter(r => String(r.num ?? '').trim() === String(num));
+}
+function dtResumoLote(num){
+  const linhas = dtLinhasDispo(num);
+  const aberto = linhas.reduce((s, r) => s + Number(r.saldo || 0), 0);
+  const datas = [...new Set(linhas.map(r => formatDate(r.dataEntrega)).filter(d => d && d !== '—'))];
+  return { aberto, dispo: datas[0] || '', varias: datas.length > 1, achou: linhas.length > 0 };
+}
+
+async function abrirAjusteDatas(){
+  const bt = $('btnAjustarDatas');
+  const antes = bt ? bt.innerHTML : '';
+  if(bt){ bt.disabled = true; bt.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+  try{
+    await getDispoGciMap();              // carrega _dispoRows uma vez
+  }catch(e){ console.error(e); }
+  if(bt){ bt.disabled = false; bt.innerHTML = antes; }
+
+  DT.lista = []; DT.marcados.clear(); DT.aplicadas = 0;
+  $('dtNums').value = '';
+  $('dtNovaData').value = '';
+  $('dtAchado').hidden = true;
+  $('dtAreaLista').hidden = true;
+  $('dtPronto').hidden = true;
+  $('dtAvisoPedido').hidden = true;
+  $('dtChkTodos').checked = false;
+  dtPintarBotoes();
+  $('datasModal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  $('dtNums').focus();
+}
+function fecharAjusteDatas(){
+  if(DT.aplicadas && !confirm('Há alterações aplicadas que ainda não foram salvas. Fechar assim mesmo?')) return;
+  $('datasModal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+/* Todo pedido vivo — aprovado ou pendente. Cancelado e arquivado ficam fora:
+   o primeiro não fatura e o segundo saiu da operação. */
+function dtPedidosVivos(){
+  return (STATE.orders || []).filter(o => o && !o.archived && canonicalStatus(o.status) !== 'Cancelado');
+}
+
+function dtMontarLista(nums){
+  const alvo = new Set(nums.map(String));
+  const out = [];
+  for(const o of dtPedidosVivos()){
+    (o.items || []).forEach((item, idx) => {
+      const num = resolveNumDispo(item, _dispoGciMap || new Map());
+      if(!alvo.has(String(num))) return;
+      out.push({
+        orderId: o.id, idxItem: idx, num: String(num),
+        gci: item.gci || '', produto: item.produto || '', cor: item.cor || '',
+        cliente: o.clienteNome || o.clienteCodigo || '—',
+        vendedor: o.preposto?.nome || o.preposto?.codigo || '—',
+        status: canonicalStatus(o.status),
+        pares: getItemUnits(item),
+        prevFat: formatDate(item.prevFaturamento) || '',
+        nova: '', ja: false
+      });
+    });
+  }
+  return out.sort((a, b) => (Number(a.num) - Number(b.num))
+    || String(a.cliente).localeCompare(String(b.cliente), 'pt-BR'));
+}
+
+/* Os Nº cuja data gravada no pedido já não bate com a da DISPO. A comparação
+   é pelo próprio Nº, não pelo código do produto: o mesmo artigo aparece em
+   vários lotes e comparar por código acusaria diferença onde não há. Lote que
+   saiu da DISPO não entra — não há com o que comparar. */
+function dtNumsDefasados(){
+  const fora = new Set();
+  for(const o of dtPedidosVivos()){
+    for(const item of (o.items || [])){
+      const num = String(resolveNumDispo(item, _dispoGciMap || new Map()));
+      if(num === '—') continue;
+      const r = dtResumoLote(num);
+      if(!r.achou || !r.dispo) continue;
+      const gravada = formatDate(item.prevFaturamento);
+      if(gravada && gravada !== '—' && gravada !== r.dispo) fora.add(num);
+    }
+  }
+  return [...fora].sort((a, b) => Number(a) - Number(b));
+}
+
+function dtTrazerDefasados(){
+  const nums = dtNumsDefasados();
+  if(!nums.length){ showToast('Nenhum pedido está com data diferente da DISPO.', 'info'); return; }
+  $('dtNums').value = nums.join(', ');
+  dtPesquisar();
+}
+
+function dtPesquisar(){
+  const texto = $('dtNums').value || '';
+  const pedidos = [...new Set(texto.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean))];
+  if(!pedidos.length){ showToast('Cole ao menos um número.', 'info'); return; }
+
+  DT.lista = dtMontarLista(pedidos);
+  DT.marcados.clear();
+  DT.aplicadas = 0;
+
+  const achados = new Set(DT.lista.map(i => i.num));
+  const semNada = pedidos.filter(n => !achados.has(String(n)));
+  const el = $('dtAchado');
+  el.hidden = false;
+  el.innerHTML =
+    `<span class="ok"><i class="fa-solid fa-circle-check"></i> ${achados.size} número${achados.size === 1 ? '' : 's'} · `
+    + `${DT.lista.length} ${DT.lista.length === 1 ? 'pedido' : 'pedidos'}</span>`
+    + (semNada.length ? `<span class="nao"><i class="fa-solid fa-circle-exclamation"></i> sem pedido: ${safeHtml(semNada.join(', '))}</span>` : '');
+
+  $('dtAreaLista').hidden = DT.lista.length === 0;
+  $('dtPronto').hidden = true;
+  $('dtChkTodos').checked = false;
+  dtPintarSugestoes();
+  dtPintarTabela();
+}
+
+function dtPintarTabela(){
+  let numAtual = null;
+  const linhas = DT.lista.map((i, k) => {
+    let cab = '';
+    if(i.num !== numAtual){
+      numAtual = i.num;
+      const r = dtResumoLote(i.num);
+      cab = `<tr class="dt-grupo"><td colspan="10"><div class="dt-grupo-in">
+        <b>Lote ${safeHtml(i.num)}</b><span class="sep">·</span>
+        ${r.achou
+          ? `<span class="aberto">${formatInt(r.aberto)} pares em aberto</span><span class="sep">·</span>`
+            + `<span>DISPO <span class="dispo">${safeHtml(r.dispo || '—')}</span>${r.varias ? ' (há mais de uma data neste Nº)' : ''}</span>`
+            + `<span class="sep">·</span><span>esse lado já sai certo da importação</span>`
+          : `<span>sem linha na DISPO — o lote pode já ter saído do estoque</span>`}
+        <button type="button" class="dt-grupo-bt" onclick="dtMarcarLote('${safeHtml(i.num)}')">marcar o lote</button>
+      </div></td></tr>`;
+    }
+    const data = i.nova
+      ? `<span class="dt-de">${safeHtml(i.prevFat || '—')}</span><i class="fa-solid fa-arrow-right dt-seta"></i><span class="dt-para">${safeHtml(i.nova)}</span>`
+      : safeHtml(i.prevFat || '—')
+        + (i.ja ? `<span class="dt-ja">já estava nessa data</span>` : '');
+    return cab + `<tr class="${DT.marcados.has(k) ? 'marcada' : ''}">
+      <td class="c-chk"><input type="checkbox" ${DT.marcados.has(k) ? 'checked' : ''} onchange="dtMarcar(${k}, this.checked)"></td>
+      <td class="c-num mono">${safeHtml(i.num)}</td>
+      <td class="c-gci mono">${safeHtml(i.gci || '—')}</td>
+      <td class="c-prod prod">${safeHtml(i.produto || '—')}</td>
+      <td class="c-cor">${safeHtml(i.cor || '—')}</td>
+      <td class="c-cli">${safeHtml(i.cliente)}</td>
+      <td class="c-vend">${safeHtml(i.vendedor)}</td>
+      <td class="c-par dt-dir">${formatInt(i.pares)}</td>
+      <td class="c-st"><span class="dt-chip ${i.status === 'Aprovado' ? 'ap' : 'pe'}">${safeHtml(i.status)}</span></td>
+      <td class="c-dt" style="white-space:nowrap">${data}</td>
+    </tr>`;
+  });
+  $('dtCorpo').innerHTML = linhas.join('');
+  dtPintarBotoes();
+}
+
+function dtMarcar(k, on){
+  if(on) DT.marcados.add(k); else DT.marcados.delete(k);
+  $('dtChkTodos').checked = DT.marcados.size === DT.lista.length && DT.lista.length > 0;
+  dtPintarTabela();
+}
+function dtMarcarTodos(on){
+  DT.marcados.clear();
+  if(on) DT.lista.forEach((_, k) => DT.marcados.add(k));
+  dtPintarTabela();
+}
+function dtMarcarLote(num){
+  const ids = DT.lista.map((i, k) => i.num === String(num) ? k : -1).filter(k => k >= 0);
+  const todosJa = ids.every(k => DT.marcados.has(k));
+  ids.forEach(k => todosJa ? DT.marcados.delete(k) : DT.marcados.add(k));
+  $('dtChkTodos').checked = DT.marcados.size === DT.lista.length && DT.lista.length > 0;
+  dtPintarTabela();
+}
+
+/* As datas que a DISPO já tem para esses lotes viram atalho: na maioria das
+   vezes é para elas que o pedido vai. */
+function dtPintarSugestoes(){
+  const nums = [...new Set(DT.lista.map(i => i.num))];
+  const datas = [...new Set(nums.map(n => dtResumoLote(n).dispo).filter(Boolean))].sort(
+    (a, b) => dtISO(a).localeCompare(dtISO(b)));
+  $('dtSugs').innerHTML = datas.slice(0, 4).map(d =>
+    `<button type="button" class="dt-sug" onclick="dtUsarData('${d}')">
+      <i class="fa-solid fa-arrow-turn-up" style="font-size:9px"></i> ${d} (DISPO)</button>`).join('');
+}
+function dtUsarData(br){
+  $('dtNovaData').value = dtISO(br);
+  dtPintarBotoes();
+}
+
+function dtPintarBotoes(){
+  const data = $('dtNovaData') ? $('dtNovaData').value : '';
+  const n = DT.marcados.size;
+  $('dtBtAplicar').disabled = !data || n === 0;
+  const conta = n ? `<b>${n}</b> marcado${n === 1 ? '' : 's'} de ${DT.lista.length}` : 'nenhum marcado';
+  $('dtConta').innerHTML = conta;
+  $('dtContaTopo').innerHTML = conta;
+
+  const aprovados = [...DT.marcados].filter(k => DT.lista[k] && DT.lista[k].status === 'Aprovado').length;
+  $('dtAvisoPedido').hidden = aprovados === 0;
+  if(aprovados){
+    $('dtAvisoTxt').innerHTML = `<b>${aprovados} ${aprovados === 1 ? 'pedido já aprovado' : 'pedidos já aprovados'}.</b> `
+      + 'A data que está lá foi a que o vendedor passou ao cliente — mudando aqui, vale avisá-lo.';
+  }
+
+  $('dtBtSalvar').disabled = DT.aplicadas === 0;
+  $('dtRotuloSalvar').textContent = DT.aplicadas
+    ? `Salvar ${DT.aplicadas} alteraç${DT.aplicadas === 1 ? 'ão' : 'ões'}`
+    : 'Salvar';
+  $('dtRodape').textContent = DT.aplicadas ? 'as mudancas ainda não foram gravadas' : '';
+}
+
+function dtAplicar(){
+  const br = dtBR($('dtNovaData').value);
+  if(!br || !DT.marcados.size) return;
+  let n = 0, iguais = 0;
+  for(const k of DT.marcados){
+    if(DT.lista[k].prevFat === br){ DT.lista[k].ja = true; DT.lista[k].nova = ''; iguais++; continue; }
+    DT.lista[k].nova = br;
+    DT.lista[k].ja = false;
+    n++;
+  }
+  DT.aplicadas = DT.lista.filter(i => i.nova).length;
+  $('dtPronto').hidden = false;
+  $('dtProntoTxt').innerHTML =
+    `<b>${n} ${n === 1 ? 'pedido recebeu' : 'pedidos receberam'} a data ${br}.</b> `
+    + (iguais ? `${iguais} já ${iguais === 1 ? 'estava' : 'estavam'} nela e ${iguais === 1 ? 'ficou' : 'ficaram'} como ${iguais === 1 ? 'está' : 'estão'}. ` : '')
+    + 'Confira na tabela e clique em <b>Salvar</b> — até lá, nada foi gravado.';
+  dtPintarTabela();
+}
+
+/* Grava num commit só. Cada pedido vai com o array items inteiro — só os
+   itens tocados mudam — e um registro no histórico de quem fez e quando. */
+async function dtSalvar(){
+  const mudancas = DT.lista.filter(i => i.nova);
+  if(!mudancas.length) return;
+
+  const bt = $('dtBtSalvar');
+  const antes = bt.innerHTML;
+  bt.disabled = true;
+  bt.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando…';
+
+  const agora = new Date().toISOString();
+  const quem = getPortalSession()?.nome || getPortalSession()?.codigo || 'CMS';
+  const porPedido = new Map();
+  for(const m of mudancas){
+    if(!porPedido.has(m.orderId)) porPedido.set(m.orderId, []);
+    porPedido.get(m.orderId).push(m);
+  }
+
+  const alvos = [];
+  for(const [orderId, itens] of porPedido){
+    const idx = STATE.orders.findIndex(o => o && o.id === orderId);
+    if(idx === -1) continue;
+    const anterior = STATE.orders[idx];
+    const novosItems = (anterior.items || []).map((it, k) => {
+      const m = itens.find(x => x.idxItem === k);
+      return m ? { ...it, prevFaturamento: m.nova } : it;
+    });
+    const detalhe = itens.map(m => `lote ${m.num}: ${m.prevFat || '—'} → ${m.nova}`).join('; ');
+    alvos.push({
+      idx, anterior,
+      campos: { items: novosItems },
+      historyAppend: {
+        id: `prevfat-${orderId}-${agora}`,
+        action: `Prev. faturamento ajustada em bloco por ${quem} — ${detalhe}`,
+        at: agora
+      }
+    });
+  }
+
+  for(const t of alvos){
+    STATE.orders[t.idx] = { ...t.anterior, ...t.campos, updatedAt: agora,
+      history: [...(t.anterior.history || []), t.historyAppend] };
+  }
+  const falhas = await _gravarLote(alvos);
+
+  bt.innerHTML = antes;
+  if(falhas.length){
+    showToast(`${falhas.length} pedido(s) não salvaram — tente de novo.`, 'error');
+    bt.disabled = false;
+    return;
+  }
+
+  showToast(`${mudancas.length} item(ns) atualizados em ${alvos.length} pedido(s).`, 'success');
+  DT.aplicadas = 0;
+  DT.lista.forEach(i => { if(i.nova){ i.prevFat = i.nova; i.nova = ''; } });
+  dtPintarTabela();
+  renderList();
+  atualizarBadgeGlobal();
 }
 
 function buildRelatorioXlsxRows(orders, gciMap=new Map()){

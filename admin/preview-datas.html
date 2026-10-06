@@ -116,6 +116,15 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--brand);cursor:poi
 .para{color:var(--novo);font-weight:800}
 .seta{color:var(--muted);margin:0 5px;font-size:10px}
 .ja{color:var(--muted);font-size:10.5px;margin-left:6px;font-style:italic}
+tr.grupo td{background:var(--bg);border-bottom:1px solid var(--line);padding:8px 10px}
+.grupo-in{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}
+.grupo-in b{color:var(--text);font-size:12.5px}
+.grupo-in .sep{opacity:.45}
+.grupo-in .aberto{color:var(--novo);font-weight:700}
+.grupo-in .dispo{font-weight:700}
+.grupo-bt{margin-left:auto;border:1px solid var(--line);background:var(--card);color:var(--muted);
+  border-radius:999px;padding:3px 11px;font:700 11px Inter,sans-serif;cursor:pointer;white-space:nowrap}
+.grupo-bt:hover{border-color:var(--brand);color:var(--brand)}
 .chip{display:inline-flex;align-items:center;border-radius:999px;padding:2px 9px;font:700 10.5px Inter,sans-serif}
 .chip.ap{background:var(--ok-bg);color:var(--ok)}
 .chip.pe{background:var(--aviso-bg);color:var(--aviso)}
@@ -172,6 +181,7 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--brand);cursor:poi
   td.c-gci,td.c-cor{display:none}
   tbody tr.marcada{background:var(--brand-soft)}
   tbody tr.marcada td{background:transparent}
+  tbody tr.grupo{display:block;padding:8px 12px}
   .aplicar{align-items:stretch}
   .aplicar input[type=date],.aplicar .btn{width:100%;justify-content:center}
   .aplicar .conta{margin-left:0;text-align:center}
@@ -361,14 +371,27 @@ function pesquisar(){
 
 /* ── 2. a tabela ── */
 function pintarTabela(){
+  let numAtual = null;
   document.getElementById('corpo').innerHTML = LISTA.map((i, k) => {
+    let cab = '';
+    if(i.num !== numAtual){
+      numAtual = i.num;
+      const l = (DADOS.lotes || {})[i.num] || { aberto:0, dispo:[] };
+      cab = `<tr class="grupo"><td colspan="10"><div class="grupo-in">
+        <b>Lote ${i.num}</b><span class="sep">·</span>
+        <span class="aberto">${l.aberto.toLocaleString('pt-BR')} pares em aberto</span><span class="sep">·</span>
+        <span>DISPO <span class="dispo">${l.dispo[0] || '—'}</span></span><span class="sep">·</span>
+        <span>esse lado já sai certo da importação</span>
+        <button class="grupo-bt" onclick="marcarLote('${i.num}')">marcar o lote</button>
+      </div></td></tr>`;
+    }
     const defasado = i.dispoAtual && i.prevFat !== i.dispoAtual;
     const data = i.nova
       ? `<span class="de">${i.prevFat || '—'}</span><i class="fa-solid fa-arrow-right seta"></i><span class="para">${i.nova}</span>`
       : `${i.prevFat || '—'}`
         + (i.ja ? `<span class="ja">já estava nessa data</span>` : '')
-        + (defasado && !i.ja ? `<span class="chip mud" title="a DISPO está em ${i.dispoAtual}">DISPO: ${i.dispoAtual}</span>` : '');
-    return `<tr class="${marcados.has(k) ? 'marcada' : ''}">
+        + (defasado && !i.ja ? `<span class="chip mud" title="a DISPO está em ${i.dispoAtual}">atrasada</span>` : '');
+    return cab + `<tr class="${marcados.has(k) ? 'marcada' : ''}">
       <td class="c-chk"><input type="checkbox" ${marcados.has(k) ? 'checked' : ''} onchange="marcar(${k}, this.checked)"></td>
       <td class="c-num mono">${i.num}</td>
       <td class="c-gci mono">${i.gci || '—'}</td>
@@ -389,6 +412,13 @@ function marcar(k, on){
   document.getElementById('chkTodos').checked = marcados.size === LISTA.length && LISTA.length > 0;
   pintarTabela();
 }
+function marcarLote(num){
+  const ids = LISTA.map((i, k) => i.num === String(num) ? k : -1).filter(k => k >= 0);
+  const todosJa = ids.every(k => marcados.has(k));
+  ids.forEach(k => todosJa ? marcados.delete(k) : marcados.add(k));
+  document.getElementById('chkTodos').checked = marcados.size === LISTA.length && LISTA.length > 0;
+  pintarTabela();
+}
 function marcarTodos(on){
   marcados.clear();
   if(on) LISTA.forEach((_, k) => marcados.add(k));
@@ -397,7 +427,9 @@ function marcarTodos(on){
 
 /* as datas que a DISPO já tem para esses números viram atalho */
 function pintarSugestoes(){
-  const datas = [...new Set(LISTA.map(i => i.dispoAtual).filter(Boolean))].sort();
+  const nums = [...new Set(LISTA.map(i => i.num))];
+  const datas = [...new Set(nums.map(n => ((DADOS.lotes || {})[n] || {dispo:[]}).dispo[0]).filter(Boolean))]
+    .sort((a, b) => paraISO(a).localeCompare(paraISO(b)));
   document.getElementById('sugs').innerHTML = datas.length
     ? datas.slice(0, 4).map(d => `<button class="sug" onclick="usarData('${d}')">
         <i class="fa-solid fa-arrow-turn-up" style="font-size:9px"></i> ${d} (DISPO)</button>`).join('')
