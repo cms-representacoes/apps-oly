@@ -600,9 +600,8 @@ function combinar(antigo, novo){
 // preposto = filtro do topo (vale para tudo, tabela inclusive)
 // escolhido = clique na tabela (vale para cartões e gráficos)
 var E = { preposto:'', escolhido:'', abertos:{}, medida:'real', metrica:'qtd', marca:'OLY', segmento:'', faixa:'', ano:'', mes:'' };
-// No começo do mês o realizado é zero e só o potencial (carteira) tem
-// número: abrir no Realizado mostraria a tela inteira zerada. Vale só
-// enquanto o usuário não escolher a medida na mão.
+// A medida com que a tela abre é escolhida pelo dado; vale só enquanto
+// o usuário não escolher na mão.
 var medidaEscolhida = false;
 var S = null, TUDO = false;
 
@@ -1025,8 +1024,10 @@ function ajustarMedida(){
   if(medidaEscolhida) return;
   var mes = base.meses.filter(function(m){ return m.mes === E.mes; })[0];
   if(!mes) return;
-  E.medida = (somaCampo(mes, 'real_qtd') <= 0 && somaCampo(mes, 'pot_qtd') > 0)
-    ? 'pot' : 'real';
+  // A tela abre no potencial: é a carteira, o número que o pessoal
+  // acompanha durante o mês. Mês antigo não tem potencial separado, e
+  // nesse caso cai no realizado em vez de abrir zerado.
+  E.medida = somaCampo(mes, 'pot_qtd') > 0 ? 'pot' : 'real';
 }
 
 function avisos(){
