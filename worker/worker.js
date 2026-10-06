@@ -40,6 +40,7 @@ export default {
       "saveFaturados",
       "saveRateio",
       "saveCampanhas",
+      "saveCancelamentosDispo",
       "resolverMatrizPendente",
       "cadastrarMatrizItem",
       "deleteMatrizItens",
@@ -109,6 +110,8 @@ export default {
     const GITHUB_RATEIO        = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/rateio.json`;
     // Campanhas de incentivo: prêmio por par repassado, por produto e período
     const GITHUB_CAMPANHAS     = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/campanhas.json`;
+    // Cancelamentos de lote da DISPO: o que a fábrica tirou, e quando
+    const GITHUB_CANC_DISPO    = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/cancelamentos-dispo.json`;
     const GITHUB_PREPOSTOS     = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/prepostos.json`;
     // Histórico de pedidos do Catálogo Digital — 1 arquivo por comissionista
     const GITHUB_CAT_HIST_BASE = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/catalogo-historico`;
@@ -1369,6 +1372,24 @@ export default {
           const { sha } = await getFile(GITHUB_CAMPANHAS);
           const lista = Array.isArray(body.data) ? body.data : [];
           await saveFile(GITHUB_CAMPANHAS, lista, sha, "update campanhas");
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getCancelamentosDispo" → o que já foi cancelado na
+        // DISPO. Público: o dashboard lê, e quem abre o dashboard já é da casa.
+        if (body.action === "getCancelamentosDispo") {
+          const { content } = await getFile(GITHUB_CANC_DISPO);
+          const lista = Array.isArray(content) ? content : [];
+          return new Response(JSON.stringify(lista), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"saveCancelamentosDispo" → grava a lista inteira
+        // (write, exige admin). O histórico guarda inclusive o que foi desfeito,
+        // com a marca de quando — apagar a linha esconderia o engano.
+        if (body.action === "saveCancelamentosDispo" && body.data !== undefined) {
+          const { sha } = await getFile(GITHUB_CANC_DISPO);
+          const lista = Array.isArray(body.data) ? body.data : [];
+          await saveFile(GITHUB_CANC_DISPO, lista, sha, "cancelamentos da DISPO");
           return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
         }
 

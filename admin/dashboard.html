@@ -86,6 +86,36 @@
   .cmp-tot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 4px 2px;
     margin-top:4px;border-top:2px solid var(--line);font-size:13px;font-weight:700}
   .cmp-tot span:last-child{font-variant-numeric:tabular-nums}
+  .cmp-k.canc{background:linear-gradient(135deg,#dc2626,#7f1d1d);border-color:transparent;color:#fff}
+  .cmp-k.canc .r,.cmp-k.canc .d{color:rgba(255,255,255,.82)}
+  .canc-l{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--line)}
+  .canc-l:last-child{border-bottom:0}
+  .canc-l .nm{font-weight:600;font-size:13px}
+  .canc-l .bar{flex:1;height:9px;border-radius:999px;background:var(--line);overflow:hidden;min-width:50px}
+  .canc-l .bar i{display:block;height:100%;border-radius:999px;background:#dc2626}
+  .canc-l .pc{font-size:11.5px;color:var(--mute);min-width:40px;text-align:right}
+  .canc-l .vl{font-weight:700;font-size:13px;min-width:92px;text-align:right;font-variant-numeric:tabular-nums}
+  .canc-u{display:grid;grid-template-columns:96px 112px minmax(0,1fr) 108px minmax(0,150px) 110px;
+    gap:10px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line);font-size:12.5px}
+  .canc-u:last-child{border-bottom:0}
+  .canc-u .qd,.canc-u .id{font-variant-numeric:tabular-nums;color:var(--mute);font-size:11.5px}
+  .canc-u .pr{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .canc-u .qt{text-align:right;font-weight:700;color:#dc2626;font-variant-numeric:tabular-nums}
+  .canc-u .qt small{color:var(--mute);font-weight:400;font-size:10.5px}
+  .canc-u .mo,.canc-u .po{color:var(--slate);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  @media(max-width:860px){
+    .canc-u{grid-template-columns:1fr auto;gap:4px 10px}
+    .canc-u .id,.canc-u .mo,.canc-u .po{display:none}
+  }
+  /* no celular a linha quebra em duas: o nome em cima, a barra e o número
+     embaixo — senão o valor some na borda direita */
+  @media(max-width:560px){
+    .canc-l{flex-wrap:wrap;gap:6px 10px}
+    .canc-l .nm{min-width:0!important;flex:1 1 100%}
+    .canc-l .bar{flex:1 1 auto;min-width:70px}
+    .canc-l .vl{min-width:auto;white-space:nowrap}
+    .canc-l .pc{min-width:auto}
+  }
   .cmp-aviso{display:flex;gap:9px;align-items:flex-start;background:var(--line-2);border-radius:12px;
     padding:10px 13px;margin-top:12px;font-size:12.5px;color:var(--slate)}
   @media(max-width:560px){.cmp-mov{display:none}.cmp-nm{min-width:70px;font-size:13px}}
@@ -278,6 +308,27 @@
     </div>
   </div>
 
+  <!-- CANCELAMENTOS DA DISPO -->
+  <div class="block" id="blocoCanc" style="display:none">
+    <div class="block-head">
+      <h3>Cancelamentos do estoque</h3>
+      <span class="block-sub">o que a fábrica tirou — segue o período escolhido</span>
+    </div>
+    <div class="cmp-kpis" id="cancKpis"></div>
+    <div class="card" style="margin-top:14px">
+      <span class="block-sub" style="display:block;margin-bottom:8px">Por motivo</span>
+      <div id="cancMotivos"></div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <span class="block-sub" style="display:block;margin-bottom:8px">Produtos mais cancelados</span>
+      <div id="cancProdutos"></div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <span class="block-sub" style="display:block;margin-bottom:8px">Últimos cancelamentos</span>
+      <div id="cancUltimos"></div>
+    </div>
+  </div>
+
   <!-- PRODUTOS MAIS REPASSADOS -->
   <div class="block">
     <div class="block-head">
@@ -449,6 +500,7 @@ async function loadAll(){
     }
   }catch(e){ console.error(e); }
   await carregarCampanhasDash();
+  await carregarCancelamentosDash();
   icon.className='fa-solid fa-rotate';
   const now=new Date();
   document.getElementById('headerSub').textContent=`Atualizado às ${now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
@@ -458,6 +510,7 @@ async function loadAll(){
 // ── RENDER ────────────────────────────────────────────────────────────────────
 function render(){
   if(CAMPANHAS_LISTA.length && document.getElementById('campSelect').value) renderCampanha();
+  if(CANCELAMENTOS.length) renderCancelamentos();
   const orders=ordersInPeriod();
   const pares=o=>(o.items||[]).reduce((ss,i)=>ss+getItemUnits(i),0);
   // Cancelado nao e repasse: sai da conta.
@@ -501,6 +554,97 @@ function buildDispoMaps(){
     }
   }
   return{pendMap,aprovMap};
+}
+
+/* ── CANCELAMENTOS DA DISPO ─────────────────────────────────────────────
+   O que a fábrica tirou do estoque: quanto, por quê e quem registrou. Segue
+   o período escolhido lá em cima, como o resto do painel. */
+let CANCELAMENTOS = [];
+
+async function carregarCancelamentosDash(){
+  try{
+    const r = await fetch(WORKER_URL, { method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'getCancelamentosDispo' }), cache:'no-store' });
+    CANCELAMENTOS = r.ok ? await r.json() : [];
+    if(!Array.isArray(CANCELAMENTOS)) CANCELAMENTOS = [];
+  }catch(e){ CANCELAMENTOS = []; }
+  renderCancelamentos();
+}
+
+function renderCancelamentos(){
+  const bloco = document.getElementById('blocoCanc');
+  if(!bloco) return;
+  // desfeito não conta: ele devolveu o saldo
+  const todos = CANCELAMENTOS.filter(c => !c.desfeitoEm);
+  const lista = todos.filter(c => dentroDoPeriodo(new Date(c.em)));
+  if(!CANCELAMENTOS.length){ bloco.style.display = 'none'; return; }
+  bloco.style.display = '';
+
+  const pares = lista.reduce((s, c) => s + Number(c.pares || 0), 0);
+  const totais = lista.filter(c => c.total).length;
+  const saldoDispo = STATE.dispoRows.reduce((s, r) => s + Number(r.saldo || 0), 0);
+  const perc = (saldoDispo + pares) > 0 ? (pares / (saldoDispo + pares) * 100) : 0;
+
+  document.getElementById('cancKpis').innerHTML = `
+    <div class="cmp-k"><div class="r">Lotes atingidos</div><div class="v">${fmt(lista.length)}</div>
+      <div class="d">de ${fmt(STATE.dispoRows.length)} na DISPO</div></div>
+    <div class="cmp-k canc"><div class="r">Pares cancelados</div><div class="v">${fmt(pares)}</div>
+      <div class="d">no período</div></div>
+    <div class="cmp-k"><div class="r">Cancelamento total</div><div class="v">${fmt(totais)}</div>
+      <div class="d">lotes que sumiram inteiros</div></div>
+    <div class="cmp-k"><div class="r">Sobre o estoque</div><div class="v">${perc.toFixed(1).replace('.', ',')}%</div>
+      <div class="d">do que havia no período</div></div>`;
+
+  const barras = (mapa, alvo, largura) => {
+    const linhas = [...mapa.entries()].sort((a, b) => b[1] - a[1]);
+    const maior = linhas.length ? linhas[0][1] : 1;
+    const total = linhas.reduce((s, l) => s + l[1], 0) || 1;
+    document.getElementById(alvo).innerHTML = linhas.length ? linhas.map(([nome, q]) => `
+      <div class="canc-l">
+        <span class="nm" style="min-width:${largura}px">${safeAttr(nome)}</span>
+        <span class="bar"><i style="width:${(q / maior * 100).toFixed(1)}%"></i></span>
+        <span class="pc">${Math.round(q / total * 100)}%</span>
+        <span class="vl">${fmt(q)} pares</span>
+      </div>`).join('')
+      : `<div style="text-align:center;padding:18px;color:var(--mute);font-size:13px">Nada no período.</div>`;
+  };
+
+  const porMotivo = new Map();
+  for(const c of lista) porMotivo.set(c.motivo || 'Sem motivo', (porMotivo.get(c.motivo || 'Sem motivo') || 0) + Number(c.pares || 0));
+  barras(porMotivo, 'cancMotivos', 150);
+
+  const porProduto = new Map();
+  for(const c of lista){
+    const k = `${c.produto || '—'} · ${c.cor || '—'}`;
+    porProduto.set(k, (porProduto.get(k) || 0) + Number(c.pares || 0));
+  }
+  barras(porProduto, 'cancProdutos', 170);
+
+  const ultimos = lista.slice().sort((a, b) => String(b.em).localeCompare(String(a.em))).slice(0, 12);
+  document.getElementById('cancUltimos').innerHTML = ultimos.map(c => `
+    <div class="canc-u">
+      <span class="qd">${new Date(c.em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}</span>
+      <span class="id">${safeAttr(c.num)} · ${safeAttr(c.gci || '—')}</span>
+      <span class="pr">${safeAttr(c.produto || '—')} · ${safeAttr(c.cor || '—')}</span>
+      <span class="qt">−${fmt(c.pares)} <small>${c.caixas} cx</small></span>
+      <span class="mo">${safeAttr(c.motivo || '—')}</span>
+      <span class="po">${safeAttr(c.por || '—')}</span>
+    </div>`).join('') || `<div style="text-align:center;padding:18px;color:var(--mute);font-size:13px">Nada no período.</div>`;
+}
+
+/* O mesmo recorte de data que o resto do painel usa. */
+function dentroDoPeriodo(d){
+  if(!(d instanceof Date) || isNaN(d)) return false;
+  const p = STATE.period;
+  if(p === 'tudo') return true;
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  if(p === 'hoje') return d >= hoje;
+  if(p === 'ontem'){
+    const ontem = new Date(hoje.getTime() - 864e5);
+    return d >= ontem && d < hoje;
+  }
+  const dias = { '7d':7, '15d':15, '30d':30 }[p] || 30;
+  return d >= new Date(hoje.getTime() - (dias - 1) * 864e5);
 }
 
 /* ── CAMPANHA DE INCENTIVO ──────────────────────────────────────────────────

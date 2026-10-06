@@ -637,6 +637,65 @@
     .cmp-quem label{ display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;
       padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;user-select:none;margin:0 6px 6px 0 }
     .cmp-quem label:has(input:checked){ border-color:var(--brand);background:var(--brand-soft);color:var(--brand);font-weight:700 }
+    /* ── Cancelamento de lote ───────────────────────────────────── */
+    .canc{ border:1px solid var(--line); border-radius:16px; margin-top:16px; overflow:hidden }
+    .canc-cab{ display:flex; align-items:center; gap:10px; padding:12px 14px; cursor:pointer; background:var(--danger-soft) }
+    .canc-cab .ico{ color:var(--danger) }
+    .canc-cab .t{ font-size:13px; font-weight:800; color:var(--danger) }
+    .canc-cab .s{ font-size:11.5px; color:var(--muted) }
+    .canc-cab .seta{ margin-left:auto; color:var(--muted); font-size:12px; transition:transform .18s }
+    .canc.aberto .canc-cab .seta{ transform:rotate(180deg) }
+    .canc-corpo{ display:none; padding:14px; border-top:1px solid var(--line) }
+    .canc.aberto .canc-corpo{ display:block }
+    .canc-rot{ display:block; font-size:11px; font-weight:700; color:var(--muted); margin-bottom:3px }
+    .canc-opcs{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px }
+    @media(max-width:520px){ .canc-opcs{ grid-template-columns:1fr } }
+    .canc-opc{ display:flex; gap:10px; align-items:flex-start; border:1.5px solid var(--line);
+      border-radius:13px; padding:11px 13px; cursor:pointer; background:var(--card) }
+    .canc-opc:hover{ border-color:var(--danger) }
+    .canc-opc input{ margin-top:3px; accent-color:var(--danger) }
+    .canc-opc b{ display:block; font-size:13px; font-weight:800; color:var(--text) }
+    .canc-opc small{ font-size:11px; color:var(--muted) }
+    .canc-opc.on{ border-color:var(--danger); background:var(--danger-soft) }
+    .canc-qtd{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px }
+    .canc-qtd .passo{ display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:12px; overflow:hidden }
+    .canc-qtd .passo button{ border:0; background:var(--bg); color:var(--text); width:34px; height:36px; font-size:15px; cursor:pointer }
+    .canc-qtd .passo button:hover{ background:var(--brand-soft); color:var(--brand) }
+    .canc-qtd .passo input{ width:68px; border:0; border-left:1px solid var(--line); border-right:1px solid var(--line);
+      border-radius:0; text-align:center; font-size:14px; font-weight:800; background:var(--card); color:var(--text) }
+    .canc-qtd .eq{ font-size:12.5px; color:var(--muted); font-weight:600 }
+    .canc-qtd .eq b{ color:var(--text) }
+    .canc-resumo{ display:flex; gap:16px; flex-wrap:wrap; background:var(--bg); border:1px solid var(--line);
+      border-radius:13px; padding:11px 14px; margin:12px 0 }
+    .canc-resumo > div{ min-width:92px }
+    .canc-resumo .r{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--muted) }
+    .canc-resumo .v{ font-size:17px; font-weight:800; font-variant-numeric:tabular-nums; margin-top:2px; color:var(--text) }
+    .canc-resumo .v.menos{ color:var(--danger) }
+    .canc-resumo .v.fica{ color:var(--success) }
+    .canc-alerta{ display:flex; gap:10px; align-items:flex-start; background:var(--warning-soft);
+      border:1px solid var(--line); border-radius:13px; padding:11px 13px; font-size:12.5px; margin-bottom:12px; color:var(--text) }
+    .canc-alerta i{ color:var(--warning); margin-top:2px }
+    .canc-bt{ flex:1; min-width:170px; background:var(--danger); color:#fff; border:0; border-radius:999px;
+      padding:11px; font-weight:800; font-size:14px; cursor:pointer }
+    .canc-bt:disabled{ opacity:.45; cursor:not-allowed }
+    .canc-hist{ margin-top:12px; border-top:1px dashed var(--line); padding-top:10px }
+    .canc-hist .tit{ font-size:11px; font-weight:700; color:var(--muted); margin-bottom:4px }
+    .canc-hist .l{ display:flex; gap:10px; align-items:center; font-size:12px; padding:5px 0; flex-wrap:wrap }
+    .canc-hist .q{ font-weight:800; color:var(--danger); font-variant-numeric:tabular-nums }
+    .canc-hist .m{ color:var(--muted) }
+    .canc-hist .d{ color:var(--muted); margin-left:auto; font-variant-numeric:tabular-nums }
+    .canc-hist .desfeito{ opacity:.55 }
+    .canc-hist .desfeito .q{ text-decoration:line-through }
+    .canc-bt-mini{ border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:8px;
+      width:28px; height:26px; cursor:pointer; font-size:11px }
+    .canc-bt-mini:hover{ border-color:var(--brand); color:var(--brand) }
+    /* marca na tabela */
+    .td-canc{ color:var(--danger); font-weight:800; font-variant-numeric:tabular-nums }
+    /* o !important é preciso: a linha já recebe cor pela situação (ruptura,
+       baixo, nova), e sem ele o cancelamento não aparece justo onde importa */
+    tbody tr.linha-cancelada > td{ background:var(--danger-soft) !important }
+    tbody tr.linha-canc-parcial > td{ background:var(--warning-soft) !important }
+    tbody tr.linha-cancelada td:nth-child(4){ text-decoration:line-through; opacity:.8 }
     .rateio-inp{ -moz-appearance:textfield; }
     .rateio-inp::-webkit-outer-spin-button, .rateio-inp::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
 
@@ -886,7 +945,9 @@
         <!-- BARRA DE SELEÇÃO (excluir em lote) -->
         <div id="dispoBulkBar" style="display:none;align-items:center;gap:12px;margin-bottom:10px;padding:10px 14px;border-radius:14px;background:var(--brand-soft,#eef0fe);border:1px solid var(--line,#c7cdfb)">
           <span id="dispoBulkCount" style="font-weight:800;color:var(--brand,#3730a3);font-size:13px"></span>
-          <button onclick="excluirSelecionadosDispo()" style="margin-left:auto;display:flex;align-items:center;gap:7px;background:#dc2626;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-trash-can" style="font-size:12px"></i> Excluir selecionados</button>
+          <button onclick="cancelarSelecionadosDispo()" style="margin-left:auto;display:flex;align-items:center;gap:7px;background:var(--danger,#b91c1c);color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-ban" style="font-size:12px"></i> Cancelar selecionados</button>
+          <button onclick="relatorioCancelamentos()" style="background:transparent;border:1px solid var(--line,#c7cdfb);color:var(--brand,#3730a3);border-radius:999px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer" title="Baixar o relatorio de cancelamentos"><i class="fa-solid fa-file-excel"></i> Relatorio</button>
+          <button onclick="excluirSelecionadosDispo()" style="display:flex;align-items:center;gap:7px;background:#dc2626;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-trash-can" style="font-size:12px"></i> Excluir selecionados</button>
           <button onclick="limparSelecaoDispo()" style="background:transparent;border:1px solid var(--line,#c7cdfb);color:var(--brand,#3730a3);border-radius:999px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer">Limpar</button>
         </div>
 
@@ -1067,7 +1128,8 @@ const STATE = {
   filtroMes: '',      // AAAA-MM da Prev. Fat, ou 'sem' para linhas sem data
   filtroNum: '',      // pedaço do Nº digitado na coluna
   rateio: {},
-  campanhas: []
+  campanhas: [],
+  cancelamentos: []
 };
 
 // ── UTILITIES ─────────────────────────────────────────────────────────────────
@@ -1308,6 +1370,8 @@ async function loadDispo(){
       if(rr.ok){ const rj = await rr.json(); STATE.rateio = (rj && typeof rj==='object' && !Array.isArray(rj)) ? rj : {}; }
     }catch(e){ console.warn('Falha ao carregar rateio', e); }
     await carregarCampanhas();
+    await carregarCancelamentos();
+    aplicarCancelamentosNaDispo();
     _bannerShownThisLoad = false;
     $('dispoNotLoaded').classList.add('hidden');
     atualizarBadgeOcultos();
@@ -1466,6 +1530,7 @@ function abrirEditarProduto(num){
     </div>
   `).join('');
 
+  montarBlocoCancelamento(row);
   $('editarProdutoModal').style.display = 'flex';
 }
 
@@ -1611,6 +1676,498 @@ const PREPOSTOS_RATEIO = [
   {codigo:'25745', nome:'LEANDRO'}, {codigo:'3616654', nome:'MARCOS'},
   {codigo:'25846', nome:'CMS'}
 ];
+/* ════════════════════════════════════════════════════════════════════════
+   CANCELAMENTO DE LOTE DA DISPO
+   ------------------------------------------------------------------------
+   A fábrica cancela um lote inteiro ou parte dele. Cancelar aqui DESCONTA o
+   saldo na hora: enquanto o saldo continuar na DISPO, a vitrine oferece o
+   produto e o vendedor pede o que já não existe. A linha não some — fica com
+   o saldo menor e a marca do cancelamento, que é o que permite conferir
+   depois e desfazer.
+
+   Cada cancelamento guarda o saldo de antes. É por ele que se decide, numa
+   reimportação da DISPO, se o desconto precisa ser aplicado de novo: se o
+   arquivo novo trouxer saldo igual ou maior ao de antes, a fábrica ainda não
+   tirou aqueles pares de lá e o desconto se repete; se vier menor, ela já
+   tirou e repetir seria descontar duas vezes.
+   ════════════════════════════════════════════════════════════════════════ */
+const MOTIVOS_CANC = [
+  'Cancelado pela fábrica',
+  'Ruptura de material',
+  'Reprogramação de entrega',
+  'Erro de digitação na DISPO',
+  'Pedido mãe cancelado',
+  'Outro',
+];
+
+async function carregarCancelamentos(){
+  try{
+    const r = await workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'getCancelamentosDispo' }) });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    STATE.cancelamentos = Array.isArray(j) ? j : [];
+  }catch(e){
+    console.warn('Falha ao carregar cancelamentos', e);
+    STATE.cancelamentos = [];
+  }
+}
+
+// os que ainda valem (desfeito deixa de contar, mas continua no histórico)
+const cancelamentosAtivos = () => (STATE.cancelamentos || []).filter(c => !c.desfeitoEm);
+
+function cancelamentosDoNum(num){
+  const n = String(num ?? '').trim();
+  return cancelamentosAtivos().filter(c => String(c.num) === n);
+}
+function paresCanceladosDoNum(num){
+  return cancelamentosDoNum(num).reduce((s, c) => s + Number(c.pares || 0), 0);
+}
+
+/* Pares por caixa da linha: é a soma da grade, que descreve UMA caixa.
+   Sem grade, a caixa é o próprio saldo (lote de uma peça só). */
+function paresPorCaixa(row){
+  const g = row && row.grade || {};
+  const soma = Object.values(g).reduce((a, v) => a + (Number(v) || 0), 0);
+  return soma > 0 ? soma : 0;
+}
+function caixasDaLinha(row){
+  const pc = paresPorCaixa(row);
+  return pc > 0 ? Math.floor(Number(row.saldo || 0) / pc) : 0;
+}
+
+/* Reaplica na DISPO recém-carregada o que foi cancelado antes — ver o porquê
+   no cabeçalho deste bloco. */
+function aplicarCancelamentosNaDispo(){
+  const porNum = new Map();
+  for(const c of cancelamentosAtivos()){
+    const n = String(c.num);
+    if(!porNum.has(n)) porNum.set(n, []);
+    porNum.get(n).push(c);
+  }
+  let mexidas = 0;
+  for(const row of (STATE.dispoRows || [])){
+    const lista = porNum.get(String(row.num));
+    if(!lista) continue;
+    for(const c of lista){
+      const saldoAntes = Number(c.saldoAntes || 0);
+      if(Number(row.saldo || 0) >= saldoAntes && saldoAntes > 0){
+        row.saldo = Math.max(0, Number(row.saldo || 0) - Number(c.pares || 0));
+        mexidas++;
+      }
+    }
+  }
+  if(mexidas) console.log(`[cancelamentos] ${mexidas} desconto(s) reaplicado(s) na DISPO`);
+}
+
+/* ---------- cancelar vários de uma vez ----------
+   Quando a fábrica derruba um pedido mãe inteiro são dezenas de linhas; uma a
+   uma seria digitação. O motivo vale para todas, e cada linha gera o seu
+   próprio registro — é o que permite desfazer uma sem mexer nas outras. */
+async function cancelarSelecionadosDispo(){
+  const nums = Array.from(_dispoSelecionados);
+  if(!nums.length) return;
+  const linhas = STATE.dispoRows.filter(r => nums.includes(String(r.num || '')) && Number(r.saldo || 0) > 0);
+  if(!linhas.length){ showToast('As linhas marcadas já estão sem saldo.', 'info'); return; }
+
+  const pares = linhas.reduce((a, r) => a + Number(r.saldo || 0), 0);
+  const comPedido = linhas.filter(r => { const p = pedidosDoNum(r.num); return (p.pendente + p.aprovado) > 0; });
+
+  const motivo = await uiEscolher({
+    title: `Cancelar ${linhas.length} lote${linhas.length > 1 ? 's' : ''}`,
+    message: `Serão descontados ${formatInt(pares)} pares, o saldo inteiro das linhas marcadas.`
+      + (comPedido.length ? `\n\nAtenção: ${comPedido.length} dela${comPedido.length > 1 ? 's já têm' : ' já tem'} pedido de cliente.` : '')
+      + `\n\nEscolha o motivo:`,
+    opcoes: MOTIVOS_CANC,
+  });
+  if(!motivo) return;
+
+  const antes = linhas.map(r => ({ r, saldo: Number(r.saldo || 0) }));
+  const novos = [];
+  try{
+    for(const item of antes){
+      const reg = montarCancelamento(item.r, caixasDaLinha(item.r) || 1, motivo, 'cancelamento em lote');
+      reg.pares = item.saldo; reg.saldoDepois = 0; reg.total = true;
+      novos.push(reg);
+      item.r.saldo = 0;
+    }
+    await gravarDispo();
+    await gravarCancelamentos([...(STATE.cancelamentos || []), ...novos]);
+    limparSelecaoDispo();
+    renderDispo();
+    showToast(`${linhas.length} lote(s) cancelados · ${formatInt(pares)} pares.`, 'success');
+  }catch(err){
+    console.error(err);
+    for(const item of antes) item.r.saldo = item.saldo;
+    renderDispo();
+    showToast('Erro ao cancelar em lote. Nada foi alterado.', 'error');
+  }
+}
+
+/* Caixa de diálogo com lista de opções, no mesmo molde do uiConfirm. */
+function uiEscolher(opts){
+  const { title, message, opcoes } = opts;
+  return new Promise(resolve => {
+    const fundo = document.createElement('div');
+    fundo.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(2,6,23,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+    fundo.innerHTML = [
+      '<div style="width:100%;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">',
+      '<div style="font-size:16px;font-weight:900;color:var(--text)">' + safeHtml(title) + '</div>',
+      '<div style="font-size:13px;color:var(--muted);margin:8px 0 14px;white-space:pre-line">' + safeHtml(message) + '</div>',
+      '<select id="__esc" style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px;font-weight:600;background:var(--bg);color:var(--text)">',
+      '<option value="">Escolha…</option>',
+      opcoes.map(o => '<option>' + safeHtml(o) + '</option>').join(''),
+      '</select>',
+      '<div style="display:flex;gap:10px;margin-top:16px">',
+      '<button id="__ok" disabled style="flex:1;background:var(--danger);color:#fff;border:0;border-radius:999px;padding:10px;font-weight:800;font-size:13px;cursor:pointer;opacity:.45">Cancelar lotes</button>',
+      '<button id="__no" style="background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer">Voltar</button>',
+      '</div></div>',
+    ].join('');
+    document.body.appendChild(fundo);
+    const sel = fundo.querySelector('#__esc'), ok = fundo.querySelector('#__ok');
+    sel.onchange = () => { ok.disabled = !sel.value; ok.style.opacity = sel.value ? '1' : '.45'; };
+    const fim = v => { fundo.remove(); resolve(v); };
+    ok.onclick = () => fim(sel.value);
+    fundo.querySelector('#__no').onclick = () => fim(null);
+    fundo.onclick = e => { if(e.target === fundo) fim(null); };
+  });
+}
+
+/* ---------- relatório em xlsx ----------
+   Sem biblioteca: o xlsx é um zip de XML, e é o formato que o financeiro abre. */
+function relatorioCancelamentos(){
+  const lista = (STATE.cancelamentos || []).slice()
+    .sort((a, b) => String(b.em).localeCompare(String(a.em)));
+  if(!lista.length){ showToast('Nenhum cancelamento registrado ainda.', 'info'); return; }
+
+  const cab = ['Data', 'Nº', 'GCI', 'Código', 'Produto', 'Cor', 'Prev. Fat',
+               'Caixas', 'Pares cancelados', 'Saldo antes', 'Saldo depois',
+               'Motivo', 'Observação', 'Por', 'Situação'];
+  const linhas = lista.map(c => [
+    new Date(c.em).toLocaleString('pt-BR'),
+    c.num, c.gci, c.codigo, c.produto, c.cor, c.dataEntrega || '',
+    Number(c.caixas || 0), Number(c.pares || 0), Number(c.saldoAntes || 0), Number(c.saldoDepois || 0),
+    c.motivo || '', c.obs || '', c.por || '',
+    c.desfeitoEm ? ('Desfeito em ' + new Date(c.desfeitoEm).toLocaleString('pt-BR') + ' por ' + (c.desfeitoPor || '—')) : 'Ativo',
+  ]);
+  const hoje = new Date().toLocaleDateString('pt-BR').split('/').join('-');
+  baixarXlsxCanc(cab, linhas, 'CANCELAMENTOS DISPO ' + hoje + '.xlsx');
+}
+
+function baixarXlsxCanc(cab, linhas, nome){
+  const esc = v => String(v == null ? '' : v).split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;');
+  const col = i => { let s = '', n = i + 1; while(n > 0){ const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); } return s; };
+  const LARG = [19, 8, 12, 12, 26, 14, 12, 9, 16, 12, 13, 24, 24, 16, 30];
+  const celula = (v, l, i) => (typeof v === 'number' && isFinite(v))
+    ? '<c r="' + col(i) + l + '" s="2"><v>' + v + '</v></c>'
+    : '<c r="' + col(i) + l + '" s="' + (l === 1 ? 1 : 2) + '" t="inlineStr"><is><t xml:space="preserve">' + esc(v) + '</t></is></c>';
+  const linhaXml = (arr, l) => '<row r="' + l + '">' + arr.map((v, i) => celula(v, l, i)).join('') + '</row>';
+  const cols = cab.map((_, i) => '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + (LARG[i] || 14) + '" customWidth="1"/>').join('');
+  const corpo = [linhaXml(cab, 1)].concat(linhas.map((r, k) => linhaXml(r, k + 2))).join('');
+  const sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    + '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols>' + cols + '</cols>'
+    + '<sheetData>' + corpo + '</sheetData>'
+    + '<autoFilter ref="A1:' + col(cab.length - 1) + (linhas.length + 1) + '"/></worksheet>';
+
+  const styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    + '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+    + '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font>'
+    + '<font><b/><color rgb="FFFFFFFF"/><sz val="11"/><name val="Calibri"/></font></fonts>'
+    + '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>'
+    + '<fill><patternFill patternType="solid"><fgColor rgb="FFB91C1C"/><bgColor indexed="64"/></patternFill></fill></fills>'
+    + '<borders count="1"><border/></borders><cellStyleXfs count="1"><xf/></cellStyleXfs>'
+    + '<cellXfs count="3"><xf/>'
+    + '<xf fontId="1" fillId="2" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
+    + '<xf applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf></cellXfs></styleSheet>';
+
+  const arquivos = {
+    '[Content_Types].xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+      + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+      + '<Default Extension="xml" ContentType="application/xml"/>'
+      + '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+      + '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+      + '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
+    '_rels/.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
+    'xl/workbook.xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+      + '<sheets><sheet name="Cancelamentos" sheetId="1" r:id="rId1"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+      + '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+    'xl/styles.xml': styles,
+    'xl/worksheets/sheet1.xml': sheet,
+  };
+
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(zipSimples(arquivos));
+  a.download = nome;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  showToast('Relatório com ' + linhas.length + ' cancelamento(s).', 'success');
+}
+
+/* zip sem compressão (store): basta para XML pequeno e evita dependência */
+function zipSimples(arquivos){
+  const enc = new TextEncoder();
+  const tabela = new Uint32Array(256);
+  for(let n = 0; n < 256; n++){
+    let c = n;
+    for(let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    tabela[n] = c >>> 0;
+  }
+  const crc32 = u8 => {
+    let c = 0xFFFFFFFF;
+    for(let i = 0; i < u8.length; i++) c = tabela[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  };
+
+  const partes = [], central = [];
+  let desloc = 0, n = 0;
+  for(const nome of Object.keys(arquivos)){
+    const bn = enc.encode(nome), d = enc.encode(arquivos[nome]), crc = crc32(d);
+    const loc = new DataView(new ArrayBuffer(30));
+    loc.setUint32(0, 0x04034b50, true); loc.setUint16(4, 20, true);
+    loc.setUint32(14, crc, true); loc.setUint32(18, d.length, true); loc.setUint32(22, d.length, true);
+    loc.setUint16(26, bn.length, true);
+    partes.push(new Uint8Array(loc.buffer), bn, d);
+
+    const cen = new DataView(new ArrayBuffer(46));
+    cen.setUint32(0, 0x02014b50, true); cen.setUint16(4, 20, true); cen.setUint16(6, 20, true);
+    cen.setUint32(16, crc, true); cen.setUint32(20, d.length, true); cen.setUint32(24, d.length, true);
+    cen.setUint16(28, bn.length, true); cen.setUint32(42, desloc, true);
+    central.push(new Uint8Array(cen.buffer), bn);
+    desloc += 30 + bn.length + d.length;
+    n++;
+  }
+  const tamCentral = central.reduce((a, p) => a + p.length, 0);
+  const fim = new DataView(new ArrayBuffer(22));
+  fim.setUint32(0, 0x06054b50, true);
+  fim.setUint16(8, n, true); fim.setUint16(10, n, true);
+  fim.setUint32(12, tamCentral, true); fim.setUint32(16, desloc, true);
+  return new Blob(partes.concat(central, [new Uint8Array(fim.buffer)]),
+    { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+/* ---------- o bloco dentro do modal ---------- */
+let _cancRow = null;
+
+function montarBlocoCancelamento(row){
+  _cancRow = row;
+  const bloco = $('blocoCanc');
+  if(!bloco) return;
+  bloco.classList.remove('aberto');
+
+  const pc = paresPorCaixa(row);
+  const cx = caixasDaLinha(row);
+  $('cancSubTudo').textContent = pc
+    ? `as ${cx} caixa${cx === 1 ? '' : 's'} · ${formatInt(row.saldo || 0)} pares`
+    : `${formatInt(row.saldo || 0)} pares`;
+  $('cancTotCaixas').textContent = cx || '—';
+  const q = $('cancCaixas');
+  q.max = cx || 1;
+  q.value = 1;
+  // sem grade não há caixa: só dá para cancelar tudo
+  $('cancOpcParte').style.display = pc ? '' : 'none';
+  document.querySelector('input[name=canctipo][value=tudo]').checked = true;
+
+  $('cancMotivo').innerHTML = '<option value="">Escolha…</option>' +
+    MOTIVOS_CANC.map(m => `<option>${safeHtml(m)}</option>`).join('');
+  $('cancObs').value = '';
+
+  // o que já foi pedido deste lote: é o aviso que evita prometer o que não vai chegar
+  const { pendente, aprovado } = pedidosDoNum(row.num);
+  const al = $('cancAlerta');
+  al.hidden = (pendente + aprovado) === 0;
+  if(!al.hidden){
+    $('cancAlertaTxt').innerHTML =
+      `<b>Este lote tem pedido.</b> ${formatInt(aprovado)} pares aprovados` +
+      (pendente ? ` e ${formatInt(pendente)} pendentes` : '') +
+      ` já foram prometidos a clientes. Cancelando, alguém vai ficar sem — avise o vendedor.`;
+  }
+
+  pintarHistoricoCanc(row.num);
+  cancTrocarTipo();
+}
+
+/* Quanto deste Nº já está em pedido (pendente e aprovado). */
+function pedidosDoNum(num){
+  const n = sanitizeDisplayText(String(num ?? ''));
+  let pendente = 0, aprovado = 0;
+  for(const o of (STATE.orders || [])){
+    if(o.archived) continue;
+    const st = canonicalStatus(o.status);
+    if(st === 'Cancelado') continue;
+    for(const it of (o.items || [])){
+      if(sanitizeDisplayText(String(it.num || '')) !== n) continue;
+      const u = getItemUnits(it);
+      if(st === 'Aprovado') aprovado += u; else pendente += u;
+    }
+  }
+  return { pendente, aprovado };
+}
+
+function pintarHistoricoCanc(num){
+  const h = $('cancHist');
+  const lista = (STATE.cancelamentos || []).filter(c => String(c.num) === String(num ?? ''))
+    .sort((a, b) => String(b.em).localeCompare(String(a.em)));
+  if(!lista.length){ h.innerHTML = ''; return; }
+  h.innerHTML = '<div class="tit">JÁ CANCELADO NESTE LOTE</div>' + lista.map(c => `
+    <div class="l${c.desfeitoEm ? ' desfeito' : ''}">
+      <span class="q">−${formatInt(c.pares)} pares</span>
+      <span class="m">${c.caixas} cx · ${safeHtml(c.motivo || '—')} · por ${safeHtml(c.por || '—')}${
+        c.desfeitoEm ? ' · desfeito por ' + safeHtml(c.desfeitoPor || '—') : ''}</span>
+      <span class="d">${new Date(c.em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' })}</span>
+      ${c.desfeitoEm ? '' : `<button class="canc-bt-mini" title="Desfazer este cancelamento"
+        onclick="desfazerCancelamento('${c.id}')"><i class="fa-solid fa-rotate-left"></i></button>`}
+    </div>`).join('');
+}
+
+function cancTrocarTipo(){
+  const tudo = document.querySelector('input[name=canctipo]:checked').value === 'tudo';
+  $('cancOpcTudo').classList.toggle('on', tudo);
+  $('cancOpcParte').classList.toggle('on', !tudo);
+  $('cancAreaParcial').hidden = tudo;
+  cancRecalcular();
+}
+function cancPasso(d){
+  const q = $('cancCaixas');
+  const max = caixasDaLinha(_cancRow) || 1;
+  q.value = Math.max(1, Math.min(max, Number(q.value || 0) + d));
+  cancRecalcular();
+}
+function cancRecalcular(){
+  if(!_cancRow) return;
+  const tudo = document.querySelector('input[name=canctipo]:checked').value === 'tudo';
+  const pc = paresPorCaixa(_cancRow);
+  const maxCx = caixasDaLinha(_cancRow);
+  const cx = tudo ? maxCx : Math.max(0, Math.min(maxCx, Number($('cancCaixas').value || 0)));
+  const saldo = Number(_cancRow.saldo || 0);
+  const pares = tudo ? saldo : (pc ? cx * pc : saldo);
+  $('cancPares').textContent = formatInt(pares);
+  $('cancHoje').textContent = formatInt(saldo);
+  $('cancMenos').textContent = '−' + formatInt(pares);
+  $('cancFica').textContent = formatInt(Math.max(0, saldo - pares));
+  $('cancRotulo').textContent = tudo
+    ? 'Cancelar o lote inteiro'
+    : `Cancelar ${cx} caixa${cx === 1 ? '' : 's'} · ${formatInt(pares)} pares`;
+  $('cancBtConfirmar').disabled = !$('cancMotivo').value || pares <= 0 || saldo <= 0;
+}
+
+async function confirmarCancelamento(){
+  if(!_cancRow) return;
+  const row = _cancRow;
+  const tudo = document.querySelector('input[name=canctipo]:checked').value === 'tudo';
+  const maxCx = caixasDaLinha(row);
+  const cx = tudo ? (maxCx || 1) : Number($('cancCaixas').value || 0);
+  const motivo = $('cancMotivo').value;
+  const reg = montarCancelamento(row, cx, motivo, $('cancObs').value.trim());
+  if(tudo){ reg.pares = Number(row.saldo || 0); reg.saldoDepois = 0; reg.total = true; reg.caixas = maxCx || reg.caixas; }
+
+  const ok = await uiConfirm({
+    title: tudo ? 'Cancelar o lote inteiro' : 'Cancelar parte do lote',
+    message: `${row.produto || '—'} · ${row.cor || '—'} (Nº ${row.num})\n\n` +
+             `Serão descontados ${formatInt(reg.pares)} pares — o saldo vai de ${formatInt(reg.saldoAntes)} para ${formatInt(reg.saldoDepois)}.\n` +
+             `Motivo: ${motivo}`,
+    okText: 'Cancelar lote',
+  });
+  if(!ok) return;
+
+  const btn = $('cancBtConfirmar');
+  btn.disabled = true;
+  try{
+    row.saldo = reg.saldoDepois;
+    await gravarDispo();
+    await gravarCancelamentos([...(STATE.cancelamentos || []), reg]);
+    showToast(`${formatInt(reg.pares)} pares cancelados.`, 'success');
+    fecharEditarProduto();
+    renderDispo();
+  }catch(err){
+    console.error(err);
+    row.saldo = reg.saldoAntes;      // desfaz na tela o que não foi gravado
+    showToast('Erro ao cancelar. Nada foi alterado.', 'error');
+  }finally{ btn.disabled = false; }
+}
+
+async function desfazerCancelamento(id){
+  const reg = (STATE.cancelamentos || []).find(c => c.id === id);
+  if(!reg || reg.desfeitoEm) return;
+  const row = STATE.dispoRows.find(r => String(r.num) === String(reg.num));
+  const ok = await uiConfirm({
+    title: 'Desfazer cancelamento',
+    message: `Devolver ${formatInt(reg.pares)} pares ao Nº ${reg.num}?\n\n` +
+             `O saldo volta de ${formatInt(row ? row.saldo : 0)} para ${formatInt((row ? Number(row.saldo||0) : 0) + Number(reg.pares||0))}.`,
+    okText: 'Desfazer',
+  });
+  if(!ok) return;
+  const antes = row ? Number(row.saldo || 0) : null;
+  try{
+    if(row) row.saldo = antes + Number(reg.pares || 0);
+    if(row) await gravarDispo();
+    // o registro não é apagado: fica marcado como desfeito, com quem e quando
+    const lista = (STATE.cancelamentos || []).map(c => c.id === id
+      ? { ...c, desfeitoEm: new Date().toISOString(),
+          desfeitoPor: (getPortalSession() && getPortalSession().nome) || 'CMS' }
+      : c);
+    await gravarCancelamentos(lista);
+    showToast('Cancelamento desfeito — saldo devolvido.', 'success');
+    if(_cancRow) pintarHistoricoCanc(_cancRow.num);
+    renderDispo();
+  }catch(err){
+    console.error(err);
+    if(row && antes !== null) row.saldo = antes;
+    showToast('Não foi possível desfazer.', 'error');
+  }
+}
+
+/* ---------- gravação ---------- */
+async function gravarCancelamentos(lista){
+  const r = await workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ action:'saveCancelamentosDispo', data: lista }) });
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  const j = await r.json();
+  if(!j.success) throw new Error(j.error || 'Erro ao gravar');
+  STATE.cancelamentos = lista;
+}
+
+async function gravarDispo(){
+  const res = await workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ action:'saveDispo', data: STATE.dispoRows.map(r => ({
+      num: r.num, ebm: r.ebm, gci: r.gci, filial: r.filial,
+      codigo: r.codigo, produto: r.produto, cor: r.cor,
+      dataEntrega: r.dataEntrega, pedidoMae: r.pedidoMae,
+      saldo: r.saldo, grade: r.grade || {}
+    }))})
+  });
+  if(!res.ok) throw new Error('Falha ao salvar a DISPO');
+  const j = await res.json();
+  if(!j.success) throw new Error(j.error || 'Erro ao salvar a DISPO');
+}
+
+/* Cancela um lote (ou parte). Devolve o registro criado. */
+function montarCancelamento(row, caixas, motivo, obs){
+  const pc = paresPorCaixa(row);
+  const totalCx = caixasDaLinha(row);
+  const cx = Math.max(1, Math.min(totalCx || 1, Number(caixas || 0)));
+  const pares = pc > 0 ? cx * pc : Number(row.saldo || 0);
+  const saldoAntes = Number(row.saldo || 0);
+  return {
+    id: 'x' + Date.now() + Math.random().toString(36).slice(2, 6),
+    num: String(row.num ?? ''), gci: String(row.gci ?? ''), codigo: String(row.codigo ?? ''),
+    produto: row.produto || '', cor: row.cor || '', filial: String(row.filial ?? ''),
+    dataEntrega: row.dataEntrega || '',
+    caixas: cx, porCaixa: pc, pares: Math.min(pares, saldoAntes),
+    saldoAntes, saldoDepois: Math.max(0, saldoAntes - pares),
+    total: pares >= saldoAntes,
+    motivo: motivo || '', obs: obs || '',
+    por: (getPortalSession() && getPortalSession().nome) || 'CMS',
+    em: new Date().toISOString(),
+  };
+}
+
 /* ════════════════════════════════════════════════════════════════════════
    CAMPANHAS DE INCENTIVO
    A regra de apuração vive em ../js/campanhas.js, a mesma que o dashboard e
@@ -2145,6 +2702,7 @@ function renderDispo(){
 
   $('dispoTableBody').innerHTML = sorted.map((row, idx) => {
     const sit = row.situacao;
+    const cancPares = paresCanceladosDoNum(row.num);
     const isNovaDestinoAntecipacao = sorted.some(r => r._antecipavel?.novaLinha?.gci === row.gci);
     const rowClass = [sit.rowClass, row._antecipavel ? 'row-antecipa' : '', isNovaDestinoAntecipacao ? 'row-nova-dispo' : ''].filter(Boolean).join(' ');
     const saldoRealDisplay = row.saldoReal < 0
@@ -2162,7 +2720,7 @@ function renderDispo(){
       : isParcial ? '<span class="badge-parcial ml-1">Parcial</span>' : '';
 
     return `
-      <tr class="${rowClass}">
+      <tr class="${rowClass}${cancPares ? (Number(row.saldo||0) <= 0 ? ' linha-cancelada' : ' linha-canc-parcial') : ''}">
         <td class="td-chk" style="text-align:center"><input type="checkbox" class="dispo-chk" data-num="${safeHtml(String(row.num||''))}" ${_dispoSelecionados.has(String(row.num||'')) ? 'checked' : ''}></td>
         <td class="tabular-nums font-semibold text-slate-400 text-[11px]">${safeHtml(row.num||'—')}</td>
         <td class="font-extrabold tabular-nums text-[var(--brand)] text-xs">${safeHtml(row.gci||row.codigo||'—')}</td>
@@ -2176,7 +2734,7 @@ function renderDispo(){
           ${safeHtml(formatDate(row.dataEntrega))}
           ${isNovaDestinoAntecipacao ? '<span class="badge-nova">Nova</span>' : ''}
         </td>
-        <td class="text-right font-extrabold tabular-nums">${formatInt(row.saldo)}</td>
+        <td class="text-right font-extrabold tabular-nums">${formatInt(row.saldo)}${cancPares ? `<div class="td-canc" style="font-size:10.5px" title="${cancPares} pares cancelados">-${formatInt(cancPares)}</div>` : ''}</td>
         <td class="col-pendente text-right tabular-nums ${row.pendente > 0 ? 'text-amber-600 font-extrabold' : 'text-slate-400 font-semibold'}">${formatInt(row.pendente)}</td>
         <td class="col-aprovado text-right tabular-nums ${row.aprovado > 0 ? 'text-emerald-600 font-extrabold' : 'text-slate-400 font-semibold'}">${formatInt(row.aprovado)}</td>
         <td class="text-right tabular-nums">${saldoRealDisplay}</td>
@@ -3353,6 +3911,77 @@ loadDispo();
     <div style="margin-top:14px">
       <label style="font-size:11px;font-weight:700;color:var(--muted)">Grade (quantidade por tamanho)</label>
       <div id="editGradeGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;margin-top:6px"></div>
+    </div>
+
+    <!-- ── Cancelar lote ─────────────────────────────────────────────
+         Vive dentro do modal de editar porque é ali que se olha o lote; fica
+         recolhido para não virar botão de aperto fácil. -->
+    <div class="canc" id="blocoCanc">
+      <div class="canc-cab" onclick="document.getElementById('blocoCanc').classList.toggle('aberto')">
+        <i class="fa-solid fa-ban ico"></i>
+        <div>
+          <div class="t">Cancelar lote</div>
+          <div class="s">total ou parte — desconta o saldo e fica registrado</div>
+        </div>
+        <i class="fa-solid fa-chevron-down seta"></i>
+      </div>
+      <div class="canc-corpo">
+        <div class="canc-alerta" id="cancAlerta" hidden>
+          <i class="fa-solid fa-triangle-exclamation"></i><div id="cancAlertaTxt"></div>
+        </div>
+
+        <div class="canc-opcs">
+          <label class="canc-opc on" id="cancOpcTudo">
+            <input type="radio" name="canctipo" value="tudo" checked onchange="cancTrocarTipo()">
+            <span><b>Cancelar tudo</b><small id="cancSubTudo">o lote inteiro</small></span>
+          </label>
+          <label class="canc-opc" id="cancOpcParte">
+            <input type="radio" name="canctipo" value="parte" onchange="cancTrocarTipo()">
+            <span><b>Cancelar parte</b><small>escolher quantas caixas</small></span>
+          </label>
+        </div>
+
+        <div id="cancAreaParcial" hidden>
+          <label class="canc-rot">Quantas caixas cancelar</label>
+          <div class="canc-qtd">
+            <span class="passo">
+              <button type="button" onclick="cancPasso(-1)">&minus;</button>
+              <input type="number" id="cancCaixas" min="1" value="1" oninput="cancRecalcular()">
+              <button type="button" onclick="cancPasso(1)">+</button>
+            </span>
+            <span class="eq">de <b id="cancTotCaixas">—</b> caixas · <b id="cancPares">—</b> pares</span>
+          </div>
+        </div>
+
+        <div class="canc-resumo">
+          <div><div class="r">Saldo hoje</div><div class="v" id="cancHoje">—</div></div>
+          <div><div class="r">Cancelando</div><div class="v menos" id="cancMenos">—</div></div>
+          <div><div class="r">Fica com</div><div class="v fica" id="cancFica">—</div></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label class="canc-rot">Motivo</label>
+            <select id="cancMotivo" onchange="cancRecalcular()"
+              style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)"></select>
+          </div>
+          <div>
+            <label class="canc-rot">Observação (opcional)</label>
+            <input id="cancObs" type="text" placeholder="nº do e-mail, quem avisou…"
+              style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
+          </div>
+        </div>
+
+        <div class="canc-hist" id="cancHist"></div>
+
+        <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+          <button class="canc-bt" id="cancBtConfirmar" onclick="confirmarCancelamento()">
+            <i class="fa-solid fa-ban"></i> <span id="cancRotulo">Cancelar o lote inteiro</span>
+          </button>
+          <button type="button" onclick="document.getElementById('blocoCanc').classList.remove('aberto')"
+            style="background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:11px 16px;font-weight:700;font-size:13px;cursor:pointer">Voltar</button>
+        </div>
+      </div>
     </div>
 
     <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
