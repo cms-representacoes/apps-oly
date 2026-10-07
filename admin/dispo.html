@@ -1371,7 +1371,7 @@ async function loadDispo(){
     }catch(e){ console.warn('Falha ao carregar rateio', e); }
     await carregarCampanhas();
     await carregarCancelamentos();
-    aplicarCancelamentosNaDispo();
+    await reaplicarEPersistir();
     _bannerShownThisLoad = false;
     $('dispoNotLoaded').classList.add('hidden');
     atualizarBadgeOcultos();
@@ -1757,7 +1757,25 @@ function aplicarCancelamentosNaDispo(){
       }
     }
   }
-  if(mexidas) console.log(`[cancelamentos] ${mexidas} desconto(s) reaplicado(s) na DISPO`);
+  return mexidas;
+}
+
+/* A importação da DISPO traz o saldo cheio de volta, porque a fábrica não
+   sabe do cancelamento. Reaplicar só na memória do admin não bastava: as
+   vitrines leem o dispo.json do servidor e voltavam a oferecer o que foi
+   cancelado. Então o que for reaplicado é gravado. */
+async function reaplicarEPersistir(){
+  const mexidas = aplicarCancelamentosNaDispo();
+  if(!mexidas) return;
+  console.log(`[cancelamentos] ${mexidas} desconto(s) reaplicado(s) na DISPO`);
+  try{
+    await gravarDispo();
+    showToast(`${mexidas} cancelamento(s) reaplicado(s) no saldo.`, 'info');
+  }catch(e){
+    console.error(e);
+    showToast('Os cancelamentos foram reaplicados aqui, mas não gravaram — ' +
+              'as vitrines seguem com o saldo cheio.', 'error');
+  }
 }
 
 /* ---------- cancelar vários de uma vez ----------
@@ -1791,8 +1809,16 @@ async function cancelarSelecionadosDispo(){
       novos.push(reg);
       item.r.saldo = 0;
     }
-    await gravarDispo();
-    await gravarCancelamentos([...(STATE.cancelamentos || []), ...novos]);
+    // o registro vai antes do saldo, como no cancelamento de um lote só
+    const guardados = STATE.cancelamentos || [];
+    await gravarCancelamentos([...guardados, ...novos]);
+    try{
+      await gravarDispo();
+    }catch(err){
+      for(const item of antes) item.r.saldo = item.saldo;
+      await gravarCancelamentos(guardados);   // tira o registro que ficou sozinho
+      throw err;
+    }
     limparSelecaoDispo();
     renderDispo();
     showToast(`${linhas.length} lote(s) cancelados · ${formatInt(pares)} pares.`, 'success');
@@ -2078,17 +2104,38 @@ async function confirmarCancelamento(){
 
   const btn = $('cancBtConfirmar');
   btn.disabled = true;
+  /* O registro vai primeiro e a DISPO depois. Na ordem contrária, um erro ao
+     gravar o registro deixava o saldo já descontado no servidor enquanto a
+     tela dizia "nada foi alterado" — e a gravação seguinte, vinda de uma tela
+     com o saldo antigo na memória, devolvia tudo. */
+  const antes = STATE.cancelamentos || [];
+  try{
+    await gravarCancelamentos([...antes, reg]);
+  }catch(err){
+    console.error(err);
+    showToast('Não consegui registrar o cancelamento. Nada foi alterado.', 'error');
+    btn.disabled = false;
+    return;
+  }
   try{
     row.saldo = reg.saldoDepois;
     await gravarDispo();
-    await gravarCancelamentos([...(STATE.cancelamentos || []), reg]);
     showToast(`${formatInt(reg.pares)} pares cancelados.`, 'success');
     fecharEditarProduto();
     renderDispo();
   }catch(err){
     console.error(err);
-    row.saldo = reg.saldoAntes;      // desfaz na tela o que não foi gravado
-    showToast('Erro ao cancelar. Nada foi alterado.', 'error');
+    row.saldo = reg.saldoAntes;
+    // o registro já foi: tira de volta, senão ele sozinho desconta na
+    // próxima carga e o saldo some sem ninguém ter mandado
+    try{ await gravarCancelamentos(antes); }
+    catch(e2){ console.error(e2);
+      showToast('O saldo não foi gravado, mas o cancelamento ficou registrado. ' +
+                'Desfaça pelo histórico do produto.', 'error');
+      btn.disabled = false;
+      return;
+    }
+    showToast('Erro ao gravar o saldo. Nada foi alterado.', 'error');
   }finally{ btn.disabled = false; }
 }
 
