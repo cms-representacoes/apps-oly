@@ -5831,25 +5831,45 @@ function dtAplicar(){
 /* A data do lote na DISPO. É dela que saem o estoque, a vitrine do
    Repasses e a CMS PASS: o pedido guarda a sua cópia, feita no momento do
    repasse, e mudar só o pedido deixava as outras telas na data velha. */
+/* Grava a DISPO inteira num pedido só — e por isso precisa partir do que
+   está no servidor AGORA, não da cópia lida quando a tela abriu. Partindo da
+   cópia velha, um saldo que o admin da DISPO acabou de mexer voltava ao que
+   era, e o trabalho da outra tela sumia sem aviso. */
 async function dtGravarDispo(porNum){
-  if(!_dispoRows || !_dispoRows.length) throw new Error('A DISPO não está carregada');
+  const campos = r => ({
+    num: r.num, ebm: r.ebm, gci: r.gci, filial: r.filial,
+    codigo: r.codigo, produto: r.produto, cor: r.cor,
+    dataEntrega: r.dataEntrega, pedidoMae: r.pedidoMae,
+    saldo: r.saldo, grade: r.grade || {}
+  });
+
+  let lista = null;
+  try{
+    const r = await workerFetchAdmin({ method:'PATCH', body: JSON.stringify({ action:'getDispo' }) });
+    if(r.ok){ const j = await r.json(); if(Array.isArray(j) && j.length) lista = j.map(campos); }
+  }catch(e){ console.warn('Não reli a DISPO antes de gravar as datas.', e); }
+  if(!lista){
+    if(!_dispoRows || !_dispoRows.length) throw new Error('A DISPO não está carregada');
+    lista = _dispoRows.map(campos);
+  }
+
   let tocadas = 0;
-  for(const r of _dispoRows){
+  for(const r of lista){
     const nova = porNum.get(String(r.num ?? '').trim());
     if(!nova) continue;
     if(formatDate(r.dataEntrega) === nova) continue;   // já está nessa data
     r.dataEntrega = nova;
     tocadas++;
   }
+  // a tela acompanha o que foi gravado
+  const datas = new Map(lista.map(r => [String(r.num ?? '').trim(), r.dataEntrega]));
+  for(const r of (_dispoRows || [])){
+    const d = datas.get(String(r.num ?? '').trim());
+    if(d !== undefined) r.dataEntrega = d;
+  }
   if(!tocadas) return 0;
   const res = await workerFetchAdmin({ method:'PATCH', body: JSON.stringify({
-    action:'saveDispo', data: _dispoRows.map(r => ({
-      num: r.num, ebm: r.ebm, gci: r.gci, filial: r.filial,
-      codigo: r.codigo, produto: r.produto, cor: r.cor,
-      dataEntrega: r.dataEntrega, pedidoMae: r.pedidoMae,
-      saldo: r.saldo, grade: r.grade || {}
-    }))
-  })});
+    action:'saveDispo', data: lista })});
   if(!res.ok) throw new Error('A DISPO não salvou (HTTP ' + res.status + ')');
   const j = await res.json();
   if(!j.success) throw new Error(j.error || 'A DISPO não salvou');

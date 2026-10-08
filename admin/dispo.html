@@ -1382,6 +1382,7 @@ async function loadDispo(){
       return { num, codigo, produto, cor, dataEntrega, saldo, pedidoMae, gci, ebm, filial, grade };
     }).filter(row => row.codigo || row.produto);
 
+    marcarBaseDispo(STATE.dispoRows.map(linhaDispo));
     STATE.dispoLoadedAt = new Date();
     try{
       const rr = await workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'getRateio' }) });
@@ -1493,22 +1494,12 @@ async function excluirDaDispoJson(row){
     const alvo = String(row.num ?? '').trim();
     const novaLista = STATE.dispoRows.filter(r => String(r.num ?? '').trim() !== alvo);
 
-    // Salva no Worker
-    const res = await workerFetch({
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'saveDispo', data: novaLista.map(r => ({
-        num: r.num, ebm: r.ebm, gci: r.gci, filial: r.filial,
-        codigo: r.codigo, produto: r.produto, cor: r.cor,
-        dataEntrega: r.dataEntrega, pedidoMae: r.pedidoMae,
-        saldo: r.saldo, grade: r.grade || {}
-      }))})
-    });
-    if(!res.ok) throw new Error('Falha ao salvar');
-    const result = await res.json();
-    if(!result.success) throw new Error(result.error);
-
+    // Pelo mesmo caminho das outras gravações: assim a exclusão não arrasta
+    // junto o que outra tela mudou nas linhas que ficaram.
+    const antes = STATE.dispoRows;
     STATE.dispoRows = novaLista;
+    try{ await gravarDispo(); }
+    catch(e){ STATE.dispoRows = antes; throw e; }
     renderDispo();
     showToast(`"${row.produto}" removido da DISPO.`, 'success');
   }catch(err){
@@ -1596,19 +1587,7 @@ async function salvarEdicaoProduto(){
     row.saldo = saldoNum;
     row.grade = novaGrade;
 
-    const res = await workerFetch({
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'saveDispo', data: STATE.dispoRows.map(r => ({
-        num: r.num, ebm: r.ebm, gci: r.gci, filial: r.filial,
-        codigo: r.codigo, produto: r.produto, cor: r.cor,
-        dataEntrega: r.dataEntrega, pedidoMae: r.pedidoMae,
-        saldo: r.saldo, grade: r.grade || {}
-      }))})
-    });
-    if(!res.ok) throw new Error('Falha ao salvar');
-    const result = await res.json();
-    if(!result.success) throw new Error(result.error);
+    await gravarDispo();
 
     fecharEditarProduto();
     renderDispo();
@@ -1649,19 +1628,10 @@ async function excluirSelecionadosDispo(){
   try{
     const sel = new Set(nums.map(String));
     const novaLista = STATE.dispoRows.filter(r => !sel.has(String(r.num||'')));
-    const res = await workerFetch({
-      method:'PATCH', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'saveDispo', data: novaLista.map(r => ({
-        num:r.num, ebm:r.ebm, gci:r.gci, filial:r.filial,
-        codigo:r.codigo, produto:r.produto, cor:r.cor,
-        dataEntrega:r.dataEntrega, pedidoMae:r.pedidoMae,
-        saldo:r.saldo, grade:r.grade || {}
-      }))})
-    });
-    if(!res.ok) throw new Error('Falha ao salvar');
-    const result = await res.json();
-    if(!result.success) throw new Error(result.error);
+    const antes = STATE.dispoRows;
     STATE.dispoRows = novaLista;
+    try{ await gravarDispo(); }
+    catch(e){ STATE.dispoRows = antes; throw e; }
     _dispoSelecionados.clear();
     renderDispo();
     showToast(`${nums.length} ite${nums.length>1?'ns':'m'} removido${nums.length>1?'s':''} da DISPO.`, 'success');
@@ -2221,7 +2191,15 @@ async function confirmarCancelamento(){
   }
   try{
     row.saldo = reg.saldoDepois;
-    await gravarDispo();
+    // Uma segunda chance antes de desistir: quando outra tela grava a DISPO
+    // no mesmo instante, a primeira tentativa esbarra nela. Desfazer de cara
+    // apagava a saída inteira e a tela dizia que nada tinha acontecido.
+    try{ await gravarDispo(); }
+    catch(e1){
+      console.warn('Primeira gravação do saldo falhou; tentando de novo.', e1);
+      await new Promise(r => setTimeout(r, 1200));
+      await gravarDispo();
+    }
     showToast(`${formatInt(reg.pares)} pares ${volta ? 'devolvidos à origem' : 'cancelados'}.`, 'success');
     fecharEditarProduto();
     renderDispo();
@@ -2237,7 +2215,8 @@ async function confirmarCancelamento(){
       btn.disabled = false;
       return;
     }
-    showToast('Erro ao gravar o saldo. Nada foi alterado.', 'error');
+    showToast('O saldo não gravou — nada foi alterado. Se houver outra aba do ' +
+              'admin aberta, feche-a e tente de novo.', 'error');
   }finally{ btn.disabled = false; }
 }
 
@@ -2282,18 +2261,99 @@ async function gravarCancelamentos(lista){
   STATE.cancelamentos = lista;
 }
 
+/* A DISPO é gravada inteira, de uma vez. Com duas telas abertas isso é uma
+   sobregravação: a última a gravar manda a sua cópia da DISPO e apaga o que a
+   outra acabou de fazer. Foi assim que uma devolução de 636 pares sumiu — o
+   registro entrou, outra tela regravou o saldo cheio por cima, a gravação do
+   saldo falhou e o desfazer tirou o registro. Nada sobrou.
+
+   Agora cada tela manda só o que ELA mudou: relê a DISPO do servidor e, linha
+   a linha, mantém a do servidor onde não mexeu. Quem não tocou no lote não o
+   desfaz mais. */
+const CAMPOS_DISPO = ['num','ebm','gci','filial','codigo','produto','cor',
+                      'dataEntrega','pedidoMae','saldo','grade'];
+function linhaDispo(r){
+  const o = {};
+  for(const c of CAMPOS_DISPO) o[c] = c === 'grade' ? (r.grade || {}) : r[c];
+  return o;
+}
+const chaveDispo = l => String((l && l.num) != null ? l.num : '').trim();
+
+// A foto do que o servidor tinha na carga: é contra ela que se sabe o que
+// esta tela mudou.
+function marcarBaseDispo(lista){
+  STATE.dispoBase = new Map((lista || []).map(l => [chaveDispo(l), JSON.stringify(l)]));
+}
+
+async function lerDispoDoServidor(){
+  const r = await workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ action:'getDispo' }) });
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  const j = await r.json();
+  if(!Array.isArray(j)) throw new Error('Formato inválido');
+  return j.map(linhaDispo);
+}
+
+/* O que vai subir: o servidor como base, e por cima só as linhas que esta
+   tela alterou, criou ou apagou. */
+function mesclarDispo(servidor, minhas, base){
+  const meu = new Map(minhas.map(l => [chaveDispo(l), l]));
+  const saida = [];
+  const usados = new Set();
+  for(const doServidor of servidor){
+    const k = chaveDispo(doServidor);
+    const minha = meu.get(k);
+    if(!minha){
+      // sumiu da tela: só sai de vez se foi aqui que ela foi excluída
+      if(base.has(k)) continue;
+      saida.push(doServidor);        // chegou por outra tela — preserva
+      continue;
+    }
+    usados.add(k);
+    const euMudei = base.get(k) !== JSON.stringify(minha);
+    saida.push(euMudei ? minha : doServidor);
+  }
+  for(const minha of minhas){        // linhas que só existem aqui
+    if(!usados.has(chaveDispo(minha))) saida.push(minha);
+  }
+  return saida;
+}
+
 async function gravarDispo(){
+  const minhas = (STATE.dispoRows || []).map(linhaDispo);
+  const base = (STATE.dispoBase instanceof Map) ? STATE.dispoBase : new Map();
+
+  // Sem a foto da carga não dá para saber o que é alteração desta tela: aí
+  // vale o que está em tela, como era antes.
+  let final = minhas;
+  if(base.size){
+    try{ final = mesclarDispo(await lerDispoDoServidor(), minhas, base); }
+    catch(e){ console.warn('Não reli a DISPO antes de gravar; vai o que está em tela.', e); }
+  }
+
   const res = await workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ action:'saveDispo', data: STATE.dispoRows.map(r => ({
-      num: r.num, ebm: r.ebm, gci: r.gci, filial: r.filial,
-      codigo: r.codigo, produto: r.produto, cor: r.cor,
-      dataEntrega: r.dataEntrega, pedidoMae: r.pedidoMae,
-      saldo: r.saldo, grade: r.grade || {}
-    }))})
-  });
+    body: JSON.stringify({ action:'saveDispo', data: final }) });
   if(!res.ok) throw new Error('Falha ao salvar a DISPO');
   const j = await res.json();
   if(!j.success) throw new Error(j.error || 'Erro ao salvar a DISPO');
+  adotarDispo(final);
+}
+
+/* Gravou: agora esta tela passa a ser o que está no servidor — inclusive o
+   que veio das outras. Sem isto, a tela continuaria com os números velhos e
+   a gravação seguinte os empurraria de volta como se fossem alteração dela.
+   Os valores entram nos objetos que já existem, em vez de trocar a lista: o
+   modal aberto aponta para um deles. */
+function adotarDispo(final){
+  const porNum = new Map((STATE.dispoRows || []).map(r => [chaveDispo(r), r]));
+  const nova = [];
+  for(const l of final){
+    const atual = porNum.get(chaveDispo(l));
+    if(atual){ Object.assign(atual, l); nova.push(atual); }
+    else nova.push({ ...l });
+  }
+  STATE.dispoRows = nova;
+  marcarBaseDispo(final);
 }
 
 /* Cancela um lote (ou parte). Devolve o registro criado. */
