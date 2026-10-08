@@ -6,6 +6,9 @@
 <title>Vitrine · CMS Representações</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- a regra da campanha de incentivo é uma só: o Repasses, o admin e esta
+     vitrine leem daqui, senão cada tela premiaria um conjunto diferente -->
+<script src="../js/campanhas.js"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
 <style>
 /* ═══════════════════════════════════════════════════════════════════
@@ -1779,6 +1782,73 @@ body:has(#sacola:not([hidden])) .aviso-desfazer.on{ transform:translate(50%, 0);
 .pn .ops.ordem button{ font-weight:700; }
 .pn .ops.ordem button.on{ font-weight:800; }
 
+/* ── painel das campanhas ────────────────────────────────────────
+   O chip ao lado de Metas abre; clicar fora ou Esc fecha. Os cartões são os
+   do Repasses, deitados: lá eles ocupavam 330px e empurravam a vitrine para
+   baixo da dobra. Aqui a mesma informação cabe em 114px. A cor é a da marca
+   ativa, não o roxo — na vitrine quem manda é a marca que está aberta. */
+.cmp-bt{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 13px;
+  font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;
+  border:1px solid var(--linha);background:var(--carta);color:var(--tinta);
+  cursor:pointer;font-family:inherit;line-height:1.1;white-space:nowrap}
+.cmp-bt:hover{border-color:var(--linha-forte)}
+.cmp-bt:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+.cmp-bt svg{color:var(--marca)}
+.cmp-bt .n{background:var(--papel);border-radius:999px;padding:1px 7px;font-size:10.5px;
+  letter-spacing:0;color:var(--fraco)}
+.cmp-bt.on{background:var(--marca);border-color:transparent;color:#fff}
+.cmp-bt.on svg{color:#fff}
+.cmp-bt.on .n{background:rgba(255,255,255,.22);color:#fff}
+
+.cmp-painel{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:2px 0 12px}
+.cmp-painel[hidden]{display:none}
+@media(max-width:700px){ .cmp-painel{grid-template-columns:1fr} }
+.cmp-c{background:linear-gradient(135deg,var(--marca-claro),var(--marca-escuro));color:#fff;
+  border-radius:14px;padding:11px 13px;box-shadow:0 6px 18px rgba(44,57,226,.22);
+  text-align:left;font-family:inherit;border:0;cursor:pointer;display:block;width:100%}
+.cmp-c:hover{filter:brightness(1.07)}
+.cmp-c:focus-visible{outline:2px solid var(--tinta);outline-offset:2px}
+.cmp-c.on{box-shadow:0 0 0 2px var(--tinta), 0 6px 18px rgba(44,57,226,.22)}
+.cmp-c .t{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.cmp-c .t b{font-size:13px}
+.cmp-c .t .por{font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+  background:rgba(255,255,255,.2);border-radius:999px;padding:2px 8px;white-space:nowrap}
+.cmp-c .v{display:flex;align-items:baseline;gap:7px;margin-top:5px}
+.cmp-c .v b{font-size:22px;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.cmp-c .v span{font-size:11px;opacity:.9}
+.cmp-c .p{display:flex;align-items:center;gap:6px;margin-top:7px;padding-top:7px;
+  border-top:1px solid rgba(255,255,255,.22);font-size:10.5px;opacity:.93;flex-wrap:wrap}
+.cmp-c .p .pr{background:rgba(255,255,255,.17);border-radius:999px;padding:1px 7px;font-weight:700}
+.cmp-c .p .fim{margin-left:auto;white-space:nowrap}
+
+/* Campanha de incentivo: o prêmio por par repassado. Fica no pé da foto,
+   do lado oposto ao coração, e em roxo — a mesma cor que o Repasses usa. */
+.selo-premio{position:absolute;left:8px;bottom:8px;z-index:3;display:inline-flex;
+  align-items:center;gap:5px;padding:4px 10px;border-radius:999px;
+  background:linear-gradient(135deg,#9a5bd6,#7A2FBF);color:#fff;font-size:11px;
+  font-weight:800;box-shadow:0 4px 12px rgba(122,47,191,.34);white-space:nowrap;
+  max-width:calc(100% - 56px)}
+.selo-premio svg{flex:none}
+@media(max-width:640px){ .selo-premio{left:6px;bottom:6px;padding:3px 8px;font-size:10px} }
+
+/* Os atalhos do lado direito da linha: o que é do vendedor (Forecast), o que
+   paga prêmio e o que acabou de entrar. Cada um filtra a vitrine. */
+.chips-dir{display:flex;align-items:center;gap:7px;margin-left:auto;flex-wrap:wrap}
+.chip-at{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--linha);
+  background:var(--carta);color:var(--texto);border-radius:999px;padding:5px 11px;
+  font-size:11.5px;font-weight:800;cursor:pointer;font-family:inherit;line-height:1.1;
+  white-space:nowrap}
+.chip-at:hover{border-color:var(--marca)}
+.chip-at .n{background:var(--papel);border-radius:999px;padding:1px 7px;font-size:10.5px;
+  font-weight:800;color:var(--fraco)}
+.chip-at.on{background:var(--marca);border-color:transparent;color:#fff}
+.chip-at.on .n{background:rgba(255,255,255,.22);color:#fff}
+.chip-at.prem{color:var(--plano);border-color:rgba(122,47,191,.34)}
+.chip-at.prem .n{color:var(--plano);background:var(--plano-fundo)}
+.chip-at.prem.on{background:linear-gradient(135deg,#9a5bd6,#7A2FBF);border-color:transparent;color:#fff}
+.chip-at.prem.on .n{background:rgba(255,255,255,.22);color:#fff}
+@media(max-width:860px){ .chips-dir{margin-left:0} }
+
 /* ── novidades ── */
 .upd-novos{ margin-left:10px; border:0; cursor:pointer; padding:2px 10px; border-radius:999px;
   font:inherit; font-size:10.5px; font-weight:800; white-space:nowrap;
@@ -2023,6 +2093,9 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2.3" aria-hidden="true"><circle cx="12" cy="12" r="9"/>
           <circle cx="12" cy="12" r="4"/></svg> Metas</button>
+      <!-- o prêmio por par repassado. Não filtra nada: abre o painel. -->
+      <button type="button" class="cmp-bt" id="chipCamp" hidden aria-expanded="false"
+              title="Ver as campanhas de incentivo"></button>
       <div class="mt-sel">
         <select id="mtMes" aria-label="Mês"></select>
         <select id="mtPrep" aria-label="Preposto"></select>
@@ -2032,17 +2105,22 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
           <option value="fat">Faturamento</option>
         </select>
       </div>
-      <!-- o aviso de novidades divide a linha com o botão Metas -->
+      <!-- a hora da base divide a linha com o botão Metas -->
       <div class="faixa-upd">
         <span class="upd" id="updChip" hidden>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
           <span class="pal">atualizado&nbsp;</span><span id="updTxt"></span></span>
-        <button type="button" class="upd-novos" id="updNovos" hidden onclick="alternarNovidades()"></button>
       </div>
       <div class="mt-resumo" id="mtResumo"></div>
+      <!-- o que o vendedor não pode deixar passar, no fim da linha: o lote
+           que é dele, o que paga prêmio e o que acabou de entrar -->
+      <div class="chips-dir" id="chipsDir"></div>
     </div>
+    <!-- fora da linha de propósito: a barra recolhida esconde o resto dela,
+         e este painel tem vida própria -->
+    <div class="cmp-painel" id="cmpPainel" hidden></div>
     <div class="mt-corpo" id="mtCorpo">
       <div class="mt-cats" id="mtCats"></div>
       <div class="mt-fx">
@@ -2629,6 +2707,7 @@ const STATE = { produtos:[], filtrados:[], origem:'tudo', categoria:'', busca:''
                 sel:{ selo:new Set(), chega:new Set(), genero:new Set(), sub:new Set(),
                       faixa:new Set(), grade:new Set(), fabrica:new Set(), camp:new Set() },
                 sacola:new Map(), aba:'estoque', marcados:new Set(), soNovos:false,
+                premioId:'', premios:[],
                 fichas:{},
                 ordem:(() => { try{ return localStorage.getItem('cmspass.ordem') || 'padrao'; }
                                catch(_){ return 'padrao'; } })() };
@@ -3067,16 +3146,20 @@ async function bloqueios(){
     try{ return await doWorker(action); }
     catch(_){ try{ return await json(arquivo); }catch(__){ return null; } }
   };
-  const [oc, ocD, exc, rat, fic] = await Promise.all([
+  const [oc, ocD, exc, rat, fic, cmp] = await Promise.all([
     pegar('getOcultos', 'ocultos.json'),
     pegar('getOcultosDisp', 'ocultos_disponibilidades.json'),
     pegar('getExclusivos', 'exclusivos.json'),
     pegar('getRateio', 'rateio.json'),
     // ficha técnica lida do Trade Squash pelo painel: composição, origem,
     // tecnologias. Produto sem ficha simplesmente não mostra o ⓘ.
-    pegar('getFichas', 'fichas.json')
+    pegar('getFichas', 'fichas.json'),
+    // campanha de incentivo: o prêmio por par repassado, o mesmo que o
+    // vendedor já vê no Repasses
+    pegar('getCampanhas', 'campanhas.json')
   ]);
   STATE.fichas = (fic && typeof fic === 'object' && !Array.isArray(fic)) ? fic : {};
+  STATE.premios = Array.isArray(cmp) ? cmp : [];
   return {
     // Rateio: o lote dividido por vendedor. Cada Nº traz as cotas em pares e,
     // opcionalmente, o nome do selo que aparece no card.
@@ -3559,6 +3642,23 @@ const svgIcone = (cls, tam = 11) => `<svg width="${tam}" height="${tam}" viewBox
 const SVG_ZOOM = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
   <circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2M8.5 11h5M11 8.5v5"/></svg>`;
+// saco de dinheiro: o mesmo sinal que o Repasses usa para a campanha
+const SVG_PREMIO = `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"
+  aria-hidden="true"><path d="M8.6 2h6.8a.8.8 0 0 1 .7 1.2L14.8 6H9.2L7.9 3.2A.8.8 0 0 1 8.6 2Z"/>
+  <path d="M9.4 7.6h5.2c2.4 2 4.4 4.9 4.4 8 0 3.6-3.1 6.4-7 6.4s-7-2.8-7-6.4c0-3.1 2-6 4.4-8Z"/></svg>`;
+const SVG_ESTRELA = `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"
+  aria-hidden="true"><path d="m12 2 2.9 6.3 6.8.8-5 4.7 1.3 6.8L12 17.3 6 20.6l1.3-6.8-5-4.7 6.8-.8L12 2Z"/></svg>`;
+const SVG_FAISCA = `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"
+  aria-hidden="true"><path d="M12 2.5 13.9 8 19.5 10 13.9 12 12 17.5 10.1 12 4.5 10 10.1 8 12 2.5Z"/>
+  <path d="M18.5 14.5 19.4 17l2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9.9-2.5Z"/></svg>`;
+// 15/12 — a data curta do fim da campanha
+const diaBR = iso => {
+  const d = window.INCENTIVO ? INCENTIVO.diaLocal(iso) : null;
+  if(!d) return '';
+  const p2 = n => String(n).padStart(2, '0');
+  return `${p2(d.getDate())}/${p2(d.getMonth() + 1)}`;
+};
+
 const SVG_CORACAO = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
   aria-hidden="true"><path d="M20.8 5.6a5.2 5.2 0 0 0-7.4 0L12 7l-1.4-1.4a5.2 5.2 0 1 0-7.4 7.4
@@ -3715,6 +3815,10 @@ function casaGrupo(o, id){
 function passa(o, ignorar){
   if(!daMarca(o)) return false;
   if(STATE.soNovos && !ehNovo(o)) return false;
+  if(STATE.premioId){
+    const c = premioDoProduto(o);
+    if(!c || c.id !== STATE.premioId) return false;
+  }
   if(ignorar !== 'origem'    && !temOrigem(o, STATE.origem)) return false;
   if(ignorar !== 'categoria' && STATE.categoria && o.categoria !== STATE.categoria) return false;
   if(!combina(o, STATE.termos)) return false;
@@ -3767,6 +3871,8 @@ function aplicar(){
   STATE.termosIgnorados = Math.max(0, total - usados.length);
   STATE.filtrados = ordenar(STATE.produtos.filter(o => passa(o, null)));
   pintarAtalhoNovidades();
+  pintarChipCampanhas();
+  if(_campAberto) pintarPainelCampanhas();
   pintarVistos();
   pintarFiltros();
   pintarPainel();
@@ -3977,6 +4083,7 @@ ligarCliques($('pnAtivos'));
 function limparFiltros(){
   for(const g of GRUPOS) STATE.sel[g.id].clear();
   STATE.soNovos = false;
+  STATE.premioId = '';
   aplicar();
 }
 
@@ -3987,12 +4094,14 @@ function limparFiltros(){
 function contarFiltros(){
   return (STATE.categoria ? 1 : 0)
        + (STATE.soNovos ? 1 : 0)
+       + (STATE.premioId ? 1 : 0)
        + (STATE.busca.trim() ? 1 : 0)
        + nSelecionados();
 }
 function limparTudo(){
   STATE.categoria = '';
   STATE.soNovos = false;
+  STATE.premioId = '';
   for(const g of GRUPOS) STATE.sel[g.id].clear();
   STATE.busca = '';
   _campo.value = '';
@@ -4347,20 +4456,163 @@ addEventListener('keydown', e => {
 /* Trocar de marca muda a oferta: a barra tem de acompanhar. */
 function metasAcompanhamVitrine(){ if(METAS) pintarMetas(); }
 
-function alternarNovidades(){ STATE.soNovos = !STATE.soNovos; aplicar(); window.scrollTo({ top:0, behavior:'smooth' }); }
-// O chip de Novidades fica no fim da fila de categorias, fora da tela no
-// celular. Este atalho anuncia a novidade onde já se lê a hora da base.
-function pintarAtalhoNovidades(){
-  const b = $('updNovos');
-  if(!b) return;
-  const n = contarNovos(STATE.produtos.filter(daMarca));
-  b.hidden = !n && !STATE.soNovos;
-  b.classList.toggle('on', STATE.soNovos);
-  b.textContent = STATE.soNovos ? 'vendo as novidades ✕'
-    : `${nf(n)} ${n === 1 ? 'novidade' : 'novidades'}`;
-  b.title = STATE.soNovos ? 'Voltar a ver a vitrine inteira'
-    : `Ver só o que entrou nos últimos ${NOVO_DIAS} dias`;
+/* ── painel das campanhas ────────────────────────────────────────
+   Quanto cada campanha já rendeu. Para a CMS é o total da casa; para o
+   vendedor, a parte dele — a mesma conta do Repasses, pela mesma biblioteca.
+   Clicar num cartão mostra só os produtos daquela campanha. */
+let _campAberto = false;
+
+function porCampanhas(aberto){
+  _campAberto = !!aberto;
+  const pn = $('cmpPainel'), bt = $('chipCamp');
+  if(pn) pn.hidden = !_campAberto;
+  if(bt){
+    bt.classList.toggle('on', _campAberto);
+    bt.setAttribute('aria-expanded', String(_campAberto));
+  }
+  if(_campAberto) pintarPainelCampanhas();
 }
+
+function apuradoDaCampanha(c){
+  // a mesma lista de pedidos que desconta o saldo do repasse — é dela que o
+  // Repasses apura a campanha, então os dois números fecham
+  const pedidos = (STATE.fontes && STATE.fontes.pedidos) || [];
+  const cod = String((SESSAO && SESSAO.codigo) || '').trim();
+  return ehCmsSessao()
+    ? INCENTIVO.apurarCampanha(c, pedidos)
+    : INCENTIVO.minhaParteNaCampanha(c, pedidos, cod);
+}
+
+function pintarPainelCampanhas(){
+  const pn = $('cmpPainel');
+  if(!pn) return;
+  pn.innerHTML = premiosQueValem().map(c => {
+    const a = apuradoDaCampanha(c);
+    const pares = a.pares || 0;
+    const espera = (a.paresPendentes != null ? a.paresPendentes : a.pendentes) || 0;
+    const dias = INCENTIVO.diasRestantes(c);
+    const prods = c.produtos || [];
+    const on = STATE.premioId === c.id;
+    // o número que o chip da direita dava, agora por campanha — e é ele que
+    // diz se vale a pena clicar: campanha sem produto na vitrine não rende
+    const naVitrine = STATE.produtos.filter(o => {
+      if(!daMarca(o)) return false;
+      const x = premioDoProduto(o);
+      return x && x.id === c.id;
+    }).length;
+    return `<button type="button" class="cmp-c${on ? ' on' : ''}" data-camp="${esc(c.id)}"
+        aria-pressed="${on}" title="${on ? 'Voltar a ver a vitrine inteira'
+          : 'Ver só os produtos desta campanha'}">
+      <span class="t"><b>${esc(c.nome || 'Campanha')}</b>
+        <span class="por">${esc(INCENTIVO.dinheiro(c.valor))}/par</span></span>
+      <span class="v"><b>${esc(INCENTIVO.dinheiro(a.premio || 0))}</b>
+        <span>${pares ? nf(pares) + (pares === 1 ? ' par' : ' pares') : 'nenhum par ainda'}${
+          espera ? ' · +' + nf(espera) + ' esperando' : ''}</span></span>
+      <span class="p">${prods.slice(0, 3).map(x => `<span class="pr">${esc(x)}</span>`).join('')}${
+        prods.length > 3 ? `<span class="pr">+${prods.length - 3}</span>` : ''}
+        <span class="fim">${naVitrine ? nf(naVitrine) + (naVitrine === 1 ? ' produto aqui' : ' produtos aqui') + ' · ' : ''}${
+          dias ? `faltam ${dias} dia${dias === 1 ? '' : 's'}` : 'último dia'}</span></span>
+    </button>`;
+  }).join('');
+}
+
+function pintarChipCampanhas(){
+  const bt = $('chipCamp');
+  if(!bt) return;
+  const n = premiosQueValem().length;
+  bt.hidden = !n;
+  if(!n){ porCampanhas(false); return; }
+  bt.innerHTML = `${SVG_PREMIO}Campanhas <span class="n">${nf(n)}</span>`;
+  const barra = $('mtBarra');
+  if(barra) barra.hidden = false;
+}
+
+$('chipCamp').onclick = () => porCampanhas(!_campAberto);
+$('cmpPainel').addEventListener('click', e => {
+  const b = e.target.closest('button[data-camp]');
+  if(!b) return;
+  // o mesmo cartão de novo volta a mostrar a vitrine inteira
+  STATE.premioId = STATE.premioId === b.dataset.camp ? '' : b.dataset.camp;
+  aplicar();
+  pintarPainelCampanhas();
+  window.scrollTo({ top:0, behavior:'smooth' });
+});
+// fora dele, fecha — como a barra de metas. Em fase de captura pelo mesmo
+// motivo: repintar tira o alvo do DOM antes de a fase normal perguntar.
+document.addEventListener('click', e => {
+  if(!_campAberto) return;
+  const pn = $('cmpPainel'), bt = $('chipCamp');
+  if((pn && pn.contains(e.target)) || (bt && bt.contains(e.target))) return;
+  porCampanhas(false);
+}, true);
+addEventListener('keydown', e => { if(e.key === 'Escape' && _campAberto) porCampanhas(false); });
+
+function alternarNovidades(){ STATE.soNovos = !STATE.soNovos; aplicar(); window.scrollTo({ top:0, behavior:'smooth' }); }
+function alternarSelo(nome){
+  const sel = STATE.sel.selo;
+  sel.has(nome) ? sel.delete(nome) : sel.add(nome);
+  aplicar();
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+/* Os três atalhos do fim da linha. Eles existem porque o que importa estava
+   escondido: o Forecast e as novidades eram chips no fim da fila de
+   categorias, fora da tela no celular, e o prêmio não aparecia em lugar
+   nenhum. Cada um some quando não há o que mostrar — menos quando está
+   ligado, que é como se desliga. */
+function pintarAtalhoNovidades(){
+  const caixa = $('chipsDir');
+  if(!caixa) return;
+  const daMarcaAtual = STATE.produtos.filter(daMarca);
+  const partes = [];
+
+  // Forecast e companhia: um por nome de selo, com o que é do vendedor
+  const porSelo = new Map();
+  for(const o of daMarcaAtual){
+    if(!o.rateado || !o.selo) continue;
+    porSelo.set(o.selo, (porSelo.get(o.selo) || 0) + 1);
+  }
+  for(const nome of STATE.sel.selo) if(!porSelo.has(nome)) porSelo.set(nome, 0);
+  for(const [nome, n] of porSelo){
+    const on = STATE.sel.selo.has(nome);
+    partes.push(`<button type="button" class="chip-at${on ? ' on' : ''}" data-selo="${esc(nome)}"
+      aria-pressed="${on}" title="${on ? 'Voltar a ver a vitrine inteira'
+      : 'Ver só os lotes separados para você em ' + esc(nome)}">${SVG_ESTRELA}${esc(nome)}
+      <span class="n">${nf(n)}</span></button>`);
+  }
+
+  // Novos: o nome agora é esse, e a conta vem junto
+  const nNovos = contarNovos(daMarcaAtual);
+  if(nNovos || STATE.soNovos){
+    const on = STATE.soNovos;
+    partes.push(`<button type="button" class="chip-at${on ? ' on' : ''}" data-novos="1"
+      aria-pressed="${on}" title="${on ? 'Voltar a ver a vitrine inteira'
+      : 'Ver só o que entrou nos últimos ' + NOVO_DIAS + ' dias'}">${SVG_FAISCA}Novos
+      <span class="n">${nf(nNovos)}</span></button>`);
+  }
+
+  caixa.innerHTML = partes.join('');
+  caixa.hidden = !partes.length;
+  // a linha de cima só existia por causa das metas; agora ela carrega os
+  // atalhos e tem de aparecer mesmo sem meta nenhuma
+  const barra = $('mtBarra');
+  if(barra && partes.length){
+    barra.hidden = false;
+    // sem metas carregadas a linha existe só para os atalhos: fica rasa e
+    // sem o botão que abriria um painel vazio
+    if(!METAS){
+      barra.classList.add('fechada');
+      const t = $('mtToggle');
+      if(t) t.hidden = true;
+    }
+  }
+}
+$('chipsDir').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if(!b) return;
+  if(b.dataset.selo !== undefined) return alternarSelo(b.dataset.selo);
+  if(b.dataset.novos) return alternarNovidades();
+});
 
 /* ── grade ──────────────────────────────────────────────────────── */
 /* ── Ficha técnica ───────────────────────────────────────────────────
@@ -4480,6 +4732,7 @@ function cardHtml(o, i){
     `${c.mkp ? ' · MKP <b>' + esc(c.mkp) + '</b>' : ''}` +
     `${c.custo ? ' · custo <b>' + brl(c.custo) + '</b>' : ''}</div>`).join('');
   const quem = esc(o.nome || o.artigo) + ' ' + esc(o.cor);
+  const premio = premioDoProduto(o);
   return `<article class="card">
     <div class="foto">
       <img src="${esc(fotoMini(o))}" data-cheia="${esc(foto(o))}" alt="${esc(o.nome)}"
@@ -4490,6 +4743,9 @@ function cardHtml(o, i){
         o.rateado ? `<span class="selo-rateio${o.soAcompanhar ? ' cms' : ''}"
           title="${o.soAcompanhar ? 'Lote rateado: só acompanhamento — quem pede é o vendedor com cota'
             : 'Reservado para você nesta ação'}">${esc(o.selo)}</span>` : ''}</span>
+      ${premio ? `<span class="selo-premio" title="Campanha ${esc(premio.nome)} · ${
+        esc(INCENTIVO.dinheiro(premio.valor))} por par repassado, até ${esc(diaBR(premio.fim))}">${
+        SVG_PREMIO}${esc(INCENTIVO.dinheiro(premio.valor))}/par</span>` : ''}
       <button class="canto cf${STATE.marcados.has(o.k) ? ' on' : ''}"
               onclick="alternarMarcado('${esc(o.k)}')" title="Marcar para PDF e planilha"
               aria-label="Marcar ${quem} para o catálogo"
@@ -6279,6 +6535,24 @@ $('rsLista').addEventListener('click', async e => {
 // A mesma campanha que o card mostra: com um filtro de campanha ligado, sair
 // no PDF com o custo de outra tabela seria dizer um preço que não é o daquela
 // negociação.
+/* ── campanha de incentivo ───────────────────────────────────────
+   Prêmio em dinheiro por par REPASSADO. Por isso só marca produto que tem
+   repasse: num lote de estoque ou produção o chip prometeria um prêmio que
+   não existe. O CMS enxerga todas; o vendedor, só as dele. */
+function premiosQueValem(){
+  if(!window.INCENTIVO) return [];
+  const cod = String((SESSAO && SESSAO.codigo) || '').trim();
+  return (STATE.premios || []).filter(c =>
+    INCENTIVO.campanhaVale(c) && (ehCmsSessao() || INCENTIVO.campanhaDoVendedor(c, cod)));
+}
+function premioDoProduto(o){
+  if(!o || !o.repasse || !window.INCENTIVO) return null;
+  const cod = ehCmsSessao() ? '' : String((SESSAO && SESSAO.codigo) || '').trim();
+  return INCENTIVO.campanhaDoProduto(premiosQueValem(),
+    { produto: o.nome || o.artigo, cor: o.cor }, cod);
+}
+const emPremio = o => !!premioDoProduto(o);
+
 function campanhaAtiva(o){
   const sel = STATE.sel.camp;
   if(sel.size){
