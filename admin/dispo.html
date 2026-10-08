@@ -644,6 +644,8 @@
     .canc-cab .t{ font-size:13px; font-weight:800; color:var(--danger) }
     .canc-cab .s{ font-size:11.5px; color:var(--muted) }
     .canc-cab .seta{ margin-left:auto; color:var(--muted); font-size:12px; transition:transform .18s }
+    .canc.volta .canc-cab{ background:rgba(122,47,191,.10) }
+    .canc.volta .canc-cab .ico, .canc.volta .canc-cab .t{ color:#7a2fbf }
     .canc.aberto .canc-cab .seta{ transform:rotate(180deg) }
     .canc-corpo{ display:none; padding:14px; border-top:1px solid var(--line) }
     .canc.aberto .canc-corpo{ display:block }
@@ -678,7 +680,23 @@
     .canc-bt{ flex:1; min-width:170px; background:var(--danger); color:#fff; border:0; border-radius:999px;
       padding:11px; font-weight:800; font-size:14px; cursor:pointer }
     .canc-bt:disabled{ opacity:.45; cursor:not-allowed }
-    .canc-hist{ margin-top:12px; border-top:1px dashed var(--line); padding-top:10px }
+    .saida-tipo{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px}
+.saida-tipo .saida{border:1px solid var(--line);border-radius:13px;padding:11px 12px;
+  background:var(--card);cursor:pointer;text-align:left;font-family:inherit;color:var(--text)}
+.saida-tipo .saida:hover{border-color:var(--muted)}
+.saida-tipo .saida.on{box-shadow:0 0 0 1px currentColor inset;border-color:currentColor}
+.saida-tipo .saida.canc.on{color:var(--danger)}
+.saida-tipo .saida.volta.on{color:#7a2fbf}
+.saida-tipo .saida .t{display:flex;align-items:center;gap:7px;font-weight:800;font-size:13px}
+.saida-tipo .saida .d{display:block;margin-top:4px;font-size:11.5px;color:var(--muted);
+  font-weight:400;line-height:1.4}
+@media(max-width:620px){ .saida-tipo{grid-template-columns:1fr} }
+/* etiqueta no histórico, para separar as duas de relance */
+.canc-tag{display:inline-block;font-size:10px;font-weight:800;padding:1px 7px;border-radius:999px;
+  margin-right:6px;vertical-align:1px}
+.canc-tag.canc{background:var(--danger-soft);color:var(--danger)}
+.canc-tag.volta{background:rgba(122,47,191,.12);color:#7a2fbf}
+.canc-hist{ margin-top:12px; border-top:1px dashed var(--line); padding-top:10px }
     .canc-hist .tit{ font-size:11px; font-weight:700; color:var(--muted); margin-bottom:4px }
     .canc-hist .l{ display:flex; gap:10px; align-items:center; font-size:12px; padding:5px 0; flex-wrap:wrap }
     .canc-hist .q{ font-weight:800; color:var(--danger); font-variant-numeric:tabular-nums }
@@ -1691,6 +1709,17 @@ const PREPOSTOS_RATEIO = [
    tirou aqueles pares de lá e o desconto se repete; se vier menor, ela já
    tirou e repetir seria descontar duas vezes.
    ════════════════════════════════════════════════════════════════════════ */
+/* Devolver pares ao cliente que os pediu não é cancelamento: a mercadoria
+   continua existindo, só deixa de estar no repasse. Tratar as duas como uma
+   só inflava o número de cancelamento e escondia o motivo real. O registro é
+   o mesmo, separado por `tipo`; registro antigo, sem o campo, é cancelamento. */
+const MOTIVOS_VOLTA = [
+  'Cliente pediu de volta',
+  'Reposição do pedido original',
+  'Entrou no repasse por engano',
+  'Acordo comercial',
+  'Outro',
+];
 const MOTIVOS_CANC = [
   'Cancelado pela fábrica',
   'Ruptura de material',
@@ -1864,20 +1893,23 @@ function uiEscolher(opts){
 function relatorioCancelamentos(){
   const lista = (STATE.cancelamentos || []).slice()
     .sort((a, b) => String(b.em).localeCompare(String(a.em)));
-  if(!lista.length){ showToast('Nenhum cancelamento registrado ainda.', 'info'); return; }
+  if(!lista.length){ showToast('Nada saiu do repasse ainda.', 'info'); return; }
 
-  const cab = ['Data', 'Nº', 'GCI', 'Código', 'Produto', 'Cor', 'Prev. Fat',
-               'Caixas', 'Pares cancelados', 'Saldo antes', 'Saldo depois',
-               'Motivo', 'Observação', 'Por', 'Situação'];
+  // As duas saídas no mesmo relatório, separadas pela coluna Tipo: quem abre
+  // filtra o que quer, e o total geral continua fechando.
+  const cab = ['Data', 'Tipo', 'Nº', 'GCI', 'Código', 'Produto', 'Cor', 'Prev. Fat',
+               'Caixas', 'Pares', 'Saldo antes', 'Saldo depois',
+               'Motivo', 'Cliente de origem', 'Observação', 'Por', 'Situação'];
   const linhas = lista.map(c => [
     new Date(c.em).toLocaleString('pt-BR'),
+    ehVolta(c) ? 'Devolução' : 'Cancelamento',
     c.num, c.gci, c.codigo, c.produto, c.cor, c.dataEntrega || '',
     Number(c.caixas || 0), Number(c.pares || 0), Number(c.saldoAntes || 0), Number(c.saldoDepois || 0),
-    c.motivo || '', c.obs || '', c.por || '',
+    c.motivo || '', c.cliente || '', c.obs || '', c.por || '',
     c.desfeitoEm ? ('Desfeito em ' + new Date(c.desfeitoEm).toLocaleString('pt-BR') + ' por ' + (c.desfeitoPor || '—')) : 'Ativo',
   ]);
   const hoje = new Date().toLocaleDateString('pt-BR').split('/').join('-');
-  baixarXlsxCanc(cab, linhas, 'CANCELAMENTOS DISPO ' + hoje + '.xlsx');
+  baixarXlsxCanc(cab, linhas, 'SAIDAS DO REPASSE ' + hoje + '.xlsx');
 }
 
 function baixarXlsxCanc(cab, linhas, nome){
@@ -1981,6 +2013,53 @@ function zipSimples(arquivos){
 /* ---------- o bloco dentro do modal ---------- */
 let _cancRow = null;
 
+/* 'canc' | 'volta'. Registro sem tipo é cancelamento: foi assim que os
+   primeiros nasceram. */
+let _cancSaida = 'canc';
+const ehVolta = c => (c && c.tipo) === 'volta';
+
+function setSaida(t){
+  _cancSaida = t;
+  document.querySelectorAll('.saida-tipo .saida').forEach(b =>
+    b.classList.toggle('on', b.dataset.saida === t));
+  const volta = t === 'volta';
+  $('cancAreaCliente').hidden = !volta;
+  $('cancMotivo').innerHTML = '<option value="">Escolha…</option>' +
+    (volta ? MOTIVOS_VOLTA : MOTIVOS_CANC).map(m => `<option>${safeHtml(m)}</option>`).join('');
+  // os rótulos acompanham: "cancelando 204" e "devolvendo 204" são coisas
+  // diferentes para quem lê a tela
+  const rot = $('cancRotuloMenos');
+  if(rot) rot.textContent = volta ? 'Devolvendo' : 'Cancelando';
+  const rq = $('cancRotQtd');
+  if(rq) rq.textContent = volta ? 'Quantas caixas devolver' : 'Quantas caixas cancelar';
+  pintarAlertaPedido();
+  $('cancOpcTudo').querySelector('b').textContent = volta ? 'Devolver tudo' : 'Cancelar tudo';
+  $('cancOpcParte').querySelector('b').textContent = volta ? 'Devolver parte' : 'Cancelar parte';
+  const bt = $('cancBtConfirmar');
+  bt.querySelector('i').className = volta ? 'fa-solid fa-rotate-left' : 'fa-solid fa-ban';
+  bt.style.background = volta ? '#7a2fbf' : '';
+  const bloco = $('blocoCanc');
+  if(bloco) bloco.classList.toggle('volta', volta);
+  cancRecalcular();
+}
+
+/* A lista de clientes já está carregada para outras telas do admin; aqui ela
+   só vira sugestão — o campo aceita qualquer texto, porque nem sempre o
+   cliente de origem está no cadastro. */
+function sugerirClientes(){
+  const dl = $('cancClientes');
+  if(!dl || dl.childElementCount) return;
+  const vistos = new Map();
+  for(const o of (STATE.orders || [])){
+    const cod = String(o.clienteCodigo || '').trim();
+    const nome = String(o.clienteNome || '').trim();
+    if(cod && nome && !vistos.has(cod)) vistos.set(cod, nome);
+  }
+  dl.innerHTML = [...vistos.entries()]
+    .sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'))
+    .map(([c, n]) => `<option value="${safeHtml(c + ' · ' + n)}"></option>`).join('');
+}
+
 function montarBlocoCancelamento(row){
   _cancRow = row;
   const bloco = $('blocoCanc');
@@ -2000,22 +2079,15 @@ function montarBlocoCancelamento(row){
   $('cancOpcParte').style.display = pc ? '' : 'none';
   document.querySelector('input[name=canctipo][value=tudo]').checked = true;
 
-  $('cancMotivo').innerHTML = '<option value="">Escolha…</option>' +
-    MOTIVOS_CANC.map(m => `<option>${safeHtml(m)}</option>`).join('');
   $('cancObs').value = '';
+  $('cancCliente').value = '';
+  sugerirClientes();
 
   // o que já foi pedido deste lote: é o aviso que evita prometer o que não vai chegar
-  const { pendente, aprovado } = pedidosDoNum(row.num);
-  const al = $('cancAlerta');
-  al.hidden = (pendente + aprovado) === 0;
-  if(!al.hidden){
-    $('cancAlertaTxt').innerHTML =
-      `<b>Este lote tem pedido.</b> ${formatInt(aprovado)} pares aprovados` +
-      (pendente ? ` e ${formatInt(pendente)} pendentes` : '') +
-      ` já foram prometidos a clientes. Cancelando, alguém vai ficar sem — avise o vendedor.`;
-  }
+  pintarAlertaPedido();
 
   pintarHistoricoCanc(row.num);
+  setSaida('canc');          // a tela abre no que era antes
   cancTrocarTipo();
 }
 
@@ -2036,18 +2108,38 @@ function pedidosDoNum(num){
   return { pendente, aprovado };
 }
 
+/* O aviso de "este lote tem pedido" vale para as duas saídas, mas a frase
+   muda: cancelar some com a mercadoria, devolver manda para outro dono. */
+function pintarAlertaPedido(){
+  const al = $('cancAlerta');
+  if(!al || !_cancRow) return;
+  const { pendente, aprovado } = pedidosDoNum(_cancRow.num);
+  al.hidden = (pendente + aprovado) === 0;
+  if(al.hidden) return;
+  const volta = _cancSaida === 'volta';
+  $('cancAlertaTxt').innerHTML =
+    `<b>Este lote tem pedido.</b> ${formatInt(aprovado)} pares aprovados` +
+    (pendente ? ` e ${formatInt(pendente)} pendentes` : '') +
+    ` já foram prometidos a clientes. ${volta
+      ? 'Devolvendo, esses pares deixam de estar disponíveis — avise o vendedor.'
+      : 'Cancelando, alguém vai ficar sem — avise o vendedor.'}`;
+}
+
 function pintarHistoricoCanc(num){
   const h = $('cancHist');
   const lista = (STATE.cancelamentos || []).filter(c => String(c.num) === String(num ?? ''))
     .sort((a, b) => String(b.em).localeCompare(String(a.em)));
   if(!lista.length){ h.innerHTML = ''; return; }
-  h.innerHTML = '<div class="tit">JÁ CANCELADO NESTE LOTE</div>' + lista.map(c => `
+  h.innerHTML = '<div class="tit">O QUE JÁ SAIU DESTE LOTE</div>' + lista.map(c => `
     <div class="l${c.desfeitoEm ? ' desfeito' : ''}">
       <span class="q">−${formatInt(c.pares)} pares</span>
-      <span class="m">${c.caixas} cx · ${safeHtml(c.motivo || '—')} · por ${safeHtml(c.por || '—')}${
+      <span class="m"><span class="canc-tag ${ehVolta(c) ? 'volta' : 'canc'}">${
+        ehVolta(c) ? 'devolvido' : 'cancelado'}</span>${c.caixas} cx · ${safeHtml(c.motivo || '—')}${
+        ehVolta(c) && c.cliente ? ' · <b>' + safeHtml(c.cliente) + '</b>' : ''} · por ${safeHtml(c.por || '—')}${
         c.desfeitoEm ? ' · desfeito por ' + safeHtml(c.desfeitoPor || '—') : ''}</span>
       <span class="d">${new Date(c.em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' })}</span>
-      ${c.desfeitoEm ? '' : `<button class="canc-bt-mini" title="Desfazer este cancelamento"
+      ${c.desfeitoEm ? '' : `<button class="canc-bt-mini" title="${
+        ehVolta(c) ? 'Desfazer esta devolução' : 'Desfazer este cancelamento'}"
         onclick="desfazerCancelamento('${c.id}')"><i class="fa-solid fa-rotate-left"></i></button>`}
     </div>`).join('');
 }
@@ -2077,10 +2169,15 @@ function cancRecalcular(){
   $('cancHoje').textContent = formatInt(saldo);
   $('cancMenos').textContent = '−' + formatInt(pares);
   $('cancFica').textContent = formatInt(Math.max(0, saldo - pares));
+  const volta = _cancSaida === 'volta';
+  const verbo = volta ? 'Devolver' : 'Cancelar';
   $('cancRotulo').textContent = tudo
-    ? 'Cancelar o lote inteiro'
-    : `Cancelar ${cx} caixa${cx === 1 ? '' : 's'} · ${formatInt(pares)} pares`;
-  $('cancBtConfirmar').disabled = !$('cancMotivo').value || pares <= 0 || saldo <= 0;
+    ? `${verbo} o lote inteiro`
+    : `${verbo} ${cx} caixa${cx === 1 ? '' : 's'} · ${formatInt(pares)} pares`;
+  // devolver sem dizer para quem não serve: é esse campo que alimenta o
+  // painel por cliente no dashboard
+  const semCliente = volta && $('cancCliente').value.trim().length < 2;
+  $('cancBtConfirmar').disabled = !$('cancMotivo').value || pares <= 0 || saldo <= 0 || semCliente;
 }
 
 async function confirmarCancelamento(){
@@ -2090,15 +2187,20 @@ async function confirmarCancelamento(){
   const maxCx = caixasDaLinha(row);
   const cx = tudo ? (maxCx || 1) : Number($('cancCaixas').value || 0);
   const motivo = $('cancMotivo').value;
-  const reg = montarCancelamento(row, cx, motivo, $('cancObs').value.trim());
+  const volta = _cancSaida === 'volta';
+  const reg = montarCancelamento(row, cx, motivo, $('cancObs').value.trim(),
+                                 _cancSaida, $('cancCliente').value.trim());
   if(tudo){ reg.pares = Number(row.saldo || 0); reg.saldoDepois = 0; reg.total = true; reg.caixas = maxCx || reg.caixas; }
 
   const ok = await uiConfirm({
-    title: tudo ? 'Cancelar o lote inteiro' : 'Cancelar parte do lote',
+    title: volta ? (tudo ? 'Devolver o lote inteiro' : 'Devolver parte do lote')
+                 : (tudo ? 'Cancelar o lote inteiro' : 'Cancelar parte do lote'),
     message: `${row.produto || '—'} · ${row.cor || '—'} (Nº ${row.num})\n\n` +
-             `Serão descontados ${formatInt(reg.pares)} pares — o saldo vai de ${formatInt(reg.saldoAntes)} para ${formatInt(reg.saldoDepois)}.\n` +
+             `${volta ? 'Voltam' : 'Serão descontados'} ${formatInt(reg.pares)} pares — ` +
+             `o saldo vai de ${formatInt(reg.saldoAntes)} para ${formatInt(reg.saldoDepois)}.\n` +
+             (volta ? `Para: ${reg.cliente}\n` : '') +
              `Motivo: ${motivo}`,
-    okText: 'Cancelar lote',
+    okText: volta ? 'Devolver à origem' : 'Cancelar lote',
   });
   if(!ok) return;
 
@@ -2120,7 +2222,7 @@ async function confirmarCancelamento(){
   try{
     row.saldo = reg.saldoDepois;
     await gravarDispo();
-    showToast(`${formatInt(reg.pares)} pares cancelados.`, 'success');
+    showToast(`${formatInt(reg.pares)} pares ${volta ? 'devolvidos à origem' : 'cancelados'}.`, 'success');
     fecharEditarProduto();
     renderDispo();
   }catch(err){
@@ -2144,8 +2246,8 @@ async function desfazerCancelamento(id){
   if(!reg || reg.desfeitoEm) return;
   const row = STATE.dispoRows.find(r => String(r.num) === String(reg.num));
   const ok = await uiConfirm({
-    title: 'Desfazer cancelamento',
-    message: `Devolver ${formatInt(reg.pares)} pares ao Nº ${reg.num}?\n\n` +
+    title: ehVolta(reg) ? 'Desfazer devolução' : 'Desfazer cancelamento',
+    message: `Trazer ${formatInt(reg.pares)} pares de volta ao repasse, no Nº ${reg.num}?\n\n` +
              `O saldo volta de ${formatInt(row ? row.saldo : 0)} para ${formatInt((row ? Number(row.saldo||0) : 0) + Number(reg.pares||0))}.`,
     okText: 'Desfazer',
   });
@@ -2195,7 +2297,7 @@ async function gravarDispo(){
 }
 
 /* Cancela um lote (ou parte). Devolve o registro criado. */
-function montarCancelamento(row, caixas, motivo, obs){
+function montarCancelamento(row, caixas, motivo, obs, tipo, cliente){
   const pc = paresPorCaixa(row);
   const totalCx = caixasDaLinha(row);
   const cx = Math.max(1, Math.min(totalCx || 1, Number(caixas || 0)));
@@ -2209,6 +2311,10 @@ function montarCancelamento(row, caixas, motivo, obs){
     caixas: cx, porCaixa: pc, pares: Math.min(pares, saldoAntes),
     saldoAntes, saldoDepois: Math.max(0, saldoAntes - pares),
     total: pares >= saldoAntes,
+    // 'canc' quando a fábrica não entrega; 'volta' quando os pares retornam
+    // ao cliente que os pediu
+    tipo: tipo === 'volta' ? 'volta' : 'canc',
+    cliente: tipo === 'volta' ? String(cliente || '').trim() : '',
     motivo: motivo || '', obs: obs || '',
     por: (getPortalSession() && getPortalSession().nome) || 'CMS',
     em: new Date().toISOString(),
@@ -3965,14 +4071,27 @@ loadDispo();
          recolhido para não virar botão de aperto fácil. -->
     <div class="canc" id="blocoCanc">
       <div class="canc-cab" onclick="document.getElementById('blocoCanc').classList.toggle('aberto')">
-        <i class="fa-solid fa-ban ico"></i>
+        <i class="fa-solid fa-right-from-bracket ico"></i>
         <div>
-          <div class="t">Cancelar lote</div>
-          <div class="s">total ou parte — desconta o saldo e fica registrado</div>
+          <div class="t">Tirar do repasse</div>
+          <div class="s">cancelar ou devolver ao cliente de origem</div>
         </div>
         <i class="fa-solid fa-chevron-down seta"></i>
       </div>
       <div class="canc-corpo">
+        <!-- a natureza da saída vem antes de tudo: ela muda o motivo, o
+             formulário e onde o número vai contar no dashboard -->
+        <div class="saida-tipo">
+          <button type="button" class="saida canc on" data-saida="canc" onclick="setSaida('canc')">
+            <span class="t"><i class="fa-solid fa-ban"></i> Cancelar</span>
+            <span class="d">A fábrica não vai entregar. Os pares não voltam para ninguém.</span>
+          </button>
+          <button type="button" class="saida volta" data-saida="volta" onclick="setSaida('volta')">
+            <span class="t"><i class="fa-solid fa-rotate-left"></i> Devolver à origem</span>
+            <span class="d">Voltam para o cliente que os pediu. Saem do repasse, mas continuam existindo.</span>
+          </button>
+        </div>
+
         <div class="canc-alerta" id="cancAlerta" hidden>
           <i class="fa-solid fa-triangle-exclamation"></i><div id="cancAlertaTxt"></div>
         </div>
@@ -3989,7 +4108,7 @@ loadDispo();
         </div>
 
         <div id="cancAreaParcial" hidden>
-          <label class="canc-rot">Quantas caixas cancelar</label>
+          <label class="canc-rot" id="cancRotQtd">Quantas caixas cancelar</label>
           <div class="canc-qtd">
             <span class="passo">
               <button type="button" onclick="cancPasso(-1)">&minus;</button>
@@ -4002,7 +4121,7 @@ loadDispo();
 
         <div class="canc-resumo">
           <div><div class="r">Saldo hoje</div><div class="v" id="cancHoje">—</div></div>
-          <div><div class="r">Cancelando</div><div class="v menos" id="cancMenos">—</div></div>
+          <div><div class="r" id="cancRotuloMenos">Cancelando</div><div class="v menos" id="cancMenos">—</div></div>
           <div><div class="r">Fica com</div><div class="v fica" id="cancFica">—</div></div>
         </div>
 
@@ -4017,6 +4136,16 @@ loadDispo();
             <input id="cancObs" type="text" placeholder="nº do e-mail, quem avisou…"
               style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
           </div>
+        </div>
+
+        <!-- a DISPO não guarda de quem o lote veio: o campo "pedido mãe" tem
+             só um "SIM". Por isso a devolução pergunta. -->
+        <div id="cancAreaCliente" hidden style="margin-top:10px">
+          <label class="canc-rot">Volta para o cliente</label>
+          <input id="cancCliente" type="text" list="cancClientes" autocomplete="off"
+            placeholder="código ou nome — ex.: 21209 MAZZULE" oninput="cancRecalcular()"
+            style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
+          <datalist id="cancClientes"></datalist>
         </div>
 
         <div class="canc-hist" id="cancHist"></div>

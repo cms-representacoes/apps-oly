@@ -95,6 +95,13 @@
   .canc-l .bar i{display:block;height:100%;border-radius:999px;background:#dc2626}
   .canc-l .pc{font-size:11.5px;color:var(--mute);min-width:40px;text-align:right}
   .canc-l .vl{font-weight:700;font-size:13px;min-width:92px;text-align:right;font-variant-numeric:tabular-nums}
+  .canc-duas{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+  @media(max-width:860px){ .canc-duas{grid-template-columns:1fr} }
+  .cmp-k.volta{background:linear-gradient(135deg,#9a5bd6,#5b1f94);border-color:transparent;color:#fff}
+  .cmp-k.volta .r,.cmp-k.volta .d{color:rgba(255,255,255,.82)}
+  .canc-tag{display:inline-block;font-size:10px;font-weight:800;padding:1px 7px;border-radius:999px;margin-right:6px}
+  .canc-tag.canc{background:rgba(220,38,38,.12);color:#dc2626}
+  .canc-tag.volta{background:rgba(122,47,191,.14);color:#7a2fbf}
   .canc-u{display:grid;grid-template-columns:96px 112px minmax(0,1fr) 108px minmax(0,150px) 110px;
     gap:10px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line);font-size:12.5px}
   .canc-u:last-child{border-bottom:0}
@@ -311,20 +318,28 @@
   <!-- CANCELAMENTOS DA DISPO -->
   <div class="block" id="blocoCanc" style="display:none">
     <div class="block-head">
-      <h3>Cancelamentos do estoque</h3>
-      <span class="block-sub">o que a fábrica tirou — segue o período escolhido</span>
+      <h3>Saídas do repasse</h3>
+      <span class="block-sub">o que a fábrica cancelou e o que voltou para o cliente — segue o período escolhido</span>
     </div>
     <div class="cmp-kpis" id="cancKpis"></div>
-    <div class="card" style="margin-top:14px">
-      <span class="block-sub" style="display:block;margin-bottom:8px">Por motivo</span>
-      <div id="cancMotivos"></div>
+    <!-- as duas naturezas lado a lado: cancelar é a fábrica não entregar,
+         devolver é a mercadoria voltar para quem pediu -->
+    <div class="canc-duas">
+      <div class="card">
+        <span class="block-sub" style="display:block;margin-bottom:8px">Cancelamentos por motivo</span>
+        <div id="cancMotivos"></div>
+      </div>
+      <div class="card" id="cardVoltas">
+        <span class="block-sub" style="display:block;margin-bottom:8px">Devoluções por cliente</span>
+        <div id="cancClientes"></div>
+      </div>
     </div>
     <div class="card" style="margin-top:14px">
-      <span class="block-sub" style="display:block;margin-bottom:8px">Produtos mais cancelados</span>
+      <span class="block-sub" style="display:block;margin-bottom:8px">Produtos que mais saíram</span>
       <div id="cancProdutos"></div>
     </div>
     <div class="card" style="margin-top:14px">
-      <span class="block-sub" style="display:block;margin-bottom:8px">Últimos cancelamentos</span>
+      <span class="block-sub" style="display:block;margin-bottom:8px">Últimas saídas</span>
       <div id="cancUltimos"></div>
     </div>
   </div>
@@ -580,29 +595,35 @@ function renderCancelamentos(){
   if(!CANCELAMENTOS.length){ bloco.style.display = 'none'; return; }
   bloco.style.display = '';
 
-  const pares = lista.reduce((s, c) => s + Number(c.pares || 0), 0);
-  const totais = lista.filter(c => c.total).length;
+  // registro antigo não tem tipo: nasceu antes da devolução existir e é
+  // cancelamento
+  const ehVolta = c => (c && c.tipo) === 'volta';
+  const cancs = lista.filter(c => !ehVolta(c));
+  const voltas = lista.filter(ehVolta);
+  const paresCanc = cancs.reduce((s, c) => s + Number(c.pares || 0), 0);
+  const paresVolta = voltas.reduce((s, c) => s + Number(c.pares || 0), 0);
+  const pares = paresCanc + paresVolta;
   const saldoDispo = STATE.dispoRows.reduce((s, r) => s + Number(r.saldo || 0), 0);
   const perc = (saldoDispo + pares) > 0 ? (pares / (saldoDispo + pares) * 100) : 0;
 
   document.getElementById('cancKpis').innerHTML = `
-    <div class="cmp-k"><div class="r">Lotes atingidos</div><div class="v">${fmt(lista.length)}</div>
-      <div class="d">de ${fmt(STATE.dispoRows.length)} na DISPO</div></div>
-    <div class="cmp-k canc"><div class="r">Pares cancelados</div><div class="v">${fmt(pares)}</div>
-      <div class="d">no período</div></div>
-    <div class="cmp-k"><div class="r">Cancelamento total</div><div class="v">${fmt(totais)}</div>
-      <div class="d">lotes que sumiram inteiros</div></div>
+    <div class="cmp-k canc"><div class="r">Cancelados</div><div class="v">${fmt(paresCanc)}</div>
+      <div class="d">${fmt(cancs.length)} lote(s) · a fábrica não entrega</div></div>
+    <div class="cmp-k volta"><div class="r">Devolvidos à origem</div><div class="v">${fmt(paresVolta)}</div>
+      <div class="d">${fmt(voltas.length)} lote(s) · voltaram para o cliente</div></div>
+    <div class="cmp-k"><div class="r">Saiu do repasse</div><div class="v">${fmt(pares)}</div>
+      <div class="d">soma das duas</div></div>
     <div class="cmp-k"><div class="r">Sobre o estoque</div><div class="v">${perc.toFixed(1).replace('.', ',')}%</div>
       <div class="d">do que havia no período</div></div>`;
 
-  const barras = (mapa, alvo, largura) => {
+  const barras = (mapa, alvo, largura, cor) => {
     const linhas = [...mapa.entries()].sort((a, b) => b[1] - a[1]);
     const maior = linhas.length ? linhas[0][1] : 1;
     const total = linhas.reduce((s, l) => s + l[1], 0) || 1;
     document.getElementById(alvo).innerHTML = linhas.length ? linhas.map(([nome, q]) => `
       <div class="canc-l">
         <span class="nm" style="min-width:${largura}px">${safeAttr(nome)}</span>
-        <span class="bar"><i style="width:${(q / maior * 100).toFixed(1)}%"></i></span>
+        <span class="bar"><i style="width:${(q / maior * 100).toFixed(1)}%${cor ? ';background:' + cor : ''}"></i></span>
         <span class="pc">${Math.round(q / total * 100)}%</span>
         <span class="vl">${fmt(q)} pares</span>
       </div>`).join('')
@@ -610,24 +631,35 @@ function renderCancelamentos(){
   };
 
   const porMotivo = new Map();
-  for(const c of lista) porMotivo.set(c.motivo || 'Sem motivo', (porMotivo.get(c.motivo || 'Sem motivo') || 0) + Number(c.pares || 0));
+  for(const c of cancs) porMotivo.set(c.motivo || 'Sem motivo', (porMotivo.get(c.motivo || 'Sem motivo') || 0) + Number(c.pares || 0));
   barras(porMotivo, 'cancMotivos', 150);
+
+  // de quem é a devolução: é a pergunta que o cancelamento nunca respondeu
+  const porCliente = new Map();
+  for(const c of voltas){
+    const k = c.cliente || 'Cliente não informado';
+    porCliente.set(k, (porCliente.get(k) || 0) + Number(c.pares || 0));
+  }
+  barras(porCliente, 'cancClientes', 170, '#7a2fbf');
+  // sem nenhuma devolução no período, o painel não ocupa meia tela à toa
+  document.getElementById('cardVoltas').style.display = voltas.length ? '' : 'none';
 
   const porProduto = new Map();
   for(const c of lista){
     const k = `${c.produto || '—'} · ${c.cor || '—'}`;
     porProduto.set(k, (porProduto.get(k) || 0) + Number(c.pares || 0));
   }
-  barras(porProduto, 'cancProdutos', 170);
+  barras(porProduto, 'cancProdutos', 170, '#64748b');
 
   const ultimos = lista.slice().sort((a, b) => String(b.em).localeCompare(String(a.em))).slice(0, 12);
   document.getElementById('cancUltimos').innerHTML = ultimos.map(c => `
     <div class="canc-u">
       <span class="qd">${new Date(c.em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}</span>
       <span class="id">${safeAttr(c.num)} · ${safeAttr(c.gci || '—')}</span>
-      <span class="pr">${safeAttr(c.produto || '—')} · ${safeAttr(c.cor || '—')}</span>
+      <span class="pr"><span class="canc-tag ${ehVolta(c) ? 'volta' : 'canc'}">${
+        ehVolta(c) ? 'devolvido' : 'cancelado'}</span>${safeAttr(c.produto || '—')} · ${safeAttr(c.cor || '—')}</span>
       <span class="qt">−${fmt(c.pares)} <small>${c.caixas} cx</small></span>
-      <span class="mo">${safeAttr(c.motivo || '—')}</span>
+      <span class="mo">${safeAttr(ehVolta(c) && c.cliente ? c.cliente : (c.motivo || '—'))}</span>
       <span class="po">${safeAttr(c.por || '—')}</span>
     </div>`).join('') || `<div style="text-align:center;padding:18px;color:var(--mute);font-size:13px">Nada no período.</div>`;
 }
