@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prévia · Devolver à origem</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root{
+  --bg:#f7f8fc; --card:#ffffff; --text:#0e1526; --muted:#5c6675; --line:#e6e9f3;
+  --brand:#2c39e2; --brand-soft:rgba(44,57,226,.09);
+  --ok:#15803d; --ok-soft:#e6f6ec;
+  --canc:#b91c1c; --canc-soft:#fdeaea;
+  --volta:#7a2fbf; --volta-soft:#f1e7fb;
+  --aviso:#b45309; --aviso-soft:#fdf4dc;
+  --shadow:0 0 0 1px rgba(15,23,42,.03),0 1px 2px rgba(15,23,42,.04),0 16px 40px -20px rgba(15,23,42,.16);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f172a; --card:#1e293b; --text:#f1f5f9; --muted:#94a3b8; --line:#334155;
+    --brand:#818cf8; --brand-soft:rgba(129,140,248,.15);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.14);
+    --canc:#f87171; --canc-soft:rgba(248,113,113,.14);
+    --volta:#c79bf0; --volta-soft:rgba(199,155,240,.15);
+    --aviso:#fbbf24; --aviso-soft:rgba(251,191,36,.14);
+    --shadow:0 0 0 1px rgba(0,0,0,.2),0 16px 40px -20px rgba(0,0,0,.6);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f172a; --card:#1e293b; --text:#f1f5f9; --muted:#94a3b8; --line:#334155;
+  --brand:#818cf8; --brand-soft:rgba(129,140,248,.15);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.14);
+  --canc:#f87171; --canc-soft:rgba(248,113,113,.14);
+  --volta:#c79bf0; --volta-soft:rgba(199,155,240,.15);
+  --aviso:#fbbf24; --aviso-soft:rgba(251,191,36,.14);
+  --shadow:0 0 0 1px rgba(0,0,0,.2),0 16px 40px -20px rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.num{font-variant-numeric:tabular-nums}
+.wrap{max-width:1120px;margin:0 auto;padding:0 18px 70px}
+
+.pv{background:var(--volta);color:#fff;padding:12px 18px}
+.pv .in{max-width:1120px;margin:0 auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:12.5px}
+.pv b{font-weight:800}
+.pv span{opacity:.86}
+.pv .sp{flex:1}
+.pv button{border:1px solid rgba(255,255,255,.42);background:rgba(255,255,255,.16);color:#fff;
+  border-radius:999px;padding:4px 12px;font:700 11.5px Inter,sans-serif;cursor:pointer}
+
+h2{font-size:19px;font-weight:800;margin:26px 0 3px;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:13px;max-width:78ch}
+.secao{margin-top:26px}
+.eyebrow{font:800 10.5px Inter,sans-serif;color:var(--volta);text-transform:uppercase;
+  letter-spacing:.09em;margin-bottom:5px}
+
+/* ── o bloco dentro do modal do produto ── */
+.caixa{background:var(--card);border:1px solid var(--line);border-radius:18px;
+  box-shadow:var(--shadow);overflow:hidden;margin-top:12px}
+.caixa-topo{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:13px 16px;
+  border-bottom:1px solid var(--line)}
+.caixa-topo .prod{font-weight:800;font-size:15px}
+.caixa-topo .meta{font-size:12px;color:var(--muted)}
+.caixa-topo .sp{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 11px;
+  font:700 11.5px Inter,sans-serif;background:var(--brand-soft);color:var(--brand)}
+.corpo{padding:15px 16px}
+
+/* as duas saídas, lado a lado */
+.saidas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.saida{border:1px solid var(--line);border-radius:14px;padding:12px 13px;background:var(--card);
+  cursor:pointer;text-align:left;font-family:inherit;display:block;width:100%}
+.saida:hover{border-color:var(--muted)}
+.saida.on{border-color:currentColor;box-shadow:0 0 0 1px currentColor inset}
+.saida.canc{color:var(--canc)} .saida.volta{color:var(--volta)}
+.saida .tit{display:flex;align-items:center;gap:8px;font:800 13.5px Inter,sans-serif}
+.saida .desc{color:var(--muted);font-size:12px;margin-top:5px;line-height:1.45;font-weight:400}
+.saida .marca{display:inline-block;margin-top:8px;font:700 10.5px Inter,sans-serif;
+  padding:2px 8px;border-radius:999px}
+.saida.canc .marca{background:var(--canc-soft)}
+.saida.volta .marca{background:var(--volta-soft)}
+
+/* o formulário */
+.form{margin-top:14px;border-top:1px dashed var(--line);padding-top:14px}
+.linha{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:11px}
+label{display:block;font:700 10.5px Inter,sans-serif;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+input,select,textarea{border:1px solid var(--line);background:var(--bg);color:var(--text);
+  border-radius:11px;padding:9px 11px;font:600 13px Inter,sans-serif;font-family:inherit}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--volta);outline-offset:1px}
+input[type=number]{width:104px}
+.cliente{flex:1;min-width:230px}
+.cliente input{width:100%}
+.motivo{min-width:200px}
+textarea{width:100%;resize:vertical;min-height:50px}
+.opc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:11px}
+.opc button{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;
+  padding:6px 13px;font:700 12.5px Inter,sans-serif;cursor:pointer;font-family:inherit}
+.opc button.on{background:var(--volta);border-color:var(--volta);color:#fff}
+
+.resumo{display:flex;gap:9px;flex-wrap:wrap;align-items:center;background:var(--bg);
+  border:1px solid var(--line);border-radius:14px;padding:11px 13px;margin-top:4px}
+.resumo .n{font:800 17px Inter,sans-serif;font-variant-numeric:tabular-nums}
+.resumo .r{font-size:11.5px;color:var(--muted);font-weight:600}
+.resumo .seta{color:var(--muted)}
+.resumo .fica .n{color:var(--volta)}
+.pe{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.bt{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;
+  padding:10px 18px;font:800 13px Inter,sans-serif;cursor:pointer;font-family:inherit;
+  display:inline-flex;align-items:center;gap:8px}
+.bt.forte{background:var(--volta);border-color:var(--volta);color:#fff}
+.bt.forte:disabled{opacity:.45;cursor:not-allowed}
+.bt.fraco{color:var(--muted);font-weight:700;border:0}
+
+/* histórico */
+.hist{margin-top:14px;border-top:1px dashed var(--line);padding-top:12px}
+.hist h4{margin:0 0 8px;font:700 10.5px Inter,sans-serif;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.07em}
+.hl{display:grid;grid-template-columns:86px 1fr auto auto;gap:10px;align-items:center;
+  padding:8px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.hl:last-child{border-bottom:0}
+.hl .q{font-weight:800;font-variant-numeric:tabular-nums}
+.hl .tag{font:700 10px Inter,sans-serif;padding:2px 8px;border-radius:999px}
+.tag.canc{background:var(--canc-soft);color:var(--canc)}
+.tag.volta{background:var(--volta-soft);color:var(--volta)}
+.hl .quem{color:var(--muted);font-size:11.5px}
+.hl button{border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:999px;
+  padding:3px 10px;font:700 11px Inter,sans-serif;cursor:pointer;font-family:inherit}
+.hl button:hover{border-color:var(--volta);color:var(--volta)}
+
+/* ── dashboard ── */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+.k{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:13px 14px}
+.k .r{font:700 10.5px Inter,sans-serif;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.k .v{font:800 25px Inter,sans-serif;margin-top:3px;letter-spacing:-.02em}
+.k .d{font-size:11.5px;color:var(--muted);margin-top:2px}
+.k.canc .v{color:var(--canc)} .k.volta .v{color:var(--volta)}
+.duas{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.painel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:13px 15px}
+.painel h4{margin:0 0 4px;font:800 13px Inter,sans-serif}
+.painel .ps{font-size:11.5px;color:var(--muted);margin-bottom:9px}
+.barra{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.barra:last-child{border-bottom:0}
+.barra .nm{min-width:132px;font-weight:600}
+.barra .tr{flex:1;height:8px;border-radius:999px;background:var(--bg);overflow:hidden}
+.barra .tr i{display:block;height:8px;border-radius:999px}
+.barra .vl{font-weight:800;min-width:74px;text-align:right;font-variant-numeric:tabular-nums}
+
+.nota{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--line);
+  border-radius:16px;padding:14px 16px;margin-top:14px;box-shadow:var(--shadow)}
+.nota i{color:var(--volta);margin-top:3px}
+.nota b{font-weight:800}
+.perg{counter-reset:p;list-style:none;padding:0;margin:10px 0 0}
+.perg li{position:relative;padding:11px 0 11px 30px;border-bottom:1px solid var(--line);font-size:13.5px}
+.perg li:last-child{border-bottom:0}
+.perg li::before{counter-increment:p;content:counter(p);position:absolute;left:0;top:11px;
+  width:20px;height:20px;border-radius:7px;background:var(--volta-soft);color:var(--volta);
+  display:grid;place-items:center;font:800 11px Inter,sans-serif}
+.perg small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+
+@media(max-width:860px){
+  .saidas{grid-template-columns:1fr}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .duas{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  .hl{grid-template-columns:1fr auto;gap:4px 8px}
+  .hl .quem{grid-column:1/3}
+  .barra .nm{min-width:96px;font-size:11.5px}
+  .barra .vl{min-width:62px;font-size:12px}
+}
+</style>
+</head>
+<body>
+
+<div class="pv">
+  <div class="in">
+    <b>Prévia · Devolver à origem</b>
+    <span>lotes reais da DISPO de hoje · nada é gravado</span>
+    <span class="sp"></span>
+    <button type="button" onclick="trocarTema()"><i class="fa-solid fa-circle-half-stroke"></i> Tema</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <h2>Tirar do repasse sem contar como cancelamento</h2>
+  <p class="sub">Hoje só existe o cancelamento, e ele significa uma coisa: a fábrica não vai
+    entregar. Devolver pares ao cliente de origem é outra história — a mercadoria continua
+    existindo, só deixa de estar disponível para repasse. Misturar as duas inflava o número
+    de cancelamento e escondia o motivo real.</p>
+
+  <!-- ─────────── 1. no produto ─────────── -->
+  <div class="secao">
+    <div class="eyebrow">No estoque · editar produto</div>
+    <h2 style="margin-top:0;font-size:16px">A escolha aparece antes do formulário</h2>
+    <p class="sub">As duas saídas ficam lado a lado, cada uma dizendo o que significa.
+      O formulário muda conforme a escolha.</p>
+
+    <div class="caixa">
+      <div class="caixa-topo">
+        <div>
+          <div class="prod" id="prodNome">—</div>
+          <div class="meta" id="prodMeta">—</div>
+        </div>
+        <span class="sp"></span>
+        <select id="selLote" onchange="trocarLote()" style="font-size:12.5px"></select>
+      </div>
+
+      <div class="corpo">
+        <div class="saidas">
+          <button type="button" class="saida canc" data-tipo="canc" onclick="setTipo('canc')">
+            <span class="tit"><i class="fa-solid fa-ban"></i> Cancelar</span>
+            <span class="desc">A fábrica não vai entregar. O pedido morre aqui e os pares
+              não voltam para ninguém.</span>
+            <span class="marca">conta em cancelamentos</span>
+          </button>
+          <button type="button" class="saida volta on" data-tipo="volta" onclick="setTipo('volta')">
+            <span class="tit"><i class="fa-solid fa-rotate-left"></i> Devolver à origem</span>
+            <span class="desc">Os pares voltam para o cliente que os pediu. Saem do repasse,
+              mas continuam existindo.</span>
+            <span class="marca">conta em devoluções</span>
+          </button>
+        </div>
+
+        <div class="form">
+          <div class="opc">
+            <button type="button" id="optTudo" onclick="setQuanto('tudo')">O lote inteiro</button>
+            <button type="button" id="optParte" class="on" onclick="setQuanto('parte')">Uma parte</button>
+          </div>
+
+          <div class="linha">
+            <div id="cxQtd">
+              <label for="qtd">Caixas</label>
+              <input type="number" id="qtd" min="1" value="17" onchange="recalcular()" oninput="recalcular()">
+            </div>
+            <div class="cliente" id="cxCliente">
+              <label for="cli">Volta para o cliente</label>
+              <input id="cli" list="clientes" placeholder="código ou nome — ex.: 21209 MAZZULE" oninput="recalcular()">
+              <datalist id="clientes">
+                <option value="21209 · MAZZULE CALCADOS"></option>
+                <option value="54595 · SAPEQUARA SPORT SURF"></option>
+                <option value="1948498 · MATRIZ ESPORTE"></option>
+                <option value="19674 · SHAYLINE"></option>
+                <option value="118992 · NEW CALCADOS(MA)"></option>
+              </datalist>
+            </div>
+            <div class="motivo">
+              <label for="mot">Motivo</label>
+              <select id="mot" onchange="recalcular()">
+                <option value="">Escolha…</option>
+                <option>Cliente pediu de volta</option>
+                <option>Reposição do pedido original</option>
+                <option>Entrou no repasse por engano</option>
+                <option>Acordo comercial</option>
+                <option>Outro</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="linha">
+            <div style="flex:1;min-width:240px">
+              <label for="obs">Observação</label>
+              <textarea id="obs" placeholder="opcional — o que mais precisa ficar registrado"></textarea>
+            </div>
+          </div>
+
+          <div class="resumo">
+            <span><span class="n" id="rHoje">—</span> <span class="r">em repasse hoje</span></span>
+            <i class="fa-solid fa-arrow-right seta"></i>
+            <span><span class="n" id="rMenos">—</span> <span class="r" id="rRotulo">devolvidos</span></span>
+            <i class="fa-solid fa-arrow-right seta"></i>
+            <span class="fica"><span class="n" id="rFica">—</span> <span class="r">continuam no repasse</span></span>
+          </div>
+
+          <div class="pe">
+            <button type="button" class="bt forte" id="btOk" onclick="aplicar()">
+              <i class="fa-solid fa-rotate-left"></i> <span id="btTxt">Devolver à origem</span>
+            </button>
+            <button type="button" class="bt fraco">Fechar</button>
+          </div>
+
+          <div class="hist">
+            <h4>O que já saiu deste lote</h4>
+            <div id="histLista"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────── 2. no dashboard ─────────── -->
+  <div class="secao">
+    <div class="eyebrow">No dashboard</div>
+    <h2 style="margin-top:0;font-size:16px">Saídas do estoque, separadas por natureza</h2>
+    <p class="sub">O bloco que hoje se chama "Cancelamentos do estoque" passa a mostrar as duas,
+      lado a lado. O diretor vê de longe se o estoque está sendo cortado pela fábrica ou
+      devolvido a cliente.</p>
+
+    <div class="kpis">
+      <div class="k canc"><div class="r">Cancelados</div><div class="v">1.248</div>
+        <div class="d">9 lotes · a fábrica não entrega</div></div>
+      <div class="k volta"><div class="r">Devolvidos à origem</div><div class="v">612</div>
+        <div class="d">4 lotes · voltaram para o cliente</div></div>
+      <div class="k"><div class="r">Saiu do repasse</div><div class="v">1.860</div>
+        <div class="d">soma das duas</div></div>
+      <div class="k"><div class="r">Sobre o estoque</div><div class="v">3,1%</div>
+        <div class="d">do que havia no período</div></div>
+    </div>
+
+    <div class="duas">
+      <div class="painel">
+        <h4 style="color:var(--canc)">Cancelamentos</h4>
+        <div class="ps">por motivo · a fábrica não vai entregar</div>
+        <div class="barra"><span class="nm">Ruptura de material</span>
+          <span class="tr"><i style="width:62%;background:var(--canc)"></i></span><span class="vl">624 pares</span></div>
+        <div class="barra"><span class="nm">Pedido mãe cancelado</span>
+          <span class="tr"><i style="width:38%;background:var(--canc)"></i></span><span class="vl">396 pares</span></div>
+        <div class="barra"><span class="nm">Atraso de produção</span>
+          <span class="tr"><i style="width:22%;background:var(--canc)"></i></span><span class="vl">228 pares</span></div>
+      </div>
+      <div class="painel">
+        <h4 style="color:var(--volta)">Devoluções à origem</h4>
+        <div class="ps">por cliente · voltaram para quem pediu</div>
+        <div class="barra"><span class="nm">MAZZULE CALCADOS</span>
+          <span class="tr"><i style="width:66%;background:var(--volta)"></i></span><span class="vl">204 pares</span></div>
+        <div class="barra"><span class="nm">MATRIZ ESPORTE</span>
+          <span class="tr"><i style="width:58%;background:var(--volta)"></i></span><span class="vl">180 pares</span></div>
+        <div class="barra"><span class="nm">SAPEQUARA SPORT</span>
+          <span class="tr"><i style="width:48%;background:var(--volta)"></i></span><span class="vl">144 pares</span></div>
+        <div class="barra"><span class="nm">SHAYLINE</span>
+          <span class="tr"><i style="width:28%;background:var(--volta)"></i></span><span class="vl">84 pares</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────── 3. o que precisa decidir ─────────── -->
+  <div class="secao">
+    <div class="eyebrow">Para decidir antes de eu construir</div>
+    <div class="nota">
+      <i class="fa-solid fa-circle-info"></i>
+      <div><b>A DISPO não sabe de quem o lote veio.</b> O campo "pedido mãe" guarda só um
+        "SIM", não o código do cliente. Por isso o formulário pergunta para quem volta — e é
+        essa resposta que alimenta o painel por cliente no dashboard.</div>
+    </div>
+    <ol class="perg">
+      <li>O cliente de origem é <b>obrigatório</b>?
+        <small>Sem ele o painel por cliente fica vazio. Mas exigir trava a CMS quando ninguém lembra de quem era.</small></li>
+      <li>Devolver <b>cria alguma coisa</b> do outro lado?
+        <small>Hoje o desenho só tira do repasse e registra. Se precisar virar pedido do cliente, é outro tamanho de trabalho.</small></li>
+      <li>A devolução entra no <b>relatório xlsx</b> junto do cancelamento, com uma coluna de tipo, ou sai em relatório próprio?</li>
+      <li>Quem devolve pode <b>desfazer</b>, como no cancelamento?
+        <small>No desenho sim, e o histórico do lote mostra as duas saídas misturadas, cada uma com sua etiqueta.</small></li>
+      <li>Os cancelamentos que já existem contam como <b>cancelamento</b> mesmo que tenham sido devoluções disfarçadas?
+        <small>Se algum foi, dá para reclassificar — ou deixamos a conta nova valer só daqui para a frente.</small></li>
+    </ol>
+  </div>
+</div>
+
+<script src="./preview-retorno-dados.js"></script>
+<script>
+let TIPO = 'volta', QUANTO = 'parte', LOTE = null;
+const HIST = [
+  { tipo:'canc', pares:204, caixas:17, motivo:'Ruptura de material', quem:'CMS', quando:'06/10 09:12' },
+  { tipo:'volta', pares:96, caixas:8, motivo:'Cliente pediu de volta', cliente:'MAZZULE CALCADOS', quem:'CMS', quando:'07/10 15:40' },
+];
+const nf = n => Number(n || 0).toLocaleString('pt-BR');
+const porCaixa = l => Object.values(l.grade || {}).reduce((s, v) => s + Number(v || 0), 0) || 12;
+const caixasDo = l => Math.floor(Number(l.saldo || 0) / porCaixa(l));
+
+function trocarTema(){
+  const r = document.documentElement;
+  const escuro = r.getAttribute('data-theme') === 'dark'
+    || (!r.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches);
+  r.setAttribute('data-theme', escuro ? 'light' : 'dark');
+}
+
+function montar(){
+  document.getElementById('selLote').innerHTML = LOTES.map((l, i) =>
+    `<option value="${i}">Nº ${l.num} · ${l.produto} ${l.cor} · ${nf(l.saldo)} pares</option>`).join('');
+  trocarLote();
+}
+function trocarLote(){
+  LOTE = LOTES[Number(document.getElementById('selLote').value) || 0];
+  document.getElementById('prodNome').textContent = `${LOTE.produto} · ${LOTE.cor}`;
+  document.getElementById('prodMeta').innerHTML =
+    `Nº ${LOTE.num} · GCI ${LOTE.gci} · artigo ${LOTE.codigo} · prev. fat. ${LOTE.data || '—'}` +
+    ` · <b>${nf(LOTE.saldo)} pares</b> (${caixasDo(LOTE)} caixas de ${porCaixa(LOTE)})`;
+  document.getElementById('qtd').max = caixasDo(LOTE);
+  recalcular();
+}
+function setTipo(t){
+  TIPO = t;
+  document.querySelectorAll('.saida').forEach(b => b.classList.toggle('on', b.dataset.tipo === t));
+  const volta = t === 'volta';
+  document.getElementById('cxCliente').style.display = volta ? '' : 'none';
+  document.getElementById('btTxt').textContent = volta ? 'Devolver à origem' : 'Cancelar lote';
+  const bt = document.getElementById('btOk');
+  bt.querySelector('i').className = volta ? 'fa-solid fa-rotate-left' : 'fa-solid fa-ban';
+  bt.style.background = volta ? 'var(--volta)' : 'var(--canc)';
+  bt.style.borderColor = volta ? 'var(--volta)' : 'var(--canc)';
+  document.getElementById('rRotulo').textContent = volta ? 'devolvidos' : 'cancelados';
+  // o motivo muda com a natureza da saída
+  const mot = document.getElementById('mot');
+  const opcoes = volta
+    ? ['Cliente pediu de volta','Reposição do pedido original','Entrou no repasse por engano','Acordo comercial','Outro']
+    : ['Ruptura de material','Pedido mãe cancelado','Atraso de produção','Troca de grade','Outro'];
+  mot.innerHTML = '<option value="">Escolha…</option>' + opcoes.map(o => `<option>${o}</option>`).join('');
+  recalcular();
+}
+function setQuanto(q){
+  QUANTO = q;
+  document.getElementById('optTudo').classList.toggle('on', q === 'tudo');
+  document.getElementById('optParte').classList.toggle('on', q === 'parte');
+  document.getElementById('cxQtd').style.display = q === 'tudo' ? 'none' : '';
+  recalcular();
+}
+function recalcular(){
+  if(!LOTE) return;
+  const pc = porCaixa(LOTE);
+  const maxCx = caixasDo(LOTE);
+  const cx = QUANTO === 'tudo' ? maxCx : Math.min(Number(document.getElementById('qtd').value || 0), maxCx);
+  const pares = QUANTO === 'tudo' ? Number(LOTE.saldo) : cx * pc;
+  document.getElementById('rHoje').textContent = nf(LOTE.saldo);
+  document.getElementById('rMenos').textContent = nf(pares);
+  document.getElementById('rFica').textContent = nf(Math.max(0, Number(LOTE.saldo) - pares));
+  const temCliente = TIPO !== 'volta' || document.getElementById('cli').value.trim().length > 2;
+  const temMotivo = !!document.getElementById('mot').value;
+  document.getElementById('btOk').disabled = !(pares > 0 && temMotivo && temCliente);
+  pintarHist();
+}
+function pintarHist(){
+  document.getElementById('histLista').innerHTML = HIST.map((h, i) => `
+    <div class="hl">
+      <span class="q">−${nf(h.pares)}</span>
+      <span>
+        <span class="tag ${h.tipo}">${h.tipo === 'canc' ? 'cancelado' : 'devolvido'}</span>
+        ${h.motivo}${h.cliente ? ' · <b>' + h.cliente + '</b>' : ''}
+        <span class="quem">${h.quando} · ${h.quem}</span>
+      </span>
+      <span class="quem">${h.caixas} cx</span>
+      <button type="button" onclick="alert('(prévia) desfaz e devolve ${nf(h.pares)} pares ao repasse')">desfazer</button>
+    </div>`).join('');
+}
+function aplicar(){
+  const pares = document.getElementById('rMenos').textContent;
+  const mot = document.getElementById('mot').value;
+  const cli = document.getElementById('cli').value.trim();
+  alert('(prévia — nada foi gravado)\n\n' +
+    (TIPO === 'volta'
+      ? `${pares} pares voltariam para ${cli || '(cliente não informado)'}\nMotivo: ${mot}\n\n` +
+        'No dashboard, entrariam em DEVOLUÇÕES À ORIGEM — fora da conta de cancelamento.'
+      : `${pares} pares seriam cancelados\nMotivo: ${mot}\n\n` +
+        'No dashboard, entrariam em CANCELAMENTOS.'));
+}
+
+montar();
+setTipo('volta');
+setQuanto('parte');
+</script>
+</body>
+</html>
