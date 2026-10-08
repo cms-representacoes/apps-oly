@@ -3173,14 +3173,42 @@ async function bloqueios(){
   };
 }
 
+/* O saldo tem de vir do Worker, como já vêm os ocultos e o rateio.
+
+   Lido do arquivo publicado, ele ficava para trás: o admin devolve pares, o
+   Worker grava no GitHub na hora, mas o arquivo só chega à vitrine quando o
+   Pages reconstrói — minutos depois. Quem abrisse nesse intervalo via o saldo
+   de antes, até o ciclo de 60s corrigir. Agora o arquivo é o plano B, para
+   Worker fora do ar e para quem abre fora do domínio de produção.
+
+   Os pedidos vêm junto pelo mesmo motivo: é deles que sai a reserva que
+   desconta o saldo, e misturar saldo novo com reserva velha daria um número
+   que não existe em lugar nenhum. */
+async function dispoDeAgora(){
+  try{
+    const d = await doWorkerComPrazo({ method:'PATCH',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ action:'getDispo' }) }, 6000);
+    if(Array.isArray(d) && d.length) return d;
+  }catch(e){ console.warn('DISPO do Worker não veio; vale o arquivo.', e); }
+  return json('dispo.json');
+}
+async function pedidosDeAgora(){
+  try{
+    const p = await pedidosDoWorker(6000);
+    if(Array.isArray(p)) return p;
+  }catch(e){ console.warn('Pedidos do Worker não vieram; vale o arquivo.', e); }
+  return json('pedidos.json').catch(() => []);
+}
+
 async function carregar(){
   $('estado').innerHTML =
     '<div class="aviso"><span class="girando"></span><h2>Carregando a vitrine</h2>' +
     '<p>Reunindo repasse, pronta entrega e meta produtiva.</p></div>';
   try{
     const [dispo, disponib, produtos, pedidos, oculto] = await Promise.all([
-      json('dispo.json'), json('disponibilidades.json'),
-      json('produtos.json'), json('pedidos.json').catch(() => []),
+      dispoDeAgora(), json('disponibilidades.json'),
+      json('produtos.json'), pedidosDeAgora(),
       bloqueios(),
       carregarFaixas()          // precisa estar em FAIXAS antes do montar()
     ]);
