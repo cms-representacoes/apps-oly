@@ -6198,6 +6198,97 @@ function produtoDoLink(o){
   return p;
 }
 
+/* ── o que vai junto com o link ──────────────────────────────────
+   A página do cliente é pública: ela não pode ler a carteira nem o
+   faturamento da casa para descobrir o que aquele cliente já comprou. Quem
+   monta é esta tela, que já está autenticada, e o resultado viaja dentro do
+   próprio link — só os produtos daquele cliente, nada além.
+
+   Só entra o que está disponível hoje. A tira é uma oferta: mostrar o que
+   acabou faria o cliente escolher e descobrir depois que não tem. */
+let _compras = null;   // cache da sessão: carteira + faturado, por cliente
+
+async function comprasDaCasa(){
+  if(_compras) return _compras;
+  const pega = async (acao, arquivo) => {
+    try{
+      const d = await doWorkerComPrazo({ method:'PATCH',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ action: acao }) }, 8000);
+      if(d) return d;
+    }catch(e){ console.warn(acao + ' não veio', e); }
+    try{ return await json(arquivo); }catch(_){ return null; }
+  };
+  const [cart, fat] = await Promise.all([
+    pega('getCarteira', 'carteira.json'),
+    pega('getFaturados', 'faturados.json'),
+  ]);
+  const porCliente = new Map();
+  const poe = (cod, artigo, cor) => {
+    const c = String(cod || '').trim();
+    const k = chave(artigo, cor);
+    if(!c || !k.includes('|')) return;
+    if(!porCliente.has(c)) porCliente.set(c, new Set());
+    porCliente.get(c).add(k);
+  };
+  for(const r of ((cart && cart.pedidos) || [])) poe(r.cliente_cod, r.artigo, r.cor);
+  const mapaFat = (fat && fat.faturados) || {};
+  for(const [cod, itens] of Object.entries(mapaFat))
+    for(const [artigo, v] of Object.entries(itens || {}))
+      for(const cor of Object.keys((v && v.cores) || {})) poe(cod, artigo, cor);
+  // os repasses são a fonte mais atual, e já estão carregados aqui
+  for(const ped of ((STATE.fontes && STATE.fontes.pedidos) || [])){
+    if(ped && ped.archived) continue;
+    for(const it of ((ped && ped.items) || [])) poe(ped.clienteCodigo, it.codigo, it.cor);
+  }
+  _compras = porCliente;
+  return _compras;
+}
+
+// Disponível é o que a vitrine mostra: o montar() já descontou reserva,
+// rateio e o que o admin mandou esconder.
+const TETO_TIRA = 14;
+
+async function tirasDoLink(cliente, jaNoLink){
+  const marcar = (o, tira) => ({ ...produtoDoLink(o), tira });
+  const compras = await comprasDaCasa().catch(() => new Map());
+  const dele = compras.get(String(cliente || '').trim()) || new Set();
+  const naVitrine = STATE.produtos.filter(o => daMarca(o) && temAlgum(o));
+
+  const ja = naVitrine
+    .filter(o => dele.has(o.k) && !jaNoLink.has(o.k))
+    .slice(0, TETO_TIRA)
+    .map(o => marcar(o, 'ja'));
+
+  /* Meias e mochilas: o que fecha o pedido e ninguém lembra de pedir.
+     Na ordem do catálogo vinham 14 bolsas e bonés e nenhuma meia — então a
+     tira é montada metade a metade, e entre os acessórios a mochila passa
+     na frente. */
+  const livres = naVitrine.filter(o => !jaNoLink.has(o.k));
+  const meias = livres.filter(ehMeia);
+  const aces = livres.filter(o => ehComplemento(o) && !ehMeia(o))
+    .sort((a, b) => (ehMochila(b) ? 1 : 0) - (ehMochila(a) ? 1 : 0));
+  const metade = Math.ceil(TETO_TIRA / 2);
+  const daMeia = meias.slice(0, metade);
+  const extra = [...daMeia, ...aces.slice(0, TETO_TIRA - daMeia.length)]
+    .slice(0, TETO_TIRA).map(o => marcar(o, 'extra'));
+
+  return { ja, extra, dele };
+}
+
+// o que a vitrine tem para oferecer deste produto, agora
+const temAlgum = o => (o.pronta && o.pronta.total > 0)
+                   || (o.repasse && o.repasse.total > 0)
+                   || !!o.meta;
+const ehMeia = o => String(o.categoria || '').toUpperCase() === 'MEIA'
+                 || /\bMEIA/.test(norm(o.nome));
+const ehMochila = o => /\bMOCHILA\b/.test(norm(o.nome));
+function ehComplemento(o){
+  const cat = String(o.categoria || '').toUpperCase();
+  if(cat === 'MEIA' || cat === 'ACC') return true;
+  return /\b(MEIA|MOCHILA|BOLSA|SACOLA|GARRAFA|BONE)\b/.test(norm(o.nome));
+}
+
 async function gerarLink(){
   const cliente = $('lkCliente').value.trim();
   if(!cliente){
@@ -6212,6 +6303,18 @@ async function gerarLink(){
   const btn = $('lkGerar');
   ocupado(btn, 'Gerando…');
   try{
+    // as tiras vão dentro de `produtos`, marcadas: o Worker grava o array
+    // como está, então isto não depende de atualizar o Worker
+    const escolhidos = new Set(dentro.map(o => o.k));
+    const { ja, extra, dele } = await tirasDoLink(cliente, escolhidos)
+      .catch(() => ({ ja:[], extra:[], dele:new Set() }));
+    const produtos = dentro.map(o => {
+      const p = produtoDoLink(o);
+      // o que ele já comprou antes ganha a marca no card
+      if(dele.has(o.k)) p.jaComprou = true;
+      return p;
+    }).concat(extra, ja);
+
     const r = await fetch(WORKER_URL, { method:'PATCH',
       headers:{ 'Content-Type':'application/json' },
       body: JSON.stringify({ action:'criarLink', data:{
@@ -6222,7 +6325,7 @@ async function gerarLink(){
         marca: MARCA,
         origem: 'vitrine',
         validadeHoras: LK.horas,
-        produtos: dentro.map(produtoDoLink)
+        produtos
       }}) });
     const j = await r.json().catch(() => null);
     if(!r.ok || !j || !j.success || !j.codigo)
