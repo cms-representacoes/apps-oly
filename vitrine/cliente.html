@@ -305,18 +305,42 @@ button{ font:inherit }
 .z-pe .pdv{ margin-left:auto; font-size:17px; font-weight:800; color:var(--marca);
   white-space:nowrap }
 .z-conta{ font-size:11px; color:var(--fraco); margin-top:4px }
-.z-add{ display:flex; gap:8px; align-items:center }
-.z-add input{ width:74px; border:1px solid var(--linha); border-radius:9px; padding:8px;
-  font-size:14px; font-weight:800; text-align:center; color:var(--tinta);
+/* Ampliar a foto é o gesto de quem está decidindo. O pedir tinha ficado
+   discreto aqui, em branco com borda fina, enquanto no card ele é o botão
+   mais forte da tela — então a mesma linguagem, em escala maior. */
+.z-add{ display:flex; gap:9px; align-items:center; background:var(--papel);
+  border:1px solid var(--linha); border-radius:13px; padding:9px 10px }
+.z-add .rot{ font-size:11.5px; font-weight:700; color:var(--fraco); flex:none;
+  padding-left:2px }
+.z-add input{ width:84px; flex:none; border:1px solid var(--linha-forte); border-radius:10px;
+  padding:11px 8px; font-size:16px; font-weight:800; text-align:center; color:var(--tinta);
   background:var(--carta); font-family:inherit; -moz-appearance:textfield }
+.z-add input:focus{ outline:2px solid var(--marca); outline-offset:1px; border-color:transparent }
 .z-add input::-webkit-outer-spin-button,
 .z-add input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0 }
-.z-add button{ border:1px solid var(--linha); background:var(--carta); color:var(--texto);
-  border-radius:9px; padding:9px 18px; font-size:13px; font-weight:800; cursor:pointer;
-  font-family:inherit }
-.z-add button:hover:not(:disabled){ border-color:var(--marca); color:var(--marca) }
-.z-add button:disabled{ opacity:.5; cursor:default }
-.z-add .un{ font-size:11.5px; color:var(--fraco) }
+.z-add button{ flex:1; border:1px solid transparent; border-radius:10px; padding:12px 14px;
+  font-size:14px; font-weight:800; cursor:pointer; color:#fff; font-family:inherit;
+  display:flex; align-items:center; justify-content:center; gap:7px;
+  background:linear-gradient(145deg,var(--marca-claro),var(--marca) 55%,var(--marca-escuro));
+  box-shadow:0 4px 13px color-mix(in srgb,var(--marca) 32%,transparent),
+             inset 0 1px 0 rgba(255,255,255,.26) }
+.z-add button:hover:not(:disabled){ filter:brightness(1.06) }
+/* já no carrinho: verde, como no card */
+.z-add.quero{ border-color:color-mix(in srgb,var(--pronta) 40%,transparent);
+  background:var(--pronta-fundo) }
+.z-add.quero button{
+  background:linear-gradient(145deg,#34C77B 0%,#128A4F 55%,#0A5C35 100%);
+  box-shadow:0 4px 13px rgba(18,138,79,.32), inset 0 1px 0 rgba(255,255,255,.26) }
+/* sem quantidade não há o que adicionar — o mesmo tracejado do card */
+.z-add button:disabled{ background:var(--carta); color:var(--tenue);
+  border-color:var(--linha-forte); border-style:dashed; box-shadow:none;
+  cursor:not-allowed }
+@media(max-width:520px){
+  .z-add{ gap:7px; padding:8px }
+  .z-add .rot{ display:none }
+  .z-add input{ width:66px; padding:10px 6px }
+  .z-add button{ padding:11px 10px; font-size:13px }
+}
 
 /* ── estados ── */
 .estado{ max-width:520px; margin:70px auto; padding:28px 22px; text-align:center;
@@ -614,12 +638,17 @@ function pintarZoom(){
   // quem ampliou para decidir tem de poder pedir sem fechar a janela
   const noCarrinho = ESCOLHA.has(k);
   const pares = noCarrinho ? (ESCOLHA.get(k).pares || '') : (RASCUNHO.get(k) || '');
-  $('zAdd').innerHTML = `
+  const zadd = $('zAdd');
+  zadd.classList.toggle('quero', noCarrinho);
+  zadd.innerHTML = `
+    <span class="rot">pares</span>
     <input type="number" inputmode="numeric" min="0" placeholder="0"
       value="${esc(pares)}" data-pares="${esc(k)}" aria-label="Quantos pares">
     <button data-quero="${esc(k)}"${Number(pares) > 0 || noCarrinho ? '' : ' disabled'}>${
-      noCarrinho ? 'No carrinho' : 'Adicionar no carrinho'}</button>
-    <span class="un">pares</span>`;
+      noCarrinho ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.4" stroke-linecap="round"
+          stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>No carrinho`
+        : 'Adicionar no carrinho'}</button>`;
 }
 
 // O card inteiro não é botão: o cliente precisa poder rolar e ler sem colocar
@@ -670,6 +699,9 @@ document.addEventListener('input', e => {
   for(const el of document.querySelectorAll(`[data-k="${CSS.escape(k)}"]`)){
     el.classList.toggle('quero', ESCOLHA.has(k));
   }
+  const zadd = $('zAdd');
+  if(zadd && zadd.querySelector(`[data-quero="${CSS.escape(k)}"]`))
+    zadd.classList.toggle('quero', ESCOLHA.has(k));
   for(const btn of document.querySelectorAll(`[data-quero="${CSS.escape(k)}"]`)){
     btn.disabled = !(n > 0) && !ESCOLHA.has(k);
     if(!ESCOLHA.has(k)){
