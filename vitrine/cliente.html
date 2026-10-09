@@ -81,8 +81,9 @@ button{ font:inherit }
 /* ── grade ── */
 .grade{ max-width:960px; margin:0 auto; padding:12px 14px 0;
   display:grid; grid-template-columns:1fr; gap:10px }
-/* a folga do rodapé fixo fica em quem for o último bloco */
-.fim-da-pagina{ padding-bottom:110px }
+/* A folga do rodapé fixo é posta pelo JS, com a altura que ele realmente
+   tem: no CSS ela virava uma regra que a definição de .tira sobrescrevia, e
+   catorze miniaturas ficavam escondidas atrás da barra de Enviar. */
 @media(min-width:700px){ .grade{ grid-template-columns:1fr 1fr; gap:12px } }
 @media(min-width:1000px){ .grade{ grid-template-columns:1fr 1fr 1fr } }
 /* Numa coluna so, a foto quadrada tomava meia tela e empurrava o produto
@@ -536,14 +537,25 @@ function pintar(){
              'meias e acessórios disponíveis', extras);
   pintarTira('tiraJa', 'Você já comprou',
              `${ja.length} disponíve${ja.length === 1 ? 'l' : 'is'} agora`, ja);
-  // a folga do rodapé fixo fica em quem sobrou por último
-  const blocos = [$('grade'), $('tiraExtras'), $('tiraJa')];
-  for(const b of blocos) b.classList.remove('fim-da-pagina');
-  const visiveis = blocos.filter(b => !b.hidden);
-  visiveis[visiveis.length - 1].classList.add('fim-da-pagina');
+  folgaDoRodape();
   if(!$('zoom').hidden) pintarZoom();
   pintarRodape();
 }
+
+/* O rodapé é fixo e cobre o fim da página. A folga vai no último bloco que
+   sobrou — e vale a altura medida, porque no celular ele quebra em duas
+   linhas e cresce. */
+function folgaDoRodape(){
+  const blocos = [$('grade'), $('tiraExtras'), $('tiraJa')];
+  for(const b of blocos) b.style.paddingBottom = '';
+  const visiveis = blocos.filter(b => b && !b.hidden);
+  if(!visiveis.length) return;
+  const pe = $('pe');
+  const alt = (pe && !pe.hidden) ? pe.getBoundingClientRect().height : 0;
+  visiveis[visiveis.length - 1].style.paddingBottom = Math.round(alt + 28) + 'px';
+}
+// o rodapé muda de altura quando entra o botão de PDF ou a tela gira
+addEventListener('resize', folgaDoRodape);
 
 function pintarRodape(){
   const n = ESCOLHA.size;
@@ -553,6 +565,7 @@ function pintarRodape(){
       (pares ? ` · <b>${nf(pares)}</b> pares` : '')
     : 'Coloque a quantidade do que interessa';
   $('peEnviar').disabled = !n;
+  folgaDoRodape();
 }
 
 /* ── foto ampliada ──────────────────────────────────────────────
