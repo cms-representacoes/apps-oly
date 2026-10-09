@@ -1787,6 +1787,94 @@ body:has(#sacola:not([hidden])) .aviso-desfazer.on{ transform:translate(50%, 0);
    do Repasses, deitados: lá eles ocupavam 330px e empurravam a vitrine para
    baixo da dobra. Aqui a mesma informação cabe em 114px. A cor é a da marca
    ativa, não o roxo — na vitrine quem manda é a marca que está aberta. */
+/* ── reativar ────────────────────────────────────────────────────
+   O vendedor escolhe um cliente parado e a vitrine inteira passa a falar com
+   ele: o que ele já vendia fica marcado e sobe, e o repasse vem na frente de
+   tudo — é o que está em casa esperando destino. Um cliente por vez: a sacola
+   é dele, e trocar esvazia. */
+.rt-bt{ color:var(--plano); border-color:rgba(122,47,191,.34) }
+.rt-bt .n{ color:var(--plano); background:var(--plano-fundo) }
+.rt-bt.on{ background:linear-gradient(135deg,#9a5bd6,#7A2FBF); border-color:transparent; color:#fff }
+.rt-bt.on .n{ background:rgba(255,255,255,.22); color:#fff }
+.rt-bt svg{ color:currentColor }
+
+.rt-faixa{ padding:2px 0 12px }
+.rt-faixa[hidden]{ display:none }
+.rt-in{ background:linear-gradient(135deg,var(--marca-claro),var(--marca-escuro)); color:#fff;
+  border-radius:16px; padding:11px 14px; display:flex; align-items:center; gap:12px;
+  box-shadow:0 8px 22px -12px color-mix(in srgb,var(--marca) 70%,transparent) }
+.rt-in .av{ width:40px; height:40px; border-radius:12px; flex:none; display:grid;
+  place-items:center; background:rgba(255,255,255,.18); font-size:13px; font-weight:800 }
+.rt-in .q{ flex:1; min-width:0 }
+.rt-in .q b{ display:block; font-size:14.5px; line-height:1.25 }
+.rt-in .q span{ display:block; font-size:11.5px; opacity:.9; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap }
+.rt-in .n{ text-align:right; flex:none }
+.rt-in .n b{ display:block; font-size:17px; line-height:1.1; font-variant-numeric:tabular-nums }
+.rt-in .n span{ font-size:10.5px; opacity:.9 }
+.rt-in .sair{ border:1px solid rgba(255,255,255,.4); background:rgba(255,255,255,.12);
+  color:#fff; border-radius:999px; padding:7px 13px; font-size:11.5px; font-weight:800;
+  cursor:pointer; flex:none; font-family:inherit }
+.rt-in .sair:hover{ background:rgba(255,255,255,.2) }
+@media(max-width:700px){
+  .rt-in{ flex-wrap:wrap; gap:9px; padding:10px 12px }
+  .rt-in .q{ flex:1 1 100%; order:-1 }
+  .rt-in .n b{ font-size:15px }
+}
+
+.rt-bg{ position:fixed; inset:0; z-index:88; background:rgba(16,18,20,.5);
+  backdrop-filter:blur(2px); display:flex; justify-content:flex-end }
+.rt-bg[hidden]{ display:none }
+.rt-gav{ background:var(--carta); width:min(540px,100%); height:100%; display:flex;
+  flex-direction:column; animation:rtEntra .2s cubic-bezier(.22,1,.36,1) }
+@keyframes rtEntra{ from{ transform:translateX(26px); opacity:.6 } to{ transform:none; opacity:1 } }
+.rt-topo{ padding:14px 16px; border-bottom:1px solid var(--linha); display:flex;
+  align-items:center; gap:11px }
+.rt-topo b{ font-size:15px; color:var(--tinta) }
+.rt-topo span{ display:block; font-size:11.5px; color:var(--fraco) }
+.rt-topo .icone{ margin-left:auto }
+.rt-atual{ padding:9px 16px; border-bottom:1px solid var(--linha); background:color-mix(in srgb, var(--marca) 9%, transparent);
+  display:flex; align-items:center; gap:10px; font-size:12.5px; color:var(--tinta) }
+.rt-atual[hidden]{ display:none }
+.rt-atual b{ font-weight:800 }
+.rt-atual button{ margin-left:auto; border:1px solid var(--linha); background:var(--carta);
+  color:var(--texto); border-radius:999px; padding:6px 12px; font-size:11.5px;
+  font-weight:800; cursor:pointer; font-family:inherit; white-space:nowrap }
+.rt-atual button:hover{ border-color:var(--marca); color:var(--marca) }
+.rt-f{ padding:9px 16px; border-bottom:1px solid var(--linha); display:flex; gap:7px; flex-wrap:wrap }
+.rt-f input,.rt-f select{ border:1px solid var(--linha); border-radius:999px; padding:7px 13px;
+  font-size:12.5px; background:var(--carta); color:var(--tinta); font-family:inherit }
+.rt-f input{ flex:1; min-width:150px }
+.rt-corpo{ overflow:auto; flex:1 }
+.rt-cli{ display:flex; align-items:center; gap:11px; padding:11px 16px; width:100%;
+  border:0; border-bottom:1px solid var(--linha); background:var(--carta); cursor:pointer;
+  text-align:left; font-family:inherit }
+.rt-cli:hover{ background:var(--papel) }
+.rt-cli.on{ background:color-mix(in srgb, var(--marca) 9%, transparent); box-shadow:inset 3px 0 0 var(--marca) }
+.rt-cli .av{ width:36px; height:36px; border-radius:11px; flex:none; display:grid;
+  place-items:center; background:var(--plano-fundo); color:var(--plano);
+  font-size:11px; font-weight:800 }
+.rt-cli .meio{ flex:1; min-width:0 }
+.rt-cli .meio > span{ display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.rt-cli .nm{ font-size:13px; font-weight:800; color:var(--tinta); line-height:1.3 }
+.rt-cli .sb{ font-size:10.5px; color:var(--tenue) }
+.rt-cli .tem{ font-size:10.5px; color:var(--marca); font-weight:700 }
+.rt-cli .dir{ text-align:right; flex:none; min-width:64px }
+.rt-cli .p{ font-size:13px; font-weight:800; color:var(--tinta); font-variant-numeric:tabular-nums }
+.rt-cli .d{ font-size:10.5px; font-weight:700; color:var(--plano) }
+.rt-vazio{ padding:30px 16px; text-align:center; color:var(--tenue); font-size:13px }
+
+/* o selo no card: o que este cliente já comprou antes */
+.selo-dele{ font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+  border-radius:999px; padding:2px 8px; background:#B45309; color:#fff;
+  cursor:help; pointer-events:auto }
+.selo-dele:focus-visible,.rt-hist:focus-visible{ outline:2px solid var(--marca); outline-offset:2px }
+.rt-hist{ font-size:10.5px; font-weight:700; color:#B45309; background:#FEF3C7;
+  border-radius:8px; padding:4px 8px; margin-top:4px; cursor:help }
+.rt-hist:hover,.selo-dele:hover{ filter:brightness(1.06) }
+/* a dica das notas é mais larga que a das metas: GCI e data na mesma linha */
+.mt-dica.largo{ max-width:300px }
+
 .cmp-bt{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 13px;
   font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;
   border:1px solid var(--linha);background:var(--carta);color:var(--tinta);
@@ -2096,6 +2184,9 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
       <!-- o prêmio por par repassado. Não filtra nada: abre o painel. -->
       <button type="button" class="cmp-bt" id="chipCamp" hidden aria-expanded="false"
               title="Ver as campanhas de incentivo"></button>
+      <!-- quem parou de comprar e ainda tem o que vender aqui -->
+      <button type="button" class="cmp-bt rt-bt" id="chipReat" hidden
+              title="Clientes sem compra no 2º semestre"></button>
       <div class="mt-sel">
         <select id="mtMes" aria-label="Mês"></select>
         <select id="mtPrep" aria-label="Preposto"></select>
@@ -2121,6 +2212,9 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
     <!-- fora da linha de propósito: a barra recolhida esconde o resto dela,
          e este painel tem vida própria -->
     <div class="cmp-painel" id="cmpPainel" hidden></div>
+    <!-- o cliente que está sendo montado: enquanto ele estiver aqui, a
+         vitrine inteira conversa com ele -->
+    <div class="rt-faixa" id="rtFaixa" hidden></div>
     <div class="mt-corpo" id="mtCorpo">
       <div class="mt-cats" id="mtCats"></div>
       <div class="mt-fx">
@@ -2483,6 +2577,31 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
     <div class="sc-abas" id="scAbas" role="tablist" hidden></div>
     <div class="sc-corpo" id="scCorpo"></div>
     <div class="sc-pe" id="scPe"></div>
+  </aside>
+</div>
+
+<!-- ── clientes para reativar ──
+     A mesma lista da Detalhada: comprou no 1º semestre, sem nota nem carteira
+     no 2º, e a porta de rede cuja loja irmã comprou fica de fora. Vem pronta
+     num arquivo de apoio — a vitrine não tem (nem precisa ter) a base. -->
+<div class="rt-bg" id="rtLista" hidden>
+  <aside class="rt-gav" role="dialog" aria-modal="true" aria-label="Clientes para reativar">
+    <div class="rt-topo">
+      <div><b>Clientes para reativar</b><span id="rtSub">—</span></div>
+      <button class="icone" onclick="fecharReat()" aria-label="Fechar">&#10005;</button>
+    </div>
+    <div class="rt-atual" id="rtAtual" hidden></div>
+    <div class="rt-f">
+      <input id="rtBusca" type="search" placeholder="cliente, código ou cidade" autocomplete="off">
+      <select id="rtVend" aria-label="Vendedor"></select>
+      <select id="rtDias" aria-label="Tempo parado">
+        <option value="0">qualquer tempo</option>
+        <option value="60">60+ dias</option>
+        <option value="90" selected>90+ dias</option>
+        <option value="120">120+ dias</option>
+      </select>
+    </div>
+    <div class="rt-corpo" id="rtCorpo"></div>
   </aside>
 </div>
 
@@ -3217,6 +3336,7 @@ async function carregar(){
     STATE.assinatura = assinaturaRepasse(STATE.produtos);
     await carregarNovidades();
     carregarMetas();          // a barra não segura a vitrine: entra quando chegar
+    carregarReativar();       // idem: o chip aparece quando a lista chegar
     carregarVistos();
     $('estado').innerHTML = '';
     aplicar();
@@ -3863,13 +3983,29 @@ const ORDENS = [['padrao','Padrão'], ['nome','Nome (A–Z)'], ['menor','Menor p
                 ['maior','Maior preço'], ['qtd','Mais disponível']];
 const rotuloOrdem = id => (ORDENS.find(o => o[0] === id) || ORDENS[0])[1];
 const disponivel = o => (o.pronta ? o.pronta.total : 0) + (o.repasse ? o.repasse.total : 0);
+/* Com um cliente escolhido a vitrine inteira continua à vista, só muda de
+   ordem. O repasse vem na frente porque é o que já está em casa esperando
+   destino; dentro dele, o que o cliente já vendia. Nada fica escondido: ele
+   pode precisar oferecer qualquer coisa. */
+function reatPeso(o){
+  if(!REAT.cliente) return 0;
+  const dele = !!reatHistDe(o);
+  const rep = !!(o.repasse && o.repasse.total > 0);
+  if(rep && dele) return 0;   // parado em casa e ele conhece
+  if(rep) return 1;           // parado em casa
+  if(dele) return 2;          // ele já comprou, mas é estoque ou produção
+  return 3;
+}
+
 function ordenar(lista){
   const l = lista.slice();
   const nome = o => String(o.nome || o.artigo) + ' ' + String(o.cor || '');
   // O que é do vendedor abre a vitrine, em qualquer ordenação: é o que ele
   // não pode deixar passar. Dentro do grupo vale a ordem escolhida.
   const porRateio = (a, b) => (b.rateado ? 1 : 0) - (a.rateado ? 1 : 0);
-  const comRateio = fn => (a, b) => porRateio(a, b) || fn(a, b);
+  // montando para um cliente, a prioridade dele vem antes de tudo
+  const porReat = (a, b) => reatPeso(a) - reatPeso(b);
+  const comRateio = fn => (a, b) => porReat(a, b) || porRateio(a, b) || fn(a, b);
   switch(STATE.ordem){
     // Sem preço na tabela o produto vai para o fim, nas duas direções: ele
     // não é nem o mais barato nem o mais caro.
@@ -3900,6 +4036,8 @@ function aplicar(){
   STATE.filtrados = ordenar(STATE.produtos.filter(o => passa(o, null)));
   pintarAtalhoNovidades();
   pintarChipCampanhas();
+  pintarChipReat();
+  pintarFaixaReat();
   if(_campAberto) pintarPainelCampanhas();
   pintarVistos();
   pintarFiltros();
@@ -4419,6 +4557,8 @@ function mostrarDicaMeta(el, ev){
     return `<div class="l${cls}"><span>${esc(r)}</span><b>${esc(v)}</b></div>`;
   }).join('');
   b.classList.add('on');
+  // a dica de uma nota tem GCI e data na mesma linha: precisa de mais largura
+  b.classList.toggle('largo', /GCI /.test(d));
   moverDicaMeta(ev, el);
 }
 function moverDicaMeta(ev, el){
@@ -4436,10 +4576,12 @@ function moverDicaMeta(ev, el){
 function esconderDicaMeta(){ if(_mtDica) _mtDica.classList.remove('on'); }
 
 document.addEventListener('pointerover', e => {
+  if(_dicaPresa) return;            // presa no clique: o passar não manda
   const el = e.target.closest && e.target.closest('[data-dica]');
   if(el) mostrarDicaMeta(el, e); else esconderDicaMeta();
 });
 document.addEventListener('pointermove', e => {
+  if(_dicaPresa) return;
   const el = e.target.closest && e.target.closest('[data-dica]');
   if(el) moverDicaMeta(e, el);
 });
@@ -4448,8 +4590,21 @@ document.addEventListener('pointerdown', e => {
   const el = e.target.closest && e.target.closest('[data-dica]');
   if(el && e.pointerType && e.pointerType !== 'mouse'){
     mostrarDicaMeta(el, e);
-    setTimeout(esconderDicaMeta, 2400);
+    setTimeout(esconderDicaMeta, 4000);
   }
+});
+/* No computador a dica some quando o ponteiro sai — e as notas são uma lista
+   para ler com calma. Clicando, ela fica até o próximo clique fora. */
+let _dicaPresa = null;
+document.addEventListener('click', e => {
+  const el = e.target.closest && e.target.closest('[data-dica]');
+  if(el){
+    e.preventDefault();
+    _dicaPresa = _dicaPresa === el ? null : el;
+    if(_dicaPresa) mostrarDicaMeta(el, e); else esconderDicaMeta();
+    return;
+  }
+  if(_dicaPresa){ _dicaPresa = null; esconderDicaMeta(); }
 });
 addEventListener('scroll', esconderDicaMeta, true);
 
@@ -4483,6 +4638,212 @@ addEventListener('keydown', e => {
 
 /* Trocar de marca muda a oferta: a barra tem de acompanhar. */
 function metasAcompanhamVitrine(){ if(METAS) pintarMetas(); }
+
+/* ── reativar ────────────────────────────────────────────────────
+   Quem comprou no 1º semestre e não tem nota nem carteira no 2º — a mesma
+   régua da Detalhada, inclusive a de rede: a porta parada cuja loja irmã
+   compra não é cliente para reativar.
+
+   A lista vem pronta em reativar.json, publicado pelo mesmo caminho da
+   Detalhada. A vitrine não tem a base de faturamento e não deve ter: o que
+   ela precisa é do nome, de quanto ele comprava e de quais artigos. */
+const REAT = { dados:null, cliente:null, f:{ vend:'', dias:90, busca:'' } };
+
+async function carregarReativar(){
+  try{
+    const d = await json('reativar.json');
+    if(d && Array.isArray(d.clientes)) REAT.dados = d;
+  }catch(_){ /* sem o arquivo, o chip simplesmente não aparece */ }
+  pintarChipReat();
+}
+
+// O vendedor vê os clientes dele; o CMS vê todos.
+function reatDoVendedor(){
+  if(!REAT.dados) return [];
+  if(ehCmsSessao()) return REAT.dados.clientes;
+  const eu = norm((SESSAO && SESSAO.nome) || '');
+  return REAT.dados.clientes.filter(c => norm(c.vend) === eu);
+}
+function reatFiltrados(){
+  const b = REAT.f.busca;
+  return reatDoVendedor().filter(c =>
+    (!REAT.f.vend || c.vend === REAT.f.vend) &&
+    c.dias >= REAT.f.dias &&
+    (!b || norm(c.nome + ' ' + c.cod + ' ' + (c.cidade || '')).includes(b)));
+}
+
+function pintarChipReat(){
+  const bt = $('chipReat');
+  if(!bt) return;
+  const n = reatFiltrados().length;
+  bt.hidden = !REAT.dados || (!n && !REAT.cliente);
+  if(bt.hidden) return;
+  const c = REAT.cliente;
+  bt.innerHTML = SVG_REATIVAR + (c ? esc(nomeCurto(c.nome)) : 'Reativar') +
+    (c ? '' : ` <span class="n">${nf(n)}</span>`);
+  bt.classList.toggle('on', !!c);
+  bt.title = c ? 'Montando para ' + c.nome : 'Clientes sem compra no 2º semestre';
+  const barra = $('mtBarra');
+  if(barra) barra.hidden = false;
+}
+
+function abrirReat(){
+  $('rtLista').hidden = false;
+  document.body.classList.add('trava');
+  const sv = $('rtVend');
+  if(ehCmsSessao() && !sv.options.length){
+    const vs = [...new Set(REAT.dados.clientes.map(c => c.vend).filter(Boolean))].sort();
+    sv.innerHTML = '<option value="">todos os vendedores</option>' +
+      vs.map(v => `<option>${esc(v)}</option>`).join('');
+  }
+  sv.hidden = !ehCmsSessao();
+  pintarReatLista();
+}
+function fecharReat(){
+  $('rtLista').hidden = true;
+  document.body.classList.remove('trava');
+}
+
+function pintarReatLista(){
+  const lista = reatFiltrados();
+  const c = REAT.cliente;
+  $('rtSub').textContent = REAT.dados
+    ? `${nf(lista.length)} sem compra no 2º semestre · base de ${REAT.dados.base}`
+    : '—';
+  // com um cliente aberto, a lista diz para quem se está montando e oferece
+  // a saída: escolher outro troca, este botão larga
+  const aviso = $('rtAtual');
+  aviso.hidden = !c;
+  if(c) aviso.innerHTML = `<span>montando para <b>${esc(c.nome)}</b></span>
+    <button type="button" onclick="largarCliente()">Ver a vitrine inteira</button>`;
+  $('rtCorpo').innerHTML = lista.length ? lista.map(c => `
+    <button type="button" class="rt-cli${REAT.cliente && REAT.cliente.cod === c.cod ? ' on' : ''}"
+            data-reat="${esc(c.cod)}">
+      <span class="av">${esc(iniciaisDe(c.nome))}</span>
+      <span class="meio">
+        <span class="nm">${esc(c.nome)}</span>
+        <span class="sb">${esc(c.cod)}${c.cidade ? ' · ' + esc(c.cidade) : ''}${
+          ehCmsSessao() && c.vend ? ' · ' + esc(c.vend) : ''}</span>
+        <span class="tem">${nf(reatNaVitrine(c))} produtos dele na vitrine</span>
+      </span>
+      <span class="dir">
+        <span class="p">${nf(c.pares)}</span>
+        <span class="d">${c.dias} dias</span>
+      </span>
+    </button>`).join('')
+    : '<div class="rt-vazio">ninguém com esse filtro</div>';
+}
+
+const iniciaisDe = n => String(n || '').trim().split(/\s+/).slice(0, 2)
+  .map(x => x[0] || '').join('').toUpperCase();
+
+/** Quantos artigos do histórico dele estão na vitrine agora. */
+function reatNaVitrine(c){
+  if(!c || !c.dele) return 0;
+  let n = 0;
+  const tem = new Set(STATE.produtos.filter(daMarca).map(o => norm(o.artigo)));
+  for(const a of Object.keys(c.dele)) if(tem.has(norm(a))) n++;
+  return n;
+}
+
+/** O que este cliente já comprou deste produto, e em quais notas. */
+function reatHistDe(o){
+  const c = REAT.cliente;
+  if(!c || !c.dele) return null;
+  const h = c.dele[o.artigo] || c.dele[norm(o.artigo)];
+  return h ? { pares: h[0], cores: h[1] || [], notas: h[2] || [] } : null;
+}
+
+/* O balão é o mesmo das metas: data-dica com "título|rótulo::valor|…". Usar o
+   que já existe mantém um modelo só de dica na tela inteira. */
+function reatDica(o, h){
+  if(!h) return '';
+  const tit = `${o.nome || o.artigo} · ${nf(h.pares)} pares`;
+  const linhas = h.notas.length
+    ? h.notas.map(([gci, dia, pares, cores]) =>
+        `${dia}${gci ? ' · GCI ' + gci : ''}${cores && cores.length
+          ? ' · ' + cores.slice(0, 2).join(', ') : ''}::${nf(pares)} pares`)
+    : [`no 1º semestre::${nf(h.pares)} pares`];
+  return [tit, ...linhas].join('|');
+}
+
+/* Um cliente por vez: a sacola é dele e o pedido sai no nome dele. Trocar
+   com a sacola cheia misturaria dois pedidos — então pergunta antes, com o
+   diálogo da casa. */
+function trocarCliente(novo){
+  // o mesmo de novo não é troca: fecha e segue
+  if(novo && REAT.cliente && novo.cod === REAT.cliente.cod) return fecharReat();
+  const n = STATE.sacola.size;
+  const fazer = () => {
+    if(n){ STATE.sacola.clear(); salvarSacola(); }
+    REAT.cliente = novo;
+    fecharReat();
+    aplicar();
+    pintarSacola();
+    window.scrollTo({ top:0, behavior:'smooth' });
+  };
+  if(!n || !REAT.cliente) return fazer();
+  mostrarDialogo({
+    titulo: novo ? 'Trocar de cliente?' : 'Sair do cliente?',
+    texto: `A sacola tem <b>${nf(n)} ${n === 1 ? 'item' : 'itens'}</b> para ` +
+           `<b>${esc(REAT.cliente.nome)}</b>. ` + (novo
+             ? 'Passar para <b>' + esc(novo.nome) + '</b> esvazia a sacola.'
+             : 'Sair esvazia a sacola.'),
+    ok: novo ? 'Trocar e esvaziar' : 'Sair e esvaziar',
+    cancelar: 'Continuar aqui',
+    aoConfirmar: fazer,
+  });
+}
+
+function escolherReat(cod){
+  const c = reatDoVendedor().find(x => String(x.cod) === String(cod));
+  if(c) trocarCliente(c);
+}
+/* "Trocar cliente" abre a lista — é lá que se escolhe o próximo. Largar o
+   cliente e voltar à vitrine inteira é o outro botão, dentro da lista. */
+function sairDoReat(){ abrirReat(); }
+function largarCliente(){ trocarCliente(null); }
+
+function pintarFaixaReat(){
+  const f = $('rtFaixa');
+  if(!f) return;
+  const c = REAT.cliente;
+  f.hidden = !c;
+  if(!c) return;
+  f.innerHTML = `<div class="rt-in">
+    <span class="av">${esc(iniciaisDe(c.nome))}</span>
+    <span class="q"><b>${esc(c.nome)}</b>
+      <span>${esc(c.cod)}${c.cidade ? ' · ' + esc(c.cidade) : ''}${
+        ehCmsSessao() && c.vend ? ' · ' + esc(c.vend) : ''} · ${
+        nf(reatNaVitrine(c))} produtos que ele comprava estão na vitrine</span></span>
+    <span class="n"><b>${nf(c.pares)}</b><span>no 1º semestre</span></span>
+    <span class="n"><b>${nf(c.dias)}</b><span>dias parado</span></span>
+    <button type="button" class="sair" onclick="sairDoReat()">Trocar cliente</button>
+  </div>`;
+}
+
+const SVG_REATIVAR = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+  stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"
+  aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/>
+  <path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg>`;
+
+$('chipReat').onclick = () => REAT.cliente ? sairDoReat() : abrirReat();
+$('rtCorpo').addEventListener('click', e => {
+  const b = e.target.closest('[data-reat]');
+  if(b) escolherReat(b.dataset.reat);
+});
+$('rtBusca').addEventListener('input', e => {
+  REAT.f.busca = norm(e.target.value.trim());
+  pintarReatLista(); pintarChipReat();
+});
+$('rtDias').addEventListener('change', e => {
+  REAT.f.dias = Number(e.target.value); pintarReatLista(); pintarChipReat();
+});
+$('rtVend').addEventListener('change', e => {
+  REAT.f.vend = e.target.value; pintarReatLista(); pintarChipReat();
+});
+$('rtLista').addEventListener('click', e => { if(e.target.id === 'rtLista') fecharReat(); });
+addEventListener('keydown', e => { if(e.key === 'Escape' && !$('rtLista').hidden) fecharReat(); });
 
 /* ── painel das campanhas ────────────────────────────────────────
    Quanto cada campanha já rendeu. Para a CMS é o total da casa; para o
@@ -4767,7 +5128,11 @@ function cardHtml(o, i){
            loading="lazy" decoding="async" onerror="semMiniatura(this)">
       <button class="foto-zoom" onclick="abrirZoom(${i})" title="Ampliar foto"
               aria-label="Ampliar foto de ${quem}"></button>
-      <span class="selos">${ehNovo(o) ? '<span class="selo-novo">Novo</span>' : ''}${
+      <span class="selos">${(() => { const h = reatHistDe(o); return h
+        ? `<span class="selo-dele" data-dica="${esc(reatDica(o, h))}" tabindex="0"
+             role="button" aria-label="Quando este cliente comprou">já comprou</span>`
+        : ''; })()}${
+        ehNovo(o) ? '<span class="selo-novo">Novo</span>' : ''}${
         o.rateado ? `<span class="selo-rateio${o.soAcompanhar ? ' cms' : ''}"
           title="${o.soAcompanhar ? 'Lote rateado: só acompanhamento — quem pede é o vendedor com cota'
             : 'Reservado para você nesta ação'}">${esc(o.selo)}</span>` : ''}</span>
@@ -4791,6 +5156,11 @@ function cardHtml(o, i){
           aria-label="Ver a ficha técnica de ${quem}">i</button>` : ''}
       </span>` : ''}
       ${cam}
+      ${(() => { const h = reatHistDe(o); return h
+        ? `<span class="rt-hist" data-dica="${esc(reatDica(o, h))}" tabindex="0"
+             role="button">levou ${nf(h.pares)} pares${
+            h.cores.length ? ' · ' + esc(h.cores.slice(0, 2).join(', ')) : ''}</span>`
+        : ''; })()}
       <span class="quando">${faixas(o).map(f =>
         `<span class="chip ${f.cls}" title="${esc(rotuloFaixa(f))}">${svgIcone(f.cls, 10)}` +
         `<span class="vso">${f.qual}</span>` +
@@ -8171,8 +8541,17 @@ function abrirModalRepasse(){
       if(d[id] && [...$(id).options].some(o => o.value === d[id])) $(id).value = d[id];
   }catch(_){}
   if(!cms) $('rpPreposto').value = String(SESSAO.codigo).trim();
-  $('rpCliente').value = ''; $('rpObs').value = '';
-  $('rpCliDica').textContent = ''; $('rpCliDica').className = 'cli-dica';
+  // Montando para um cliente do Reativar, ele já vem preenchido: o vendedor
+  // escolheu lá atrás, e digitar de novo é onde o pedido vai para a conta
+  // errada.
+  $('rpCliente').value = REAT.cliente ? REAT.cliente.cod : '';
+  $('rpObs').value = '';
+  if(REAT.cliente){
+    $('rpCliDica').textContent = REAT.cliente.nome;
+    $('rpCliDica').className = 'cli-dica ok';
+  }else{
+    $('rpCliDica').textContent = ''; $('rpCliDica').className = 'cli-dica';
+  }
   for(const id of ['rpPreposto', 'rpCliente', 'rpPrazo']) $(id).classList.remove('erro');
   pintarItensRepasse();
   CLI_ALVO = { campo:'rpCliente', lista:'rpCliSug', dica:'rpCliDica' };
@@ -8452,6 +8831,11 @@ async function enviarRepasse(op = {}){
 // Antes de abrir confere o que só se resolve na sacola: item sem grade. Item
 // sem data não barra — o modal tem o campo "Data para os itens sem data".
 function abrirModalPedido(){
+  // idem para o pedido de estoque e produção
+  setTimeout(() => {
+    const c = $('scCliente');
+    if(c && REAT.cliente && !c.value) c.value = REAT.cliente.cod;
+  }, 0);
   const doEbm = [...STATE.sacola.values()].filter(it => it.origem !== 'repasse');
   if(!doEbm.length){
     avisar('Nada para a planilha', 'A sacola não tem item de estoque nem de produção.');

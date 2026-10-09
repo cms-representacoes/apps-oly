@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quem compra isso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="preview-quemcompra-dados.js"></script>
+<style>
+:root{
+  --barra:#F1F2EF; --papel:#E9EBE7; --carta:#FFFFFF;
+  --tinta:#16181A; --texto:#3A3F45; --fraco:#6D737A; --tenue:#9AA0A6;
+  --linha:#E2E4E0; --linha-forte:#CDD0CA;
+  --pronta:#0E6B47;  --pronta-fundo:#DEEFE7;
+  --repasse:#2C39E2; --repasse-fundo:#E6E8FC;
+  --plano:#7A2FBF;   --plano-fundo:#F1E7FB;
+  --alerta:#B45309;  --alerta-fundo:#FEF3C7;
+  --marca:#2c39e2; --marca-claro:#5B69E8; --marca-escuro:#1B27B0;
+  --sombra:0 1px 2px rgba(15,23,42,.04), 0 10px 28px -16px rgba(15,23,42,.18);
+  --sombra-alta:0 1px 2px rgba(15,23,42,.06), 0 18px 36px -16px rgba(15,23,42,.28);
+}
+*,*::before,*::after{ box-sizing:border-box }
+html{ background:var(--papel) }
+body{ margin:0; background:transparent; color:var(--texto);
+  font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased }
+button{ font:inherit }
+.num{ font-variant-numeric:tabular-nums }
+
+/* ── a régua da prévia ── */
+.regua{ position:sticky; top:0; z-index:60; background:#16181A; color:#fff;
+  padding:9px 14px; display:flex; align-items:center; gap:9px; flex-wrap:wrap; font-size:12px }
+.regua b{ margin-right:4px }
+.regua select{ background:transparent; color:#fff; border:1px solid rgba(255,255,255,.26);
+  border-radius:999px; padding:4px 10px; font-size:11.5px; font-weight:700; font-family:inherit }
+.regua select option{ color:#16181A }
+.regua .dir{ margin-left:auto; opacity:.7; font-size:11px }
+
+.topo{ background:var(--barra); border-bottom:1px solid var(--linha-forte); padding:13px 16px;
+  display:flex; align-items:center; gap:11px }
+.selo{ width:36px; height:36px; border-radius:10px; display:grid; place-items:center;
+  font-size:10px; font-weight:800; color:#fff;
+  background:linear-gradient(145deg,#5B69E8,#1B27B0) }
+.tit b{ display:block; font-size:14.5px; font-weight:800; color:var(--tinta) }
+.tit span{ display:block; font-size:11px; font-weight:600; color:var(--fraco) }
+
+.folha{ max-width:1180px; margin:0 auto; padding:16px }
+.explica{ background:var(--carta); border:1px solid var(--linha); border-radius:14px;
+  padding:13px 15px; margin-bottom:14px; font-size:12.5px; color:var(--fraco) }
+.explica b{ color:var(--tinta) }
+
+.grade{ display:grid; grid-template-columns:repeat(auto-fill,minmax(236px,1fr)); gap:12px }
+.card{ background:var(--carta); border:1px solid var(--linha); border-radius:18px;
+  overflow:hidden; display:flex; flex-direction:column; box-shadow:var(--sombra);
+  transition:border-color .14s, box-shadow .14s, transform .14s }
+.card:hover{ border-color:var(--linha-forte); box-shadow:var(--sombra-alta); transform:translateY(-2px) }
+.foto{ position:relative; aspect-ratio:1/1; background:var(--carta); overflow:hidden }
+.foto img{ width:100%; height:100%; object-fit:contain; transition:transform .25s ease }
+@media (hover:hover){ .card:hover .foto img{ transform:scale(1.04) } }
+.selos{ position:absolute; top:8px; left:8px; display:flex; gap:5px; flex-wrap:wrap }
+.sel{ font-size:9.5px; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
+  border-radius:999px; padding:2px 8px; color:#fff }
+.sel.rep{ background:var(--repasse) } .sel.est{ background:var(--pronta) }
+.corpo{ padding:11px 12px 12px; border-top:1px solid var(--linha); display:flex;
+  flex-direction:column; gap:3px; flex:1 }
+.nm{ font-size:12.5px; font-weight:800; color:var(--tinta); line-height:1.25 }
+.sb{ font-size:10.5px; font-weight:600; color:var(--tenue) }
+.lin{ display:flex; align-items:baseline; justify-content:space-between; gap:6px; margin-top:2px }
+.pdv{ font-size:14px; font-weight:800; color:var(--marca) }
+.qtd{ font-size:11px; font-weight:700; color:var(--fraco) }
+
+/* o botão novo */
+.quem{ margin-top:9px; width:100%; border:1px solid var(--alerta-fundo); border-radius:10px;
+  padding:9px 10px; background:var(--alerta-fundo); color:var(--alerta); cursor:pointer;
+  display:flex; align-items:center; gap:8px; text-align:left; font-family:inherit;
+  transition:filter .14s }
+.quem:hover{ filter:brightness(.97) }
+.quem .n{ font-size:17px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums }
+.quem .t{ font-size:10.5px; font-weight:700; line-height:1.25 }
+.quem svg{ margin-left:auto; flex:none; opacity:.7 }
+
+/* ── a gaveta ── */
+.fundo{ position:fixed; inset:0; z-index:70; background:rgba(16,18,20,.5);
+  backdrop-filter:blur(2px); display:flex; justify-content:flex-end }
+.fundo[hidden]{ display:none }
+.gav{ background:var(--carta); width:min(560px,100%); height:100%; display:flex;
+  flex-direction:column; box-shadow:-20px 0 50px -20px rgba(0,0,0,.4);
+  animation:entra .2s cubic-bezier(.22,1,.36,1) }
+@keyframes entra{ from{ transform:translateX(26px); opacity:.6 } to{ transform:none; opacity:1 } }
+.gav-topo{ padding:14px 16px; border-bottom:1px solid var(--linha); display:flex;
+  align-items:flex-start; gap:12px }
+.gav-topo img{ width:58px; height:58px; object-fit:contain; border:1px solid var(--linha);
+  border-radius:11px; flex:none; background:var(--carta) }
+.gav-topo .nm{ font-size:15px }
+.gav-topo .fechar{ margin-left:auto; border:1px solid var(--linha); background:var(--carta);
+  width:32px; height:32px; border-radius:50%; cursor:pointer; color:var(--tinta); flex:none }
+.gav-res{ padding:10px 16px; background:var(--papel); border-bottom:1px solid var(--linha);
+  display:flex; gap:16px; font-size:11.5px; color:var(--fraco); flex-wrap:wrap }
+.gav-res b{ display:block; font-size:16px; color:var(--tinta); font-variant-numeric:tabular-nums }
+.gav-lista{ overflow:auto; flex:1; padding:4px 0 90px }
+.cli{ display:flex; align-items:center; gap:11px; padding:11px 16px;
+  border-bottom:1px solid var(--linha) }
+.cli:hover{ background:var(--papel) }
+.cli .av{ width:34px; height:34px; border-radius:10px; flex:none; display:grid; place-items:center;
+  background:var(--papel); color:var(--fraco); font-size:11px; font-weight:800 }
+.cli .meio{ flex:1; min-width:0 }
+.cli .n{ font-size:13px; font-weight:800; color:var(--tinta); line-height:1.25 }
+.cli .s{ font-size:10.5px; color:var(--tenue); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.cli .dir{ text-align:right; flex:none }
+.cli .p{ font-size:13.5px; font-weight:800; color:var(--tinta); font-variant-numeric:tabular-nums }
+.cli .d{ font-size:10.5px; color:var(--alerta); font-weight:700 }
+.cli .bt{ flex:none; border:1px solid var(--linha); background:var(--carta); color:var(--fraco);
+  border-radius:9px; padding:7px 11px; font-size:11.5px; font-weight:800; cursor:pointer;
+  font-family:inherit; white-space:nowrap }
+.cli .bt:hover{ border-color:var(--marca); color:var(--marca) }
+.cli.on{ background:var(--repasse-fundo) }
+.cli.on .bt{ border-color:var(--repasse); color:var(--repasse); background:#fff }
+.gav-pe{ position:absolute; bottom:0; right:0; width:min(560px,100%); background:var(--barra);
+  border-top:1px solid var(--linha-forte); padding:12px 16px; display:flex; align-items:center; gap:11px }
+.gav-pe .c{ flex:1; font-size:12px; color:var(--fraco) }
+.gav-pe button{ border:0; border-radius:999px; padding:11px 20px; color:#fff; font-size:13px;
+  font-weight:800; cursor:pointer;
+  background:linear-gradient(145deg,var(--marca-claro),var(--marca) 55%,var(--marca-escuro));
+  box-shadow:0 4px 14px color-mix(in srgb,var(--marca) 32%,transparent) }
+.gav-pe button:disabled{ opacity:.45; cursor:not-allowed; box-shadow:none }
+@media(max-width:560px){ .gav-topo img{ width:46px;height:46px } .cli .bt{ padding:7px 9px } }
+@media (prefers-reduced-motion:reduce){ *{ transition:none!important; animation:none!important } }
+</style>
+</head>
+<body>
+
+<div class="regua">
+  <b>Prévia</b>
+  <span>vendedor:</span>
+  <select id="vend"></select>
+  <span>parado há mais de</span>
+  <select id="dias">
+    <option value="0">qualquer tempo</option>
+    <option value="60">60 dias</option>
+    <option value="90" selected>90 dias</option>
+    <option value="120">120 dias</option>
+  </select>
+  <span class="dir" id="base">—</span>
+</div>
+
+<header class="topo">
+  <span class="selo">CMS</span>
+  <span class="tit"><b>Vitrine CMS</b><span>Olympikus · o card com o botão novo</span></span>
+</header>
+
+<div class="folha">
+  <div class="explica">
+    O botão âmbar é a única coisa nova no card. Ele só aparece quando existe gente para
+    chamar: cliente que <b>comprou este artigo no 1º semestre</b> e <b>não tem nota nem
+    carteira no 2º</b>. Porta de rede cuja loja irmã comprou não entra.
+    <div id="resumoLinha" style="margin-top:8px;color:var(--tinta);font-weight:700"></div>
+  </div>
+  <div class="grade" id="grade"></div>
+</div>
+
+<div class="fundo" id="fundo" hidden>
+  <aside class="gav" role="dialog" aria-modal="true" aria-label="Quem compra isso">
+    <div class="gav-topo">
+      <img id="gFoto" alt="">
+      <div>
+        <div class="nm" id="gNome">—</div>
+        <div class="sb" id="gSub">—</div>
+      </div>
+      <button class="fechar" id="gFechar" aria-label="Fechar">&#10005;</button>
+    </div>
+    <div class="gav-res" id="gRes"></div>
+    <div class="gav-lista" id="gLista"></div>
+    <div class="gav-pe">
+      <span class="c" id="gConta">Marque quem você vai chamar</span>
+      <button id="gLink" disabled>Montar link</button>
+    </div>
+  </aside>
+</div>
+
+<script>
+const esc = v => String(v==null?'':v).replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nf  = n => Number(n||0).toLocaleString('pt-BR');
+const brl = v => Number(v||0) ? 'R$ ' + Number(v).toFixed(2).replace('.', ',') : '';
+const IMG = '../Catalogo/';
+const mini = f => IMG + 'mini/' + f;
+const iniciais = n => String(n||'').split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase();
+
+const F = { vend:'', dias:90 };
+const MARCADOS = new Set();
+let ABERTO = null;
+
+const paradosDe = o => o.parados.filter(p =>
+  (!F.vend || p.vend === F.vend) && p.dias >= F.dias);
+
+function pintar(){
+  document.getElementById('base').textContent = 'base da Detalhada de ' + QC.base;
+  const itens = QC.itens.map(o => ({ o, lista: paradosDe(o) }))
+    .filter(x => x.lista.length)
+    .sort((a, b) => b.lista.length - a.lista.length);
+
+  document.getElementById('grade').innerHTML = itens.map(({ o, lista }) => `
+    <article class="card">
+      <div class="foto">
+        <span class="selos">${o.origem.map(t => `<span class="sel ${t === 'repasse' ? 'rep' : 'est'}">${t}</span>`).join('')}</span>
+        <img src="${esc(mini(o.foto))}" alt="" loading="lazy"
+             onerror="this.style.visibility='hidden'">
+      </div>
+      <div class="corpo">
+        <span class="nm">${esc(o.nome)}</span>
+        <span class="sb">${esc(o.artigo)} · ${o.cores} ${o.cores === 1 ? 'cor' : 'cores'}</span>
+        <span class="lin">
+          <span class="pdv">${esc(brl(o.pdv))}</span>
+          <span class="qtd num">${nf(o.saldo)} pares</span>
+        </span>
+        <button class="quem" data-art="${esc(o.artigo)}">
+          <span class="n num">${lista.length}</span>
+          <span class="t">compraram e pararam<br>${nf(lista.reduce((s, p) => s + p.pares, 0))} pares no 1º semestre</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+    </article>`).join('');
+
+  const n = itens.length;
+  const c = new Set(itens.flatMap(x => x.lista.map(p => p.cod))).size;
+  // só a linha do resumo é refeita: tirar o último filho levava junto o
+  // trecho em negrito da explicação
+  document.getElementById('resumoLinha').innerHTML =
+    `${n} produtos com gente para chamar · ${c} clientes distintos`;
+}
+
+function abrir(art){
+  const o = QC.itens.find(x => x.artigo === art);
+  if(!o) return;
+  ABERTO = o;
+  MARCADOS.clear();
+  const lista = paradosDe(o);
+  document.getElementById('fundo').hidden = false;
+  document.body.style.overflow = 'hidden';
+  document.getElementById('gFoto').src = mini(o.foto);
+  document.getElementById('gNome').textContent = o.nome;
+  document.getElementById('gSub').textContent =
+    `${o.artigo} · ${nf(o.saldo)} pares em ${o.cores} ${o.cores === 1 ? 'cor' : 'cores'}`;
+  const pares = lista.reduce((s, p) => s + p.pares, 0);
+  const media = lista.length ? Math.round(pares / lista.length) : 0;
+  document.getElementById('gRes').innerHTML = `
+    <span><b class="num">${lista.length}</b>compraram e pararam</span>
+    <span><b class="num">${nf(pares)}</b>pares no 1º semestre</span>
+    <span><b class="num">${nf(media)}</b>média por loja</span>`;
+  document.getElementById('gLista').innerHTML = lista.map(p => `
+    <div class="cli" data-cod="${esc(p.cod)}">
+      <span class="av">${esc(iniciais(p.nome))}</span>
+      <span class="meio">
+        <span class="n">${esc(p.nome)}</span>
+        <span class="s">${esc(p.cod)}${p.cidade ? ' · ' + esc(p.cidade) : ''} · ${esc(p.vend)}${
+          p.cores.length ? ' · levou ' + esc(p.cores.slice(0,2).join(', ')) : ''}</span>
+      </span>
+      <span class="dir">
+        <span class="p num">${nf(p.pares)}</span>
+        <span class="d">${p.dias} dias parado</span>
+      </span>
+      <button class="bt" data-poe="${esc(p.cod)}">chamar</button>
+    </div>`).join('');
+  pintarPe();
+}
+
+function pintarPe(){
+  const n = MARCADOS.size;
+  document.getElementById('gConta').textContent = n
+    ? `${n} ${n === 1 ? 'cliente marcado' : 'clientes marcados'}`
+    : 'Marque quem você vai chamar';
+  document.getElementById('gLink').disabled = !n;
+  document.getElementById('gLink').textContent = n > 1 ? `Montar ${n} links` : 'Montar link';
+}
+
+function fechar(){
+  document.getElementById('fundo').hidden = true;
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('click', e => {
+  const q = e.target.closest('[data-art]');
+  if(q) return abrir(q.dataset.art);
+  const b = e.target.closest('[data-poe]');
+  if(b){
+    const k = b.dataset.poe;
+    MARCADOS.has(k) ? MARCADOS.delete(k) : MARCADOS.add(k);
+    b.closest('.cli').classList.toggle('on', MARCADOS.has(k));
+    b.textContent = MARCADOS.has(k) ? 'marcado' : 'chamar';
+    return pintarPe();
+  }
+  if(e.target.closest('#gFechar')) return fechar();
+  if(!document.getElementById('fundo').hidden && !e.target.closest('.gav')) fechar();
+});
+addEventListener('keydown', e => { if(e.key === 'Escape') fechar(); });
+document.getElementById('gLink').onclick = () => {
+  alert('Na vitrine de verdade, isto abriria o "Link para o cliente" já com ' +
+        ABERTO.nome + ' na seleção, um link por cliente marcado.');
+};
+
+const sel = document.getElementById('vend');
+sel.innerHTML = '<option value="">todos</option>' +
+  QC.vendedores.map(v => `<option>${esc(v)}</option>`).join('');
+sel.onchange = () => { F.vend = sel.value; pintar(); };
+document.getElementById('dias').onchange = e => { F.dias = Number(e.target.value); pintar(); };
+pintar();
+</script>
+</body>
+</html>
