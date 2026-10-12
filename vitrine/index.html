@@ -1134,6 +1134,9 @@ button{font:inherit}
 .mt .t15 .pc{font-size:12.5px;font-weight:800;white-space:nowrap}
 .mt .t15 .pc.ok{color:var(--pronta)}
 .mt .t15 .fa{font-size:10px;color:var(--fraco);white-space:nowrap}
+/* o tênis Olympikus é o denominador, não conquista: cinza, o mesmo do vendedor
+   nos cards, para a leitura ir às famílias que vêm depois */
+.mt .f-OLY{background:#A8AEB6}
 .mt .f-MEOLY{background:var(--marca)}
 .mt .f-CHOLY{background:#4C57E8}
 .mt .f-ACOLY{background:#6E77ED}
@@ -4682,11 +4685,21 @@ function mtTrimestre(mes){
    o que foi vendido. É individual: a CMS não entra nessa conta. */
 /* a Under Armour está nos dados deste mês? enquanto não estiver, o
    numerador dos 15% sai incompleto e a tela precisa dizer isso */
+const mtEhUA = marca => /UA|UNDER/i.test(String(marca || ''));
 function mtTemUA(mes){
   const m = METAS.meses.find(x => x.mes === mes);
   if(!m) return false;
-  return (m.prepostos || []).some(p => (p.linhas || [])
-    .some(l => /UA|UNDER/i.test(String(l.marca || ''))));
+  return (m.prepostos || []).some(p => (p.linhas || []).some(l => mtEhUA(l.marca)));
+}
+/* A UA é UMA fatia só, junto das outras famílias — é a leitura do Gestor, que
+   pega o TT GERAL da marca UA e não as faixas dela, e por isso a barra dele não
+   muda quando se troca de marca. Aqui o relatório pode trazer a UA das duas
+   formas: inteira (uma linha de total) ou quebrada em UAFTW, CHUA, MEUA… Vindo
+   das duas, vale só o total — somar os dois dobraria o numerador. */
+function mtLinhasUA(linhas){
+  const ua = linhas.filter(l => mtEhUA(l.marca));
+  const tot = ua.filter(l => /^(TT|TOTAL)/i.test(String(l.faixa || '')));
+  return new Set(tot.length ? tot : ua);
 }
 function mtTrava(codigo, meses){
   let meta = 0, total = 0; const partes = {};
@@ -4695,16 +4708,27 @@ function mtTrava(codigo, meses){
     if(!m) continue;
     for(const p of (m.prepostos || [])){
       if(String(p.codigo) !== String(codigo)) continue;
-      for(const l of (p.linhas || [])){
+      const linhas = p.linhas || [], valeUA = mtLinhasUA(linhas);
+      for(const l of linhas){
         if(l.marca === 'OLY'){ meta += l.meta_rs || 0; continue; }
-        const v = mtMedir(l, 'rs');
-        partes[l.marca] = (partes[l.marca] || 0) + v; total += v;
+        const ua = mtEhUA(l.marca);
+        if(ua && !valeUA.has(l)) continue;
+        /* o numerador é sempre o POTENCIAL, não o que o seletor pede: a trava é
+           regra de pagamento e tem de dar o mesmo número do Gestor do gerente.
+           O campo real_rs da carta_real dele é o POTENCIAL da Carta Campanha —
+           conferido família a família com o painel publicado (out/26, Jorge:
+           meias 2,8%, chinelo 1,7%, acessório 0,6%, confecção 0,6%). O nosso
+           real_rs é outra coisa: faturado + devolução, o que já saiu.
+           Mês antigo sem potencial cai no realizado, para a barra não sumir. */
+        const v = (l.pot_rs == null ? l.real_rs : l.pot_rs) || 0;
+        const chave = ua ? 'UA' : l.marca;
+        partes[chave] = (partes[chave] || 0) + v; total += v;
       }
     }
   }
   if(!meta) return null;
   const pct = total / meta;
-  return { pct, meta, partes, falta: meta * TRAVA_15 - total, ok: pct >= TRAVA_15 };
+  return { pct, meta, num: total, partes, falta: meta * TRAVA_15 - total, ok: pct >= TRAVA_15 };
 }
 
 /* A porta da estrela do vendedor (Gestor, 12/10): as três ao mesmo tempo —
@@ -4751,17 +4775,23 @@ function pintarMetas(){
   const tri = mtTrimestre(mes);
   const tMes = cod === 'TODOS' ? null : mtTrava(cod, [mes]);
   const tTri = cod === 'TODOS' ? null : mtTrava(cod, tri);
-  const escala = Math.max(TRAVA_15 * 2, (tMes && tMes.pct) || 0, (tTri && tTri.pct) || 0);
   // a porta só existe quando há um vendedor escolhido
   const porta = cod === 'TODOS' ? false : mtPortaVendedor(totC, totV, tTri);
+  /* A régua, como a do Gestor: a barra começa pela META DE TÊNIS — o denominador
+     — e as famílias se empilham depois. Ela vai até a meta mais os 15% (ou até o
+     fim do que existe, quando passou), então o vazio entre o fim da pilha e o
+     tracinho É exatamente o que falta. */
   const umaTrava = (rot, t) => {
     if(!t) return '';
-    const seg = MT_FAMS15.map(([k]) => {
-      const v = t.partes[k] || 0;
-      return v > 0 ? `<i class="f-${k}" style="width:${(v/t.meta/escala*100).toFixed(2)}%"></i>` : '';
-    }).join('');
+    const ref = Math.max(t.meta + t.num, t.meta * (1 + TRAVA_15));
+    const w = v => (v / ref * 100).toFixed(2);
+    const seg = `<i class="f-OLY" style="width:${w(t.meta)}%"></i>` +
+      MT_FAMS15.map(([k]) => {
+        const v = t.partes[k] || 0;
+        return v > 0 ? `<i class="f-${k}" style="width:${w(v)}%"></i>` : '';
+      }).join('');
     return `<div class="un"><span class="qd">${esc(rot)}</span>
-      <span class="trk"><i class="mk${t.ok ? ' ok' : ''}" style="left:${(TRAVA_15/escala*100).toFixed(1)}%"></i>${seg}</span>
+      <span class="trk"><i class="mk${t.ok ? ' ok' : ''}" style="left:${w(t.meta*(1+TRAVA_15))}%"></i>${seg}</span>
       <span class="pc${t.ok ? ' ok' : ''}">${(t.pct*100).toFixed(1).replace('.',',')}%</span>
       <span class="fa">${t.falta > 0 ? 'faltam R$ ' + mtKk(t.falta) : 'R$ ' + mtKk(-t.falta) + ' acima'}</span></div>`;
   };
