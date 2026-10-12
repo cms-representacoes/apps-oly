@@ -95,7 +95,12 @@ button{font:inherit}
   font-size:10px;font-weight:700;color:#fff;letter-spacing:.02em;
   background:linear-gradient(145deg,#a970ff 0%,#8b5cf6 48%,#7439e0 100%);
   box-shadow:0 5px 14px rgba(124,58,237,.38), inset 0 1px 0 rgba(255,255,255,.28);
+  text-decoration:none;cursor:pointer;transition:transform .14s ease, box-shadow .14s ease;
 }
+.selo-cms:hover{transform:translateY(-1px);
+  box-shadow:0 7px 17px rgba(124,58,237,.46), inset 0 1px 0 rgba(255,255,255,.28)}
+.selo-cms:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){ .selo-cms{transition:none} }
 .marca-btn{position:relative;flex:none;width:32px;height:32px;border:0;border-radius:50%;
   padding:0 5px;display:flex;align-items:center;justify-content:center;cursor:pointer;
   background:linear-gradient(145deg, var(--marca-claro), var(--marca) 55%, var(--marca-escuro));
@@ -116,6 +121,12 @@ button{font:inherit}
   line-height:1.15;letter-spacing:-.015em;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
 .tit b .quem{font-weight:600;color:var(--tenue);font-size:12.5px}
+/* a hora da base, segunda linha do nome: pequena e discreta, cabe na altura
+   que o cabeçalho já tinha */
+.tit .upd{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--tenue);
+  line-height:1.1;margin-top:1px;white-space:nowrap}
+.tit .upd[hidden]{display:none}
+.tit .upd svg{flex:none;width:9px;height:9px}
 /* Na faixa entre o cabecalho e a grade, alinhada a margem dos cards: fica no
    caminho dos olhos antes do primeiro produto, sem disputar o cabecalho. */
 /* flex: como bloco comum, a caixa de linha do inline-flex somava um descida
@@ -1014,8 +1025,17 @@ button{font:inherit}
 .mt-resumo .cx small{font-weight:600;color:var(--fraco);font-size:11px}
 /* Fechada, some tudo menos o botão: mês, prepostos, resumo e os quadros. */
 .mt.fechada .mt-corpo,
-.mt.fechada .mt-sel,
-.mt.fechada .mt-resumo{display:none}
+.mt.fechada .mt-sel{display:none}
+/* Com os gráficos à vista, o resumo repete o que os cards já dizem e os
+   atalhos da direita disputam a linha com eles: os três voltam ao recolher,
+   que é quando viram o único resumo do mês. */
+.mt:not(.fechada) .mt-resumo,
+.mt:not(.fechada) .chips-dir{display:none}
+/* Com um cliente em montagem, a faixa dele já ocupa a linha inteira logo
+   abaixo: o resumo e os atalhos saem do caminho até ele ser largado, com as
+   metas abertas ou fechadas. */
+.mt-in:has(#rtFaixa:not([hidden])) .mt-resumo,
+.mt-in:has(#rtFaixa:not([hidden])) .chips-dir{display:none}
 .mt.fechada .mt-topo{padding:7px 0}
 .mt-corpo{padding:8px 0 10px}
 /* ── a régua da Vulcabras, numa fila só ──────────────────────────────
@@ -1115,33 +1135,40 @@ button{font:inherit}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ── a trava dos 15%: uma linha fina, só do vendedor ──────────────── */
-.mt .t15{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
-  background:var(--carta);border:1px solid var(--linha);border-radius:11px;
-  padding:6px 10px;margin-bottom:7px}
+.mt .t15{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  background:var(--carta);border:1px solid var(--linha);border-radius:12px;
+  padding:11px 13px;margin-bottom:8px}
 .mt .t15[hidden]{display:none}
 .mt .t15 .rot{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
   color:var(--fraco);white-space:nowrap}
-.mt .t15 .un{display:flex;align-items:center;gap:7px;flex:1 1 210px;min-width:0}
+.mt .t15 .un{display:flex;align-items:center;gap:8px;flex:1 1 210px;min-width:0}
 .mt .t15 .un .qd{font-size:9px;font-weight:800;color:var(--tenue);letter-spacing:.06em;
   white-space:nowrap;width:30px}
-.mt .t15 .trk{position:relative;flex:1;height:8px;border-radius:99px;background:var(--barra);
+.mt .t15 .trk{position:relative;flex:1;height:15px;border-radius:99px;background:var(--barra);
   display:flex;overflow:hidden;border:1px solid var(--linha)}
+/* um filete claro entre as fatias: sem ele as cores vizinhas se borram */
 .mt .t15 .trk i{display:block;height:100%;flex:0 0 auto;
+  box-shadow:inset -1px 0 0 rgba(255,255,255,.6);
   animation:mtCresce 1.3s cubic-bezier(.2,.7,.2,1) both;transform-origin:left}
 @keyframes mtCresce{from{transform:scaleX(0)}to{transform:scaleX(1)}}
-.mt .t15 .mk{position:absolute;top:-2px;bottom:-2px;border-left:2px dashed var(--fraco);z-index:1}
+/* o tracinho dos 15% cruza fatia colorida e trilho vazio: o halo branco o
+   mantém legível nos dois */
+.mt .t15 .mk{position:absolute;top:-2px;bottom:-2px;border-left:2px dashed var(--fraco);z-index:1;
+  box-shadow:-1px 0 0 rgba(255,255,255,.85),1px 0 0 rgba(255,255,255,.85)}
 .mt .t15 .mk.ok{border-color:var(--pronta)}
-.mt .t15 .pc{font-size:12.5px;font-weight:800;white-space:nowrap}
+.mt .t15 .pc{font-size:13.5px;font-weight:800;white-space:nowrap}
 .mt .t15 .pc.ok{color:var(--pronta)}
 .mt .t15 .fa{font-size:10px;color:var(--fraco);white-space:nowrap}
-/* o tênis Olympikus é o denominador, não conquista: cinza, o mesmo do vendedor
-   nos cards, para a leitura ir às famílias que vêm depois */
-.mt .f-OLY{background:#A8AEB6}
-.mt .f-MEOLY{background:var(--marca)}
-.mt .f-CHOLY{background:#4C57E8}
-.mt .f-ACOLY{background:#6E77ED}
-.mt .f-CFOLY{background:#9298F2}
-.mt .f-UA{background:#C7CAF8}
+/* O tênis Olympikus é o denominador e ocupa quase toda a régua: azul da marca.
+   As famílias que contam para os 15% vêm depois, cada uma num matiz próprio —
+   escala de azul não serviria, porque elas se perderiam dentro da base. A UA
+   fica no vermelho dela, o mesmo do seletor de marca da vitrine. */
+.mt .f-OLY{background:var(--marca)}
+.mt .f-MEOLY{background:#F59E0B}
+.mt .f-CHOLY{background:#14B8A6}
+.mt .f-ACOLY{background:#A855F7}
+.mt .f-CFOLY{background:#EC4899}
+.mt .f-UA{background:#E52125}
 .mt .t15 .av{font-size:9.5px;color:#92400E;background:#FEF3C7;border-radius:7px;
   padding:3px 8px;white-space:normal;line-height:1.35;flex:1 1 100%}
 
@@ -1977,10 +2004,18 @@ body:has(#sacola:not([hidden])) .aviso-desfazer.on{ transform:translate(50%, 0);
   color:#fff; border-radius:999px; padding:7px 13px; font-size:11.5px; font-weight:800;
   cursor:pointer; flex:none; font-family:inherit }
 .rt-in .sair:hover{ background:rgba(255,255,255,.2) }
+/* o X larga o cliente e volta à vitrine inteira; fica à direita do "Trocar",
+   mais discreto, porque sair é o caminho menos frequente dos dois */
+.rt-in .fechar{ width:30px; height:30px; flex:none; display:grid; place-items:center;
+  border:1px solid rgba(255,255,255,.3); background:rgba(255,255,255,.08);
+  color:#fff; border-radius:999px; cursor:pointer; padding:0; font-family:inherit }
+.rt-in .fechar:hover{ background:rgba(255,255,255,.22) }
 @media(max-width:700px){
   .rt-in{ flex-wrap:wrap; gap:9px; padding:10px 12px }
   .rt-in .q{ flex:1 1 100%; order:-1 }
   .rt-in .n b{ font-size:15px }
+  /* no celular os dois botões ficam lado a lado, com o X preso à direita */
+  .rt-in .sair{ margin-left:auto }
 }
 
 .rt-bg{ position:fixed; inset:0; z-index:88; background:rgba(16,18,20,.5);
@@ -2263,9 +2298,19 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
 
 <header class="topo">
   <div class="topo-l1" id="topoL1">
-    <span class="selo-cms">CMS</span>
+    <!-- o selo também volta ao portal: é o lugar onde a mão vai primeiro,
+         e a seta do fim da linha continua lá para quem já a conhece -->
+    <a class="selo-cms" href="../" title="Voltar ao Portal"
+       aria-label="Voltar ao Portal">CMS</a>
     <button class="marca-btn" id="btnMarca"></button>
-    <span class="tit" id="titTopo"><b id="titMarca">—</b></span>
+    <!-- a hora da base mora sob o nome: é dele que ela fala, e aqui ela não
+         disputa espaço com os botões da linha das metas -->
+    <span class="tit" id="titTopo"><b id="titMarca">—</b>
+      <span class="upd" id="updChip" hidden>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+        <span class="pal">atualizado&nbsp;</span><span id="updTxt"></span></span></span>
     <span class="busca" id="busca">
       <button class="lupa" id="btnBusca" aria-label="Buscar" aria-expanded="false">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -2365,14 +2410,6 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
           <option value="real">Realizado</option>
           <option value="fat">Faturamento</option>
         </select>
-      </div>
-      <!-- a hora da base divide a linha com o botão Metas -->
-      <div class="faixa-upd">
-        <span class="upd" id="updChip" hidden>
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
-          <span class="pal">atualizado&nbsp;</span><span id="updTxt"></span></span>
       </div>
       <div class="mt-resumo" id="mtResumo"></div>
       <!-- o que o vendedor não pode deixar passar, no fim da linha: o lote
@@ -5171,9 +5208,13 @@ function escolherReat(cod){
   if(c) trocarCliente(c);
 }
 /* "Trocar cliente" abre a lista — é lá que se escolhe o próximo. Largar o
-   cliente e voltar à vitrine inteira é o outro botão, dentro da lista. */
+   cliente e voltar à vitrine inteira é o X ao lado: antes esse caminho só
+   existia dentro da lista, e fechar custava abrir a lista para só então sair. */
 function sairDoReat(){ abrirReat(); }
 function largarCliente(){ trocarCliente(null); }
+const SVG_FECHA_REAT = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+  stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true">
+  <path d="M18 6 6 18M6 6l12 12"/></svg>`;
 
 function pintarFaixaReat(){
   const f = $('rtFaixa');
@@ -5190,6 +5231,9 @@ function pintarFaixaReat(){
     <span class="n"><b>${nf(c.pares)}</b><span>no 1º semestre</span></span>
     <span class="n"><b>${nf(c.dias)}</b><span>dias parado</span></span>
     <button type="button" class="sair" onclick="sairDoReat()">Trocar cliente</button>
+    <button type="button" class="fechar" onclick="largarCliente()"
+      title="Sair do cliente e voltar à vitrine inteira"
+      aria-label="Sair do cliente e voltar à vitrine inteira">${SVG_FECHA_REAT}</button>
   </div>`;
 }
 
