@@ -72,7 +72,22 @@ button{font:inherit}
 /* Do tablet pra cima e uma linha so: o que nao couber rola dentro da propria
    faixa de filtros. No celular o flex-wrap joga os filtros pra baixo, sem
    duplicar marcação — o gap de 9px vira o espaço entre as duas linhas. */
-.topo-l1{display:flex;align-items:center;gap:9px;flex-wrap:nowrap;max-width:1180px;margin:0 auto}
+.topo-l1{display:flex;align-items:center;gap:9px;flex-wrap:nowrap;max-width:1180px;margin:0 auto;
+  position:relative}
+/* as setas: redondas, encostadas nas pontas da linha, por cima da fita */
+.rola-seta{position:absolute;top:50%;transform:translateY(-50%);z-index:6;
+  width:30px;height:30px;border-radius:999px;border:1px solid var(--linha);
+  background:var(--carta);color:var(--tinta);display:flex;align-items:center;
+  justify-content:center;cursor:pointer;padding:0;
+  box-shadow:0 2px 10px rgba(16,20,26,.14)}
+.rola-seta:hover{border-color:var(--linha-forte);background:var(--barra)}
+.rola-seta:active{transform:translateY(-50%) scale(.94)}
+.rola-seta:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+.rola-seta[hidden]{display:none}
+.rola-seta.esq{left:-6px}
+.rola-seta.dir{right:-6px}
+/* no celular o dedo já rola: as setas só atrapalhariam */
+@media(max-width:860px){ .rola-seta{display:none !important} }
 /* textura premium: gradiente + brilho no topo + sombra da própria cor */
 .selo-cms{
   width:32px;height:32px;border-radius:10px;flex:none;
@@ -991,7 +1006,9 @@ button{font:inherit}
 .mt-sel{display:flex;align-items:center;gap:6px}
 .mt-sel select{border:1px solid var(--linha);background:var(--carta);color:var(--tinta);
   border-radius:999px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
-.mt-resumo{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap}
+/* sem margin-left:auto aqui: com o auto também nos chips da direita, o
+   espaço livre se dividia entre os dois e o resumo parava no meio da linha */
+.mt-resumo{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .mt-resumo .cx{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:999px;
   background:var(--carta);border:1px solid var(--linha);font-size:12.5px;font-weight:700;color:var(--tinta)}
 .mt-resumo .cx small{font-weight:600;color:var(--fraco);font-size:11px}
@@ -1000,7 +1017,148 @@ button{font:inherit}
 .mt.fechada .mt-sel,
 .mt.fechada .mt-resumo{display:none}
 .mt.fechada .mt-topo{padding:7px 0}
-.mt-corpo{padding:11px 0 14px}
+.mt-corpo{padding:8px 0 10px}
+/* ── a régua da Vulcabras, numa fila só ──────────────────────────────
+   Antes eram dois blocos empilhados — cinco cartões largos em cima e seis
+   linhas de faixa embaixo — e a vitrine começava quase 370px abaixo. Agora
+   total, faixas e famílias dividem a mesma fila, que rola para os dois
+   lados. Cada card é estreito de propósito: o que importa é a comparação
+   entre eles, não o tamanho de cada um. */
+.mt .rolo{overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;
+  margin:0 -13px;padding:2px 13px 6px}
+@media(min-width:700px){ .mt .rolo{margin:0 -18px;padding:2px 18px 6px} }
+.mt .rolo::-webkit-scrollbar{height:7px}
+.mt .rolo::-webkit-scrollbar-thumb{background:var(--linha-forte);border-radius:99px}
+.mt .fila{display:flex;align-items:stretch;gap:8px;width:max-content}
+.mt .rolo + .rolo{margin-top:8px}
+/* no computador cada linha vira grade e ocupa a largura toda; as famílias
+   ficam alinhadas sob as faixas, como no modelo */
+@media(min-width:900px){
+  .mt .rolo{overflow:visible;margin:0;padding:0}
+  .mt .fila{width:auto;display:grid;gap:10px}
+  /* uma grade só para as duas linhas: 16 colunas iguais. O total ocupa 4,
+     cada faixa 2 (4+12=16) e cada família 3 (4+12=16) — as bordas da linha
+     de baixo caem nas mesmas da de cima */
+  .mt .fila{grid-template-columns:repeat(16,minmax(0,1fr))}
+  .mt .fila.lin1 .cd.tot{grid-column:span 4}
+  .mt .fila.lin1 .cd{grid-column:span 2}
+  /* as quatro famílias somam 12 colunas: começando na terceira, sobram duas
+     de cada lado e o bloco fica centrado sob as faixas */
+  .mt .fila.lin2 .vazio{display:none}
+  .mt .fila.lin2 .cd{grid-column:span 3}
+  .mt .fila.lin2 .cd:first-of-type{grid-column:3 / span 3}
+  .mt .rolo + .rolo{margin-top:10px}
+}
+.mt .vazio{display:none}
+@media(min-width:900px){ .mt .vazio{display:block} }
+
+.mt .cd{width:132px;flex:0 0 132px;display:flex;flex-direction:column;
+  background:var(--carta);border:1px solid var(--linha);border-radius:12px;
+  padding:10px 11px 9px;cursor:pointer;font-family:inherit;text-align:left}
+.mt .cd:hover{border-color:var(--linha-forte)}
+.mt .cd.on{border-color:var(--marca);box-shadow:0 0 0 1px var(--marca) inset}
+.mt .cd.tot{flex:0 0 158px;width:158px}
+@media(min-width:900px){ .mt .cd,.mt .cd.tot{width:auto;flex:auto} }
+.mt .cd .nm{font-size:11.5px;font-weight:800;line-height:1.25;min-height:28px;
+  color:var(--tinta);letter-spacing:.01em}
+.mt .cd.tot .nm{letter-spacing:.07em}
+/* a estrela só aparece quando a CMS destrava */
+.mt .cd .st{height:14px;display:flex;justify-content:flex-end;gap:4px;margin-top:0}
+.mt .cd .st svg{width:14px;height:14px;fill:#C9A227;stroke:#8A6D12;stroke-width:1.1}
+/* a do vendedor: ouro quando ele bateu, prata quando só a CMS bateu */
+.mt .cd .st .pr svg{fill:#C3C9D2;stroke:#8C939D}
+.mt .cd .st i{display:inline-flex;line-height:0}
+
+.mt .bars{position:relative;height:150px;display:flex;align-items:flex-end;
+  justify-content:center;gap:5px;border-bottom:1px solid var(--linha-forte);margin-top:4px}
+.mt .cd.tot .bars{height:166px}
+.mt .l100{position:absolute;left:-3px;right:-3px;border-top:1.5px dashed var(--fraco);
+  pointer-events:none;z-index:2}
+
+/* a segunda marca da régua, só no cartão do total: mesma coluna da outra,
+   com o rótulo do lado de cima da linha para os dois não se tocarem */
+.mt .lref{position:absolute;left:-3px;right:-3px;border-top:1.5px dotted var(--linha-forte);
+  pointer-events:none;z-index:2}
+.mt .lref b{position:absolute;right:-3px;bottom:3px;font-size:8px;font-weight:700;
+  color:var(--tenue);background:var(--carta);padding:0 3px;letter-spacing:.02em;
+  border-radius:3px;line-height:1.4}
+.mt .l100 b{position:absolute;right:-3px;top:-12px;font-size:8px;font-weight:800;
+  color:var(--tinta);background:var(--carta);padding:0 3px;letter-spacing:.02em;
+  border-radius:3px;box-shadow:0 0 0 1px var(--linha)}
+
+.mt .b{width:26px;border-radius:5px 5px 0 0;transform-origin:bottom;position:relative;z-index:1;
+  animation:mtSobe 1.3s cubic-bezier(.2,.8,.2,1) both}
+.mt .cd.tot .b{width:32px}
+@keyframes mtSobe{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+.mt .b.c{background:var(--marca)}
+.mt .b.v{background:#A8AEB6}
+/* a barra guarda a cor de quem ela é; bateu ou não se lê no número e na
+   estrela, que já dizem isso */
+.mt .b.vazia{height:0;border-top:2px dotted var(--tenue)}
+
+/* um sob o outro: lado a lado, dois números de cinco dígitos não cabem em
+   94px. O cartão do total é mais largo e comporta a dupla na mesma linha. */
+.mt .num{display:flex;flex-direction:column;gap:2px;margin-top:5px}
+.mt .num > div{display:flex;align-items:baseline;gap:4px;min-width:0}
+.mt .num .q{font-size:8.5px;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--tenue);line-height:1;width:29px;flex:none}
+.mt .num .g{font-size:13.5px;font-weight:800;line-height:1.3;
+  white-space:nowrap;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis}
+.mt .cd.tot .num{flex-direction:row;gap:6px}
+.mt .cd.tot .num > div{flex:1;flex-direction:column;align-items:flex-start;gap:0}
+.mt .cd.tot .num .q{width:auto}
+.mt .cd.tot .num .g{font-size:16px}
+.mt .num .g.c{color:var(--marca)}
+.mt .num .g.v{color:var(--texto)}
+.mt .num .g.ok{color:var(--pronta)}
+.mt .cd .mm{display:block;font-size:9.5px;color:var(--tenue);font-weight:600;margin-top:5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── a trava dos 15%: uma linha fina, só do vendedor ──────────────── */
+.mt .t15{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  background:var(--carta);border:1px solid var(--linha);border-radius:11px;
+  padding:6px 10px;margin-bottom:7px}
+.mt .t15[hidden]{display:none}
+.mt .t15 .rot{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--fraco);white-space:nowrap}
+.mt .t15 .un{display:flex;align-items:center;gap:7px;flex:1 1 210px;min-width:0}
+.mt .t15 .un .qd{font-size:9px;font-weight:800;color:var(--tenue);letter-spacing:.06em;
+  white-space:nowrap;width:30px}
+.mt .t15 .trk{position:relative;flex:1;height:8px;border-radius:99px;background:var(--barra);
+  display:flex;overflow:hidden;border:1px solid var(--linha)}
+.mt .t15 .trk i{display:block;height:100%;flex:0 0 auto;
+  animation:mtCresce 1.3s cubic-bezier(.2,.7,.2,1) both;transform-origin:left}
+@keyframes mtCresce{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.mt .t15 .mk{position:absolute;top:-2px;bottom:-2px;border-left:2px dashed var(--fraco);z-index:1}
+.mt .t15 .mk.ok{border-color:var(--pronta)}
+.mt .t15 .pc{font-size:12.5px;font-weight:800;white-space:nowrap}
+.mt .t15 .pc.ok{color:var(--pronta)}
+.mt .t15 .fa{font-size:10px;color:var(--fraco);white-space:nowrap}
+.mt .f-MEOLY{background:var(--marca)}
+.mt .f-CHOLY{background:#4C57E8}
+.mt .f-ACOLY{background:#6E77ED}
+.mt .f-CFOLY{background:#9298F2}
+.mt .f-UA{background:#C7CAF8}
+.mt .t15 .av{font-size:9.5px;color:#92400E;background:#FEF3C7;border-radius:7px;
+  padding:3px 8px;white-space:normal;line-height:1.35;flex:1 1 100%}
+
+.mt .mt-leg{display:flex;flex-wrap:wrap;gap:6px 13px;font-size:9.5px;color:var(--fraco);
+  margin-top:5px;align-items:center}
+.mt .mt-leg span{display:flex;align-items:center;gap:5px}
+.mt .mt-leg i{width:9px;height:9px;border-radius:3px;display:inline-block}
+.mt .mt-leg i.c{background:var(--marca)}
+.mt .mt-leg i.v{background:#A8AEB6}
+
+.mt .mt-leg svg{width:11px;height:11px;fill:#C9A227;stroke:#8A6D12;stroke-width:1.1}
+.mt .mt-leg .pr svg{fill:#C3C9D2;stroke:#8C939D}
+@media(max-width:560px){
+  .mt .cd{width:118px;flex:0 0 118px}
+  .mt .cd.tot{width:138px;flex:0 0 138px}
+  .mt .bars{height:132px}
+  .mt .cd.tot .bars{height:146px}
+  .mt .t15 .rot{flex:1 1 100%}
+}
+@media (prefers-reduced-motion:reduce){ .mt .b,.mt .t15 .trk i{animation:none} }
 .mt-cats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
 .mt-cat{border:1px solid var(--linha);border-radius:14px;background:var(--carta);padding:10px 11px;
   cursor:pointer;text-align:left;font-family:inherit;overflow:hidden}
@@ -2117,6 +2275,15 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
     <!-- O trilho: nome, filtros e botões entram aqui pelo JS quando a tela
          é estreita, para rolarem juntos. Só o selo e a marca ficam fora. -->
     <div class="topo-rolo" id="topoRolo"></div>
+    <!-- as setas ficam fora do trilho, presas à linha, para não rolarem junto -->
+    <button type="button" class="rola-seta esq" id="rolaEsq" hidden aria-label="Ver os botões anteriores">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M15 5l-7 7 7 7"/></svg></button>
+    <button type="button" class="rola-seta dir" id="rolaDir" hidden aria-label="Ver os próximos botões">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9 5l7 7-7 7"/></svg></button>
     <div class="linha2" id="linha2">
       <span class="seg" id="segOrigem"></span>
       <span class="risco" id="riscoCat" hidden></span>
@@ -2216,11 +2383,10 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
          vitrine inteira conversa com ele -->
     <div class="rt-faixa" id="rtFaixa" hidden></div>
     <div class="mt-corpo" id="mtCorpo">
-      <div class="mt-cats" id="mtCats"></div>
-      <div class="mt-fx">
-        <div class="mt-fx-tit">Calçados por faixa</div>
-        <div class="fxs" id="mtFxs"></div>
-      </div>
+      <div class="t15" id="mtT15"></div>
+      <div class="rolo"><div class="fila lin1" id="mtFila"></div></div>
+      <div class="rolo"><div class="fila lin2" id="mtFila2"></div></div>
+      <div class="mt-leg" id="mtLeg"></div>
     </div>
   </div>
 </div>
@@ -2821,7 +2987,7 @@ let MARCA = (new URLSearchParams(location.search).get('marca') || 'oly').toLower
 if(!MARCAS[MARCA]) MARCA = 'oly';
 
 /* ── estado ─────────────────────────────────────────────────────── */
-const STATE = { produtos:[], filtrados:[], origem:'tudo', categoria:'', busca:'', ddAberto:'',
+const STATE = { produtos:[], filtrados:[], origem:'repasse', categoria:'', busca:'', ddAberto:'',
                 termos:[], termosIgnorados:0,
                 sel:{ selo:new Set(), chega:new Set(), genero:new Set(), sub:new Set(),
                       faixa:new Set(), grade:new Set(), fabrica:new Set(), camp:new Set() },
@@ -4052,11 +4218,12 @@ function pintarFiltros(){
   const paraOrigem   = STATE.produtos.filter(o => passa(o, 'origem'));
   const paraCategoria= STATE.produtos.filter(o => passa(o, 'categoria'));
   const conta = f => paraOrigem.filter(f).length;
+  // Repasse primeiro: é a prioridade da casa. Tudo fecha a fila.
   const orig = [
-    ['tudo','Tudo', () => true],
-    ['pronta','Estoque', o => o.pronta],
     ['repasse','Repasse', o => o.repasse],
-    ['meta','Produção', o => o.meta]
+    ['pronta','Estoque', o => o.pronta],
+    ['meta','Produção', o => o.meta],
+    ['tudo','Tudo', () => true]
   ];
   const CLS = { tudo:'o-tudo', pronta:'o-est', repasse:'o-rep', meta:'o-pro' };
   $('segOrigem').innerHTML = orig.map(([id, rot, f]) => {
@@ -4443,58 +4610,232 @@ function montarPrepostosMetas(){
   prep.disabled = !souCms;
 }
 
-const nomeCurtoMeta = n => String(n).split(' ').slice(0, 2)
-  .map(x => x.charAt(0) + x.slice(1).toLowerCase()).join(' ');
+/* O nome inteiro, não as duas primeiras palavras: "C M S" virava "C M" e
+   "Leandro de Paula Uchoa" virava "Leandro De". As partículas ficam em
+   minúscula, como se escreve em português. */
+const MT_PARTICULAS = new Set(['de','da','do','das','dos','e']);
+const nomeCurtoMeta = n => {
+  const bruto = String(n || '').trim();
+  if(/^c\s*m\s*s$/i.test(bruto)) return 'CMS';
+  return bruto.split(/\s+/).filter(Boolean).map((p, i) => {
+    const b = p.toLowerCase();
+    return (i && MT_PARTICULAS.has(b)) ? b : b.charAt(0).toUpperCase() + b.slice(1);
+  }).join(' ');
+};
+
+/* ── a régua da Vulcabras (pacote do gerente, 12/10) ─────────────────
+   O total de tênis bate com 90% da meta; cada faixa com 100%; cada família
+   em REAIS com 95%. A tracejada de cada card fica no gatilho dele, e o
+   número embaixo é a falta (ou o excedente) contra esse gatilho — não
+   contra a meta cheia. Quem bate fica verde.
+
+   A CMS é a soma dos prepostos do mês: sem ela destravar, nada destrava
+   para ninguém, e por isso a estrela só aparece onde ela passou. */
+const GATILHO_TOTAL = 0.90, GATILHO_FAIXA = 1.00, GATILHO_FAMILIA = 0.95;
+const TRAVA_15 = 0.15, TETO = 1.5;
+const MT_FAIXAS = [['CLASSICOS','Clássicos'],['CONF_FEM','Conf. Feminino'],
+  ['CONF_MASC','Conf. Masculino'],['CORRIDA/TREINO','Corrida Treino'],
+  ['INFANTIL','Infantil'],['CORRE','Corre']];
+const MT_FAMILIAS = [['ACOLY','Acessório'],['MEOLY','Meias'],['CHOLY','Chinelo'],
+  ['CFOLY','Confecção']];
+/* a ordem da barra dos 15% é fixa, para o olho comparar mês e trimestre */
+const MT_FAMS15 = [['MEOLY','Meias'],['CHOLY','Chinelo'],['ACOLY','Acessório'],
+  ['CFOLY','Confecção'],['UA','Under Armour']];
+const MT_ESTRELA = '<svg viewBox="0 0 24 24"><path d="M12 2l3 6.9 7.5.7-5.7 5 1.7 7.4L12 18l-6.5 4 1.7-7.4-5.7-5 7.5-.7z"/></svg>';
+
+const mtKk = v => { const a = Math.abs(v);
+  if(a >= 1e6) return (a/1e6).toFixed(2).replace('.',',') + 'M';
+  return a >= 1000 ? (a/1000).toFixed(1).replace('.',',') + 'k' : String(Math.round(a)); };
+const mtGapP = (r, m) => (r == null || m == null) ? '—'
+  : (r >= m ? '+' : '−') + (Math.abs(r-m) >= 1e4 ? mtKk(r-m) : nf(Math.abs(r-m)));
+const mtGapR = (r, m) => (r == null || m == null) ? '—' : (r >= m ? '+' : '−') + mtKk(r-m);
+const mtBateu = (r, m, g) => m != null && r != null && r >= m * g;
+const mtAlvo = (m, g) => m == null ? null : m * g;
+const mtAlt = (r, m) => (!m || r == null || r <= 0) ? 0
+  : Math.round(Math.min(r/m, TETO)/TETO * 1000)/10;
+
+/* a medida vem do seletor, como já era; sem potencial no mês antigo, cai no
+   realizado para a barra não sumir */
+function mtMedir(l, c){
+  const v = l[MT.medida + '_' + c];
+  return (v == null ? l['real_' + c] : v) || 0;
+}
+function mtSomar(prepostos, filtro){
+  let meta_qtd = null, meta_rs = null, qtd = 0, rs = 0, achou = false;
+  for(const p of prepostos) for(const l of (p.linhas || [])){
+    if(!filtro(l)) continue;
+    achou = true;
+    if(l.meta_qtd != null) meta_qtd = (meta_qtd || 0) + l.meta_qtd;
+    if(l.meta_rs  != null) meta_rs  = (meta_rs  || 0) + l.meta_rs;
+    qtd += mtMedir(l, 'qtd'); rs += mtMedir(l, 'rs');
+  }
+  return achou ? { meta_qtd, meta_rs, qtd, rs } : null;
+}
+/* o trimestre do mês escolhido: out → out, nov, dez */
+function mtTrimestre(mes){
+  const a = +mes.slice(0,4), m = +mes.slice(5,7);
+  const ini = Math.floor((m-1)/3)*3 + 1;
+  return [0,1,2].map(i => a + '-' + String(ini+i).padStart(2,'0'));
+}
+/* a trava dos 15%: numerador = outras famílias + a UA inteira (que ainda
+   não temos); denominador = a META de tênis Olympikus em R$ — a meta, não
+   o que foi vendido. É individual: a CMS não entra nessa conta. */
+/* a Under Armour está nos dados deste mês? enquanto não estiver, o
+   numerador dos 15% sai incompleto e a tela precisa dizer isso */
+function mtTemUA(mes){
+  const m = METAS.meses.find(x => x.mes === mes);
+  if(!m) return false;
+  return (m.prepostos || []).some(p => (p.linhas || [])
+    .some(l => /UA|UNDER/i.test(String(l.marca || ''))));
+}
+function mtTrava(codigo, meses){
+  let meta = 0, total = 0; const partes = {};
+  for(const mes of meses){
+    const m = METAS.meses.find(x => x.mes === mes);
+    if(!m) continue;
+    for(const p of (m.prepostos || [])){
+      if(String(p.codigo) !== String(codigo)) continue;
+      for(const l of (p.linhas || [])){
+        if(l.marca === 'OLY'){ meta += l.meta_rs || 0; continue; }
+        const v = mtMedir(l, 'rs');
+        partes[l.marca] = (partes[l.marca] || 0) + v; total += v;
+      }
+    }
+  }
+  if(!meta) return null;
+  const pct = total / meta;
+  return { pct, meta, partes, falta: meta * TRAVA_15 - total, ok: pct >= TRAVA_15 };
+}
+
+/* A porta da estrela do vendedor (Gestor, 12/10): as três ao mesmo tempo —
+   a CMS bateu o total, ele bateu o total dele, e ele tem os 15% do
+   trimestre. Fechada a porta, nenhuma estrela dele acende. */
+function mtPortaVendedor(totC, totV, t15tri){
+  return mtBateu(totC && totC.qtd, totC && totC.meta_qtd, GATILHO_TOTAL)
+      && mtBateu(totV && totV.qtd, totV && totV.meta_qtd, GATILHO_TOTAL)
+      && !!(t15tri && t15tri.ok);
+}
+/* Com a porta aberta: ouro se ele bateu o item; prata se não bateu mas a
+   CMS bateu aquele mesmo item. A CMS não ter batido o item fecha tudo —
+   é o "casamento" da regra. */
+function mtEstrelaVend(c, v, porta, gatilho, campo, mcampo){
+  if(!porta) return null;
+  if(!mtBateu(c && c[campo], c && c[mcampo], gatilho)) return null;
+  return mtBateu(v && v[campo], v && v[mcampo], gatilho) ? 'ouro' : 'prata';
+}
 
 function pintarMetas(){
   if(!METAS || !$('mtMes')) return;
-  const p = metasDoMes($('mtMes').value, $('mtPrep').value);
-  if(!p) return;
-  const OF = ofertaDaVitrine();
+  const mes = $('mtMes').value, cod = $('mtPrep').value;
+  const m = METAS.meses.find(x => x.mes === mes);
+  if(!m) return;
+  const todos = m.prepostos || [];
+  const meu = cod === 'TODOS' ? todos : todos.filter(p => String(p.codigo) === String(cod));
+  const oly = l => l.marca === 'OLY';
 
-  let meta = 0, feito = 0, temTudo = 0;
-  for(const g of Object.values(p.cat)){ meta += g.meta; feito += mtPos(g); }
-  for(const q of Object.values(OF.cat)) temTudo += q;
-  const pcG = meta ? Math.round(100 * feito / meta) : 0;
-  const faltaG = Math.max(0, meta - feito);
+  const totC = mtSomar(todos, oly), totV = mtSomar(meu, oly);
+  const cmsDestravou = mtBateu(totC && totC.qtd, totC && totC.meta_qtd, GATILHO_TOTAL);
+
+  // o resumo da linha de cima continua existindo: % geral e o que a vitrine tem
+  const OF = ofertaDaVitrine();
+  let temTudo = 0; for(const q of Object.values(OF.cat)) temTudo += q;
+  const pcG = (totC && totC.meta_qtd) ? Math.round(100 * totC.qtd / totC.meta_qtd) : 0;
+  const faltaG = Math.round(Math.max(0,
+    mtAlvo(totV && totV.meta_qtd, GATILHO_TOTAL) - (totV ? totV.qtd : 0)));
   $('mtResumo').innerHTML =
-    `<span class="cx"${pcG >= 100 ? ' style="color:var(--pronta)"' : ''}>${pcG}% <small>da meta</small></span>` +
-    (faltaG ? `<span class="cx">${nf(faltaG)} <small>a vender</small></span>` : '') +
+    `<span class="cx"${cmsDestravou ? ' style="color:var(--pronta)"' : ''}>${pcG}% <small>a CMS</small></span>` +
+    (faltaG ? `<span class="cx">${nf(faltaG)} <small>para você</small></span>` : '') +
     `<span class="cx" style="color:var(--repasse)">${nf(temTudo)} <small>na vitrine</small></span>`;
 
-  const ordem = ['calcados','chinelos','vestuario','acessorios','meias'];
-  $('mtCats').innerHTML = ordem.map(c => {
-    const g = p.cat[c] || { meta:0, real:0, pot:0 };
-    const tem = OF.cat[c] || 0;
-    const f = mtFalta(g), v = mtPc(g);
-    const w = g.meta ? Math.min(100, 100 * mtPos(g) / g.meta) : 0;
-    const dica = linhasDaDica(MT_ROTULO[c], g, f, tem);
-    return `<button type="button" class="mt-cat${f ? '' : ' ok'}${MT.cat === c ? ' on' : ''}"
-        data-mtcat="${esc(c)}" data-dica="${esc(dica)}">
-      <span class="nm">${esc(MT_ROTULO[c])}</span>
-      <span class="pc">${v === null ? '—' : v + '%'}</span>
-      <span class="ba"><i class="real" style="width:${w}%"></i></span>
-      <span class="pe"><span class="fa${f ? '' : ' zero'}">${f ? '−' + nf(f) : '✓'}</span>
-        <span class="tem${tem ? '' : ' vazio'}">${tem ? nf(tem) : '—'}</span></span>
-    </button>`;
-  }).join('');
-
-  const fx = p.fx || {};
-  $('mtFxs').innerHTML = Object.entries(fx)
-    .sort((a, b) => mtFalta(b[1]) - mtFalta(a[1]) || b[1].meta - a[1].meta)
-    .map(([nome, g]) => {
-      const tem = OF.fx[nome] || 0;
-      const f = mtFalta(g), v = mtPc(g) || 0;
-      const w = g.meta ? Math.min(100, 100 * mtPos(g) / g.meta) : 0;
-      const dica = linhasDaDica(nome, g, f, tem);
-      return `<button type="button" class="mt-fx-l${f ? '' : ' ok'}${MT.fx === nome ? ' on' : ''}"
-          data-mtfx="${esc(nome)}" data-dica="${esc(dica)}">
-        <span class="nm">${esc(nome)}</span>
-        <span class="ba"><i class="real" style="width:${w}%"></i></span>
-        <span class="dir"><span class="pc">${v}%</span>
-          <span class="tem${tem ? '' : ' vazio'}">${tem ? nf(tem) : '—'}</span></span>
-      </button>`;
+  // ── a trava dos 15%, numa linha fina ────────────────────────────────
+  const tri = mtTrimestre(mes);
+  const tMes = cod === 'TODOS' ? null : mtTrava(cod, [mes]);
+  const tTri = cod === 'TODOS' ? null : mtTrava(cod, tri);
+  const escala = Math.max(TRAVA_15 * 2, (tMes && tMes.pct) || 0, (tTri && tTri.pct) || 0);
+  // a porta só existe quando há um vendedor escolhido
+  const porta = cod === 'TODOS' ? false : mtPortaVendedor(totC, totV, tTri);
+  const umaTrava = (rot, t) => {
+    if(!t) return '';
+    const seg = MT_FAMS15.map(([k]) => {
+      const v = t.partes[k] || 0;
+      return v > 0 ? `<i class="f-${k}" style="width:${(v/t.meta/escala*100).toFixed(2)}%"></i>` : '';
     }).join('');
+    return `<div class="un"><span class="qd">${esc(rot)}</span>
+      <span class="trk"><i class="mk${t.ok ? ' ok' : ''}" style="left:${(TRAVA_15/escala*100).toFixed(1)}%"></i>${seg}</span>
+      <span class="pc${t.ok ? ' ok' : ''}">${(t.pct*100).toFixed(1).replace('.',',')}%</span>
+      <span class="fa">${t.falta > 0 ? 'faltam R$ ' + mtKk(t.falta) : 'R$ ' + mtKk(-t.falta) + ' acima'}</span></div>`;
+  };
+  const semUA = !mtTemUA(mes);
+  $('mtT15').innerHTML = (tMes || tTri)
+    ? `<span class="rot">Trava dos 15%</span>${umaTrava('Mês', tMes)}${umaTrava('Trim.', tTri)}` +
+      (semUA ? `<span class="av">Parcial: a Under Armour ainda não vem no metas.json, e ela é
+       a maior parcela do numerador — o número real é maior que este.</span>` : '')
+    : '<span class="rot">Trava dos 15% · escolha um preposto</span>';
+  $('mtT15').hidden = !(tMes || tTri);
+
+  // ── a fila: total, as seis faixas e as quatro famílias ──────────────
+  // o cartão mostra o gatilho dele; o do total mostra também os 100%, que é
+  // o patamar seguinte da régua
+  const cartao = (id, nome, c, v, gatilho, unidade, tipo, ref) => {
+    const campo = unidade === 'rs' ? 'rs' : 'qtd';
+    const mcampo = unidade === 'rs' ? 'meta_rs' : 'meta_qtd';
+    const gap = unidade === 'rs' ? mtGapR : mtGapP;
+    // a faixa só doura quando a CMS destravou o total; a família vale por si
+    // com TODOS escolhido a CMS e o "vendedor" são o mesmo conjunto: duas
+    // barras iguais lado a lado só ocupariam espaço
+    const soCms = cod === 'TODOS';
+    const okC = mtBateu(c && c[campo], c && c[mcampo], gatilho) &&
+                (tipo === 'faixa' ? cmsDestravou : true);
+    const okV = mtBateu(v && v[campo], v && v[mcampo], gatilho);
+    // a estrela dele: ouro, prata ou nada — no total ela acende só com a porta
+    const estV = soCms ? null
+      : tipo === 'total' ? (porta ? 'ouro' : null)
+      : mtEstrelaVend(c, v, porta, gatilho, campo, mcampo);
+    // o total não filtra, então nunca fica marcado
+    const sel = tipo === 'total' ? false
+      : tipo === 'faixa' ? MT.fx === id : MT.cat === id;
+    const barra = (g, quem, ok, atraso) => (!g || g[mcampo] == null)
+      ? `<i class="b ${quem} vazia"></i>`
+      : `<i class="b ${quem}${ok ? ' ok' : ''}" style="height:${mtAlt(g[campo], g[mcampo])}%;animation-delay:${atraso}s"></i>`;
+    const cel = (g, quem, ok) => `<div><span class="q">${quem === 'c' ? 'CMS' : 'VOCÊ'}</span>
+      <span class="g ${quem}${ok ? ' ok' : ''}">${(!g || g[mcampo] == null) ? '—'
+        : gap(g[campo], mtAlvo(g[mcampo], gatilho))}</span></div>`;
+    const metaTxt = (!c || c[mcampo] == null) ? 'sem meta'
+      : 'meta ' + (unidade === 'rs' ? 'R$ ' : '') + mtKk(c[mcampo]);
+    return `<button type="button" class="cd${tipo === 'total' ? ' tot' : ''}${sel ? ' on' : ''}"
+        ${tipo === 'faixa' ? `data-mtfx="${esc(id)}"` : tipo === 'familia' ? `data-mtcat="${esc(id)}"` : ''}>
+      <span class="nm">${esc(nome)}</span>
+      <span class="st">${okC ? `<i>${MT_ESTRELA}</i>` : ''}${estV ? `<i class="${estV === 'prata' ? 'pr' : ''}">${MT_ESTRELA}</i>` : ''}</span>
+      <span class="bars">${ref ? `<i class="lref" style="bottom:${(ref/TETO*100).toFixed(2)}%"><b>${Math.round(ref*100)}%</b></i>` : ''}<i class="l100" style="bottom:${(gatilho/TETO*100).toFixed(2)}%"><b>${Math.round(gatilho*100)}%</b></i>
+        ${barra(c,'c',okC,0)}${soCms ? '' : barra(v,'v',okV,.05)}</span>
+      <span class="num">${cel(c,'c',okC)}${soCms ? '' : cel(v,'v',okV)}</span>
+      <span class="mm">${esc(metaTxt)}</span>
+    </button>`;
+  };
+
+  const MT_CAT_ID = { ACOLY:'acessorios', MEOLY:'meias', CHOLY:'chinelos', CFOLY:'vestuario' };
+  // em cima o tênis, em pares; embaixo as famílias, em reais
+  $('mtFila').innerHTML =
+    cartao('', 'TOTAL TÊNIS', totC, totV, GATILHO_TOTAL, 'qtd', 'total', GATILHO_FAIXA) +
+    MT_FAIXAS.map(([id, nome]) => cartao(id, nome,
+      mtSomar(todos, l => oly(l) && l.faixa === id),
+      mtSomar(meu,   l => oly(l) && l.faixa === id),
+      GATILHO_FAIXA, 'qtd', 'faixa')).join('');
+  $('mtFila2').innerHTML = '<span class="vazio"></span>' +
+    MT_FAMILIAS.map(([id, nome]) => cartao(MT_CAT_ID[id], nome,
+      mtSomar(todos, l => l.marca === id),
+      mtSomar(meu,   l => l.marca === id),
+      GATILHO_FAMILIA, 'rs', 'familia')).join('');
+
+  $('mtLeg').innerHTML =
+    '<span><i class="c"></i>CMS</span>' +
+    '<span><i class="v"></i>' + esc(cod === 'TODOS' ? 'o time' : 'você') + '</span>' +
+
+    '<span>' + MT_ESTRELA + 'a CMS bateu</span>' +
+    (cod === 'TODOS' ? '' :
+      '<span><i style="display:inline-flex;line-height:0">' + MT_ESTRELA + '</i>você bateu</span>' +
+      '<span><i class="pr" style="display:inline-flex;line-height:0">' + MT_ESTRELA + '</i>50%: a CMS bateu, você não</span>') +
+    '<span>total 90% · faixa 100% · família 95% (em reais)</span>';
 }
 
 /* Clicar num quadro filtra a vitrine de verdade: a categoria vai para o
@@ -9157,7 +9498,12 @@ function pintarMarca(){
 function escolherMarca(id){
   if(id === MARCA || !MARCAS[id]) return;
   MARCA = id;
-  if(!STATE.produtos.some(o => o.marca === id && temOrigem(o, STATE.origem))) STATE.origem = 'tudo';
+  // sem produto na origem atual, volta para a prioridade da casa; se nem lá
+  // houver, aí sim mostra tudo
+  if(!STATE.produtos.some(o => o.marca === id && temOrigem(o, STATE.origem))){
+    STATE.origem = STATE.produtos.some(o => o.marca === id && temOrigem(o, 'repasse'))
+      ? 'repasse' : 'tudo';
+  }
   STATE.categoria = '';
   for(const g of GRUPOS) STATE.sel[g.id].clear();
   STATE.marcados.clear();
@@ -9271,6 +9617,31 @@ _mqEstreito.addEventListener('change', arrumarTopo);
   if(window.ResizeObserver) new ResizeObserver(marca).observe(rolo);
   new MutationObserver(marca).observe(rolo, { subtree:true, childList:true, attributes:true, attributeFilter:['class','hidden'] });
   marca();
+  // as setas do computador: só existem enquanto há botão escondido do lado
+  // delas, e o clique anda 70% da fita
+  const esq = $('rolaEsq'), dir = $('rolaDir');
+  const podeRolar = () => rolo.scrollWidth > rolo.clientWidth + 2;
+  const arrumarSetas = () => {
+    if(!esq || !dir) return;
+    const estreito = matchMedia('(max-width:860px)').matches;
+    const sobra = podeRolar() && !estreito;
+    esq.hidden = !sobra || rolo.scrollLeft <= 2;
+    dir.hidden = !sobra || rolo.scrollLeft + rolo.clientWidth >= rolo.scrollWidth - 2;
+  };
+  const andar = lado => {
+    const passo = Math.max(120, Math.round(rolo.clientWidth * 0.7));
+    rolo.scrollBy({ left: lado * passo,
+      behavior: matchMedia('(prefers-reduced-motion:reduce)').matches ? 'auto' : 'smooth' });
+  };
+  if(esq) esq.onclick = () => andar(-1);
+  if(dir) dir.onclick = () => andar(1);
+  rolo.addEventListener('scroll', arrumarSetas, { passive:true });
+  addEventListener('resize', arrumarSetas);
+  if(window.ResizeObserver) new ResizeObserver(arrumarSetas).observe(rolo);
+  new MutationObserver(arrumarSetas).observe(rolo,
+    { subtree:true, childList:true, attributes:true, attributeFilter:['class','hidden'] });
+  arrumarSetas();
+
   // digitando na busca o navegador rolava a fila atrás do cursor e o começo
   // do campo sumia atrás da marca: a fila volta a mostrar a busca inteira
   const campo = $('campoBusca'), busca = $('busca');
