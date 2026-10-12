@@ -5180,9 +5180,11 @@ function reatHistDe(o){
 function reatDica(o, h){
   if(!h) return '';
   const tit = `${o.nome || o.artigo} · ${nf(h.pares)} pares`;
+  // sem o GCI: o número da nota não diz nada a quem está montando a oferta,
+  // e roubava a linha da cor, que é o que ele precisa ver
   const linhas = h.notas.length
-    ? h.notas.map(([gci, dia, pares, cores]) =>
-        `${dia}${gci ? ' · GCI ' + gci : ''}${cores && cores.length
+    ? h.notas.map(([, dia, pares, cores]) =>
+        `${dia}${cores && cores.length
           ? ' · ' + cores.slice(0, 2).join(', ') : ''}::${nf(pares)} pares`)
     : [`no 1º semestre::${nf(h.pares)} pares`];
   return [tit, ...linhas].join('|');
