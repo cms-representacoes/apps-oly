@@ -1012,8 +1012,15 @@ button{font:inherit}
 .mt-tit:hover{border-color:var(--linha-forte)}
 .mt-tit:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
 .mt-tit svg{color:var(--marca);transition:transform .18s ease}
+/* Aberto, o chip fica aceso e a seta aponta para cima: assim se vê, sem
+   tentar, que o próximo clique no mesmo lugar fecha. */
+.mt-tit .seta{color:var(--tenue);margin-left:-1px;transition:transform .22s cubic-bezier(.2,.8,.2,1)}
+.mt:not(.fechada) .mt-tit{border-color:var(--marca);color:var(--marca);
+  background:color-mix(in srgb,var(--marca) 7%,var(--carta))}
+.mt:not(.fechada) .mt-tit .seta{color:var(--marca);transform:rotate(180deg)}
+@media(prefers-reduced-motion:reduce){ .mt-tit .seta{transition:none} }
 .mt.fechada .mt-tit{color:var(--fraco)}
-.mt.fechada .mt-tit svg{transform:scale(.88)}
+.mt.fechada .mt-tit svg:first-of-type{transform:scale(.88)}
 .mt-sel{display:flex;align-items:center;gap:6px}
 .mt-sel select{border:1px solid var(--linha);background:var(--carta);color:var(--tinta);
   border-radius:999px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
@@ -1074,11 +1081,33 @@ button{font:inherit}
 .mt .vazio{display:none}
 @media(min-width:900px){ .mt .vazio{display:block} }
 
-.mt .cd{width:132px;flex:0 0 132px;display:flex;flex-direction:column;
-  background:var(--carta);border:1px solid var(--linha);border-radius:12px;
-  padding:10px 11px 9px;cursor:pointer;font-family:inherit;text-align:left}
-.mt .cd:hover{border-color:var(--linha-forte)}
-.mt .cd.on{border-color:var(--marca);box-shadow:0 0 0 1px var(--marca) inset}
+/* O quadro tem papel, não fundo chapado: um degradê que escurece de leve para
+   baixo, um fio de luz na borda de cima e uma sombra curta que o solta da
+   página. É o que separa um cartão de um retângulo branco. */
+.mt .cd{width:132px;flex:0 0 132px;display:flex;flex-direction:column;position:relative;
+  background:linear-gradient(170deg,#FFFFFF 0%,#FCFDFF 58%,#F5F7FC 100%);
+  border:1px solid var(--linha);border-radius:12px;
+  box-shadow:0 1px 2px rgba(15,23,42,.045), inset 0 1px 0 rgba(255,255,255,.9);
+  padding:10px 11px 9px;cursor:pointer;font-family:inherit;text-align:left;
+  transition:transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s ease, border-color .2s ease}
+/* o brilho atravessa o quadro uma vez, no instante em que o cursor chega */
+.mt .cd::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.72) 50%,transparent 58%);
+  background-size:250% 100%;background-position:130% 0;opacity:0;
+  transition:background-position .62s cubic-bezier(.3,.7,.3,1), opacity .2s ease}
+.mt .cd:hover{transform:translateY(-3px);border-color:var(--linha-forte);
+  box-shadow:0 12px 26px -10px rgba(15,23,42,.26), inset 0 1px 0 rgba(255,255,255,.9)}
+.mt .cd:hover::after{background-position:-30% 0;opacity:1}
+.mt .cd:active{transform:translateY(-1px)}
+.mt .cd.on{border-color:var(--marca);
+  box-shadow:0 0 0 1px var(--marca) inset, 0 8px 20px -10px color-mix(in srgb,var(--marca) 45%,transparent)}
+.mt .cd.on:hover{box-shadow:0 0 0 1px var(--marca) inset,
+  0 14px 28px -10px color-mix(in srgb,var(--marca) 55%,transparent)}
+@media(prefers-reduced-motion:reduce){
+  .mt .cd,.mt .cd::after{transition:none}
+  .mt .cd:hover{transform:none}
+  .mt .cd:hover::after{opacity:0}
+}
 .mt .cd.tot{flex:0 0 158px;width:158px}
 @media(min-width:900px){ .mt .cd,.mt .cd.tot{width:auto;flex:auto} }
 .mt .cd .nm{font-size:11.5px;font-weight:800;line-height:1.25;min-height:28px;
@@ -2397,10 +2426,14 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
   <div class="mt-in">
     <div class="mt-topo">
       <button type="button" class="mt-tit" id="mtToggle" aria-expanded="true"
-              title="Mostrar ou esconder as metas do mês">
+              title="Mostrar as metas do mês">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2.3" aria-hidden="true"><circle cx="12" cy="12" r="9"/>
-          <circle cx="12" cy="12" r="4"/></svg> Metas</button>
+          <circle cx="12" cy="12" r="4"/></svg> Metas
+        <!-- a seta gira quando abre: é o aviso de que o mesmo chip fecha -->
+        <svg class="seta" width="12" height="12" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.8" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
       <!-- o prêmio por par repassado. Não filtra nada: abre o painel. -->
       <button type="button" class="cmp-bt" id="chipCamp" hidden aria-expanded="false"
               title="Ver as campanhas de incentivo"></button>
@@ -5032,7 +5065,10 @@ function porMetas(fechada){
   MT.fechada = !!fechada;
   barra.classList.toggle('fechada', MT.fechada);
   const bt = $('mtToggle');
-  if(bt) bt.setAttribute('aria-expanded', String(!MT.fechada));
+  if(bt){
+    bt.setAttribute('aria-expanded', String(!MT.fechada));
+    bt.title = MT.fechada ? 'Mostrar as metas do mês' : 'Clique de novo para fechar as metas';
+  }
   // o estado não se guarda: a próxima visita começa fechada de novo
 }
 
