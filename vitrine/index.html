@@ -1026,11 +1026,13 @@ button{font:inherit}
 /* Fechada, some tudo menos o botão: mês, prepostos, resumo e os quadros. */
 .mt.fechada .mt-corpo,
 .mt.fechada .mt-sel{display:none}
-/* Com os gráficos à vista, o resumo repete o que os cards já dizem e os
-   atalhos da direita disputam a linha com eles: os três voltam ao recolher,
-   que é quando viram o único resumo do mês. */
-.mt:not(.fechada) .mt-resumo,
+/* Os dois resumos se revezam. Recolhida, ficam o que falta a ele e o que a
+   vitrine tem — o que serve para vender agora. Expandida, fica só o "a CMS",
+   que é a porta da estrela e se lê junto com os cards; o resto sairia do
+   caminho dos gráficos. Os atalhos da direita seguem os recolhidos. */
+.mt:not(.fechada) .mt-resumo .cx:not(.cms),
 .mt:not(.fechada) .chips-dir{display:none}
+.mt.fechada .mt-resumo .cx.cms{display:none}
 /* Com um cliente em montagem, a faixa dele já ocupa a linha inteira logo
    abaixo: o resumo e os atalhos saem do caminho até ele ser largado, com as
    metas abertas ou fechadas. */
@@ -4805,7 +4807,9 @@ function pintarMetas(){
   const faltaG = Math.round(Math.max(0,
     mtAlvo(totV && totV.meta_qtd, GATILHO_TOTAL) - (totV ? totV.qtd : 0)));
   $('mtResumo').innerHTML =
-    `<span class="cx"${cmsDestravou ? ' style="color:var(--pronta)"' : ''}>${pcG}% <small>a CMS</small></span>` +
+    `<span class="cx cms"${cmsDestravou ? ' style="color:var(--pronta)"' : ''}
+       title="A CMS inteira contra a meta de tênis. Abaixo de ${Math.round(GATILHO_TOTAL*100)}% ninguém ganha estrela, por melhor que tenha ido."
+       >${pcG}% <small>a CMS</small></span>` +
     (faltaG ? `<span class="cx">${nf(faltaG)} <small>para você</small></span>` : '') +
     `<span class="cx" style="color:var(--repasse)">${nf(temTudo)} <small>na vitrine</small></span>`;
 
