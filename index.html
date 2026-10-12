@@ -375,7 +375,7 @@
     /* Nao coube: a faixa passa a receber o arrasto para rolar, e a fila comeca
        pela esquerda — com flex-end os primeiros botoes ficariam inalcancaveis. */
     .fab-stack.rola{ pointer-events:auto; justify-content:flex-start }
-    .fab-rfv, .fab-clientes, .fab-perf, .fab-metas{
+    .fab-rfv, .fab-clientes, .fab-perf, .fab-metas, .fab-encomendas{
       color:#fff;
       border:none;
       border-radius:32px;
@@ -398,16 +398,20 @@
     .fab-perf:hover{ transform:translateY(-2px); box-shadow:0 10px 28px rgba(200,127,10,.55), 0 4px 10px rgba(0,0,0,.18); }
     .fab-metas{ background:linear-gradient(135deg,#2a62b0 0%,#16305c 100%); box-shadow:0 6px 22px rgba(32,72,136,.5), 0 2px 6px rgba(0,0,0,.12); }
     .fab-metas:hover{ transform:translateY(-2px); box-shadow:0 10px 28px rgba(32,72,136,.6), 0 4px 10px rgba(0,0,0,.18); }
-    .fab-rfv svg, .fab-clientes svg, .fab-perf svg, .fab-metas svg{ width:18px; height:18px; }
+    /* o laranja que era do card de Encomendas, agora no botão */
+    .fab-encomendas{ background:linear-gradient(135deg,#ff9a4a 0%,#e2701a 100%); box-shadow:0 6px 22px rgba(226,112,26,.45), 0 2px 6px rgba(0,0,0,.12); }
+    .fab-encomendas:hover{ transform:translateY(-2px); box-shadow:0 10px 28px rgba(226,112,26,.55), 0 4px 10px rgba(0,0,0,.18); }
+    .fab-rfv svg, .fab-clientes svg, .fab-perf svg, .fab-metas svg, .fab-encomendas svg{ width:18px; height:18px; }
     @media(max-width:640px){
       .fab-stack{ gap:10px; }
-      .fab-rfv, .fab-clientes, .fab-perf, .fab-metas{
+      .fab-rfv, .fab-clientes, .fab-perf, .fab-metas, .fab-encomendas{
         padding:13px;
         border-radius:50%;
         width:54px; height:54px;
         justify-content:center;
       }
-      .fab-rfv span, .fab-clientes span, .fab-perf span, .fab-metas span{ display:none; }
+      .fab-rfv span, .fab-clientes span, .fab-perf span, .fab-metas span,
+      .fab-encomendas span{ display:none; }
     }
 
     /* ── Login do Portal (sessão compartilhada) ── */
@@ -748,10 +752,10 @@
         </div>
       </a>
 
-      <a href="https://cms-representacoes.github.io/apps-oly-v2/gerador-catalogo.html" class="portal-card card-gerador focus-ring">
-        <div class="portal-card-title"><span class="pc-ico tag-gerador"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></span><span class="pc-nome">Encomendas</span></div>
-        <div class="portal-card-desc" style="color:#fed7aa">Da planilha da carteira ao PDF do cliente.</div>
-        <div class="portal-card-cta" style="color:#fdba74">
+      <a href="https://cms-representacoes.github.io/apps-oly/vitrine/" class="portal-card card-showroom focus-ring">
+        <div class="portal-card-title"><span class="pc-ico tag-showroom"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg></span><span class="pc-nome">Showroom</span></div>
+        <div class="portal-card-desc">Pronta entrega, repasse e produção num lugar só. Monte a sacola e mande o pedido.</div>
+        <div class="portal-card-cta">
           Acessar
           <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </div>
@@ -794,15 +798,6 @@
         </div>
       </a>
 
-      <a href="https://cms-representacoes.github.io/apps-oly/vitrine/" class="portal-card card-dev card-showroom focus-ring">
-        <span class="selo-dev">DEV</span>
-        <div class="portal-card-title"><span class="pc-ico tag-showroom"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg></span><span class="pc-nome">Showroom</span></div>
-        <div class="portal-card-desc">Pronta entrega, repasse e produção num lugar só. Monte a sacola e mande o pedido.</div>
-        <div class="portal-card-cta">
-          Acessar
-          <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </div>
-      </a>
 
       <a href="https://cms-representacoes.github.io/apps-oly-v2/painel-tv/" class="portal-card card-dev card-tv focus-ring">
         <span class="selo-dev">DEV</span>
@@ -1032,6 +1027,18 @@
       <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
     </svg>
     <span>Clientes</span>
+  </a>
+
+  <!-- Encomendas desceu do quadro para cá: é ferramenta de quem já sabe o que
+       quer, e o lugar dela na grade passou para o Showroom. -->
+  <a href="https://cms-representacoes.github.io/apps-oly-v2/gerador-catalogo.html"
+     class="fab-encomendas" title="Encomendas · da planilha da carteira ao PDF"
+     aria-label="Encomendas">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <path d="M14 2v6h6M9 13h6M9 17h6"/>
+    </svg>
+    <span>Encomendas</span>
   </a>
 </div>
 

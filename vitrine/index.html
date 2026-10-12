@@ -2927,9 +2927,11 @@ const IMG   = '../Catalogo/';
 /* ── sessão ─────────────────────────────────────────────────────── */
 // A mesma chave que o portal grava; todos os apps leem daqui.
 const SESSION_KEY = 'cms_portal_session_v1';
-// Enquanto a vitrine está em obra, só o CMS e quem desenvolve entram. Para
-// abrir para todos, basta esvaziar a lista.
-const SO_ESTES = ['CMS', 'MARCOS (DEV)'];
+// A vitrine saiu da obra e entrou no portal (12/10): qualquer vendedor com
+// login entra, e cada um vê o que é dele — metas, clientes para reativar e
+// cotas de rateio já chegam filtrados pelo código da sessão. Pôr nomes aqui
+// volta a fechar a porta.
+const SO_ESTES = [];
 
 function getSessao(){
   try{
@@ -4619,11 +4621,10 @@ function montarBarraMetas(){
   $('mtMedida').value = MT.medida;
   $('mtMedida').onchange = e => { MT.medida = e.target.value; pintarMetas(); };
   $('mtToggle').onclick = () => porMetas(!MT.fechada);
-  // no celular nasce fechada: a vitrine tem de começar na primeira dobra
-  let guardado = null;
-  try{ guardado = localStorage.getItem('cms_metas_barra'); }catch(_){}
-  // Fechada por padrão: a vitrine é o que ele veio ver; as metas abrem no clique.
-  MT.fechada = guardado ? guardado === 'fechada' : true;
+  /* SEMPRE fechada ao abrir, em qualquer tela: a vitrine é o que ele veio ver,
+     e as metas entram no clique do chip. A escolha não atravessa visitas — quem
+     abriu ontem não encontra a vitrine empurrada para baixo hoje. */
+  MT.fechada = true;
   barra.classList.toggle('fechada', MT.fechada);
   $('mtToggle').setAttribute('aria-expanded', String(!MT.fechada));
   barra.hidden = false;
@@ -5025,7 +5026,7 @@ function porMetas(fechada){
   barra.classList.toggle('fechada', MT.fechada);
   const bt = $('mtToggle');
   if(bt) bt.setAttribute('aria-expanded', String(!MT.fechada));
-  try{ localStorage.setItem('cms_metas_barra', MT.fechada ? 'fechada' : 'aberta'); }catch(_){}
+  // o estado não se guarda: a próxima visita começa fechada de novo
 }
 
 /* Clicar fora fecha. Dentro, não: escolher mês, preposto ou medida e clicar
@@ -5066,11 +5067,16 @@ async function carregarReativar(){
 }
 
 // O vendedor vê os clientes dele; o CMS vê todos.
+/* O arquivo traz o vendedor pelo primeiro nome ("JORGE") e a sessão traz o
+   nome inteiro ("JORGE LUIZ DAS NEVES BEZERRA"): comparados por igual nunca
+   batiam, e o vendedor abria a lista vazia. Enquanto só o CMS entrava na
+   vitrine isso não aparecia, porque para ele a lista vem inteira. */
+const primeiroNome = n => norm(String(n || '').trim().split(/\s+/)[0] || '');
 function reatDoVendedor(){
   if(!REAT.dados) return [];
   if(ehCmsSessao()) return REAT.dados.clientes;
-  const eu = norm((SESSAO && SESSAO.nome) || '');
-  return REAT.dados.clientes.filter(c => norm(c.vend) === eu);
+  const eu = primeiroNome(SESSAO && SESSAO.nome);
+  return eu ? REAT.dados.clientes.filter(c => primeiroNome(c.vend) === eu) : [];
 }
 function reatFiltrados(){
   const b = REAT.f.busca;
