@@ -211,6 +211,20 @@ button{ font-family:inherit; cursor:pointer; border:0; background:none; color:in
 @keyframes mtSobe{ from{ transform:scaleY(0) } to{ transform:scaleY(1) } }
 .mt .b.c{ background:var(--cms) }
 .mt .b.v{ background:var(--vend) }
+/* O que já virou nota é azul; o que falta faturar é o âmbar da casa.
+   Como ÁREA o âmbar funciona sobre o cartão claro; como TEXTO ele some
+   (contraste 1,6), então o número e a legenda usam o mesmo âmbar levado ao
+   ponto em que se lê — o laranja queimado da vitrine. */
+.mt .b.f{ background:var(--cms) }
+.mt .b.p{ background:linear-gradient(180deg, var(--marca-claro), var(--marca));
+  box-shadow:inset 0 0 0 1px var(--marca-escuro) }
+.mt .leg i.q.f{ background:var(--cms) }
+.mt .leg i.q.p{ background:linear-gradient(180deg, var(--marca-claro), var(--marca));
+  box-shadow:inset 0 0 0 1px var(--marca-escuro) }
+.mt .num .g.f, .mt .num .q.f, .mt .leg .tf{ color:#2433C9 }
+.mt .num .g.p, .mt .num .q.p, .mt .leg .tp{ color:var(--marca) }
+.mt .num .g.f, .mt .num .g.p{ font-weight:800 }
+.mt .leg .tf, .mt .leg .tp{ font-weight:700 }
 .mt .b.ouro{ background:linear-gradient(180deg,#FFD35A,var(--ouro)) }
 .mt .b.vazia{ height:0; border-top:2px dotted var(--tenue) }
 
@@ -227,6 +241,42 @@ button{ font-family:inherit; cursor:pointer; border:0; background:none; color:in
 .mt .num .g.v{ color:var(--vend-escuro) }
 .mt .cd .mm{ display:block; font-size:9.5px; color:var(--tenue); font-weight:600; margin-top:6px;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+/* Com o atalho, o cartão cresce embaixo: o ícone ganha faixa própria em vez
+   de dividir a linha com os números, que nas famílias são largos (+R$ 277,9k)
+   e chegavam a passar por baixo dele. */
+.mt .cd:has(.btVitrine){ padding-bottom:42px }
+
+/* O atalho para a vitrine fica no canto de baixo do cartão, do lado direito —
+   o mesmo canto do coração no catálogo. Discreto parado, firme no cursor:
+   ele é uma saída, não o assunto do cartão. */
+.mt .cd{ position:relative }
+/* O mesmo degradê do card Showroom no portal — quem chega ali reconhece de
+   onde veio o atalho antes de ler qualquer coisa. */
+.mt .btVitrine{ position:absolute; right:9px; bottom:9px; width:28px; height:28px;
+  display:grid; place-items:center; border-radius:9px; color:#fff; text-decoration:none;
+  background:linear-gradient(150deg,#0E6B47 0%,#2C39E2 55%,#7A2FBF 100%);
+  box-shadow:0 2px 8px -2px rgba(44,57,226,.5);
+  transition:transform .18s ease, box-shadow .18s ease, filter .18s ease }
+.mt .btVitrine svg{ width:15px; height:15px }
+.mt .btVitrine:hover{ transform:translateY(-2px); filter:brightness(1.12);
+  box-shadow:0 8px 18px -6px rgba(44,57,226,.65) }
+.mt .btVitrine:focus-visible{ outline:2px solid var(--marca); outline-offset:2px }
+/* O convite fica na mesma faixa do botão, à esquerda dele, e a setinha faz a
+   ligação entre os dois. Âmbar, como ele pediu; o tamanho segue a linha dos
+   rótulos do cartão para não competir com os números. */
+.mt .chamaVitrine{ position:absolute; left:11px; bottom:9px; height:28px;
+  display:inline-flex; align-items:center; gap:4px;
+  font-size:10px; font-weight:800; letter-spacing:-.01em; color:var(--marca);
+  white-space:nowrap; pointer-events:none }
+.mt .chamaVitrine .st{ width:14px; height:14px }
+@media(max-width:640px){
+  .mt .cd:has(.btVitrine){ padding-bottom:58px }
+  .mt .chamaVitrine{ left:11px; right:11px; bottom:38px; height:auto; font-size:9.5px;
+    justify-content:flex-end }
+  .mt .chamaVitrine .st{ width:13px; height:13px }
+}
+@media(prefers-reduced-motion:reduce){ .mt .btVitrine{ transition:none }
+  .mt .btVitrine:hover{ transform:none } }
 
 /* ── a trava dos 15% ────────────────────────────────────────────────── */
 /* A trava fica grudada abaixo do cabeçalho: é o número que se consulta
@@ -440,6 +490,48 @@ const NOMES = {
 const FAMS15 = [['MEOLY','Meias'], ['CHOLY','Chinelos'], ['ACOLY','Acessórios'],
                 ['CFOLY','Confecção'], ['UA','Under Armour']];
 const MARCAS_UA = ['UA_TN','UA_AC','UA_CH','UA_ME','UA_CF'];
+/* ── o atalho para a vitrine ──────────────────────────────────────────
+   Quem vê que está perto de bater uma faixa quer ir vender aquilo agora. O
+   ícone no canto do cartão abre a vitrine no repasse, já filtrada.
+
+   As seis faixas de tênis têm o mesmo nome nos dois lados e vão direto. As
+   famílias em R$ a vitrine chama de outro jeito, e a Under Armour lá é uma
+   faixa de tênis, não uma família — por isso o de-para. Cartão que não
+   estiver aqui simplesmente não ganha o ícone. */
+const PARA_VITRINE = {
+  CLASSICOS:        { faixa:'CLASSICOS' },
+  CONF_FEM:         { faixa:'CONF_FEM' },
+  CONF_MASC:        { faixa:'CONF_MASC' },
+  'CORRIDA/TREINO': { faixa:'CORRIDA/TREINO' },
+  INFANTIL:         { faixa:'INFANTIL' },
+  CORRE:            { faixa:'CORRE' },
+  ACOLY:            { faixa:'ACESSORIOS' },
+  CHOLY:            { faixa:'CHINELOS' },
+  MEOLY:            { faixa:'MEIA OLY' },
+  UA:               { faixa:'TENIS UA' },
+  tot:              { categoria:'TENIS' },     // o total abre o tênis inteiro
+};
+/* Uma seta reta, apontando para o botão que fica à direita. */
+const SETA_VITRINE = '<svg class="st" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+  'stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M4 12h15"/><path d="m13 6 6 6-6 6"/></svg>';
+const ICO_VITRINE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+  'stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>';
+const PARA_VITRINE_UA = { tot:{ faixa:'TENIS UA' }, UA_ME:{ faixa:'MEIA UA' } };
+function linkVitrine(o){
+  const chave = o.grupo === 'tot' ? 'tot' : o.chave;
+  const de = (F.marca === 'UA') ? PARA_VITRINE_UA[chave] : PARA_VITRINE[chave];
+  if(!de) return '';
+  const q = new URLSearchParams({ marca:'oly', origem:'repasse' });
+  if(de.faixa) q.set('faixa', de.faixa);
+  if(de.categoria) q.set('categoria', de.categoria);
+  return `<span class="chamaVitrine" aria-hidden="true">Vamos buscar?${SETA_VITRINE}</span>
+  <a class="btVitrine focus-ring" href="../vitrine/?${q}"
+    title="Abrir ${esc(o.nome)} no repasse da vitrine"
+    aria-label="Vamos buscar: abrir ${esc(o.nome)} no repasse da vitrine"
+    >${ICO_VITRINE}</a>`;
+}
 const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto',
                'setembro','outubro','novembro','dezembro'];
 const MES3 = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
@@ -488,6 +580,7 @@ const kk = v => { const a = Math.abs(v || 0);
 const pctTxt = p => p == null ? '—' : (p*100).toFixed(1).replace('.',',') + '%';
 
 let METAS = null;
+const MEDIDAS = ['pot', 'real'];
 const F = { marca:'OLY', mes:null, prep:'TODOS', medida:'pot', comparar:false, abrirMeses:false };
 
 /* ── a leitura ────────────────────────────────────────────────────────
@@ -637,7 +730,8 @@ function montarFiltros(){
   $('fVisao').hidden = !cms;
   if(!cms) F.comparar = false;
   // medida
-  $('fMedida').innerHTML = [['pot','Potencial'], ['real','Realizado'], ['fat','Faturado']]
+  if(!MEDIDAS.includes(F.medida)) F.medida = 'pot';
+  $('fMedida').innerHTML = [['pot','Potencial'], ['real','Realizado']]
     .map(([k,r]) => `<button class="chip${F.medida === k ? ' on' : ''}" data-medida="${k}">${r}</button>`).join('');
   // a visão do gestor: uma barra por vendedor em cada cartão
   $('fVisao').innerHTML = `<button class="chip${F.comparar ? ' on' : ''}" id="btComparar">
@@ -666,18 +760,25 @@ document.addEventListener('click', ev => {
    potencial de uma linha, o realizado faz as vezes — foi assim que a
    conta passou a bater com a do Gestor. */
 function valor(l, campo){
-  const m = F.medida;
-  if(m === 'fat') return l['fat_' + campo];
-  if(m === 'real') return l['real_' + campo];
   const p = l['pot_' + campo];
   return p == null ? l['real_' + campo] : p;
 }
-const zero = () => ({ meta_q:0, meta_r:0, pos_q:0, pos_r:0, tem:false });
+/* O faturado vem junto em todo recorte, porque a medida "Realizado" precisa
+   dele e do potencial ao mesmo tempo: ela não mostra um número, mostra a
+   divisão entre o que já virou nota e o que ainda está em carteira. */
+const zero = () => ({ meta_q:0, meta_r:0, pos_q:0, pos_r:0, fat_q:0, fat_r:0, tem:false });
 function somar(a, l){
   a.meta_q += l.meta_qtd || 0; a.meta_r += l.meta_rs || 0;
   a.pos_q += valor(l,'qtd') || 0; a.pos_r += valor(l,'rs') || 0;
+  a.fat_q += l.fat_qtd || 0; a.fat_r += l.fat_rs || 0;
   a.tem = true; return a;
 }
+/* As duas partes do potencial. O que falta nunca é negativo: devolução pode
+   deixar o faturado acima do potencial, e aí o que falta é zero, não um
+   número ao contrário. */
+const ehDividido = () => F.medida === 'real';
+const parteFat = (g, q) => (q ? g.fat_q : g.fat_r) || 0;
+const parteFalta = (g, q) => Math.max(0, (q ? g.pos_q : g.pos_r) - parteFat(g, q));
 /* Percorre as linhas do recorte: os meses escolhidos, os prepostos pedidos
    ('TODOS' soma o time inteiro) e devolve cada linha ao visitante. */
 function percorrer(sel, codigo, visita){
@@ -873,7 +974,7 @@ function blocoTenis(dCms, dVen, ctx){
       i:i+1, okC, okV, chave:f.chave, ctx }));
   });
   return `<div class="sec">
-    <div class="rot">Calçados · pares${F.medida === 'fat' ? ' faturados' : (F.medida === 'pot' ? ' · potencial' : '')}</div>
+    <div class="rot">Calçados · pares${ehDividido() ? ' · faturado e a faturar' : ' · potencial'}</div>
     <div class="rolo"><div class="fila">${cartoes.join('')}</div></div>
   </div>`;
 }
@@ -923,6 +1024,21 @@ function cartao(o){
   }else if(ctx.porMes){
     barras = barrasPorMes(o);
     rodape = tiraQuem(o) + legendaPorMes(o);
+  }else if(ehDividido()){
+    /* "Realizado" abre o potencial em duas: o que já virou nota e o que
+       ainda está em carteira. As duas somam o potencial, então a altura
+       delas se lê contra a mesma régua — e quem olha vê de onde vem o
+       número e quanto dele ainda depende de faturar. É o do preposto em
+       foco: "quanto falta faturar" é pergunta de um, não do time. */
+    const g = ctx.soCms ? o.c : o.v;
+    const fat = parteFat(g, q), falta = parteFalta(g, q);
+    barras = coluna('f', fat, meta(g), false, null, o.i*0.06, o.escala)
+           + coluna('p', falta, meta(g), false, null, o.i*0.06 + 0.05, o.escala);
+    rodape = `<div class="num">
+      <div><span class="q f">Faturado</span><b class="g f">${fat ? num(fat) : '—'}</b></div>
+      <div><span class="q p">Falta</span><b class="g p">${falta ? num(falta) : '—'}</b></div>
+    </div>
+    <span class="mm">potencial ${num(fat + falta)}</span>`;
   }else{
     barras = coluna('c', pos(o.c), meta(o.c), o.okC, null, o.i*0.06, o.escala)
       + (ctx.soCms ? '' : coluna('v', pos(o.v), meta(o.v), !!o.okV, o.okV, o.i*0.06 + 0.05, o.escala));
@@ -941,6 +1057,7 @@ function cartao(o){
     <div class="nm">${esc(o.nome)}</div>
     <div class="bars">${reguas}${barras}</div>
     ${rodape}
+    ${linkVitrine(o)}
   </div>`;
 }
 
@@ -1044,6 +1161,11 @@ function blocoLegenda(soCms, nome){
     <span><i class="q o"></i>bateu</span>
     <span><i class="s">${ESTRELA}</i>total ${Math.round(GATILHO_TOTAL*100)}% ·
       faixa ${Math.round(GATILHO_FAIXA*100)}% · família ${Math.round(GATILHO_FAMILIA*100)}%</span>
+  </div>`;
+  if(ehDividido()) return `<div class="leg">
+    <span><i class="q f"></i><b class="tf">Faturado</b> · já virou nota</span>
+    <span><i class="q p"></i><b class="tp">Falta faturar</b> · está em carteira</span>
+    <span>as duas somam o potencial de ${esc(nome)}</span>
   </div>`;
   return `<div class="leg">
     <span><i class="q c"></i>CMS</span>

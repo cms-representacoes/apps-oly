@@ -3714,6 +3714,7 @@ async function carregar(){
     carregarReativar();       // idem: o chip aparece quando a lista chegar
     carregarVistos();
     $('estado').innerHTML = '';
+    filtrosDaUrl();
     aplicar();
     pintarVistos();
     SPLASH.fim();
@@ -4238,6 +4239,29 @@ const SUBCATEGORIAS = [
    de-para de artigo para faixa, com 9 KB, publicado em data/faixas.json.
    O arquivo sai da base do dia pelo mesmo script que a publica. */
 let FAIXAS = {};
+
+/* ── chegar aqui já filtrado ──────────────────────────────────────────
+   A tela de Metas manda o vendedor para cá quando ele vê que está perto de
+   bater uma faixa: ?origem=repasse&faixa=CONF_FEM abre a vitrine já no
+   repasse e só com aquela faixa. São os mesmos filtros que os botões da
+   tela acionam — a URL só os liga antes da primeira pintura.
+
+   A faixa vem do mesmo vocabulário dos dois lados (CONF_FEM, CORRE,
+   CORRIDA/TREINO...), então não há tradução no meio. Valor que não existe
+   é ignorado: link velho abre a vitrine inteira, não uma tela vazia. */
+function filtrosDaUrl(){
+  const q = new URLSearchParams(location.search);
+  const origem = (q.get('origem') || '').trim().toLowerCase();
+  if(['tudo', 'pronta', 'repasse', 'meta'].includes(origem)) STATE.origem = origem;
+  const cat = (q.get('categoria') || '').trim().toUpperCase();
+  if(CATEGORIAS.some(([id]) => id === cat)) STATE.categoria = cat;
+  const faixa = (q.get('faixa') || '').trim().toUpperCase();
+  if(faixa && Object.values(FAIXAS).some(f => String(f).toUpperCase() === faixa)){
+    STATE.sel.faixa.clear();
+    // guarda como está no arquivo, que é o que o filtro compara
+    STATE.sel.faixa.add(Object.values(FAIXAS).find(f => String(f).toUpperCase() === faixa));
+  }
+}
 
 async function carregarFaixas(){
   try{
