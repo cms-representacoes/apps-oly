@@ -499,7 +499,10 @@
     /* Detalhada: o verde-água da paleta dela */
     .card-detalhada{ background:linear-gradient(150deg,#14b8a6 0%,#0F766E 48%,#062f2b 100%);
       border:1px dashed rgba(45,212,191,.45); }
-    .card-detalhada::before{ background:radial-gradient(ellipse at 82% 14%, rgba(153,246,228,.24) 0%, transparent 62%); }
+    /* Fora da fila de obra o card perde o ::before que vinha de .card-dev, e
+       com ele o brilho do canto; a regra passa a se bastar. */
+    .card-detalhada::before{ content:'';position:absolute;inset:0;pointer-events:none;
+      background:radial-gradient(ellipse at 82% 14%, rgba(153,246,228,.24) 0%, transparent 62%); }
     .tag-detalhada{ background:rgba(153,246,228,.16); color:#99f6e4; border:1px solid rgba(45,212,191,.3); }
     /* Análise de Giro: carmim — a cor do alerta de cobertura, que é o
        assunto da tela, e a única família que ainda não estava no portal */
@@ -777,6 +780,15 @@
         </div>
       </a>
 
+      <a href="https://cms-representacoes.github.io/apps-oly-v2/detalhada/" class="portal-card card-detalhada focus-ring">
+        <div class="portal-card-title"><span class="pc-ico tag-detalhada"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 5h16M4 12h16M4 19h10"/></svg></span><span class="pc-nome">Detalhada</span></div>
+        <div class="portal-card-desc">Sua carteira e o que faturou, produto por produto.</div>
+        <div class="portal-card-cta">
+          Acessar
+          <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </a>
+
     </div>
 
     <!-- ═══ EM DESENVOLVIMENTO ═══════════════════════════════════════════
@@ -794,16 +806,6 @@
 
     <div id="gradeDev" class="dev-only w-full max-w-4xl grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-5 fade-up-3 mt-3" hidden>
 
-
-      <a href="https://cms-representacoes.github.io/apps-oly-v2/detalhada/" class="portal-card card-dev card-detalhada focus-ring">
-        <span class="selo-dev">DEV</span>
-        <div class="portal-card-title"><span class="pc-ico tag-detalhada"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 5h16M4 12h16M4 19h10"/></svg></span><span class="pc-nome">Detalhada</span></div>
-        <div class="portal-card-desc">Carteira e faturamento por produto, com RFV e reativação.</div>
-        <div class="portal-card-cta">
-          Acessar
-          <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </div>
-      </a>
 
       <a href="https://cms-representacoes.github.io/apps-oly-v2/analise-giro/" class="portal-card card-dev card-giro focus-ring">
         <span class="selo-dev">DEV</span>
