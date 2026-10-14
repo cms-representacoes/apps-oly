@@ -114,6 +114,7 @@
     .filter-status-btn.fs-active-aprov{ background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border-color:transparent; box-shadow:0 3px 10px rgba(22,163,74,.3); }
     .filter-status-btn.fs-active-export{ background:linear-gradient(135deg,#60a5fa,#2563eb); color:#fff; border-color:transparent; box-shadow:0 3px 10px rgba(37,99,235,.3); }
     .filter-status-btn.fs-active-canc{ background:linear-gradient(135deg,#f87171,#dc2626); color:#fff; border-color:transparent; box-shadow:0 3px 10px rgba(220,38,38,.3); }
+    .filter-status-btn.fs-active-alt{ background:linear-gradient(135deg,#a78bfa,#7c3aed); color:#fff; border-color:transparent; box-shadow:0 3px 10px rgba(124,58,237,.3); }
     .filter-status-btn[class*="fs-active-"] .fs-count{ background:rgba(255,255,255,.28); color:#fff; }
     .fs-count{ font-size:10px; font-weight:700; border-radius:999px; padding:1px 6px; }
     .fs-count-todos{ background:#e2e8f0; color:#475569; }
@@ -121,6 +122,7 @@
     .fs-count-aprov{ background:#bbf7d0; color:#166534; }
     .fs-count-export{ background:#93c5fd; color:#1e40af; }
     .fs-count-canc{ background:#fca5a5; color:#991b1b; }
+    .fs-count-alt{ background:#ddd6fe; color:#5b21b6; }
     .chip-status-cancelado{ background:linear-gradient(135deg,#f87171,#dc2626); color:#fff; border-color:transparent; box-shadow:0 2px 8px rgba(220,38,38,.32); }
 
     .shadow-card{ box-shadow:var(--shadow); }
@@ -315,6 +317,7 @@
     .dark .filter-status-btn.fs-active-aprov{ background:#14532d!important; color:#4ade80!important; border-color:#166534!important; }
     .dark .filter-status-btn.fs-active-export{ background:#1e3a5f!important; color:#60a5fa!important; border-color:#1e40af!important; }
     .dark .filter-status-btn.fs-active-canc{ background:#450a0a!important; color:#f87171!important; border-color:#7f1d1d!important; }
+    .dark .filter-status-btn.fs-active-alt{ background:#2e1065!important; color:#a78bfa!important; border-color:#5b21b6!important; }
     .dark .btn-expand-compact:hover{ background:#334155!important; }
     .dark .expand-action-btn:hover{ background:#334155!important; }
     .dark .ia-aprov:hover{ background:#14532d!important; }
@@ -939,6 +942,11 @@
             <button class="filter-status-btn" data-fs="Cancelado" onclick="setStatusFilter('Cancelado',this)">
               <span style="width:7px;height:7px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0"></span>
               Cancelado <span class="fs-count fs-count-canc" id="fsCountCanc">0</span>
+            </button>
+            <button class="filter-status-btn" data-fs="alterados" onclick="setStatusFilter('alterados',this)"
+              title="Pedidos cujo conteúdo mudou depois de criados">
+              <i class="fa-solid fa-pen-to-square" style="font-size:10px"></i>
+              Alterados <span class="fs-count fs-count-alt" id="fsCountAlt">0</span>
             </button>
           </div>
         </div>
@@ -2115,6 +2123,31 @@ function solicitacaoAberta(order){
   return sol && sol.estado === 'aberta' ? sol : null;
 }
 
+/* ── O que conta como pedido ALTERADO ─────────────────────────────
+   Mexeram no CONTEÚDO depois que ele nasceu: produto removido, dados
+   corrigidos ou uma solicitação do vendedor que virou mudança de verdade.
+   Aprovar, exportar e cancelar não entram — para isso existem os outros
+   chips, e marcar todo mundo não diria nada.
+
+   "Alteração resolvida" é o caso dúbio: o admin pode marcar a solicitação
+   como resolvida sem tocar no pedido. Desde hoje o evento carrega
+   `meta.alterou` dizendo se mudou algo; nos eventos antigos a prova é a seta
+   que o próprio texto da mudança traz ("Prazo: 30/60 → 60/90"). */
+const ACOES_ALTERACAO = ['order_edited', 'item_removed', 'request_accepted'];
+function eventosDeAlteracao(order){
+  const hist = Array.isArray(order?.history) ? order.history : [];
+  return hist.filter(h => {
+    const acao = sanitizeDisplayText(h?.action).toLowerCase();
+    if(!ACOES_ALTERACAO.includes(acao)) return false;
+    if(acao !== 'request_accepted') return true;
+    // cancelamento atendido mudou o status, não o pedido
+    if(canonicalStatus(h?.statusTo) === 'Cancelado') return false;
+    if(typeof h?.meta?.alterou === 'boolean') return h.meta.alterou;
+    return String(h?.notes || '').includes('→');
+  });
+}
+function pedidoAlterado(order){ return eventosDeAlteracao(order).length > 0; }
+
 function ensureOrderHistory(order){
   const normalized = Array.isArray(order?.history) ? order.history.map(entry => ({
     eventId: sanitizeDisplayText(entry?.eventId) || `evt_${Math.random().toString(36).slice(2,10)}`,
@@ -2408,7 +2441,7 @@ function setStatusFilter(f, btn){
   document.querySelectorAll('.filter-status-btn').forEach(b => {
     b.className = 'filter-status-btn';
   });
-  const clsMap = { todos:'fs-active-todos', Pendente:'fs-active-pend', Aprovado:'fs-active-aprov', Exportado:'fs-active-export', Cancelado:'fs-active-canc', solicitacoes:'fs-active-sol' };
+  const clsMap = { todos:'fs-active-todos', Pendente:'fs-active-pend', Aprovado:'fs-active-aprov', Exportado:'fs-active-export', Cancelado:'fs-active-canc', solicitacoes:'fs-active-sol', alterados:'fs-active-alt' };
   btn.className = `filter-status-btn ${clsMap[f]||''}`;
   applyFilters();
 }
@@ -2423,6 +2456,7 @@ function updateFilterCounts(){
     Exportado:base.filter(o => canonicalStatus(o.status) === 'Aprovado' && o.exportedAt).length,
     Cancelado:base.filter(o => canonicalStatus(o.status) === 'Cancelado').length,
     solicitacoes: base.filter(o => solicitacaoAberta(o)).length,
+    alterados: base.filter(o => pedidoAlterado(o)).length,
   };
   if($('fsCountSol')) $('fsCountSol').textContent = c.solicitacoes;
   if($('fsCountTodos'))  $('fsCountTodos').textContent  = c.todos;
@@ -2430,6 +2464,7 @@ function updateFilterCounts(){
   if($('fsCountAprov'))  $('fsCountAprov').textContent  = c.Aprovado;
   if($('fsCountExport')) $('fsCountExport').textContent = c.Exportado;
   if($('fsCountCanc'))   $('fsCountCanc').textContent   = c.Cancelado;
+  if($('fsCountAlt'))    $('fsCountAlt').textContent    = c.alterados;
 }
 
 function applyFilters(){
@@ -2460,6 +2495,7 @@ function applyFilters(){
     else if(sf === 'Exportado') matchStatus = canonicalStatus(order.status) === 'Aprovado' && !!order.exportedAt;
     else if(sf === 'Cancelado') matchStatus = canonicalStatus(order.status) === 'Cancelado';
     else if(sf === 'solicitacoes') matchStatus = Boolean(solicitacaoAberta(order));
+    else if(sf === 'alterados') matchStatus = pedidoAlterado(order);
 
     return matchQ && matchStatus && matchScope;
   });
@@ -2530,6 +2566,14 @@ function renderList(){
       ? mudancasFat.map(c => `${c.de} → ${c.para}`).join(' · ')
       : '';
     const lastAcao = (order.history||[]).slice(-1)[0];
+    // Quem mexeu no pedido e quando: o card diz, a dica conta o que foi.
+    const alteracoes = eventosDeAlteracao(order);
+    const chipAlt = alteracoes.length
+      ? `<span title="${safeHtml(alteracoes.map(h =>
+            `${h.label}${h.notes ? ': ' + h.notes : ''} (${formatDateTime(h.at)})`).join(' · '))}"
+           style="font-size:11px;font-weight:700;background:#EDE9FE;color:#5B21B6;border-radius:999px;padding:2px 9px;flex-shrink:0;cursor:help">
+           <i class="fa-solid fa-pen-to-square" style="font-size:9px"></i> Alterado${alteracoes.length > 1 ? ' ' + alteracoes.length + 'x' : ''}</span>`
+      : '';
     const cardStatus = getStatusVisual(order.status);
     const sol = order.solicitacao;
     const solAberta = solicitacaoAberta(order);
@@ -2626,6 +2670,7 @@ function renderList(){
               ${chipSol}
               ${order.isDuplicate ? `<span style="font-size:11px;font-weight:700;background:var(--warning-soft);color:var(--warning);border-radius:999px;padding:2px 9px;flex-shrink:0">⚠ Duplicata</span>` : ''}
               ${(order.history||[]).some(h=>h.label==='Antecipado') ? `<span style="font-size:11px;font-weight:700;background:#EEEDFE;color:#3C3489;border-radius:999px;padding:2px 9px;flex-shrink:0">↑ Antecipado</span>` : ''}
+              ${chipAlt}
               ${fatMudou ? `<span title="Prev. Faturamento: ${safeHtml(fatMudouTitle)}" style="font-size:11px;font-weight:700;background:var(--warning-soft);color:var(--warning);border-radius:999px;padding:2px 9px;flex-shrink:0;cursor:help"><i class="fa-solid fa-triangle-exclamation" style="font-size:9px"></i> Faturamento atualizado</span>` : ''}
             </div>
           </div>
@@ -2746,6 +2791,8 @@ async function responderSolicitacao(id, atender, textoResposta){
     statusTo: vaiCancelar ? 'Cancelado' : prevStatus,
     archivedFrom: Boolean(atual.archived),
     archivedTo: Boolean(atual.archived),
+    // responder a solicitação não mexe no pedido; quem mexe é "Corrigir"
+    meta: { alterou: false },
     notes: nota
   });
   const base = { ...atual, solicitacao: nova };
@@ -3135,6 +3182,8 @@ async function salvarEdicaoPedido(){
     resolver ? 'Alteração resolvida' : 'Pedido corrigido',
     { statusFrom: canonicalStatus(atual.status), statusTo: canonicalStatus(atual.status),
       archivedFrom: Boolean(atual.archived), archivedTo: Boolean(atual.archived),
+      // o chip "Alterados" lê daqui, sem ter de adivinhar pelo texto
+      meta: { alterou: mudou.length > 0 },
       notes: [sol?.motivo, sol?.texto, nota].filter(Boolean).join(' · ') });
   const atualizado = appendOrderHistory(base, evento);
 

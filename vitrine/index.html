@@ -848,6 +848,10 @@ button{font:inherit}
 .ped-tipos button.t-rep.on{background:var(--repasse);border-color:var(--repasse)}
 .ped-tipos button.t-pro.on{background:var(--plano);border-color:var(--plano)}
 .ped-tipos button.t-est.on{background:var(--pronta);border-color:var(--pronta)}
+/* "Alterados" não é uma origem como as outras: é um aviso. Fica na mesma
+   fileira porque é ali que o vendedor filtra, mas com cor só dele. */
+.ped-tipos button.t-alt{border-color:#DDD6FE;color:#6D28D9;background:#F5F3FF}
+.ped-tipos button.t-alt.on{background:#7C3AED;border-color:#7C3AED;color:#fff}
 .ped-tipos button .n{margin-left:5px;font-size:10px;opacity:.75}
 .ped-selo.rep{background:var(--repasse-fundo);color:var(--repasse-tinta)}
 
@@ -862,6 +866,8 @@ button{font:inherit}
 .ped-item.sol-alt{border-color:#F3CB8A}
 .ped-sol{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;
   font-size:12px;line-height:1.5;border-top:1px solid var(--linha)}
+.ped-sol.mex{background:#F5F3FF;border-top-color:#DDD6FE}
+.ped-sol.mex .ic{color:#6D28D9;border:1px solid #DDD6FE}
 .ped-sol.canc{background:#FEF4F4;border-top-color:#F7D4D4}
 .ped-sol.alt{background:#FFFBEF;border-top-color:#F6E2BD}
 .ped-sol.fim{background:var(--suave);border-top-color:var(--linha)}
@@ -2770,6 +2776,8 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
       <button data-tipo="repasse" class="t-rep">Repasses</button>
       <button data-tipo="producao" class="t-pro">Produção</button>
       <button data-tipo="estoque" class="t-est">Estoque</button>
+      <button data-tipo="alterados" class="t-alt"
+              title="Pedidos de repasse que a CMS mexeu depois do envio">Alterados</button>
     </div>
 
     <div class="ped-barra">
@@ -6216,6 +6224,28 @@ async function registrarPedido(itens, cfg){
 /* Repasses no mesmo lugar: eles são gravados pelo app de repasses, num
    arquivo só, e chegam aqui pelo Worker. Ficam no mesmo formato dos pedidos
    da vitrine para a tela não precisar saber de onde cada um veio. */
+/* ── O que conta como pedido ALTERADO ─────────────────────────────
+   A mesma regra do admin e do Repasses: mexeram no CONTEÚDO do pedido depois
+   que ele foi enviado — produto removido, dados corrigidos ou um pedido de
+   alteração que virou mudança de verdade. Aprovar e cancelar não entram.
+
+   Só o repasse passa pelo admin, então só ele pode aparecer aqui: estoque e
+   produção viram planilha na hora e ninguém mexe depois. */
+const ACOES_ALTERACAO = ['order_edited', 'item_removed', 'request_accepted'];
+function eventosDeAlteracao(p){
+  const hist = Array.isArray(p && p.history) ? p.history : [];
+  return hist.filter(h => {
+    const acao = String((h && h.action) || '').trim().toLowerCase();
+    if(!ACOES_ALTERACAO.includes(acao)) return false;
+    if(acao !== 'request_accepted') return true;
+    // cancelamento atendido mudou o status, não o pedido
+    if(String((h && h.statusTo) || '') === 'Cancelado') return false;
+    if(h.meta && typeof h.meta.alterou === 'boolean') return h.meta.alterou;
+    return String((h && h.notes) || '').includes('→');
+  }).map(h => ({ label: h.label || 'Pedido alterado', notes: h.notes || '',
+                 at: h.at || '', acao: String(h.action || '').toLowerCase() }));
+}
+
 function repasseComoPedido(p){
   const itens = (p.items || []).map(it => {
     const grade = {};
@@ -6242,6 +6272,7 @@ function repasseComoPedido(p){
     id: 'rep-' + String(p.id || ''),
     pedidoId: String(p.id || ''),
     solicitacao: normalizeSolicitacao(p.solicitacao),
+    alteracoes: eventosDeAlteracao(p),
     criadoEm: p.createdAt || p.criadoEm || '',
     tipo: 'repasse',
     status: p.status || 'Pendente',
@@ -6386,7 +6417,9 @@ function filtrarPedidos(){
   PED.filtrados = PED.lista
     .filter(p => dentroDoPeriodo(p.criadoEm, modo))
     .filter(p => !marca || p.marca === marca)
-    .filter(p => !tipo || tiposDoPedido(p).includes(tipo))
+    .filter(p => !tipo || (tipo === 'alterados'
+      ? (p.alteracoes || []).length > 0
+      : tiposDoPedido(p).includes(tipo)))
     .filter(p => {
       if(!busca) return true;
       const alvo = norm([p.cliente, p.clienteNome, p.campanha,
@@ -6435,6 +6468,7 @@ function pedidoHtml(p){
           <path d="m6 9 6 6 6-6"/></svg>
         ${aberto ? 'Fechar' : 'Itens'}</button>
     </div>
+    ${faixaAlterado(p)}
     ${faixaSolicitacao(p)}
     <div class="ped-det">
       <p class="ped-info">
@@ -6504,6 +6538,22 @@ function quandoCurto(iso){
   if(dif === 0) return `hoje às ${hora}`;
   if(dif === 1) return `ontem às ${hora}`;
   return `${d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' })} às ${hora}`;
+}
+
+/* O que a CMS mexeu, em cima do pedido. Quando a mudança nasceu de uma
+   solicitação do próprio vendedor, a faixa dela já conta a história completa
+   logo abaixo — repetir seria duas faixas dizendo o mesmo. */
+function faixaAlterado(p){
+  const mex = (p.alteracoes || []).filter(h => h.acao !== 'request_accepted');
+  if(!mex.length) return '';
+  return `<div class="ped-sol mex">
+    <span class="ic">✎</span>
+    <span class="corpo">
+      <b>${mex.length === 1 ? 'Pedido alterado pela CMS' : 'Pedido alterado pela CMS · ' + mex.length + ' vezes'}</b>
+      ${mex.map(h => `<span class="txt">${esc(h.label)}${h.notes ? ' — <em>' + esc(h.notes) + '</em>' : ''}</span>`).join('')}
+      <span class="qd">${esc(quandoCurto(mex[mex.length - 1].at))}</span>
+    </span>
+  </div>`;
 }
 
 function faixaSolicitacao(p){
@@ -6671,8 +6721,11 @@ function pintarPedidos(){
   if(!n){
     lista.innerHTML = PED.erro
       ? `<div class="ped-vazio"><h3>Não deu para carregar</h3><p>${esc(PED.erro)}</p></div>`
-      : `<div class="ped-vazio"><h3>Nenhum pedido aqui</h3>
-          <p>${PED.lista.length ? 'Nenhum pedido nesse período ou nessa busca.'
+      : `<div class="ped-vazio"><h3>${PED.tipo === 'alterados'
+            ? 'Nada foi alterado' : 'Nenhum pedido aqui'}</h3>
+          <p>${PED.tipo === 'alterados'
+            ? 'A CMS não mexeu em nenhum pedido seu nesse período.'
+            : PED.lista.length ? 'Nenhum pedido nesse período ou nessa busca.'
             : 'Os pedidos aparecem aqui assim que você gera a planilha do EBM na sacola.'}</p></div>`;
   }else{
     lista.innerHTML = PED.filtrados.map(pedidoHtml).join('');
@@ -6706,11 +6759,17 @@ function pintarTipos(){
                         .filter(p => !marca || p.marca === marca);
   for(const b of document.querySelectorAll('#pedTipos button')){
     const t = b.dataset.tipo;
-    const n = t ? base.filter(p => tiposDoPedido(p).includes(t)).length : base.length;
-    b.classList.toggle('on', (PED.tipo || '') === t);
+    const n = !t ? base.length
+      : t === 'alterados' ? base.filter(p => (p.alteracoes || []).length).length
+      : base.filter(p => tiposDoPedido(p).includes(t)).length;
+    const ligado = (PED.tipo || '') === t;
+    b.classList.toggle('on', ligado);
     b.innerHTML = b.textContent.replace(/\s*\d+$/, '').trim() + (n ? `<span class="n">${nf(n)}</span>` : '');
-    b.disabled = n === 0 && !!t && (PED.tipo || '') !== t;
+    b.disabled = n === 0 && !!t && !ligado;
     b.style.opacity = b.disabled ? '.45' : '';
+    // a fileira é mais larga que a tela do celular; o escolhido não pode
+    // ficar pela metade na borda
+    if(ligado) b.scrollIntoView({ inline:'nearest', block:'nearest' });
   }
 }
 $('pedTipos').addEventListener('click', e => {

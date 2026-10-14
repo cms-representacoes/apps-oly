@@ -245,6 +245,7 @@
     .ord-card.sol-alt { border-color:#f3cb8a; }
     .chip-canc{ background:#fef4f4; color:#dc2626; border:1px solid #f7d4d4; }
     .chip-alt { background:#fffbef; color:#d97706; border:1px solid #f6e2bd; }
+    .chip-mexeu{ background:#f5f3ff; color:#6d28d9; border:1px solid #ddd6fe; cursor:help; }
     .sol-faixa{ display:flex; gap:10px; align-items:flex-start; padding:10px 14px; font-size:12.5px; line-height:1.5; }
     .sol-faixa.canc{ background:#fef4f4; border-top:1px solid #f7d4d4; }
     .sol-faixa.alt { background:#fffbef; border-top:1px solid #f6e2bd; }
@@ -1290,6 +1291,12 @@
               class="focus-ring orders-scope-btn rounded-full px-3 py-2 text-sm font-bold text-slate-700">
               <span class="inline-block w-2 h-2 rounded-full bg-rose-500 mr-1"></span>Cancelado
             </button>
+            <button id="btnOrdersScopeAlterados" data-scope="alterados"
+              class="focus-ring orders-scope-btn rounded-full px-3 py-2 text-sm font-bold text-slate-700"
+              title="Pedidos que a CMS mexeu depois de você enviar">
+              <span class="inline-block w-2 h-2 rounded-full bg-violet-500 mr-1"></span>Alterados<b
+                id="ordScopeAltN" class="ml-1 rounded-full bg-violet-100 px-1.5 text-[11px] text-violet-700" hidden></b>
+            </button>
             <button id="btnOrdersScopeTodos" data-scope="Todos"
               class="focus-ring orders-scope-btn rounded-full px-3 py-2 text-sm font-bold text-slate-700">
               Todos
@@ -1979,8 +1986,32 @@ function updateOrdersPeriodoButtons(){
     btn.classList.toggle('ativo', btn.dataset.per === per));
 }
 
+/* ── O que conta como pedido ALTERADO ─────────────────────────────
+   A mesma regra do admin: mexeram no CONTEÚDO do pedido depois que ele foi
+   enviado — produto removido, dados corrigidos ou um pedido de alteração que
+   virou mudança de verdade. Aprovar e cancelar não entram, que para isso
+   existem os outros botões.
+
+   Aqui o chip responde uma pergunta do vendedor: "o que a CMS mexeu no que
+   eu mandei?". */
+const ACOES_ALTERACAO = ['order_edited', 'item_removed', 'request_accepted'];
+function eventosDeAlteracao(order){
+  const hist = Array.isArray(order?.history) ? order.history : [];
+  return hist.filter(h => {
+    const acao = sanitizeDisplayText(h?.action).toLowerCase();
+    if(!ACOES_ALTERACAO.includes(acao)) return false;
+    if(acao !== 'request_accepted') return true;
+    // cancelamento atendido mudou o status, não o pedido
+    if(sanitizeDisplayText(h?.statusTo) === 'Cancelado') return false;
+    if(typeof h?.meta?.alterou === 'boolean') return h.meta.alterou;
+    return String(h?.notes || '').includes('→');
+  });
+}
+function pedidoAlterado(order){ return eventosDeAlteracao(order).length > 0; }
+
 function orderMatchesScope(order, scope){
   if(scope === 'Todos') return true;
+  if(scope === 'alterados') return pedidoAlterado(order);
   return (order.status || 'Pendente') === scope;
 }
 
@@ -1990,6 +2021,9 @@ function updateOrdersScopeButtons(){
     const active = btn.dataset.scope === scope;
     btn.classList.toggle('bg-slate-100', active);
     btn.classList.toggle('text-[var(--brand)]', active);
+    // No celular a fileira rola de lado, e com cinco botões o escolhido pode
+    // ficar cortado na borda. Rola até ele — 'nearest' não mexe na página.
+    if(active) btn.scrollIntoView({ inline:'nearest', block:'nearest' });
   });
 }
 function getPortalSession(){
@@ -3663,6 +3697,11 @@ function renderOrders(){
   const periodo = getOrdersPeriodo();
   updateOrdersPeriodoButtons();
   const noPeriodo = orders.filter(order => pedidoNoPeriodo(order, periodo));
+  // O número no botão "Alterados" conta dentro do período escolhido, e some
+  // quando não há nada — um zero aceso só faria o vendedor abrir à toa.
+  const nAlterados = noPeriodo.filter(pedidoAlterado).length;
+  const elAltN = $('ordScopeAltN');
+  if(elAltN){ elAltN.textContent = nAlterados; elAltN.hidden = !nAlterados; }
   // Filtro por status
   orders = noPeriodo.filter(order => orderMatchesScope(order, scope));
   // Filtro por busca
@@ -3722,6 +3761,13 @@ function renderOrders(){
     const statusLabel = solAberta ? (solAberta.tipo === 'cancelar' ? 'Cancelamento pedido' : 'Alteração pedida')
       : (order.status || 'Pendente');
     const podePedir = !solAberta && sanitizeDisplayText(order.status) !== 'Cancelado';
+    // O que a CMS mexeu depois do envio: a etiqueta avisa, a dica conta o quê.
+    const mexidas = eventosDeAlteracao(order);
+    const chipMexeu = mexidas.length
+      ? `<span class="chip chip-mexeu text-xs font-bold" title="${safeHtml(mexidas.map(h =>
+            `${h.label}${h.notes ? ': ' + h.notes : ''}`).join(' · '))}"><i
+            class="fa-solid fa-pen-to-square text-[10px]"></i>Alterado</span>`
+      : '';
     const dataCurta = created.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'});
     const hora = created.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
     const resumo = [
@@ -3741,6 +3787,7 @@ function renderOrders(){
             <div class="mt-0.5 text-xs text-slate-500 truncate">${safeHtml(resumo)}</div>
           </div>
           <div class="flex items-center gap-2 shrink-0">
+            ${chipMexeu}
             <span class="chip ${statusClass} text-xs font-bold">${safeHtml(statusLabel)}</span>
             <i class="fa-solid fa-chevron-down ord-caret text-slate-400 text-sm"></i>
           </div>
@@ -5829,6 +5876,7 @@ function bindEvents(){
     if(!(e.target.closest && e.target.closest('#gradeDd'))) abrirGrades(false);
   });
 
+  $('btnOrdersScopeAlterados').addEventListener('click', ()=>{ setOrdersScope('alterados'); renderOrders(); });
   $('btnOrdersScopePendente').addEventListener('click', ()=>{ setOrdersScope('Pendente'); renderOrders(); });
   $('btnOrdersScopeAprovado').addEventListener('click', ()=>{ setOrdersScope('Aprovado'); renderOrders(); });
   $('btnOrdersScopeCancelado').addEventListener('click', ()=>{ setOrdersScope('Cancelado'); renderOrders(); });
