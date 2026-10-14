@@ -1,1338 +1,1071 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-tema="escuro" data-card="osso">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#204888">
-<title>Metas Preposto · CMS PASS</title>
+<meta name="theme-color" content="#14110A">
+<title>Metas · CMS PASS</title>
 <link rel="icon" href="../icon-192.png">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Segoe+UI&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap">
 <style>
-/* ── Paleta tirada do próprio painel da Vulcabras, para o vendedor não
-   estranhar a troca: fundo azul royal, painéis azul-escuro, barra de
-   dados #0868B8 e o azul de seleção #118DFF do Power BI. ───────────── */
+/* ══════════════════════════════════════════════════════════════════════
+   METAS
+
+   A tela de Metas do Gestor, com todos os filtros dela, nas cores da CMS:
+   âmbar #FFBE0B e preto, as mesmas da vitrine — e com o visual e as
+   animações de lá (cartão branco sobre o preto, brilho que atravessa no
+   cursor, barras que sobem em 1,3 s e param).
+
+   Os números saem de dados/metas.json, o arquivo que o robô da Carta
+   publica e que o Metas Preposto já lê. Nada vem do Gestor: ele fica atrás
+   de um login que não é nosso, e os dois leem a mesma Carta.
+
+   Quem vê o quê sai da sessão do portal: o vendedor abre travado no código
+   dele, sem a lista dos colegas e sem o comparativo; a CMS e quem desenvolve
+   veem o time inteiro.
+
+   A RÉGUA DA VULCABRAS, como está no Gestor:
+     · o TOTAL de tênis bate com 90% da meta
+     · cada FAIXA de tênis bate com 100%
+     · cada FAMÍLIA em R$ bate com 95%
+   A TRAVA DOS 15% é regra interna da CMS: as outras famílias Olympikus
+   mais a Under Armour inteira, sobre a META de tênis Olympikus em R$.
+
+   As barras NÃO são âmbar: o âmbar fica nos acentos (abas, mês ativo,
+   bordas do total). Barra da CMS é azul, a do vendedor é cinza, e o
+   dourado é reservado para quem bateu — ordem dele, no Gestor.
+   ══════════════════════════════════════════════════════════════════════ */
 :root{
-  --azul-fundo:#204888; --azul-fundo-2:#2a62b0; --azul-fundo-3:#16305c;
-  --painel:#183868; --painel-2:#1b3d72; --painel-linha:rgba(140,180,240,.22);
-  --cab-tabela:#1a3a69; --total:#24335a;
-  --barra:#0868b8; --selecao:#118dff; --cinza-barra:#808080;
-  --tinta:#ffffff; --tinta2:#c6d8f2; --tinta3:#93aad2;
-  --ok:#31c46b; --ruim:#ff5b5b;
-  --calcados:#1c7bb0; --chinelos:#00a0a8; --vestuario:#8f1fc0;
-  --acessorios:#c02858; --meias:#c9a92f;
-  --sans:'Segoe UI','Inter',system-ui,-apple-system,Roboto,sans-serif;
+  --papel:#14110A; --barra:rgba(20,17,10,.86);
+  --carta:#FAF7F1; --suave:#F2EDE4;
+  --tinta:#0F172A; --texto:#1E293B; --fraco:#6B7280; --tenue:#94A3B8;
+  --linha:#E5E7EB; --linha-forte:#D6DAE1;
+
+  --marca:#FFBE0B; --marca-claro:#FFD35A; --marca-escuro:#D99A00;
+  --sobre-marca:#1A1407; --marca-tinta:#B45309;
+
+  /* As cores dos dados são as mesmas do Gestor, para quem já lê um ler o
+     outro sem reaprender: CMS azul, vendedor verde, ouro de quem bateu e
+     prata do meio-termo. */
+  --cms:#2E3EFC;            /* a barra da CMS */
+  --vend:#3EE6A0;           /* a barra do vendedor */
+  --vend-escuro:#1C7D59;    /* o mesmo verde levado ao ponto em que se lê como texto */
+  --ouro:#F2B632; --ouro-borda:#A8761A; --prata:#ADAEB3; --prata-borda:#7C7D82;
+  --pronta:#15803D;
+
+  --sombra:0 1px 2px rgba(0,0,0,.30), 0 10px 28px -16px rgba(0,0,0,.55);
+  --sombra-alta:0 1px 2px rgba(0,0,0,.35), 0 18px 36px -16px rgba(0,0,0,.65);
   color-scheme:dark;
 }
-*{box-sizing:border-box;margin:0;padding:0}
-html{-webkit-text-size-adjust:100%}
-body{
-  font-family:var(--sans); font-size:13px; color:var(--tinta);
-  font-variant-numeric:tabular-nums;
-  background:
-    radial-gradient(1200px 600px at 78% -10%, rgba(120,175,255,.30), transparent 62%),
-    linear-gradient(165deg,var(--azul-fundo-2) 0%,var(--azul-fundo) 45%,var(--azul-fundo-3) 100%);
-  background-attachment:fixed;
-  min-height:100vh; min-height:100dvh;
-  padding:max(10px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));
+*{ box-sizing:border-box; margin:0; padding:0 }
+html{ background:var(--papel); -webkit-text-size-adjust:100% }
+body{ background:var(--papel); color:#F5F1E8; min-height:100vh;
+  font-family:'Plus Jakarta Sans', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  padding:0 0 calc(28px + env(safe-area-inset-bottom)) }
+button{ font-family:inherit; cursor:pointer; border:0; background:none; color:inherit }
+
+/* ── o cabeçalho, como o da vitrine: faixa escura com desfoque ── */
+.topo{ position:sticky; top:0; z-index:30; background:var(--barra);
+  -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+  padding:calc(10px + env(safe-area-inset-top)) 16px 10px;
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap }
+.topo .marca{ display:flex; align-items:center; gap:10px; min-width:0 }
+.topo .selo{ width:34px; height:34px; border-radius:10px; flex:none;
+  background:var(--marca); color:var(--sobre-marca); display:grid; place-items:center;
+  font-weight:800; font-size:12.5px; letter-spacing:.04em }
+.topo h1{ font-size:16px; font-weight:800; letter-spacing:-.01em; line-height:1.15 }
+.topo .sub{ font-size:11px; font-weight:600; color:#B9B2A3; letter-spacing:.02em }
+.topo .dir{ margin-left:auto; display:flex; align-items:center; gap:8px }
+.bt-voltar{ display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 14px;
+  border-radius:999px; background:rgba(255,255,255,.08); color:#F5F1E8;
+  font-size:13px; font-weight:700; border:1px solid rgba(255,255,255,.14);
+  transition:background .18s ease, border-color .18s ease }
+.bt-voltar:hover{ background:rgba(255,255,255,.14); border-color:rgba(255,190,11,.5) }
+.bt-voltar svg{ width:15px; height:15px; fill:currentColor }
+
+.env{ max-width:1320px; margin:0 auto; padding:16px }
+
+/* ── os filtros ─────────────────────────────────────────────────────── */
+/* O menu também fica congelado, logo abaixo do cabeçalho: trocar de mês ou
+   de vendedor é o que mais se faz aqui, e rolar até o topo para isso quebrava
+   a leitura. O fundo é o do papel, opaco, com um fio embaixo. */
+.filtros{ display:flex; flex-direction:column; gap:13px;
+  position:sticky; top:calc(56px + env(safe-area-inset-top)); z-index:25;
+  background:var(--papel); padding:13px 0 12px; margin:-13px 0 0;
+  box-shadow:inset 0 -1px 0 rgba(255,255,255,.08) }
+.grupo{ display:flex; align-items:center; gap:10px; flex-wrap:wrap }
+.grupo > .rot{ font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+  color:#A79F8E; flex:none; width:74px }
+/* preposto e medida dividem a linha: o segundo rótulo não precisa da coluna
+   de 74px, só de um respiro e de um fio que separe os dois grupos */
+.grupo > .rot.sep{ width:auto; margin-left:8px; padding-left:16px;
+  border-left:1px solid rgba(255,255,255,.14) }
+#fVisao{ margin-left:auto }
+@media(max-width:900px){
+  .grupo > .rot.sep{ margin-left:0; padding-left:0; border-left:0 }
+  #fVisao{ margin-left:0 }
 }
-button,select,input{font:inherit;color:inherit}
-:focus-visible{outline:2px solid #9fd0ff;outline-offset:2px}
-.pagina{max-width:1440px;margin:0 auto;overflow-x:clip}
-.num{white-space:nowrap}
+@media(max-width:700px){ .grupo > .rot{ width:auto } }
 
-/* ── Cabeçalho ──────────────────────────────────────────────────────── */
-.topo{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
-.marca{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--tinta)}
-.cms-badge{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
-  background:linear-gradient(145deg,#a970ff,#7439e0);font:800 11.5px/1 var(--sans);
-  box-shadow:0 4px 14px rgba(124,58,237,.4)}
-.titulo{display:flex;align-items:center;gap:10px;font-size:21px;font-weight:600;letter-spacing:.01em}
-.titulo::before{content:"";width:2px;height:24px;background:rgba(255,255,255,.55);border-radius:2px}
-.tit-bloco{display:flex;flex-direction:column;gap:1px;min-width:0}
-.tit-linha{display:flex;align-items:center;gap:8px}
-.info-bt{width:19px;height:19px;flex:none;border-radius:50%;cursor:pointer;
-  border:1px solid rgba(255,255,255,.45);background:transparent;color:#fff;
-  font:700 11px/1 ui-sans-serif,system-ui,sans-serif;padding:0}
-.info-bt:hover{background:rgba(255,255,255,.16)}
-.info-bt[aria-expanded="true"]{background:#fff;color:var(--azul-fundo);border-color:#fff}
-/* Discreta de proposito: quem olha o painel quer o numero, nao a hora.
-   So precisa estar ali quando bater a duvida de "isso e de hoje?". */
-.atual{padding-left:12px;font-size:11px;line-height:1.2;color:var(--tinta3)}
-.topo-dir{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-.btn{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(255,255,255,.35);
-  background:rgba(255,255,255,.10);color:#fff;border-radius:6px;padding:7px 12px;
-  font-size:12.5px;font-weight:600;cursor:pointer;text-decoration:none}
-.btn:hover{background:rgba(255,255,255,.2)}
-.btn.primario{background:#fff;color:#16305c;border-color:#fff}
-.btn.primario:hover{background:#e8f1ff}
-.btn[hidden]{display:none}
-.btn svg{width:15px;height:15px;flex:none}
-.btn.so-icone{padding:7px 9px}
-.btn.so-icone[aria-expanded="true"]{background:rgba(255,255,255,.28);border-color:rgba(255,255,255,.6)}
-.acoes{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-.acoes[hidden]{display:none}
+.chips{ display:flex; gap:7px; flex-wrap:wrap; min-width:0 }
+.chips[hidden]{ display:none }
+.chips.rola{ flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:2px;
+  -webkit-overflow-scrolling:touch }
+.chips.rola::-webkit-scrollbar{ display:none }
+.chip{ height:34px; padding:0 14px; border-radius:999px; flex:none;
+  background:rgba(255,255,255,.06); color:#E8E2D5; border:1px solid rgba(255,255,255,.13);
+  font-size:12.5px; font-weight:700; white-space:nowrap;
+  transition:background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease }
+.chip:hover{ background:rgba(255,255,255,.12); transform:translateY(-1px) }
+.chip.on{ background:var(--marca); color:var(--sobre-marca); border-color:var(--marca);
+  box-shadow:0 6px 18px -8px rgba(255,190,11,.75) }
+.chip small{ font-weight:600; opacity:.72; margin-left:5px }
 
-/* ── Filtros ────────────────────────────────────────────────────────── */
-.filtros{display:flex;flex-wrap:wrap;gap:8px 10px;margin-bottom:12px}
-.filtro{display:flex;flex-direction:column;gap:3px;min-width:0}
-.filtro label{font-size:10.5px;color:var(--tinta2);letter-spacing:.01em}
-.filtro select{appearance:none;background:#fff;color:#1a3a69;border:1px solid #dbe6f7;
-  border-radius:4px;padding:5px 26px 5px 9px;font-size:12px;font-weight:600;min-width:120px;
-  max-width:190px;text-overflow:ellipsis;cursor:pointer;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a3a69' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 7px center;background-size:13px}
-.filtro select:disabled{background-color:#e9eef7;color:#5b6d8f;cursor:default}
+/* o seletor de mês: segmentado, como no Gestor */
+.segm{ display:flex; gap:3px; padding:4px; border-radius:13px; background:rgba(255,255,255,.06);
+  overflow-x:auto; scrollbar-width:none; min-width:0 }
+.segm::-webkit-scrollbar{ display:none }
+.segm button{ height:36px; padding:0 13px; border-radius:9px; flex:none;
+  font-size:12.5px; font-weight:700; color:#B9B2A3; white-space:nowrap;
+  transition:background .18s ease, color .18s ease }
+.segm button:hover{ color:#F5F1E8; background:rgba(255,255,255,.07) }
+.segm button.on{ background:var(--marca); color:var(--sobre-marca); font-weight:800 }
+.segm .sep{ width:1px; margin:6px 4px; background:rgba(255,255,255,.14); flex:none; padding:0;
+  pointer-events:none }
+.segm .mais{ font-size:17px; font-weight:700; line-height:1; padding:0 13px; color:#8C8575 }
+.segm .mais:hover{ color:var(--marca); background:rgba(255,190,11,.1) }
 
-/* ── Cartões de categoria ───────────────────────────────────────────── */
-.cartoes{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:12px}
-.cat{display:flex;align-items:stretch;gap:0;border-radius:6px;overflow:hidden;
-  background:var(--painel-2);border:1px solid var(--painel-linha);min-height:116px}
-.cat-ico{width:38%;min-width:74px;max-width:116px;display:grid;place-items:center;background:var(--cor)}
-.cat-ico svg{width:52px;height:52px;opacity:.9;stroke:rgba(255,255,255,.85);fill:none;stroke-width:1.3}
-.cat-dados{flex:1;min-width:0;padding:8px 10px 9px;display:flex;flex-direction:column;align-items:center}
-.cat-nome{font-size:12px;font-weight:600;color:#fff;margin-bottom:2px;text-align:center}
-.cat-gauge{position:relative;width:100%;max-width:120px}
-.cat-gauge svg{width:100%;height:auto;display:block;overflow:visible}
-.cat-gauge .gpct{fill:#fff;font-family:var(--sans);font-weight:700;font-variant-numeric:tabular-nums}
-.cat-linhas{align-self:flex-start;font-size:10.5px;line-height:1.35;color:var(--tinta2);margin-top:2px}
-.cat-linhas b{color:#fff;font-weight:600}
+/* ── o painel ───────────────────────────────────────────────────────── */
+.mt{ display:flex; flex-direction:column; gap:20px }
+.mt .sec{ display:flex; flex-direction:column }
+.mt .rot{ font-size:10.5px; font-weight:800; letter-spacing:.13em; text-transform:uppercase;
+  color:#A79F8E; margin-bottom:10px }
+.mt .rolo{ overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:thin; padding-bottom:4px }
+.mt .fila{ display:flex; align-items:stretch; gap:9px; width:max-content; position:relative }
+@media(min-width:1000px){ .mt .fila{ width:auto } }
 
-/* ── Tabela ─────────────────────────────────────────────────────────── */
-.painel{background:var(--painel);border:1px solid var(--painel-linha);border-radius:6px;padding:10px 12px 12px;margin-bottom:12px}
-.painel-tit{font-size:14px;font-weight:600;margin-bottom:8px;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-.painel-tit span{font-size:11px;color:var(--tinta3);font-weight:400}
-.rolo{overflow-x:auto;overscroll-behavior-x:contain}
-table.m{border-collapse:collapse;width:100%;min-width:1180px;font-size:11.5px}
-table.m th,table.m td{padding:5px 7px;text-align:right;white-space:nowrap;border:1px solid rgba(140,180,240,.18)}
-table.m thead th{background:var(--cab-tabela);font-weight:600;color:var(--tinta2);font-size:11px}
-table.m thead tr.grupos th{text-align:center;color:#fff;font-size:11.5px}
-/* Rolando de lado, a coluna do nome fica parada: ela precisa de fundo
-   sólido, sombra e uma borda forte, senão os números passam por baixo e
-   parece que a linha mudou de dono. */
-table.m tbody td:first-child,table.m thead tr.grupos th:first-child,table.m tfoot td:first-child{
-  text-align:left;position:sticky;left:0;background:var(--painel);z-index:2;
-  border-right:2px solid rgba(160,200,255,.4);box-shadow:7px 0 10px -7px rgba(0,0,0,.65)}
-table.m thead tr.grupos th:first-child{background:var(--cab-tabela);z-index:3}
-/* divisória entre uma categoria e a seguinte */
-table.m th.ini,table.m td.ini{border-left:2px solid rgba(160,200,255,.32)}
-/* largura travada: a coluna parada precisa casar com o scroll-padding */
-table.m thead tr.grupos th:first-child,table.m tbody td:first-child,table.m tfoot td:first-child{
-  width:200px;white-space:nowrap}
-.nm{display:inline-block;max-width:168px;overflow:hidden;text-overflow:ellipsis;
-  white-space:nowrap;vertical-align:middle}
-table.m tbody tr.filha .faixa{display:inline-block;max-width:160px;overflow:hidden;
-  text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
-table.m tbody tr:hover td{background:rgba(120,175,255,.10)}
-table.m tbody tr:hover td:first-child{background:#1d3f74}
-table.m tfoot td{background:var(--total);font-weight:700;border-top:1px solid rgba(140,180,240,.35)}
-table.m tfoot td:first-child{background:var(--total)}
-table.m tbody tr.filha td:first-child{background:#16325c}
-.pt{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:-1px}
-.pt.ok{background:var(--ok)} .pt.ruim{background:var(--ruim)}
-.neg{color:#ffb4b4}
+/* O quadro tem papel, não fundo chapado — o mesmo da vitrine: degradê que
+   escurece de leve para baixo, fio de luz na borda de cima e sombra curta. */
+.mt .cd{ width:134px; flex:0 0 134px; display:flex; flex-direction:column; position:relative;
+  background:linear-gradient(170deg,#FFFFFF 0%,#FCFBF7 58%,var(--carta) 100%);
+  border:1px solid var(--linha); border-radius:13px;
+  box-shadow:0 1px 2px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.9);
+  padding:11px 11px 10px; text-align:left; color:var(--tinta);
+  transition:transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s ease, border-color .2s ease }
+/* o brilho atravessa o quadro uma vez, no instante em que o cursor chega */
+.mt .cd::after{ content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.72) 50%,transparent 58%);
+  background-size:250% 100%; background-position:130% 0; opacity:0;
+  transition:background-position .62s cubic-bezier(.3,.7,.3,1), opacity .2s ease }
+.mt .cd:hover{ transform:translateY(-3px); border-color:var(--linha-forte);
+  box-shadow:0 14px 30px -12px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.9) }
+.mt .cd:hover::after{ background-position:-30% 0; opacity:1 }
+/* o cartão do TOTAL: separado, com a borda âmbar da casa */
+.mt .cd.tot{ flex:0 0 178px; width:178px; margin-right:16px;
+  border-color:var(--marca); box-shadow:0 0 0 1px var(--marca) inset,
+  0 10px 26px -12px rgba(255,190,11,.5) }
+.mt .cd.tot:hover{ box-shadow:0 0 0 1px var(--marca) inset, 0 16px 34px -12px rgba(255,190,11,.6) }
+@media(min-width:1000px){ .mt .cd{ width:auto; flex:1 1 0 } .mt .cd.tot{ flex:0 0 190px; width:190px } }
+/* o estado do mês, do Gestor: foco vivo, padrão normal, abandonado opaco */
+.mt .cd.foco{ border-color:var(--marca-escuro); box-shadow:0 0 0 1px var(--marca-escuro) inset,
+  0 10px 24px -12px rgba(217,154,0,.45) }
+.mt .cd.abandonado{ opacity:.62 }
 
-/* ── Gráficos ───────────────────────────────────────────────────────── */
-.graficos{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.graficos .painel{margin-bottom:0}
-.legenda{display:flex;gap:14px;font-size:11px;color:var(--tinta2);margin-bottom:6px}
-.legenda i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
-svg.chart{width:100%;height:auto;display:block;overflow:visible}
-svg.chart text{font-family:var(--sans);fill:var(--tinta2);font-size:11px}
-svg.chart .r-pct{font-size:10px}
-svg.chart .r-mes{font-size:10.5px}
-svg.chart .eixo{stroke:rgba(255,255,255,.18);stroke-width:1}
-svg.chart .rotulo{fill:#fff;font-size:10px}
-.barra-h{cursor:default}
-.barra-h:hover rect,.barra-mes:hover rect{filter:brightness(1.18)}
+.mt .cd .nm{ font-size:11.5px; font-weight:800; line-height:1.25; min-height:28px; letter-spacing:.01em }
+.mt .cd.tot .nm{ letter-spacing:.09em; font-size:12px }
+/* A estrela fica EM CIMA da barra que bateu, não no canto do cartão: de
+   relance se vê qual das duas acendeu, que era o que o canto não dizia. */
+.mt .pb{ position:relative; flex:0 0 auto; width:27px; height:100%;
+  display:flex; align-items:flex-end; justify-content:center }
+.mt .cd.tot .pb{ width:33px }
+.mt .pb .b{ width:100% }
+.mt .pb .s{ position:absolute; left:0; right:0; margin:0 auto; bottom:calc(var(--h) + 4px);
+  width:15px; height:15px; line-height:0; z-index:3; pointer-events:none }
+.mt .pb .s svg{ width:15px; height:15px; fill:var(--ouro); stroke:var(--ouro-borda); stroke-width:1.1 }
+.mt .pb .s.pr svg{ fill:var(--prata); stroke:var(--prata-borda) }
+/* A estrela da barra cheia sobe acima da área, e por isso a margem de 19px
+   acima: o respiro vem por FORA. Padding aqui encolheria a altura das barras
+   sem encolher a das réguas, e uma barra acima do gatilho apareceria abaixo
+   da linha dele. */
 
-/* Caixinha de dica: mesmo cinza #313234 do painel da Vulcabras, rótulo à
-   direita e valor logo ao lado. */
-.dica{position:fixed;z-index:60;pointer-events:none;display:none;
-  background:#313234;color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:4px;
-  padding:9px 12px;font-size:11.5px;line-height:1.5;box-shadow:0 12px 32px rgba(0,0,0,.55)}
-.dica table{border-collapse:collapse}
-.dica td{padding:0;white-space:nowrap}
-.dica td.r{color:#c3c6cb;text-align:right;padding-right:12px}
-.dica td.v{color:#fff;font-weight:600}
+.mt .bars{ position:relative; height:152px; display:flex; align-items:flex-end;
+  justify-content:center; gap:6px; border-bottom:1px solid var(--linha-forte); margin-top:19px }
+.mt .cd.tot .bars{ height:168px }
+.mt .l100{ position:absolute; left:-3px; right:-3px; border-top:1.5px dashed var(--fraco);
+  pointer-events:none; z-index:2 }
+.mt .l100 b{ position:absolute; right:-3px; top:-12px; font-size:8px; font-weight:800;
+  color:var(--tinta); background:var(--carta); padding:0 3px; letter-spacing:.02em;
+  border-radius:3px; box-shadow:0 0 0 1px var(--linha) }
+/* a segunda régua do cartão do total: os 100%, pontilhada e com o rótulo por baixo */
+.mt .lref{ position:absolute; left:-3px; right:-3px; border-top:1.5px dotted var(--linha-forte);
+  pointer-events:none; z-index:2 }
+.mt .lref b{ position:absolute; left:-3px; bottom:3px; font-size:8px; font-weight:700;
+  color:var(--tenue); background:var(--carta); padding:0 3px; border-radius:3px; line-height:1.4 }
 
-/* Clicar num preposto filtra os cartões e os gráficos; a tabela continua
-   inteira, com os outros apagados, como no Power BI. */
-table.m tbody tr{cursor:pointer}
-.exp{width:15px;height:15px;margin-right:7px;padding:0;border:1px solid rgba(160,200,255,.45);
-  background:rgba(255,255,255,.06);color:#dbe9ff;border-radius:3px;cursor:pointer;
-  font:600 11px/1 var(--sans);display:inline-grid;place-items:center;vertical-align:-2px}
-.exp:hover{background:rgba(255,255,255,.18)}
-table.m tbody tr.filha{cursor:default}
-table.m tbody tr.filha td{color:var(--tinta2);background:rgba(10,16,32,.28)}
-table.m tbody tr.filha td:first-child{background:#16325c;padding-left:30px}
-table.m tbody tr.filha .faixa{font-size:11px}
-table.m tbody tr.apagada{opacity:.45}
-table.m tbody tr.escolhida td{background:rgba(17,141,255,.20)}
-table.m tbody tr.escolhida td:first-child{background:#17518f;box-shadow:inset 3px 0 0 var(--selecao)}
+.mt .b{ width:27px; border-radius:5px 5px 0 0; transform-origin:bottom; position:relative; z-index:1;
+  animation:mtSobe 1.3s cubic-bezier(.2,.8,.2,1) both }
+.mt .cd.tot .b{ width:33px }
+@keyframes mtSobe{ from{ transform:scaleY(0) } to{ transform:scaleY(1) } }
+.mt .b.c{ background:var(--cms) }
+.mt .b.v{ background:var(--vend) }
+.mt .b.ouro{ background:linear-gradient(180deg,#FFD35A,var(--ouro)) }
+.mt .b.vazia{ height:0; border-top:2px dotted var(--tenue) }
 
-/* ── Estados ────────────────────────────────────────────────────────── */
-.aviso{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.25);
-  border-radius:6px;padding:10px 12px;font-size:12.5px;color:#eaf2ff;margin-bottom:12px;
-  display:flex;gap:9px;align-items:flex-start}
-.aviso svg{flex:none;margin-top:1px}
-.aviso b{font-weight:700}
-button.marca{background:none;border:0;padding:0;cursor:pointer;font:inherit}
-button.marca:hover .cms-badge{filter:brightness(1.12)}
-.modal{position:fixed;inset:0;z-index:60;display:grid;place-items:center;
-  background:rgba(8,20,44,.62);padding:18px}
-/* display explícito vence o atributo hidden: sem isto o modal fica
-   aberto para sempre e a logo escondida continua ocupando lugar. */
-.modal[hidden], .marca[hidden]{display:none}
-.modal-cx{width:100%;max-width:430px;background:var(--painel);border-radius:16px;
-  border:1px solid rgba(255,255,255,.14);padding:18px 18px 20px;
-  box-shadow:0 24px 60px rgba(0,0,0,.45)}
-.modal-topo{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.modal-tit{font-size:16px;font-weight:700}
-.modal-x{width:30px;height:30px;flex:none;border-radius:9px;cursor:pointer;
-  border:1px solid rgba(255,255,255,.22);background:transparent;color:var(--tinta);
-  display:grid;place-items:center;padding:0}
-.modal-x:hover{background:rgba(255,255,255,.12)}
-.modal-x svg{width:16px;height:16px}
-.modal-sub{font-size:12px;color:var(--tinta2);margin:6px 0 14px;line-height:1.45}
-.modal-botoes{display:flex;flex-direction:column;gap:8px}
-.modal-botoes .btn{justify-content:flex-start;width:100%}
-.porta{max-width:460px;margin:12vh auto;text-align:center;background:var(--painel);
-  border:1px solid var(--painel-linha);border-radius:10px;padding:26px 22px}
-.porta h2{font-size:18px;font-weight:700;margin-bottom:8px}
-.porta p{font-size:13px;color:var(--tinta2);margin-bottom:16px}
-.rodape{margin-top:12px;text-align:center;font-size:10px;color:var(--tinta3);opacity:.75}
+.mt .num{ display:flex; flex-direction:column; gap:2px; margin-top:6px }
+.mt .num > div{ display:flex; align-items:baseline; gap:5px; min-width:0 }
+.mt .num .q{ font-size:8.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase;
+  color:var(--tenue); line-height:1; flex:none; max-width:54px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.mt .num .g{ font-size:13.5px; font-weight:800; line-height:1.3; white-space:nowrap;
+  font-variant-numeric:tabular-nums; overflow:hidden; text-overflow:ellipsis;
+  flex:1 1 auto; min-width:0; text-align:right }
+.mt .cd.tot .num .g{ font-size:16px }
+.mt .num .g.c{ color:#2433C9 }
+.mt .num .g.v{ color:var(--vend-escuro) }
+.mt .cd .mm{ display:block; font-size:9.5px; color:var(--tenue); font-weight:600; margin-top:6px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 
-/* ── Tablet e celular ───────────────────────────────────────────────────
-   Fora do desktop os oito filtros viravam três fileiras e empurravam o
-   painel para baixo. Aqui eles andam de lado numa faixa só. */
-@media (max-width:1100px){
-  .cartoes{display:flex;flex-wrap:wrap}
-  .cat{flex:1 1 224px}
-  .graficos{grid-template-columns:1fr}
-  .filtros{flex-wrap:nowrap;overflow-x:auto;scroll-snap-type:x proximity;
-    -webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
-  .filtros::-webkit-scrollbar{display:none}
-  .filtro{flex:0 0 auto;scroll-snap-align:start}
-  .filtro select{min-width:138px;max-width:none}
-  /* respiro no fim da faixa: deixa claro que ainda há filtro adiante */
-  .filtros::after{content:"";flex:0 0 6px}
+/* ── a trava dos 15% ────────────────────────────────────────────────── */
+/* A trava fica grudada abaixo do cabeçalho: é o número que se consulta
+   enquanto se olha os cartões, e rolar para cima toda vez para conferir os
+   15% tirava o sentido de ter os dois na mesma tela. O fundo é opaco e a
+   sombra curta a solta do que passa por baixo. */
+.mt .t15{ display:flex; flex-direction:column; gap:10px;
+  background:var(--carta); border:1px solid var(--linha); border-radius:14px;
+  padding:13px 15px; color:var(--tinta);
+  position:sticky; top:calc(56px + var(--alt-menu, 116px) + env(safe-area-inset-top)); z-index:20;
+  box-shadow:0 10px 24px -16px rgba(0,0,0,.85) }
+.mt .t15 > .rot{ margin:0; color:var(--fraco) }
+.mt .t15 .un{ display:flex; align-items:center; gap:10px; flex-wrap:wrap }
+.mt .t15 .qd{ font-size:9.5px; font-weight:800; color:var(--tenue); letter-spacing:.07em;
+  text-transform:uppercase; width:74px; flex:none }
+.mt .t15 .trk{ position:relative; flex:1 1 240px; height:16px; border-radius:99px;
+  background:var(--suave); display:flex; overflow:hidden; border:1px solid var(--linha) }
+/* um filete claro entre as fatias: sem ele as cores vizinhas se borram */
+.mt .t15 .trk i{ display:block; height:100%; flex:0 0 auto;
+  box-shadow:inset -1px 0 0 rgba(255,255,255,.6);
+  animation:mtCresce 1.3s cubic-bezier(.2,.7,.2,1) both; transform-origin:left }
+@keyframes mtCresce{ from{ transform:scaleX(0) } to{ transform:scaleX(1) } }
+/* o tracinho dos 15% cruza fatia colorida e trilho vazio: o halo branco o
+   mantém legível nos dois */
+.mt .t15 .mk{ position:absolute; top:-2px; bottom:-2px; border-left:2px dashed var(--fraco); z-index:3;
+  box-shadow:-1px 0 0 rgba(255,255,255,.85),1px 0 0 rgba(255,255,255,.85) }
+.mt .t15 .mk.ok{ border-color:var(--pronta) }
+.mt .t15 .pc{ font-size:14px; font-weight:800; white-space:nowrap; min-width:58px; text-align:right }
+.mt .t15 .pc.ok{ color:var(--pronta) }
+.mt .t15 .fa{ font-size:10.5px; color:var(--fraco); white-space:nowrap }
+.mt .t15 .lg{ display:flex; flex-wrap:wrap; gap:5px 14px; font-size:10px; color:var(--fraco) }
+.mt .t15 .lg span{ display:inline-flex; align-items:center; gap:5px }
+.mt .t15 .lg i{ width:10px; height:10px; border-radius:3px; flex:none }
+.mt .t15 .lg i.mk{ width:0; height:12px; border-left:2px dashed var(--fraco); border-radius:0;
+  position:static; box-shadow:none }
+/* O tênis Olympikus é o denominador e ocupa quase toda a régua: âmbar da casa.
+   As famílias vêm depois, cada uma num matiz próprio; a UA no vermelho dela. */
+.mt .f-OLY{ background:#2E3EFC }
+.mt .f-MEOLY{ background:#FFD400 }
+.mt .f-CHOLY{ background:#FF8A00 }
+.mt .f-ACOLY{ background:#B06CFF }
+.mt .f-CFOLY{ background:#2EC4E6 }
+.mt .f-UA{ background:#E3001B }
+
+/* ── o trimestre, mês a mês ──
+   Cada mês é um grupo de barras com o seu rótulo embaixo; somar os três
+   esconderia o mês ruim atrás do bom. */
+.mt.tri .cd{ min-width:152px }
+.mt.tri .cd.tot{ min-width:176px }
+@media(max-width:640px){ .mt.tri .cd{ flex:0 0 152px } .mt.tri .cd.tot{ flex:0 0 176px } }
+.mt.tri .bars{ gap:11px }
+.mt.tri .mb{ display:flex; align-items:flex-end; justify-content:center; gap:3px;
+  flex:1 1 0; min-width:0; height:100% }
+.mt.tri .pb{ flex:1 1 0; width:auto; max-width:none }
+.mt.tri .pb .b{ max-width:20px }
+.mt.tri .cd.tot .pb .b{ max-width:24px }
+.mt .quem{ display:flex; gap:11px; margin-top:5px }
+.mt .quem .par{ flex:1 1 0; min-width:0; display:flex; gap:3px; justify-content:center }
+.mt .quem i{ flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:center }
+.mt .quem svg{ width:13px; height:13px; display:block }
+.mt .quem i.c svg{ fill:#2433C9 }
+.mt .quem i.v svg{ fill:var(--vend-escuro) }
+.mt .leg-mes{ display:flex; gap:11px; margin-top:4px }
+.mt .leg-mes span{ flex:1 1 0; min-width:0; font-size:8.5px; font-weight:700; text-align:center;
+  color:var(--fraco); line-height:1.3; text-transform:uppercase; letter-spacing:.04em }
+.mt .leg-mes span b{ display:block; font-size:11px; color:var(--tinta); font-weight:800;
+  font-variant-numeric:tabular-nums; letter-spacing:0 }
+
+/* ── a visão de comparar vendedores ─────────────────────────────────── */
+.mt.cmp .cd{ width:auto; flex:1 1 0; min-width:138px }
+.mt.cmp .cd.tot{ flex:1.4 1 0; min-width:176px }
+.mt.cmp .bars{ gap:4px }
+/* a COLUNA ocupa a sua fatia inteira (é ela que fica sobre o rótulo); quem
+   tem largura limitada é a barra dentro dela */
+.mt.cmp .pb{ flex:1 1 0; width:auto; min-width:0; max-width:none }
+.mt.cmp .pb .b{ max-width:19px; min-width:6px }
+.mt.cmp .cd.tot .pb .b{ max-width:24px }
+.mt.cmp .pb .s{ width:12px; height:12px; bottom:calc(var(--h) + 3px) }
+.mt.cmp .pb .s svg{ width:12px; height:12px }
+.mt.cmp .leg-prep{ display:flex; gap:4px; margin-top:6px }
+.mt.cmp .leg-prep span{ flex:1 1 0; min-width:0; font-size:7.5px; font-weight:700; text-align:center;
+  color:var(--fraco); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.35;
+  letter-spacing:-.01em }
+.mt.cmp .leg-prep span b{ display:block; font-size:10px; color:var(--tinta); font-weight:800;
+  font-variant-numeric:tabular-nums }
+.mt.cmp .leg-prep span.cms{ color:var(--marca-tinta) }
+.mt.cmp .leg-prep span.cms b{ color:var(--marca-tinta) }
+
+/* ── legenda e rodapé ───────────────────────────────────────────────── */
+.mt .leg{ display:flex; flex-wrap:wrap; gap:7px 18px; font-size:11px; color:#A79F8E }
+.mt .leg span{ display:inline-flex; align-items:center; gap:6px }
+.mt .leg i.q{ width:11px; height:11px; border-radius:3px; flex:none }
+.mt .leg i.q.c{ background:var(--cms) }
+.mt .leg i.q.v{ background:var(--vend) }
+.mt .leg i.q.o{ background:linear-gradient(180deg,#FFD35A,var(--ouro)) }
+.mt .leg i.s{ display:inline-flex; line-height:0 }
+.mt .leg i.s svg{ width:13px; height:13px; fill:var(--ouro); stroke:var(--ouro-borda); stroke-width:1.1 }
+.mt .pe{ font-size:10.5px; color:#8C8575; line-height:1.55 }
+
+.aviso{ background:rgba(255,190,11,.1); border:1px solid rgba(255,190,11,.3);
+  border-radius:12px; padding:12px 14px; font-size:12.5px; color:#F0E6D0; line-height:1.5 }
+.carregando{ padding:50px 0; text-align:center; color:#A79F8E; font-size:13px }
+.carregando i{ display:inline-block; width:22px; height:22px; border-radius:50%;
+  border:2.5px solid rgba(255,255,255,.18); border-top-color:var(--marca);
+  animation:gira .8s linear infinite; margin-bottom:12px }
+@keyframes gira{ to{ transform:rotate(360deg) } }
+
+/* ── no celular ──
+   O cartão alto obriga a rolar duas vezes: de lado para ver as faixas e para
+   baixo para ver os números. Encurtar a barra resolve as duas. */
+@media(max-width:640px){
+  .topo{ padding:calc(8px + env(safe-area-inset-top)) 13px 8px; gap:9px }
+  .topo h1{ font-size:15px }
+  .topo .sub{ font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    max-width:100% }
+  .topo .marca{ flex:1 1 0; min-width:0 } .topo .marca > div{ min-width:0 }
+  .topo .dir{ margin-left:0; flex:none }
+  .bt-voltar{ height:32px; padding:0 12px; font-size:12px }
+  .env{ padding:13px }
+  .grupo > .rot{ width:auto; font-size:9.5px }
+  .mt .bars{ height:116px } .mt .cd.tot .bars{ height:128px }
+  .mt .cd{ width:122px; flex:0 0 122px } .mt .cd.tot{ flex:0 0 156px; width:156px; margin-right:12px }
+  .mt .t15 .qd{ width:auto }
+  .mt .t15 .pc{ min-width:auto }
+  /* No celular o menu inteiro tomaria 70% da tela preso no topo e sobraria
+     um palmo para os cartões. Congelado ele vira duas faixas que rolam de
+     lado, sem os rótulos — "Olympikus" e "out/26" dizem sozinhos o que são. */
+  .filtros{ top:calc(50px + env(safe-area-inset-top)); gap:7px; padding:9px 0 8px }
+  .filtros > .grupo{ flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; gap:7px }
+  .filtros > .grupo::-webkit-scrollbar{ display:none }
+  .filtros > .grupo > .rot{ display:none }
+  .filtros > .grupo > *{ flex:0 0 auto }
+  .filtros .chips{ flex-wrap:nowrap }
+  .filtros .chip{ flex:0 0 auto }
+  .mt .t15{ top:calc(50px + var(--alt-menu, 116px) + env(safe-area-inset-top));
+    gap:7px; padding:10px 12px }
+  .mt .t15 .so-largo{ display:none }
+  .mt .t15 .lg{ font-size:9.5px; gap:4px 10px }
 }
-@media (max-width:720px){
-  body{font-size:12.5px;padding-inline:max(10px,env(safe-area-inset-left)) max(10px,env(safe-area-inset-right))}
-  .titulo{font-size:17px}
-  .atual{padding-left:10px;font-size:10px}
-  .topo{gap:8px;margin-bottom:8px}
-  .cartoes{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-  .cat{min-height:98px}
-  .cat-ico{width:34%;min-width:54px}
-  .cat-ico svg{width:36px;height:36px}
-  .cat-dados{padding:7px 8px 8px}
-  .cat-gauge{max-width:104px}
-  .cat-gauge{max-width:98px}
-  svg.chart .r-pct{font-size:8.5px}
-  svg.chart .r-mes{font-size:9.5px}
-  svg.chart text{font-size:10px}
-  .filtro label{font-size:10px}
-  .filtro select{min-width:126px;padding:6px 24px 6px 9px}
-  .painel{padding:9px 10px 11px}
-  .painel-tit{font-size:13.5px}
-  .graficos{display:flex;flex-direction:column}
-  .graficos .g-faixas{order:-1}
-  /* a tabela tem 21 colunas: no celular a diferença sai de cena, porque
-     ela é a conta entre duas colunas que continuam à vista */
-  table.m{min-width:820px;font-size:11px}
-  table.m th,table.m td{padding:5px}
-  table.m thead tr.grupos th:first-child,table.m tbody td:first-child,table.m tfoot td:first-child{width:136px}
-  .nm{max-width:100px}
-  table.m tbody tr.filha .faixa{max-width:96px}
-  table.m .dif{display:none}
-  .exp{width:17px;height:17px;margin-right:6px}
-}
-@media (max-width:420px){
-  .cat{flex:1 1 calc(50% - 4px)}
-  .cat-linhas{font-size:10px}
-  /* o quinto cartão fica sozinho na última fileira: ocupa a largura toda */
-  .cat:last-child{flex-basis:100%;min-height:84px}
-  .cat:last-child .cat-ico{width:26%;min-width:0}
-  .cat:last-child .cat-dados{display:grid;grid-template-columns:auto 1fr;
-    grid-template-areas:"nome nome" "gauge numeros";align-items:center;gap:0 12px}
-  .cat:last-child .cat-nome{grid-area:nome}
-  .cat:last-child .cat-gauge{grid-area:gauge;width:92px;max-width:92px}
-  .cat:last-child .cat-linhas{grid-area:numeros;margin-top:0}
+
+/* No modo comparar cada barra leva nome e % embaixo: o cartão precisa de
+   largura, senão os números se encavalam. */
+.mt.cmp .cd{ min-width:244px }
+.mt.cmp .cd.tot{ min-width:258px }
+@media(max-width:640px){ .mt.cmp .cd{ flex:0 0 244px } .mt.cmp .cd.tot{ flex:0 0 258px } }
+
+@media(prefers-reduced-motion:reduce){
+  .mt .b, .mt .t15 .trk i{ animation:none }
+  .mt .cd, .mt .cd::after, .chip, .bt-voltar{ transition:none }
+  .mt .cd:hover{ transform:none } .mt .cd:hover::after{ opacity:0 }
+  .carregando i{ animation-duration:2.4s }
 }
 </style>
 </head>
 <body>
-<div class="pagina" id="pagina">
 
-  <div class="topo">
-    <a class="marca" id="marcaLink" href="../index.html" aria-label="Voltar ao portal">
-      <span class="cms-badge">CMS</span>
+<header class="topo">
+  <div class="marca">
+    <div class="selo">CMS</div>
+    <div><h1>Metas</h1></div>
+  </div>
+  <div class="dir">
+    <a class="bt-voltar" href="../index.html">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4.5 8 12l7.5 7.5 1.4-1.4L10.8 12l6.1-6.1z"/></svg>
+      Portal
     </a>
-    <button class="marca" id="marcaBt" type="button" hidden aria-haspopup="dialog"
-      aria-label="Importar dados" title="Importar dados">
-      <span class="cms-badge">CMS</span>
-    </button>
-    <div class="tit-bloco">
-      <div class="tit-linha">
-        <h1 class="titulo">Metas Preposto</h1>
-        <button class="info-bt" id="btnAviso" type="button" hidden
-          aria-expanded="false" aria-controls="avisos"
-          aria-label="Sobre estes números" title="Sobre estes números">i</button>
-      </div>
-      <span class="atual" id="atual" hidden></span>
+  </div>
+</header>
+
+<div class="env">
+  <div class="filtros">
+    <div class="grupo">
+      <span class="rot">Marca</span><div class="chips" id="fMarca"></div>
+      <span class="rot sep">Mês</span><div class="segm" id="fMes"></div>
     </div>
-    <div class="topo-dir">
-      <a class="btn" href="../index.html">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-        Portal
-      </a>
+    <div class="grupo">
+      <span class="rot">Preposto</span><div class="chips" id="fPrep"></div>
+      <span class="rot sep">Medida</span><div class="chips" id="fMedida"></div>
+      <div class="chips" id="fVisao"></div>
     </div>
   </div>
-
-  <input type="file" id="arqMetas" accept=".xls,.xlsx" multiple hidden>
-<input type="file" id="arqDiario" accept=".xls,.xlsx" multiple hidden>
-  <div id="avisos"></div>
-  <div id="corpo"></div>
-  <p class="rodape" id="rodape"></p>
+  <div id="painel"><div class="carregando"><i></i><div>lendo as metas…</div></div></div>
 </div>
 
-<!-- Importação: mora atrás da logo, e só CMS e DEV chegam nela. O robô
-     traz os dois relatórios todo dia às 8h15; isto aqui é para adiantar
-     um arquivo ou corrigir um mês. -->
-<div class="modal" id="modalImp" hidden role="dialog" aria-modal="true"
-     aria-labelledby="modalTit">
-  <div class="modal-cx" role="document">
-    <div class="modal-topo">
-      <h2 class="modal-tit" id="modalTit">Importar relatórios</h2>
-      <button class="modal-x" id="btnFechaImp" type="button" aria-label="Fechar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-      </button>
-    </div>
-    <p class="modal-sub">O robô atualiza sozinho todo dia, de manhã. Use aqui
-      para adiantar um arquivo ou acertar um mês.</p>
-    <div class="modal-botoes">
-      <button class="btn primario" id="btnMetas" type="button" title="Carta Campanha · Simples Conferência, ou o Acompanhamento de Metas — traz a meta e o potencial">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>
-        Metas
-      </button>
-      <button class="btn" id="btnDiario" type="button" title="Carta Campanha · Conferência Notas — traz o realizado, nota a nota">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9.5 12h6M9.5 16h4"/></svg>
-        Diário
-      </button>
-      <button class="btn" id="btnBaixar" type="button" title="Baixa o JSON com tudo que está importado, para publicar em metas/dados/metas.json">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg>
-        JSON
-      </button>
-    </div>
-  </div>
-</div>
-<div class="dica" id="dica" role="status" aria-live="polite"></div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-(function(){
-'use strict';
+/* ── a régua da Vulcabras ─────────────────────────────────────────────
+   O total de tênis bate com 90% da meta, a faixa com 100% e a família em
+   R$ com 95%. A trava dos 15% é regra interna da CMS. */
+const GATILHO_TOTAL = 0.90, GATILHO_FAIXA = 1.00, GATILHO_FAMILIA = 0.95;
+const TRAVA_15 = 0.15;
+const TETO = 1.5;            // o eixo vai até 150% da meta; os 100% ficam a 2/3 da altura
 
-// ════════════════════════════════════════════════════════════════════════
-//  Quem é quem
-// ════════════════════════════════════════════════════════════════════════
-var SESSION_KEY = 'cms_portal_session_v1';     // a mesma do portal
-var LOCAL_KEY = 'cms_metas_v1';                // o que este aparelho importou
-var MANDA_EM_TUDO = ['CMS', 'MARCOS (DEV)'];   // veem todo mundo e importam
-// A tela está aberta no portal: cada vendedor vê o que é dele, CMS e
-// DEV veem todo mundo. Para fechar de novo, troque para true.
-var SO_DEV = false;
-var NOME_DEV = 'MARCOS (DEV)';
-
-function sessao(){
-  try{
-    var s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-    if(s && s.expiraEm && new Date(s.expiraEm).getTime() > Date.now()) return s;
-  }catch(_){}
-  return null;
-}
-function nomeNormal(v){
-  return String(v == null ? '' : v).normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toUpperCase();
-}
-function mandaEmTudo(s){ return !!s && MANDA_EM_TUDO.indexOf(nomeNormal(s.nome)) >= 0; }
-
-// ════════════════════════════════════════════════════════════════════════
-//  Formatos e rótulos
-// ════════════════════════════════════════════════════════════════════════
-var MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
-var fInt = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
-var fRS = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
-var fP2 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-function pct(v){ return v == null ? '—' : fP2.format(v) + '%'; }
-function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); }
-function nomeProprio(s){
-  var min = { de:1, da:1, das:1, do:1, dos:1, e:1 };
-  if(/^c ?m ?s$/i.test(String(s).trim())) return 'CMS';
-  return String(s || '').toLowerCase().split(/\s+/).map(function(w, i){
-    return (i > 0 && min[w]) ? w : (w ? w[0].toUpperCase() + w.slice(1) : w);
-  }).join(' ');
-}
-function mesRotulo(m){ var p = m.split('-'); return MESES[+p[1] - 1] + '/' + p[0].slice(2); }
-
-// Categorias do painel: código da marca no relatório -> cartão
-var CATS = [
-  { id:'calcados',   marca:'OLY',   nome:'Calçados',   cor:'var(--calcados)',   ico:'tenis' },
-  { id:'chinelos',   marca:'CHOLY', nome:'Chinelos',   cor:'var(--chinelos)',   ico:'chinelo' },
-  { id:'vestuario',  marca:'CFOLY', nome:'Vestuário',  cor:'var(--vestuario)',  ico:'camisa' },
-  { id:'acessorios', marca:'ACOLY', nome:'Acessórios', cor:'var(--acessorios)', ico:'mochila' },
-  { id:'meias',      marca:'MEOLY', nome:'Meias',      cor:'var(--meias)',      ico:'meia' }
-];
-var ICONES = {
-  tenis: '<path d="M2.2 17.4V12l6.2-3.6 1.3-2.4c.4-.7 1.3-.9 1.9-.4l2.9 2.4c1.9 1.6 4 2.3 6.6 2.3 1.2 0 1.7 1.5.7 2.2l-3.4 2.3c-1.3.9-2.4 1.5-4 1.5H2.2z"/><path d="M2.2 12h12.4"/><path d="M8.8 8.4l2.6 2M11.4 6.6l2.6 2.1"/><path d="M2.2 17.4h18.6"/>',
-  chinelo: '<path d="M8.2 2.6c2.6 0 4.2 1.9 4.2 4.6 0 2.2-.7 3.4-.7 5.6 0 2.6.8 3.6.8 5.4 0 2.4-1.7 3.8-4.3 3.8s-4.3-1.4-4.3-3.8c0-1.8.8-2.8.8-5.4 0-2.2-.7-3.4-.7-5.6 0-2.7 1.6-4.6 4.2-4.6z"/><path d="M5.2 6.4c1.2 1.6 4.8 1.6 6 0"/><path d="M17.4 2.6c2.6 0 4.2 1.9 4.2 4.6 0 2.2-.7 3.4-.7 5.6 0 2.6.8 3.6.8 5.4 0 2.4-1.7 3.8-4.3 3.8"/>',
-  camisa: '<path d="M8.6 3.2L4 5.4l1.4 4 2-.7V20.8h9.2V8.7l2 .7 1.4-4-4.6-2.2z"/><path d="M8.6 3.2c0 1.9 1.5 3 3.4 3s3.4-1.1 3.4-3"/>',
-  mochila: '<rect x="4.4" y="6.6" width="15.2" height="14.2" rx="4"/><path d="M8.6 6.6V5.2a3.4 3.4 0 0 1 6.8 0v1.4"/><path d="M8.8 13.4h6.4v4.2H8.8z"/>',
-  meia: '<path d="M8 2.6h5.4v8.2c0 1.6.5 2.4 1.7 3.4l2.4 2c1.6 1.3 1.3 3.9-.6 4.8-1.6.8-3.3.3-4.4-.9l-3.8-4c-.8-.9-1.3-2-1.3-3.3V2.6z"/><path d="M8 5.8h5.4"/>'
+/* Cada marca tem o seu tênis e as suas famílias. O tênis da Olympikus vem
+   na marca "OLY" e o da Under Armour em "UA_TN"; as famílias são linhas
+   próprias, uma por tipo. */
+const MARCAS = {
+  OLY: { rotulo:'Olympikus', tenis:'OLY', familias:['ACOLY','CHOLY','MEOLY','CFOLY'],
+         ordemFaixa:{ 'CLASSICOS':1, 'CONF_FEM':2, 'CONF_MASC':3, 'CORRIDA/TREINO':4, 'INFANTIL':5, 'CORRE':6 } },
+  UA:  { rotulo:'Under Armour', tenis:'UA_TN', familias:['UA_AC','UA_ME','UA_CH','UA_CF'],
+         ordemFaixa:{ 'RUN INSPIRED':1, 'RUNNING':2, 'TRAINING':3, 'BASKETBALL':4 } },
 };
+const NOMES = {
+  'CLASSICOS':'Clássicos', 'CONF_FEM':'Conf. feminino', 'CONF_MASC':'Conf. masculino',
+  'CORRIDA/TREINO':'Corrida e treino', 'INFANTIL':'Infantil', 'CORRE':'Corre',
+  'RUN INSPIRED':'Run inspired', 'RUNNING':'Running', 'TRAINING':'Training', 'BASKETBALL':'Basketball',
+  'ACOLY':'Acessórios', 'CHOLY':'Chinelos', 'MEOLY':'Meias', 'CFOLY':'Confecção',
+  'UA_AC':'Acessórios', 'UA_CH':'Chinelos', 'UA_ME':'Meias', 'UA_CF':'Confecção',
+};
+/* As famílias que entram no numerador dos 15%, do lado Olympikus; a Under
+   Armour entra inteira, numa fatia só. */
+const FAMS15 = [['MEOLY','Meias'], ['CHOLY','Chinelos'], ['ACOLY','Acessórios'],
+                ['CFOLY','Confecção'], ['UA','Under Armour']];
+const MARCAS_UA = ['UA_TN','UA_AC','UA_CH','UA_ME','UA_CF'];
+const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto',
+               'setembro','outubro','novembro','dezembro'];
+const MES3 = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+const ESTRELA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3 6.9 7.5.7-5.7 5 1.7 7.4L12 18l-6.5 4 1.7-7.4-5.7-5 7.5-.7z"/></svg>';
+/* No trimestre são duas barras por mês e a coluna tem 16px: nome nenhum cabe
+   ali. A casa é a CMS, a silhueta é o vendedor. */
+const ICO_CMS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21V9.5L12 3l9 6.5V21h-6v-6H9v6z"/></svg>';
+const ICO_VEND = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="4"/><path d="M4 21v-1.2c0-3.3 3.6-5.3 8-5.3s8 2 8 5.3V21z"/></svg>';
 
-// ════════════════════════════════════════════════════════════════════════
-//  Leitura do relatório (o mesmo parse do gerar_metas.py)
-// ════════════════════════════════════════════════════════════════════════
-// Colunas do metas.xls, 0 = A
-var COL = { marca:0, faixa:3, meta_qtd:6, meta_rs:7, pct_cc:10, pot_qtd:15, pot_rs:17,
-            real_qtd:19, real_rs:20, fat_qtd:25, fat_rs:26, dev_qtd:28, dev_rs:30, atingiu:43 };
-
-function numero(v){
-  if(v === '' || v == null) return null;
-  if(typeof v === 'number') return v;
-  var s = String(v).trim().replace(/\./g, '').replace(/,/g, '');
-  // o relatório vem no padrão americano: 4,495 = quatro mil; 471,750.25
-  s = String(v).trim().replace(/,/g, '');
-  if(s === '' || s === '-') return null;
-  var n = parseFloat(s);
-  return isNaN(n) ? null : n;
+/* ── quem está vendo ───────────────────────────────────────────────────
+   A tela entrou no portal, então ela obedece à mesma sessão das outras: o
+   vendedor vê só o que é dele, a CMS e quem desenvolve veem o time inteiro.
+   Sem sessão válida, a tela não abre — o número de meta de um não é assunto
+   do outro. */
+const SESSION_KEY = 'cms_portal_session_v1';
+const NOMES_CMS = ['CMS', 'MARCOS (DEV)'];
+/* Só na própria máquina: ?vendedor=JORGE abre como ele, para conferir o que
+   cada um enxerga. No endereço publicado isto nunca vale. */
+const VENDEDORES_TESTE = { '25846':'CMS', '25745':'LEANDRO', '4322318':'CHRISTIAN LUCAS',
+  '114611':'JORGE', '109839':'MARIANA', '1333497':'RAFAEL', '25471':'WILLAME',
+  '3616654':'MARCOS (DEV)' };
+function getSessao(){
+  try{
+    const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+    if(!s || !s.expiraEm || new Date(s.expiraEm).getTime() < Date.now()) return null;
+    const h = location.hostname;
+    if(h !== 'localhost' && h !== '127.0.0.1' && h !== '') return s;
+    const q = (new URLSearchParams(location.search).get('vendedor') || '').trim().toUpperCase();
+    if(!q) return s;
+    const cod = VENDEDORES_TESTE[q] ? q
+      : Object.keys(VENDEDORES_TESTE).find(k => VENDEDORES_TESTE[k] === q);
+    return cod ? { ...s, codigo:cod, nome:VENDEDORES_TESTE[cod] } : s;
+  }catch(_){ return null; }
 }
-function txt(v){ return v == null ? '' : String(v).trim(); }
-function vazia(l){
-  return ['meta_qtd','meta_rs','real_qtd','real_rs','pot_qtd','fat_qtd'].every(function(k){
-    return l[k] == null || l[k] === 0;
-  });
-}
+const SESSAO = getSessao();
+const souCms = () => NOMES_CMS.includes(String((SESSAO && SESSAO.nome) || '').toUpperCase());
+const meuCodigo = () => String((SESSAO && SESSAO.codigo) || '').trim();
 
-// Cada relatório do EBM tem uma cara. Reconhecer pelo conteúdo evita que
-// um arquivo entre no lugar errado só porque o botão clicado foi o outro.
-function identificar(L){
-  var topo = (L[0] || []).concat(L[1] || []).join(' ').toUpperCase();
-  if(topo.indexOf('NOTA') >= 0) return 'notas';
-  if(topo.indexOf('ACOMPANHAMENTO') >= 0) return 'acompanhamento';
-  return 'conferencia';
-}
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g,
+  c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+const nf = n => Math.round(n || 0).toLocaleString('pt-BR');
+const kk = v => { const a = Math.abs(v || 0);
+  if(a >= 1e6) return (a/1e6).toFixed(2).replace('.',',') + 'M';
+  return a >= 1000 ? (a/1000).toFixed(1).replace('.',',') + 'k' : String(Math.round(a)); };
+const pctTxt = p => p == null ? '—' : (p*100).toFixed(1).replace('.',',') + '%';
 
-// Colunas do CartaCampanhaNotas (0 = A)
-var COLN = { preposto:6, nome:7, movimento:8, data:12, faixa:21, marca:22, valor:25, qtd:26 };
-var MES_NOME = ['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+let METAS = null;
+const F = { marca:'OLY', mes:null, prep:'TODOS', medida:'pot', comparar:false, abrirMeses:false };
 
-function mesPeloNome(nome){
-  var limpo = nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  var d = /(\d{2})[-_ ](\d{4})/.exec(limpo);
-  if(d) return d[2] + '-' + d[1];
-  var ano = /(20\d{2})/.exec(limpo);
-  for(var i = 0; i < 12; i++){
-    if(limpo.indexOf(MES_NOME[i]) >= 0){
-      return (ano ? ano[1] : new Date().getFullYear()) + '-' + ('0' + (i + 1)).slice(-2);
-    }
-  }
-  return null;
-}
-
-// O relatório de notas não diz de que apuração é: vale o mês da maioria
-// das notas (a apuração puxa devolução de meses anteriores), e o nome do
-// arquivo manda quando traz o mês.
-function lerNotas(L, nomeArquivo){
-  var contagem = {}, melhor = '', qtdMelhor = 0;
-  L.slice(2).forEach(function(r){
-    var d = txt(r[COLN.data]);
-    if(d.length !== 10) return;
-    var m = d.slice(6, 10) + '-' + d.slice(3, 5);
-    contagem[m] = (contagem[m] || 0) + 1;
-    if(contagem[m] > qtdMelhor){ qtdMelhor = contagem[m]; melhor = m; }
-  });
-  if(!melhor) throw new Error(nomeArquivo + ': não achei data de nota. É o relatório de notas?');
-  var mes = mesPeloNome(nomeArquivo) || melhor;
-
-  var prepostos = {};
-  L.slice(2).forEach(function(r){
-    var cod = txt(r[COLN.preposto]);
-    var faixa = txt(r[COLN.faixa]).toUpperCase();
-    if(!cod || !faixa || faixa === 'OUTROS') return;
-    var marca = txt(r[COLN.marca]).split(' - ')[0].trim().toUpperCase();
-    var p = prepostos[cod] || (prepostos[cod] = { codigo:cod, nome:txt(r[COLN.nome]), linhas:{} });
-    var chave = marca + '|' + faixa;
-    var l = p.linhas[chave] || (p.linhas[chave] = { marca:marca, faixa:faixa,
-      meta_qtd:null, meta_rs:null, pot_qtd:null, pot_rs:null, real_qtd:0, real_rs:0,
-      fat_qtd:0, fat_rs:0, dev_qtd:0, dev_rs:0, pct_cc:null, atingiu:'' });
-    var q = numero(r[COLN.qtd]) || 0, v = numero(r[COLN.valor]) || 0;
-    var onde = txt(r[COLN.movimento]).toUpperCase() === 'DEV' ? 'dev' : 'fat';
-    l.real_qtd += q; l.real_rs += v;
-    l[onde + '_qtd'] += q; l[onde + '_rs'] += v;
-  });
-
-  var lista = Object.keys(prepostos).map(function(cod){
-    var p = prepostos[cod];
-    return { codigo:p.codigo, nome:p.nome, linhas: Object.keys(p.linhas).map(function(k){
-      var l = p.linhas[k];
-      l.real_rs = Math.round(l.real_rs * 100) / 100;
-      l.fat_rs = Math.round(l.fat_rs * 100) / 100;
-      l.dev_rs = Math.round(l.dev_rs * 100) / 100;
-      return l;
-    }) };
-  });
-  if(!lista.length) throw new Error(nomeArquivo + ': nenhuma nota com preposto. O filtro saiu em Todos?');
-  return { mes: mes, origem: nomeArquivo, visao: '', so_realizado: true,
-           importado_em: new Date().toISOString(), prepostos: lista };
-}
-
-function lerRelatorio(buffer, nomeArquivo){
-  var wb = XLSX.read(new Uint8Array(buffer), { type:'array' });
-  var ws = wb.Sheets[wb.SheetNames[0]];
-  var L = XLSX.utils.sheet_to_json(ws, { header:1, raw:false, defval:'' });
-  if(identificar(L) === 'notas') return lerNotas(L, nomeArquivo);
-
-  var periodo = '', visao = '';
-  for(var i = 0; i < Math.min(6, L.length); i++){
-    for(var j = 0; j < (L[i] || []).length; j++){
-      var rot = txt(L[i][j]);
-      if(!/^(Período|Periodo|Visão|Visao)/.test(rot)) continue;
-      var valor = '';
-      for(var k = j + 1; k < Math.min(j + 8, L[i].length); k++){
-        if(txt(L[i][k])){ valor = txt(L[i][k]); break; }
-      }
-      if(/^Per/.test(rot) && !periodo && /^\d{1,2}\/\d{4}/.test(valor)) periodo = valor;
-      else if(/^Vis/.test(rot) && !visao) visao = valor;
-    }
-  }
-  var m = /^(\d{1,2})\/(\d{4})/.exec(periodo);
-  if(!m) throw new Error('Não achei o período (MM/AAAA) no cabeçalho de ' + nomeArquivo + '. É o relatório certo?');
-  var mes = m[2] + '-' + ('0' + m[1]).slice(-2);
-
-  var prepostos = [], atual = null, marca = '';
-  for(var r = 0; r < L.length; r++){
-    var linha = L[r] || [];
-    var a = txt(linha[COL.marca]), faixa = txt(linha[COL.faixa]);
-    var cab = /^(\d{4,9})\s*-\s*(.+)$/.exec(a);
-    if(cab){ atual = { codigo:cab[1], nome:cab[2].trim(), linhas:[] }; prepostos.push(atual); marca = ''; continue; }
-    if(!atual) continue;
-    if(/^TOTAL/i.test(a)) continue;
-    if(a && a.indexOf(' - ') > 0) marca = a.split(' - ')[0].trim().toUpperCase();
-    if(!faixa || faixa.toUpperCase() === 'OUTROS') continue;
-    var l = { marca: marca || faixa.toUpperCase(), faixa: faixa.toUpperCase(), atingiu: txt(linha[COL.atingiu]) };
-    ['meta_qtd','meta_rs','pot_qtd','pot_rs','real_qtd','real_rs','fat_qtd','fat_rs','dev_qtd','dev_rs','pct_cc'].forEach(function(campo){
-      l[campo] = numero(linha[COL[campo]]);
-    });
-    if(!vazia(l)) atual.linhas.push(l);
-  }
-  prepostos = prepostos.filter(function(p){ return p.linhas.length; });
-  if(!prepostos.length) throw new Error('O arquivo não tem nenhum preposto com movimento.');
-  return { mes: mes, origem: nomeArquivo, visao: visao,
-           importado_em: new Date().toISOString(), prepostos: prepostos };
-}
-
-// ════════════════════════════════════════════════════════════════════════
-//  Base: o que está publicado + o que este aparelho importou
-// ════════════════════════════════════════════════════════════════════════
-var base = { meses: [] };
-
-function lerLocal(){
-  try{ return JSON.parse(localStorage.getItem(LOCAL_KEY) || 'null') || { meses: [] }; }
-  catch(_){ return { meses: [] }; }
-}
-function gravarLocal(dados){
-  try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(dados)); return true; }
-  catch(_){ return false; }
-}
-function juntar(a, b){
-  var porMes = {};
-  (a.meses || []).forEach(function(m){ porMes[m.mes] = m; });
-  (b.meses || []).forEach(function(m){ porMes[m.mes] = combinar(porMes[m.mes], m); });
-  return { meses: Object.keys(porMes).sort().map(function(k){ return porMes[k]; }) };
-}
-
-// A conferência traz a meta, o relatório de notas traz o realizado: quem
-// tem o dado preenche, quem não tem respeita o que já estava lá.
-function combinar(antigo, novo){
-  if(!antigo) return novo;
-  var indice = {};
-  (antigo.prepostos || []).forEach(function(p){
-    (p.linhas || []).forEach(function(l){ indice[p.codigo + '|' + l.marca + '|' + l.faixa] = l; });
-  });
-  var usadas = {};
-  novo.prepostos.forEach(function(p){
-    p.linhas.forEach(function(l){
-      var chave = p.codigo + '|' + l.marca + '|' + l.faixa;
-      usadas[chave] = 1;
-      var velha = indice[chave];
-      if(!velha) return;
-      for(var campo in velha){
-        if((l[campo] === null || l[campo] === undefined || l[campo] === '') &&
-           velha[campo] !== null && velha[campo] !== undefined && velha[campo] !== '') l[campo] = velha[campo];
-      }
-    });
-  });
-  var porCod = {};
-  novo.prepostos.forEach(function(p){ porCod[p.codigo] = p; });
-  (antigo.prepostos || []).forEach(function(p){
-    (p.linhas || []).forEach(function(l){
-      if(usadas[p.codigo + '|' + l.marca + '|' + l.faixa]) return;
-      var destino = porCod[p.codigo];
-      if(!destino){ destino = { codigo:p.codigo, nome:p.nome, linhas:[] };
-        porCod[p.codigo] = destino; novo.prepostos.push(destino); }
-      destino.linhas.push(l);
-    });
-  });
-  if(novo.so_realizado && antigo.origem && antigo.origem.indexOf(novo.origem) < 0){
-    novo.origem = antigo.origem + ' + ' + novo.origem;
-  }
-  return novo;
-}
-
-// ════════════════════════════════════════════════════════════════════════
-//  Estado da tela
-// ════════════════════════════════════════════════════════════════════════
-// preposto = filtro do topo (vale para tudo, tabela inclusive)
-// escolhido = clique na tabela (vale para cartões e gráficos)
-var E = { preposto:'', escolhido:'', abertos:{}, medida:'real', metrica:'qtd', marca:'OLY', segmento:'', faixa:'', ano:'', mes:'' };
-// A medida com que a tela abre é escolhida pelo dado; vale só enquanto
-// o usuário não escolher na mão.
-var medidaEscolhida = false;
-var S = null, TUDO = false;
-
-function mesesDoAno(ano){
-  return base.meses.filter(function(m){ return m.mes.slice(0, 4) === ano; }).map(function(m){ return m.mes; });
-}
-function anos(){
-  var s = {};
-  base.meses.forEach(function(m){ s[m.mes.slice(0, 4)] = 1; });
-  return Object.keys(s).sort();
-}
-function prepostosDe(mes){
-  var m = base.meses.filter(function(x){ return x.mes === mes; })[0];
-  return m ? m.prepostos : [];
-}
-function todosPrepostos(){
-  var vistos = {}, saida = [];
-  base.meses.forEach(function(m){
-    m.prepostos.forEach(function(p){
-      if(!vistos[p.codigo]){ vistos[p.codigo] = 1; saida.push({ codigo:p.codigo, nome:p.nome }); }
-    });
-  });
-  saida.sort(function(a, b){ return a.nome.localeCompare(b.nome, 'pt-BR'); });
-  return saida;
-}
-function faixasDeCalcados(){
-  var vistas = {}, ordem = ['CORRE','CORRIDA/TREI','CORRIDA/TREINO','CONF_MASC','CONF_FEM','CLASSICOS','INFANTIL'];
-  base.meses.forEach(function(m){
-    m.prepostos.forEach(function(p){
-      p.linhas.forEach(function(l){ if(l.marca === 'OLY') vistas[l.faixa] = 1; });
-    });
-  });
-  return Object.keys(vistas).sort(function(a, b){
-    var ia = ordem.indexOf(a), ib = ordem.indexOf(b);
-    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
-  });
-}
-
-// ── as contas ────────────────────────────────────────────────────────────
-// medida: real (líquido), fat (faturamento bruto) ou pot (potencial).
-// Mês antigo não tem faturamento nem potencial: cai no realizado, para a
-// linha do gráfico não sumir.
-function valor(l, qual){
-  var suf = E.metrica === 'rs' ? '_rs' : '_qtd';
-  var v = l[qual + suf];
-  if(v == null && qual !== 'real') v = l['real' + suf];
-  return v || 0;
-}
-function meta(l){ return l[E.metrica === 'rs' ? 'meta_rs' : 'meta_qtd'] || 0; }
-
-function linhasFiltradas(p){
-  return (p.linhas || []).filter(function(l){
-    if(E.segmento){
-      var cat = CATS.filter(function(c){ return c.marca === l.marca; })[0];
-      if(!cat || cat.id !== E.segmento) return false;
-    }
-    if(E.faixa && l.marca === 'OLY' && l.faixa !== E.faixa) return false;
-    if(E.faixa && l.marca !== 'OLY') return false;
-    return true;
-  });
-}
-
-function totalCategoria(prepostos, marcaCat){
-  var t = { meta:0, real:0 };
-  prepostos.forEach(function(p){
-    linhasFiltradas(p).forEach(function(l){
-      if(l.marca !== marcaCat) return;
-      t.meta += meta(l); t.real += valor(l, E.medida);
-    });
-  });
-  t.pct = t.meta > 0 ? t.real / t.meta * 100 : null;
-  t.dif = t.real - t.meta;
-  return t;
-}
-
-function prepostosVisiveis(mes, semEscolha){
-  var lista = prepostosDe(mes);
-  if(!TUDO) lista = lista.filter(function(p){ return p.codigo === S.codigo; });
-  if(E.preposto) lista = lista.filter(function(p){ return p.codigo === E.preposto; });
-  if(!semEscolha && E.escolhido) lista = lista.filter(function(p){ return p.codigo === E.escolhido; });
-  return lista;
-}
-function nomeDe(codigo){
-  var achado = todosPrepostos().filter(function(p){ return p.codigo === codigo; })[0];
-  return achado ? nomeProprio(achado.nome) : codigo;
-}
-
-// ════════════════════════════════════════════════════════════════════════
-//  Desenho
-// ════════════════════════════════════════════════════════════════════════
-var $ = function(id){ return document.getElementById(id); };
-
-function linhasDica(par){
-  return '<table>' + par.map(function(l){
-    return '<tr><td class="r">' + esc(l[0]) + '</td><td class="v">' + esc(l[1]) + '</td></tr>';
-  }).join('') + '</table>';
-}
-// Quanto falta para bater — é a primeira pergunta de quem olha o gráfico.
-function faltante(meta, real){
-  var fmt = E.metrica === 'rs' ? fRS.format : fInt.format;
-  return real >= meta ? 'Bateu a Meta!' : fmt(meta - real);
-}
-function rotuloFaltante(){ return E.metrica === 'rs' ? 'R$ Faltante' : 'Pares Faltantes'; }
-
-function mostrarDica(el, ev){
-  var d = $('dica');
-  d.innerHTML = linhasDica(JSON.parse(el.getAttribute('data-dica')));
-  d.style.display = 'block';
-  moverDica(ev);
-}
-function moverDica(ev){
-  var d = $('dica');
-  if(d.style.display !== 'block') return;
-  var c = d.getBoundingClientRect(), m = 14;
-  var x = ev.clientX + m, y = ev.clientY + m;
-  if(x + c.width > window.innerWidth - 6) x = ev.clientX - c.width - m;
-  if(y + c.height > window.innerHeight - 6) y = ev.clientY - c.height - m;
-  d.style.left = Math.max(6, x) + 'px';
-  d.style.top = Math.max(6, y) + 'px';
-}
-function esconderDica(){ $('dica').style.display = 'none'; }
-
-function gauge(p, cor){
-  // semicírculo de 180°, igual ao do painel: trilho branco e o arco da cor
-  var pc = p == null ? 0 : Math.max(0, Math.min(p, 100));
-  var C = Math.PI * 34;
-  var arco = C * pc / 100;
-  var rotulo = pct(p);
-  return '<svg viewBox="0 0 88 45" role="img" aria-label="' + esc(pct(p)) + ' da meta">' +
-    '<path d="M10 40 A 34 34 0 0 1 78 40" fill="none" stroke="rgba(255,255,255,.88)" stroke-width="9" stroke-linecap="butt"/>' +
-    '<path d="M10 40 A 34 34 0 0 1 78 40" fill="none" stroke="' + cor + '" stroke-width="9" stroke-linecap="butt" ' +
-      'stroke-dasharray="' + arco.toFixed(1) + ' ' + (C - arco).toFixed(1) + '"/>' +
-    '<text class="gpct" x="44" y="36" text-anchor="middle" font-size="' +
-      (rotulo.length >= 7 ? 10.5 : rotulo.length >= 6 ? 12 : 13) + '">' + esc(rotulo) + '</text>' +
-    '</svg>';
-}
-
-function cartoes(prepostos){
-  return '<div class="cartoes">' + CATS.map(function(c){
-    var t = totalCategoria(prepostos, c.marca);
-    var fmt = E.metrica === 'rs' ? fRS.format : fInt.format;
-    var apagado = E.segmento && E.segmento !== c.id;
-    return '<div class="cat" style="--cor:' + c.cor + (apagado ? ';opacity:.45' : '') + '">' +
-      '<div class="cat-ico"><svg viewBox="0 0 24 24" aria-hidden="true">' + ICONES[c.ico] + '</svg></div>' +
-      '<div class="cat-dados">' +
-        '<div class="cat-nome">' + c.nome + '</div>' +
-        '<div class="cat-gauge">' + gauge(t.pct, c.cor) + '</div>' +
-        '<div class="cat-linhas">' +
-          'Real: <b class="num">' + fmt(t.real) + '</b><br>' +
-          'Meta: <b class="num">' + fmt(t.meta) + '</b><br>' +
-          'Dif: <b class="num' + (t.dif < 0 ? ' neg' : '') + '">' + (t.dif > 0 ? '+' : '') + fmt(t.dif) + '</b>' +
-        '</div>' +
-      '</div></div>';
-  }).join('') + '</div>';
-}
-
-function tabela(prepostos){
-  var fmt = E.metrica === 'rs' ? fRS.format : fInt.format;
-  var cats = CATS.filter(function(c){ return !E.segmento || E.segmento === c.id; });
-  var linhas = prepostos.map(function(p){
-    var tds = cats.map(function(c){ return celulas(totalCategoria([p], c.marca), fmt); }).join('');
-    var marca = E.escolhido === p.codigo ? ' class="escolhida"' : (E.escolhido ? ' class="apagada"' : '');
-    var aberto = !!E.abertos[p.codigo];
-    var linha = '<tr data-cod="' + esc(p.codigo) + '"' + marca + '>' +
-      '<td title="' + esc(p.nome) + '"><button class="exp" type="button" data-abre="' + esc(p.codigo) + '" ' +
-        'aria-expanded="' + aberto + '" aria-label="' + (aberto ? 'Fechar' : 'Abrir') + ' as faixas de ' +
-        esc(nomeProprio(p.nome)) + '">' + (aberto ? '−' : '+') + '</button>' +
-      '<span class="nm">' + esc(nomeProprio(p.nome)) + '</span></td>' + tds + '</tr>';
-    return aberto ? linha + filhas(p, cats, fmt) : linha;
-  }).join('');
-  var rodape = cats.map(function(c){ return celulas(totalCategoria(prepostos, c.marca), fmt); }).join('');
-  return '<div class="painel"><div class="painel-tit">Metas por preposto' +
-      '<span>' + (E.escolhido ? 'vendo ' + esc(nomeDe(E.escolhido)) + ' · clique de novo para ver todos'
-        : (E.metrica === 'rs' ? 'em R$' : 'em pares e peças') + ' · ' + rotuloMedida() +
-          (estreito() ? ' · arraste de lado' : '') + ' · clique num nome para filtrar') + '</span></div>' +
-    '<div class="rolo"><table class="m"><thead>' +
-      '<tr class="grupos"><th rowspan="2">descrição</th>' + cats.map(function(c){
-        // no celular a coluna Dif. sai de cena: o grupo passa a valer 3
-        return '<th colspan="' + (estreito() ? 3 : 4) + '" class="ini">' + c.nome + '</th>'; }).join('') + '</tr>' +
-      '<tr>' + cats.map(function(){
-        return '<th class="ini">Meta</th><th>Real</th><th class="dif">Dif.</th><th>%</th>'; }).join('') + '</tr>' +
-    '</thead><tbody>' + linhas + '</tbody>' +
-    '<tfoot><tr><td>Total</td>' + rodape + '</tr></tfoot></table></div></div>';
-}
-// Detalhe do preposto: cada faixa de calçado e cada família numa linha,
-// preenchendo só a coluna da categoria a que pertence.
-function filhas(p, cats, fmt){
-  var porCat = {};
-  linhasDoPreposto(p).forEach(function(l){
-    (porCat[l.cat] = porCat[l.cat] || []).push(l);
-  });
-  var saida = '';
-  cats.forEach(function(c){
-    // categoria de uma linha só repetiria o número do preposto: não abre
-    if((porCat[c.id] || []).length < 2) return;
-    (porCat[c.id] || []).forEach(function(l){
-      var tds = cats.map(function(outra){
-        return outra.id === c.id ? celulas(l, fmt) : '<td class="ini"></td><td></td><td class="dif"></td><td></td>';
-      }).join('');
-      saida += '<tr class="filha"><td><span class="faixa">' + esc(nomeFaixa(l.faixa, c)) + '</span></td>' + tds + '</tr>';
-    });
-  });
-  return saida;
-}
-
-function linhasDoPreposto(p){
-  var saida = [];
-  linhasFiltradas(p).forEach(function(l){
-    var cat = CATS.filter(function(c){ return c.marca === l.marca; })[0];
-    if(!cat) return;
-    var meta_ = meta(l), real_ = valor(l, E.medida);
-    if(!meta_ && !real_) return;
-    saida.push({ cat: cat.id, faixa: l.faixa, meta: meta_, real: real_,
-                 dif: real_ - meta_, pct: meta_ > 0 ? real_ / meta_ * 100 : null });
-  });
-  saida.sort(function(a, b){ return (b.meta || 0) - (a.meta || 0); });
-  return saida;
-}
-
-// Como a Vulcabras escreve a faixa e como ela aparece na tela
-var NOMES_FAIXA = { 'CORRE':'Corre', 'CORRIDA/TREINO':'Corrida/treino',
-  'CONF_MASC':'Conforto masc.', 'CONF_FEM':'Conforto fem.', 'CLASSICOS':'Clássicos',
-  'INFANTIL':'Infantil', 'VISUAL':'Visual', 'OUTROS':'Outros' };
-function nomeFaixa(faixa, cat){
-  if(faixa === cat.marca) return cat.nome;
-  return NOMES_FAIXA[faixa] || faixa.charAt(0) + faixa.slice(1).toLowerCase();
-}
-
-function celulas(t, fmt){
-  var bola = t.pct == null ? '' : '<span class="pt ' + (t.pct >= 100 ? 'ok' : 'ruim') + '"></span>';
-  return '<td class="num ini">' + fmt(t.meta) + '</td>' +
-         '<td class="num">' + fmt(t.real) + '</td>' +
-         '<td class="num dif' + (t.dif < 0 ? ' neg' : '') + '">' + (t.dif > 0 ? '+' : '') + fmt(t.dif) + '</td>' +
-         '<td class="num">' + bola + pct(t.pct) + '</td>';
-}
-function rotuloMedida(){
-  return { real:'Realizado', fat:'Faturamento', pot:'Potencial' }[E.medida];
-}
-
-// Teto do eixo em número redondo: com Math.ceil puro, 117 mil vira 200 mil
-// e metade do painel fica vazia.
-function tetoBonito(v){
-  if(!(v > 0)) return 1;
-  var p = Math.pow(10, Math.floor(Math.log10(v))), r = v / p;
-  var m = r <= 1 ? 1 : r <= 1.2 ? 1.2 : r <= 1.5 ? 1.5 : r <= 2 ? 2 : r <= 2.5 ? 2.5
-        : r <= 3 ? 3 : r <= 4 ? 4 : r <= 5 ? 5 : r <= 6 ? 6 : r <= 8 ? 8 : 10;
-  return m * p;
-}
-
-// ── gráfico dos meses ────────────────────────────────────────────────────
-function estreito(){ return window.innerWidth < 720; }
-
-function graficoTempo(){
-  var ano = E.ano;
-  var dados = MESES.map(function(_, i){
-    var mes = ano + '-' + ('0' + (i + 1)).slice(-2);
-    var ps = prepostosVisiveis(mes);
-    var t = { meta:0, real:0 };
-    CATS.forEach(function(c){
-      if(E.segmento && E.segmento !== c.id) return;
-      var x = totalCategoria(ps, c.marca);
-      t.meta += x.meta; t.real += x.real;
-    });
-    return { mes:mes, rot:MESES[i], meta:t.meta, real:t.real,
-             pct: t.meta > 0 ? t.real / t.meta * 100 : null };
-  });
-  var max = Math.max.apply(null, dados.map(function(d){ return Math.max(d.meta, d.real); }).concat([1]));
-  var teto = tetoBonito(max);
-  var W = estreito() ? 380 : 640, H = estreito() ? 250 : 210;
-  var esq = estreito() ? 44 : 50, baixo = estreito() ? 34 : 32, topo = 10;
-  var largura = (W - esq) / 12, lb = largura * .52;
-  function y(v){ return topo + (H - topo - baixo) * (1 - v / teto); }
-
-  var grade = [0, .25, .5, .75, 1].map(function(f){
-    var vy = y(teto * f);
-    return '<line class="eixo" x1="' + esq + '" y1="' + vy + '" x2="' + W + '" y2="' + vy + '"/>' +
-           '<text x="' + (esq - 6) + '" y="' + (vy + 3.5) + '" text-anchor="end" font-size="10">' + fInt.format(teto * f) + '</text>';
-  }).join('');
-
-  var barras = dados.map(function(d, i){
-    var x = esq + i * largura + (largura - lb) / 2;
-    var h = Math.max(0, y(0) - y(d.real));
-    var sel = d.mes === E.mes;
-    var bateu = d.pct != null && Math.round(d.pct) >= 100;
-    var cor = bateu ? 'var(--selecao)' : 'var(--cinza-barra)';
-    var fmt = E.metrica === 'rs' ? fRS.format : fInt.format;
-    var dica = [['mês', d.rot + '/' + ano.slice(2)],
-                ['(%)Métrica Cartão', pct(d.pct)],
-                [rotuloFaltante(), d.meta > 0 ? faltante(d.meta, d.real) : '—'],
-                ['Meta', fmt(d.meta)],
-                ['Real', fmt(d.real)]];
-    return '<g class="barra-mes" data-dica=\'' + esc(JSON.stringify(dica)) + '\'>' +
-      '<rect x="' + x + '" y="' + y(d.real) + '" width="' + lb + '" height="' + h + '" fill="' + cor + '" rx="1"' +
-        (sel ? ' stroke="#fff" stroke-width="1.5"' : '') + '/>' +
-      '<text class="r-pct" x="' + (x + lb / 2) + '" y="' + (y(0) + 13) + '" text-anchor="middle" fill="' + (sel ? '#fff' : 'var(--tinta2)') + '">' +
-        (d.pct == null ? '' : Math.round(d.pct) + '%') + '</text>' +
-      '<text class="r-mes" x="' + (x + lb / 2) + '" y="' + (y(0) + 26) + '" text-anchor="middle" fill="' + (sel ? '#fff' : 'var(--tinta3)') + '">' + d.rot + '</text>' +
-      '</g>';
-  }).join('');
-
-  var pontos = dados.filter(function(d){ return d.meta > 0; });
-  var linha = pontos.map(function(d, i){
-    var idx = dados.indexOf(d);
-    return (i ? 'L' : 'M') + (esq + idx * largura + largura / 2) + ' ' + y(d.meta);
-  }).join(' ');
-  var bolas = pontos.map(function(d){
-    var idx = dados.indexOf(d);
-    return '<circle cx="' + (esq + idx * largura + largura / 2) + '" cy="' + y(d.meta) + '" r="3.2" fill="#fff"/>';
-  }).join('');
-
-  return '<div class="painel g-tempo"><div class="painel-tit">Atingimento metas ao longo do tempo<span>' + esc(ano) + '</span></div>' +
-    '<div class="legenda"><span><i style="background:var(--selecao)"></i>Bateu a meta</span>' +
-      '<span><i style="background:var(--cinza-barra)"></i>Abaixo</span>' +
-      '<span><i style="background:#fff"></i>Meta</span></div>' +
-    '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '">' + grade + barras +
-      '<path d="' + linha + '" fill="none" stroke="#fff" stroke-width="1.6"/>' + bolas +
-    '</svg></div>';
-}
-
-// ── gráfico das faixas de calçados ───────────────────────────────────────
-function graficoFaixas(prepostos){
-  var faixas = faixasDeCalcados().map(function(f){
-    var t = { meta:0, real:0 };
-    prepostos.forEach(function(p){
-      (p.linhas || []).forEach(function(l){
-        if(l.marca !== 'OLY' || l.faixa !== f) return;
-        t.meta += meta(l); t.real += valor(l, E.medida);
-      });
-    });
-    return { faixa:f, pct: t.meta > 0 ? t.real / t.meta * 100 : null, meta:t.meta, real:t.real };
-  }).filter(function(f){ return f.meta > 0; })
-    .sort(function(a, b){ return (b.pct || 0) - (a.pct || 0); });
-
-  if(!faixas.length) return '<div class="painel g-faixas"><div class="painel-tit">Atingimento metas calçados por faixa</div>' +
-    '<p style="color:var(--tinta3);font-size:12px">Sem meta de calçados neste recorte.</p></div>';
-
-  var max = Math.max.apply(null, faixas.map(function(f){ return f.pct || 0; }).concat([100]));
-  var W = estreito() ? 380 : 560, alt = estreito() ? 30 : 26;
-  var H = faixas.length * alt + 8, rotuloEsq = estreito() ? 96 : 118, dirLivre = estreito() ? 46 : 52;
-  var corpo = faixas.map(function(f, i){
-    var larg = (W - rotuloEsq - dirLivre) * (f.pct || 0) / max;
-    var y = i * alt + 4;
-    var fmt = E.metrica === 'rs' ? fRS.format : fInt.format;
-    var dica = [['codigo_faixa', f.faixa],
-                ['(%)Métrica Cartão', pct(f.pct)],
-                [rotuloFaltante(), faltante(f.meta, f.real)],
-                ['Meta', fmt(f.meta)],
-                ['Real', fmt(f.real)]];
-    return '<g class="barra-h" data-dica=\'' + esc(JSON.stringify(dica)) + '\'>' +
-      '<text x="' + (rotuloEsq - 8) + '" y="' + (y + 13) + '" text-anchor="end" font-size="11">' +
-        esc(NOMES_FAIXA[f.faixa] || f.faixa) + '</text>' +
-      '<rect x="' + rotuloEsq + '" y="' + y + '" width="' + Math.max(2, larg) + '" height="17" fill="var(--barra)" rx="1"/>' +
-      '<text class="rotulo" x="' + (rotuloEsq + Math.max(2, larg) + 7) + '" y="' + (y + 13) + '" font-size="10.5">' + pct(f.pct) + '</text>' +
-      '</g>';
-  }).join('');
-  return '<div class="painel g-faixas"><div class="painel-tit">Atingimento metas calçados por faixa' +
-    '<span>' + rotuloMedida() + '</span></div>' +
-    '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '">' + corpo + '</svg></div>';
-}
-
-// ── filtros ──────────────────────────────────────────────────────────────
-function opcoes(lista, sel){
-  return lista.map(function(o){
-    return '<option value="' + esc(o.v) + '"' + (o.v === sel ? ' selected' : '') + '>' + esc(o.t) + '</option>';
-  }).join('');
-}
-function filtros(){
-  var listaPrep = todosPrepostos();
-  // O vendedor não precisa ver a lista dos colegas nem no seletor
-  // travado: fica só o nome dele.
-  if(!TUDO) listaPrep = listaPrep.filter(function(p){ return p.codigo === S.codigo; });
-  var prep = (TUDO ? [{ v:'', t:'Todos' }] : []).concat(listaPrep.map(function(p){
-    return { v:p.codigo, t:nomeProprio(p.nome) };
-  }));
-  var travado = !TUDO;
-  var mesesAno = mesesDoAno(E.ano);
-  var campos = [
-    { id:'preposto', rot:'Preposto', ops:prep, val:E.preposto, dis:travado },
-    { id:'medida', rot:'Visualizar por', val:E.medida, ops:[
-      { v:'real', t:'Realizado' }, { v:'fat', t:'Faturamento' }, { v:'pot', t:'Potencial' }] },
-    { id:'metrica', rot:'Métrica', val:E.metrica, ops:[{ v:'qtd', t:'QTD' }, { v:'rs', t:'Valor R$' }] },
-    { id:'marca', rot:'Marca', val:E.marca, ops:[{ v:'OLY', t:'OLYMPIKUS' }], dis:true },
-    { id:'segmento', rot:'Segmento', val:E.segmento, ops:[{ v:'', t:'Todos' }].concat(CATS.map(function(c){
-      return { v:c.id, t:c.nome }; })) },
-    { id:'faixa', rot:'Faixa', val:E.faixa, ops:[{ v:'', t:'Todas' }].concat(faixasDeCalcados().map(function(f){
-      return { v:f, t:f }; })) },
-    { id:'ano', rot:'Ano', val:E.ano, ops:anos().map(function(a){ return { v:a, t:a }; }) },
-    { id:'mes', rot:'Mês', val:E.mes, ops:mesesAno.map(function(m){
-      return { v:m, t:MESES[+m.slice(5) - 1] }; }) }
-  ];
-  return '<div class="filtros">' + campos.map(function(c){
-    return '<div class="filtro"><label for="f_' + c.id + '">' + c.rot + '</label>' +
-      '<select id="f_' + c.id + '" data-campo="' + c.id + '"' + (c.dis ? ' disabled' : '') + '>' +
-      opcoes(c.ops, c.val) + '</select></div>';
-  }).join('') + '</div>';
-}
-
-function somaCampo(mes, campo){
-  var total = 0;
-  (mes.prepostos || []).forEach(function(p){
-    (p.linhas || []).forEach(function(l){ total += (l[campo] || 0); });
-  });
-  return total;
-}
-
-// O recado não ocupa mais a faixa inteira: fica no "i" ao lado do
-// título e só aparece para quem clicar.
-var avisoAberto = false;
-function mostrarAviso(html){
-  var caixa = $('avisos'), bt = $('btnAviso');
-  caixa.innerHTML = html;
-  var tem = !!html;
-  bt.hidden = !tem;
-  if(!tem) avisoAberto = false;
-  caixa.hidden = !(tem && avisoAberto);
-  bt.setAttribute('aria-expanded', String(avisoAberto));
-}
-
-// Com os meses que ainda vão acontecer no arquivo, o último deixou de
-// ser o mês de hoje: a tela abre no mês corrente, e só cai no último
-// quando ele ainda não foi importado.
-function escolherMesInicial(){
-  var hoje = new Date();
-  var atual = hoje.getFullYear() + '-' + ('0' + (hoje.getMonth() + 1)).slice(-2);
-  var tem = base.meses.filter(function(m){ return m.mes === atual; }).length;
-  var alvo = tem ? atual : base.meses[base.meses.length - 1].mes;
-  E.mes = alvo;
-  E.ano = alvo.slice(0, 4);
-}
-
-function ajustarMedida(){
-  if(medidaEscolhida) return;
-  var mes = base.meses.filter(function(m){ return m.mes === E.mes; })[0];
-  if(!mes) return;
-  // A tela abre no potencial: é a carteira, o número que o pessoal
-  // acompanha durante o mês. Mês antigo não tem potencial separado, e
-  // nesse caso cai no realizado em vez de abrir zerado.
-  E.medida = somaCampo(mes, 'pot_qtd') > 0 ? 'pot' : 'real';
-}
-
-function avisos(){
-  var partes = [];
-  var mes = base.meses.filter(function(m){ return m.mes === E.mes; })[0];
-  if(!mes) partes.push('Não há dados de ' + esc(mesRotulo(E.mes || '')) + ' ainda.');
-  // Pelo dado, não pelo nome do arquivo: o que falta nos meses antigos é
-  // o potencial, e é isso que vale a pena avisar.
-  else if(somaCampo(mes, 'pot_qtd') <= 0 && somaCampo(mes, 'fat_qtd') <= 0)
-    // O total do escritório bate com o BI; o que muda nos meses antigos é
-    // como cada fonte reparte o realizado entre os prepostos.
-    partes.push('<b>' + esc(mesRotulo(mes.mes)) + ' veio do acompanhamento de metas.</b> O total do escritório confere com o BI; a divisão por preposto pode variar alguns pontos, e não há potencial separado.');
-  if(TUDO && !localStorage.getItem(LOCAL_KEY) && mes && mes.origem !== 'metas.xls') partes.push('');
-  return partes.filter(Boolean).map(function(t){
-    return '<div class="aviso"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v5.5M12 7.5v.01"/></svg><div>' + t + '</div></div>';
-  }).join('');
-}
-
-// A coluna do nome fica parada enquanto o resto rola. Se o encaixe não
-// usar a largura real dela, sobra uma fatia da categoria seguinte colada
-// no cabeçalho — foi o que deixou a tabela confusa.
-// Ao soltar, a tabela encaixa no começo de uma categoria, já descontando
-// a coluna parada — senão a primeira coluna da categoria fica escondida
-// atrás dela e o cabeçalho parece trocado.
-var _encaixe = null;
-function casarCongelada(){
-  var rolo = document.querySelector('.rolo');
-  if(!rolo || rolo.dataset.pronto) return;
-  rolo.dataset.pronto = '1';
-  rolo.addEventListener('scroll', function(){
-    if(rolo.dataset.ajustando) return;        // é o próprio encaixe rolando
-    clearTimeout(_encaixe);
-    _encaixe = setTimeout(function(){ encaixarCategoria(rolo); }, 160);
-  });
-}
-function encaixarCategoria(rolo){
-  var parada = rolo.querySelector('table.m thead tr.grupos th:first-child');
-  if(!parada) return;
-  var largura = parada.getBoundingClientRect().width;
-  var limite = rolo.scrollWidth - rolo.clientWidth;
-  // posição de cada categoria dentro do conteúdo, medida na tela: o
-  // offsetLeft aqui mente, porque a célula do nome fica fora do fluxo
-  var esquerda = rolo.getBoundingClientRect().left;
-  var pontos = [0];
-  Array.prototype.forEach.call(rolo.querySelectorAll('table.m thead tr.grupos th.ini'), function(th){
-    var x = th.getBoundingClientRect().left - esquerda + rolo.scrollLeft;
-    pontos.push(Math.min(limite, Math.max(0, Math.round(x - largura))));
-  });
-  var atual = rolo.scrollLeft;
-  var alvo = pontos.reduce(function(a, b){
-    return Math.abs(b - atual) < Math.abs(a - atual) ? b : a;
-  }, pontos[0]);
-  if(Math.abs(alvo - atual) <= 4) return;
-  rolo.dataset.ajustando = '1';
-  rolo.scrollLeft = alvo;     // direto: o ajuste é curto e previsível
-  setTimeout(function(){ delete rolo.dataset.ajustando; }, 120);
-}
-window.addEventListener('resize', function(){
-  var rolo = document.querySelector('.rolo');
-  if(rolo) encaixarCategoria(rolo);
-});
-
-function desenhar(){
-  if(!base.meses.length){
-    $('corpo').innerHTML = '<div class="painel" style="text-align:center;padding:30px">' +
-      '<p style="font-size:14px;margin-bottom:6px">Nenhum mês importado ainda.</p>' +
-      '<p style="color:var(--tinta2);font-size:12.5px">' +
-      (TUDO ? 'Em <b>Metas</b>, o arquivo da conferência do mês; em <b>Diário</b>, o relatório de notas.' : 'Assim que o escritório publicar, os números aparecem aqui.') +
-      '</p></div>';
+/* ── a leitura ────────────────────────────────────────────────────────
+   O mesmo arquivo do Metas Preposto e da vitrine: se divergisse, uma das
+   três telas estaria mentindo. */
+async function carregar(){
+  if(!SESSAO){
+    $('painel').innerHTML = `<div class="aviso">Entre pelo <b>Portal do Vendedor</b> para ver as metas.
+      <a href="../index.html" style="color:var(--marca);font-weight:800">Ir para o portal</a></div>`;
+    document.querySelector('.filtros').hidden = true;
     return;
   }
-  if(anos().indexOf(E.ano) < 0) E.ano = anos()[anos().length - 1];
-  if(mesesDoAno(E.ano).indexOf(E.mes) < 0) E.mes = mesesDoAno(E.ano).slice(-1)[0];
-  ajustarMedida();
-  var ps = prepostosVisiveis(E.mes);
-  var naTabela = prepostosVisiveis(E.mes, true);
-  if(E.escolhido && !naTabela.some(function(p){ return p.codigo === E.escolhido; })) E.escolhido = '';
-  mostrarAviso(avisos());
-  $('corpo').innerHTML = filtros() + cartoes(ps) + tabela(naTabela) +
-    '<div class="graficos">' + graficoTempo() + graficoFaixas(ps) + '</div>';
-  Array.prototype.forEach.call(document.querySelectorAll('table.m tbody tr[data-cod]'), function(tr){
-    tr.addEventListener('click', function(ev){
-      if(ev.target.closest('.exp')) return;      // o + abre; o resto da linha filtra
-      E.escolhido = E.escolhido === tr.dataset.cod ? '' : tr.dataset.cod;
-      esconderDica();
-      desenhar();
-    });
-  });
-  Array.prototype.forEach.call(document.querySelectorAll('table.m .exp'), function(b){
-    b.addEventListener('click', function(ev){
-      ev.stopPropagation();
-      var cod = b.dataset.abre;
-      if(E.abertos[cod]) delete E.abertos[cod]; else E.abertos[cod] = 1;
-      esconderDica();
-      desenhar();
-    });
-  });
-  Array.prototype.forEach.call(document.querySelectorAll('.filtros select'), function(sel){
-    sel.addEventListener('change', function(){
-      E[sel.dataset.campo] = sel.value;
-      if(sel.dataset.campo === 'medida') medidaEscolhida = true;
-      if(sel.dataset.campo === 'ano') E.mes = '';
-      desenhar();
-    });
-  });
-  casarCongelada();
-  var mes = base.meses.filter(function(m){ return m.mes === E.mes; })[0];
-  // O nome do arquivo e a visão da campanha não dizem nada a quem usa a
-  // tela; o que importa é de onde veio e de quando é.
-  var quando = mes && dataHora(mes.importado_em);
-  $('rodape').textContent = quando ? 'EBM Vulcabras · ' + quando : '';
-  marcarAtualizacao(base, mes);
-}
-
-function dataHora(iso){
-  var d = new Date(iso);
-  if(isNaN(d)) return '';
-  return d.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric',
-                                     hour:'2-digit', minute:'2-digit' });
-}
-
-// A hora de quando o dado entrou, no topo e em letra pequena. O mes que
-// esta na tela manda; se ele nao guardou a hora, vale a mais recente que
-// existir na base - alguma coisa e melhor que um topo calado.
-function marcarAtualizacao(base, mes){
-  var el = $('atual');
-  if(!el) return;
-  var quando = mes && mes.importado_em;
-  var doMes = !!quando;
-  if(!quando){
-    base.meses.forEach(function(m){
-      if(m.importado_em && (!quando || m.importado_em > quando)) quando = m.importado_em;
-    });
+  try{
+    const r = await fetch('dados/metas.json?t=' + Date.now(), { cache:'no-store' });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    METAS = await r.json();
+  }catch(e){
+    $('painel').innerHTML = `<div class="aviso">Não consegui ler <b>dados/metas.json</b>
+      (${esc(e.message)}). O arquivo é publicado pelo robô da Carta.</div>`;
+    return;
   }
-  var texto = dataHora(quando);
-  el.hidden = !texto;
-  if(!texto) return;
-  var hoje = new Date().toLocaleDateString('pt-BR');
-  var curto = texto.slice(0, 10) === hoje ? 'hoje, ' + texto.slice(-5) : texto;
-  el.textContent = 'atualizado ' + curto;
-  el.title = doMes
-    ? 'Dados de ' + (mes.mes || '') + ' importados em ' + texto
-    : 'Importação mais recente da base: ' + texto;
+  const meses = (METAS.meses || []).map(m => m.mes).sort();
+  if(!meses.length){ $('painel').innerHTML = '<div class="aviso">O arquivo não tem mês nenhum.</div>'; return; }
+  // abre no mês corrente quando ele existe; senão, no último que veio
+  const hoje = new Date();
+  const atual = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0');
+  F.mes = meses.includes(atual) ? atual : meses[meses.length-1];
+  // o vendedor abre no que é dele e fica nisso; a CMS abre no time inteiro
+  if(!souCms()) F.prep = meuCodigo();
+  montarFiltros();
+  pintar();
 }
 
-// ── importação ───────────────────────────────────────────────────────────
-function lerArquivo(arquivo){
-  return new Promise(function(ok, falhou){
-    var leitor = new FileReader();
-    leitor.onload = function(){
-      try{ ok(lerRelatorio(leitor.result, arquivo.name)); }
-      catch(erro){ falhou(new Error(arquivo.name + ': ' + (erro.message || 'não consegui ler'))); }
-    };
-    leitor.onerror = function(){ falhou(new Error(arquivo.name + ': não consegui abrir.')); };
-    leitor.readAsArrayBuffer(arquivo);
-  });
+/* ── os filtros ───────────────────────────────────────────────────── */
+function mesesDoArquivo(){ return (METAS.meses || []).map(m => m.mes).sort(); }
+function trimestresDoArquivo(){
+  const t = new Set();
+  for(const m of mesesDoArquivo()) t.add(m.slice(0,4) + '-T' + (Math.floor((+m.slice(5,7)-1)/3) + 1));
+  return [...t].sort();
+}
+/* "2026-T4" vira os três meses dele que existem no arquivo. */
+function mesesDe(sel){
+  const q = /^(\d{4})-T(\d)$/.exec(sel);
+  if(!q) return [sel];
+  const base = (+q[2]-1)*3;
+  const alvo = [0,1,2].map(i => q[1] + '-' + String(base+i+1).padStart(2,'0'));
+  const tem = new Set(mesesDoArquivo());
+  return alvo.filter(m => tem.has(m));
+}
+/* No seletor o mês vem com o ano — "jul/26" —, porque a lista cobre mais de
+   um semestre e só "JUL" deixaria dúvida quando houver dois anos no arquivo. */
+const rotuloMesCurto = sel => {
+  const q = /^(\d{4})-T(\d)$/.exec(sel);
+  if(q) return q[2] + 'º tri';
+  return MES3[+sel.slice(5,7)-1].toLowerCase() + '/' + sel.slice(2,4);
+};
+const rotuloMes = sel => {
+  const q = /^(\d{4})-T(\d)$/.exec(sel);
+  if(q) return q[2] + 'º tri';
+  return MES3[+sel.slice(5,7)-1];
+};
+const rotuloMesLongo = sel => {
+  const q = /^(\d{4})-T(\d)$/.exec(sel);
+  if(q) return mesesDe(sel).map(m => MESES[+m.slice(5,7)-1]).join(' · ') || (q[2] + 'º trimestre');
+  return MESES[+sel.slice(5,7)-1] + ' de ' + sel.slice(0,4);
+};
+
+/* Só o primeiro nome: a tela é para quem convive com o time todo dia, e
+   "Leandro" basta.
+
+   Dois nomes precisam de cuidado. "CMS" é a SOMA da casa — o antigo "Todos",
+   e é o que a barra azul mostra em todo cartão. O preposto que vem na Carta
+   como "C M S" é a carteira do NÚCLEO, uma entre as outras; chamar os dois
+   de CMS fazia parecer que um era o total do outro. */
+const ehCms = p => /^c\s*m\s*s$/i.test(String((p && p.nome) || '').trim());
+const nomeBonito = n => {
+  const v = String(n || '').trim();
+  if(/^c\s*m\s*s$/i.test(v)) return 'Núcleo';
+  const p = v.toLowerCase().split(/\s+/)[0] || '';
+  return p.charAt(0).toUpperCase() + p.slice(1);
+};
+
+/* Fora da lista por ora (pedido dele, 13/10). Ele sai dos chips e da visão
+   de comparar; continua dentro da soma da CMS, que é o número oficial da
+   Carta — tirá-lo de lá mudaria o total da casa. */
+const FORA = ['4322318'];
+function prepostosDoMes(sel){
+  const vistos = new Map();
+  for(const mes of mesesDe(sel)){
+    const m = (METAS.meses || []).find(x => x.mes === mes);
+    for(const p of ((m && m.prepostos) || []))
+      if(!vistos.has(String(p.codigo))) vistos.set(String(p.codigo), p);
+  }
+  for(const c of FORA) vistos.delete(c);
+  return [...vistos.values()].sort((a,b) =>
+    ehCms(a) ? -1 : ehCms(b) ? 1 : String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
 }
 
-// Um relatório por mês: dá para escolher os oito de uma vez.
-function importar(arquivos){
-  var lista = Array.prototype.slice.call(arquivos);
-  aviso('Lendo ' + lista.length + ' arquivo(s)…');
-  var prontos = [], erros = [];
-  lista.reduce(function(fila, arquivo){
-    return fila.then(function(){
-      return lerArquivo(arquivo).then(function(m){ prontos.push(m); },
-                                      function(e){ erros.push(e.message); });
-    });
-  }, Promise.resolve()).then(function(){
-    if(prontos.length){
-      var local = juntar(lerLocal(), { meses: prontos });
-      if(!gravarLocal(local)) return aviso('Não consegui guardar neste aparelho (espaço cheio?).', true);
-      base = juntar(base, local);
-      var ultimo = prontos.map(function(m){ return m.mes; }).sort().slice(-1)[0];
-      E.mes = ultimo; E.ano = ultimo.slice(0, 4);
-      desenhar();
+/* O que cada um pode escolher. Para o vendedor a lista tem um nome só — o
+   dele —, e o chip fica aceso sem ser um botão de verdade: dois cliques não
+   levam a lugar nenhum, e uma lista com os colegas em cinza só avisaria que
+   existe algo que ele não pode ver. */
+function prepostosVisiveis(){
+  const todos = prepostosDoMes(F.mes);
+  if(souCms()) return todos;
+  const eu = meuCodigo();
+  return todos.filter(p => String(p.codigo) === eu);
+}
+function montarFiltros(){
+  // marca
+  $('fMarca').innerHTML = Object.entries(MARCAS).map(([k,v]) =>
+    `<button class="chip${F.marca === k ? ' on' : ''}" data-marca="${k}">${esc(v.rotulo)}</button>`).join('');
+  /* O ano inteiro não cabe na linha junto com a marca. Os meses do primeiro
+     semestre — os dois primeiros trimestres — ficam atrás de um "+", e os do
+     segundo aparecem por extenso. Se o escolhido está lá atrás, abre sozinho:
+     um mês selecionado e invisível seria um estado sem saída. */
+  const meses = mesesDoArquivo();
+  const antigo = m => +m.slice(5, 7) <= 6;
+  const escondidos = meses.filter(antigo);
+  const abertos = F.abrirMeses || escondidos.includes(F.mes);
+  const bt = m => `<button class="${F.mes === m ? 'on' : ''}" data-mes="${m}">${rotuloMesCurto(m)}</button>`;
+  const presoAberto = escondidos.includes(F.mes);
+  $('fMes').innerHTML =
+    (escondidos.length ? (abertos
+      ? (presoAberto ? '' : `<button class="mais" id="btMenosMeses"
+            title="Esconder os meses do primeiro semestre"
+            aria-label="Esconder os meses do primeiro semestre">−</button>`) + escondidos.map(bt).join('')
+      : `<button class="mais" id="btMaisMeses" title="Mostrar ${escondidos.length} meses do primeiro semestre"
+          aria-label="Mostrar os meses do primeiro semestre">+</button>`) : '')
+    + meses.filter(m => !antigo(m)).map(bt).join('')
+    + '<span class="sep"></span>'
+    + trimestresDoArquivo().map(x =>
+      `<button class="${F.mes === x ? 'on' : ''}" data-mes="${x}">${rotuloMes(x)}</button>`).join('');
+  // preposto
+  const lista = prepostosVisiveis();
+  const cms = souCms();
+  if(cms){
+    if(!lista.some(p => String(p.codigo) === F.prep)) F.prep = 'TODOS';
+  }else{
+    F.prep = meuCodigo();
+  }
+  $('fPrep').innerHTML =
+    (cms ? `<button class="chip${F.prep === 'TODOS' ? ' on' : ''}" data-prep="TODOS">CMS</button>` : '')
+    + lista.map(p => `<button class="chip${F.prep === String(p.codigo) ? ' on' : ''}"
+        data-prep="${esc(p.codigo)}">${esc(nomeBonito(p.nome))}</button>`).join('');
+  // comparar vendedores é visão de gestor
+  $('fVisao').hidden = !cms;
+  if(!cms) F.comparar = false;
+  // medida
+  $('fMedida').innerHTML = [['pot','Potencial'], ['real','Realizado'], ['fat','Faturado']]
+    .map(([k,r]) => `<button class="chip${F.medida === k ? ' on' : ''}" data-medida="${k}">${r}</button>`).join('');
+  // a visão do gestor: uma barra por vendedor em cada cartão
+  $('fVisao').innerHTML = `<button class="chip${F.comparar ? ' on' : ''}" id="btComparar">
+    ${F.comparar ? 'Ver um por vez' : 'Comparar vendedores'}</button>`;
+  $('fVisao').title = ehTrimestre(F.mes)
+    ? 'No trimestre a comparação soma os três meses de cada um'
+    : 'Uma barra por vendedor em cada cartão, com a CMS na frente';
+}
+
+document.addEventListener('click', ev => {
+  const b = ev.target.closest('button'); if(!b) return;
+  if(b.dataset.marca){ F.marca = b.dataset.marca; }
+  else if(b.dataset.mes){ F.mes = b.dataset.mes; }
+  else if(b.dataset.prep){ F.prep = b.dataset.prep; }
+  else if(b.dataset.medida){ F.medida = b.dataset.medida; }
+  else if(b.id === 'btComparar'){ F.comparar = !F.comparar; }
+  else if(b.id === 'btMaisMeses'){ F.abrirMeses = true; montarFiltros(); return; }
+  else if(b.id === 'btMenosMeses'){ F.abrirMeses = false; montarFiltros(); return; }
+  else return;
+  montarFiltros(); pintar();
+});
+
+/* ── as contas ────────────────────────────────────────────────────────
+   O Potencial é o que abre: é o número que a equipe acompanha, porque
+   inclui o vendido que ainda não faturou. Quando o arquivo não traz o
+   potencial de uma linha, o realizado faz as vezes — foi assim que a
+   conta passou a bater com a do Gestor. */
+function valor(l, campo){
+  const m = F.medida;
+  if(m === 'fat') return l['fat_' + campo];
+  if(m === 'real') return l['real_' + campo];
+  const p = l['pot_' + campo];
+  return p == null ? l['real_' + campo] : p;
+}
+const zero = () => ({ meta_q:0, meta_r:0, pos_q:0, pos_r:0, tem:false });
+function somar(a, l){
+  a.meta_q += l.meta_qtd || 0; a.meta_r += l.meta_rs || 0;
+  a.pos_q += valor(l,'qtd') || 0; a.pos_r += valor(l,'rs') || 0;
+  a.tem = true; return a;
+}
+/* Percorre as linhas do recorte: os meses escolhidos, os prepostos pedidos
+   ('TODOS' soma o time inteiro) e devolve cada linha ao visitante. */
+function percorrer(sel, codigo, visita){
+  for(const mes of mesesDe(sel)){
+    const m = (METAS.meses || []).find(x => x.mes === mes);
+    for(const p of ((m && m.prepostos) || [])){
+      if(codigo !== 'TODOS' && String(p.codigo) !== String(codigo)) continue;
+      for(const l of (p.linhas || [])) visita(l, p, mes);
     }
-    var meses = prontos.map(function(m){
-      return mesRotulo(m.mes) + (m.so_realizado ? ' (realizado)' : ' (meta)');
-    }).join(', ');
-    aviso((prontos.length ? '<b>Importado: ' + esc(meses) + '</b> — guardado neste aparelho; use <b>JSON</b> para publicar para todo mundo.' : '') +
-          (erros.length ? (prontos.length ? '<br>' : '') + '<b>Não entraram:</b> ' + esc(erros.join(' · ')) : ''),
-          erros.length && !prontos.length);
+  }
+}
+
+/* O recorte de uma marca: o total de tênis, as faixas dele e as famílias
+   em R$. */
+function agregar(sel, codigo, marcaId){
+  const cfg = MARCAS[marcaId];
+  const tot = zero(), faixas = {}, familias = {};
+  /* Com a Olympikus na tela, a Under Armour INTEIRA entra como mais uma
+     família: é assim que ela conta na Carta Campanha e é assim que ela soma
+     na trava dos 15% — tênis dela incluso, numa coluna só. Sem ela o bloco
+     mostrava quatro das cinco parcelas que formam os 15%, e o vendedor não
+     via de onde vinha o pedaço que falta. */
+  const ua = marcaId === 'OLY' ? zero() : null;
+  percorrer(sel, codigo, l => {
+    if(l.marca === cfg.tenis){
+      somar(tot, l);
+      somar(faixas[l.faixa] = faixas[l.faixa] || zero(), l);
+    }else if(cfg.familias.includes(l.marca)){
+      somar(familias[l.marca] = familias[l.marca] || zero(), l);
+    }else if(ua && MARCAS_UA.includes(l.marca)){
+      somar(ua, l);
+    }
   });
+  const ord = (o, k) => (cfg.ordemFaixa[k] != null ? cfg.ordemFaixa[k] : 90);
+  const lista = (obj, usarOrdem) => Object.entries(obj)
+    .map(([k,v]) => ({ chave:k, nome:NOMES[k] || k, ...v }))
+    .sort((a,b) => usarOrdem ? (ord(0,a.chave) - ord(0,b.chave))
+                             : (cfg.familias.indexOf(a.chave) - cfg.familias.indexOf(b.chave)));
+  // a fila das famílias é a da marca, não a do preposto: sem isso, quem não
+  // tem meta de confecção perdia a coluna, e o Gestor a mantém com "sem meta"
+  for(const k of cfg.familias) if(!familias[k]) familias[k] = zero();
+  const fams = lista(familias, false);
+  // a Under Armour fecha a fila, depois das famílias da própria marca
+  if(ua && ua.tem) fams.push({ chave:'UA', nome:'Under Armour', ...ua });
+  return { tot, faixas:lista(faixas, true), familias:fams };
 }
 
-function aviso(html, ruim){
-  $('avisos').innerHTML = '<div class="aviso"' + (ruim ? ' style="border-color:#ff8b8b"' : '') +
-    '><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">' +
-    (ruim ? '<circle cx="12" cy="12" r="9.5"/><path d="M12 7v6M12 16.5v.01"/>' : '<path d="M20 6L9 17l-5-5"/>') +
-    '</svg><div>' + html + '</div></div>';
-}
-
-function baixarJSON(){
-  var saida = JSON.stringify({ versao:1, atualizado_em:new Date().toISOString(), meses:base.meses });
-  var url = URL.createObjectURL(new Blob([saida], { type:'application/json' }));
-  var a = document.createElement('a');
-  a.href = url; a.download = 'metas.json';
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
-}
-
-// ── porta de entrada ─────────────────────────────────────────────────────
-function porta(){
-  $('corpo').innerHTML = '<div class="porta"><h2>Entre pelo portal</h2>' +
-    '<p>Esta tela mostra as metas do vendedor que está logado. Entre no portal e volte por aqui.</p>' +
-    '<a class="btn primario" href="../index.html">Ir para o portal</a></div>';
-}
-
-function emProva(){
-  $('corpo').innerHTML = '<div class="porta"><h2>Em preparação</h2>' +
-    '<p>A tela de metas ainda está em testes. Quando estiver pronta, ela aparece no portal para todo mundo.</p>' +
-    '<a class="btn primario" href="../index.html">Voltar ao portal</a></div>';
-}
-
-function iniciar(){
-  S = sessao();
-  if(!S){ porta(); return; }
-  if(SO_DEV && nomeNormal(S.nome) !== nomeNormal(NOME_DEV)){ emProva(); return; }
-  TUDO = mandaEmTudo(S);
-  // Para CMS e DEV a logo abre a importação; para o vendedor ela
-  // continua sendo o caminho de volta ao portal.
-  $('marcaBt').hidden = !TUDO;
-  $('marcaLink').hidden = TUDO;
-  if(!TUDO) E.preposto = S.codigo;
-
-  fetch('dados/metas.json?t=' + Date.now(), { cache:'no-store' })
-    .then(function(r){ return r.ok ? r.json() : { meses:[] }; })
-    .catch(function(){ return { meses:[] }; })
-    .then(function(publicado){
-      base = juntar(publicado || { meses:[] }, lerLocal());
-      if(base.meses.length) escolherMesInicial();
-      desenhar();
-    });
-}
-
-// A dica vale para qualquer barra com data-dica; o corpo é redesenhado
-// toda hora, então quem escuta é ele, não cada barra.
-$('corpo').addEventListener('pointerover', function(ev){
-  var alvo = ev.target.closest ? ev.target.closest('[data-dica]') : null;
-  if(alvo) mostrarDica(alvo, ev);
-});
-$('corpo').addEventListener('pointermove', function(ev){
-  var alvo = ev.target.closest ? ev.target.closest('[data-dica]') : null;
-  if(alvo) moverDica(ev); else esconderDica();
-});
-$('corpo').addEventListener('pointerleave', esconderDica);
-window.addEventListener('scroll', esconderDica, true);
-window.addEventListener('pointerup', function(ev){
-  // no celular o toque abre a dica; ela sai sozinha logo depois
-  if(ev.pointerType && ev.pointerType !== 'mouse') setTimeout(esconderDica, 2200);
-});
-
-// A importação não divide mais espaço com o cabeçalho: fica atrás da
-// logo, onde só CMS e DEV chegam, e o topo do vendedor tem só o Portal.
-function abrirImp(abrir){
-  $('modalImp').hidden = !abrir;
-  if(abrir) $('btnFechaImp').focus();
-  else if($('marcaBt') && !$('marcaBt').hidden) $('marcaBt').focus();
-}
-$('marcaBt').addEventListener('click', function(){ abrirImp(true); });
-$('btnFechaImp').addEventListener('click', function(){ abrirImp(false); });
-$('modalImp').addEventListener('click', function(ev){
-  if(ev.target === this) abrirImp(false);        // clique no fundo fecha
-});
-document.addEventListener('keydown', function(ev){
-  if(ev.key === 'Escape' && !$('modalImp').hidden) abrirImp(false);
-});
-$('btnAviso').addEventListener('click', function(){
-  avisoAberto = !avisoAberto;
-  var caixa = $('avisos');
-  caixa.hidden = !avisoAberto;
-  $('btnAviso').setAttribute('aria-expanded', String(avisoAberto));
-});
-$('btnMetas').addEventListener('click', function(){ $('arqMetas').click(); });
-$('btnDiario').addEventListener('click', function(){ $('arqDiario').click(); });
-['arqMetas', 'arqDiario'].forEach(function(id){
-  $(id).addEventListener('change', function(e){
-    if(e.target.files && e.target.files.length){ abrirImp(false); importar(e.target.files); }
-    e.target.value = '';
+/* A TRAVA DOS 15%: no numerador, as outras famílias Olympikus mais a Under
+   Armour inteira (tênis dela incluso, uma família só); no denominador, a
+   META de tênis Olympikus em R$ — não o tênis vendido. */
+function trava(sel, codigo){
+  let meta = 0; const partes = {};
+  percorrer(sel, codigo, l => {
+    if(l.marca === 'OLY'){ meta += l.meta_rs || 0; return; }
+    const k = MARCAS_UA.includes(l.marca) ? 'UA' : (['ACOLY','CHOLY','MEOLY','CFOLY'].includes(l.marca) ? l.marca : null);
+    if(!k) return;
+    partes[k] = (partes[k] || 0) + (valor(l,'rs') || 0);
   });
-});
-$('btnBaixar').addEventListener('click', baixarJSON);
+  if(!meta) return null;
+  const num = Object.values(partes).reduce((s,v) => s+v, 0);
+  const pct = num / meta;
+  // para a CMS é leitura, não trava: a cobrança dos 15% é de cada vendedor
+  const informativo = codigo === 'TODOS';
+  return { meta, num, partes, pct, informativo,
+    ok: !informativo && pct >= TRAVA_15, falta: meta*TRAVA_15 - num };
+}
 
-var larguraAntes = window.innerWidth;
-window.addEventListener('resize', function(){
-  var agora = window.innerWidth;
-  if((agora < 720) !== (larguraAntes < 720) && base.meses.length) desenhar();
-  larguraAntes = agora;
-});
+const bateu = (pos, meta, g) => meta > 0 && pos >= meta * g;
+const alvo = (meta, g) => (meta || 0) * g;
+/* altura em % da área: 100% da meta fica a 2/3 do cartão, porque o eixo
+   sobe até 150% — assim quem passou da meta ainda aparece inteiro */
+function altura(pos, meta, escala){
+  if(!pos || pos <= 0) return 0;
+  const ref = meta || escala; if(!ref) return 0;
+  return Math.round(Math.min(pos/ref, TETO) / TETO * 1000) / 10;
+}
+const linhaRegua = (g, rot, classe) =>
+  `<i class="${classe || 'l100'}" style="bottom:${(g/TETO*100).toFixed(2)}%"><b>${rot}</b></i>`;
 
-iniciar();
-})();
+/* Cada barra mora numa coluna, e a estrela de quem bateu fica EM CIMA dela —
+   no topo da própria coluna, não no canto do cartão: assim se lê de relance
+   qual das barras bateu, que era o que o canto não dizia. */
+function coluna(quem, pos, meta, ok, tom, atraso, escala){
+  const h = altura(pos, meta, escala);
+  const ouro = ok && tom !== 'prata';
+  return `<div class="pb" style="--h:${h}%">
+    ${ok ? `<span class="s${tom === 'prata' ? ' pr' : ''}">${ESTRELA}</span>` : ''}
+    <div class="b ${quem}${ouro ? ' ouro' : ''}${pos ? '' : ' vazia'}"
+      style="height:${h}%;animation-delay:${(atraso||0).toFixed(2)}s"></div>
+  </div>`;
+}
+
+/* ── o desenho ──────────────────────────────────────────────────────── */
+const ehTrimestre = sel => /^\d{4}-T\d$/.test(String(sel || ''));
+
+function pintar(){
+  const cfg = MARCAS[F.marca];
+  const soCms = F.prep === 'TODOS';
+  const dCms = agregar(F.mes, 'TODOS', F.marca);
+  const dVen = soCms ? dCms : agregar(F.mes, F.prep, F.marca);
+  const prep = prepostosDoMes(F.mes).find(p => String(p.codigo) === F.prep);
+  const nome = soCms ? 'CMS' : nomeBonito(prep && prep.nome);
+
+  if(!dCms.tot.tem){
+    $('painel').innerHTML = `<div class="aviso">Não há linha de <b>${esc(cfg.rotulo)}</b>
+      em ${esc(rotuloMesLongo(F.mes))}. Escolha outro mês ou outra marca.</div>`;
+    return;
+  }
+  /* O trimestre não vira um número só: cada mês tem a sua barra e a sua
+     estrela, pelas mesmas regras. Somar os três esconderia o mês ruim atrás
+     do bom, que é justamente o que o diretor precisa enxergar. Com
+     "comparar vendedores" ligado a visão é outra — ali o trimestre soma,
+     porque o que se compara é o acumulado de cada um. */
+  const porMes = (ehTrimestre(F.mes) && !F.comparar)
+    ? mesesDe(F.mes).map(m => ({ mes:m, cms:agregar(m, 'TODOS', F.marca),
+        ven:soCms ? null : agregar(m, F.prep, F.marca) }))
+    : null;
+
+  const cmsDestravou = bateu(dCms.tot.pos_q, dCms.tot.meta_q, GATILHO_TOTAL);
+  const t15Mes = trava(F.mes, F.prep);
+  const porta = !soCms && cmsDestravou && bateu(dVen.tot.pos_q, dVen.tot.meta_q, GATILHO_TOTAL)
+                && !!(t15Mes && t15Mes.ok);
+
+  const t15Tri = trava(trimestreDe(F.mes), F.prep);
+  const ctx = { soCms, cmsDestravou, porta, nome, porMes, tem15: !!(t15Tri && t15Tri.ok) };
+  const html = [];
+  if(t15Mes) html.push(blocoTrava(t15Mes, trava(trimestreDe(F.mes), F.prep), nome));
+  html.push(blocoTenis(dCms, dVen, ctx));
+  if(dCms.familias.length) html.push(blocoFamilias(dCms, dVen, ctx));
+  html.push(blocoLegenda(soCms, nome));
+  const modo = F.comparar ? ' cmp' : (porMes ? ' tri' : '');
+  $('painel').innerHTML = `<div class="mt${modo}">${html.join('')}</div>`;
+}
+
+/* O trimestre a que o mês escolhido pertence — quando já é um trimestre,
+   ele mesmo. A trava é cobrada no trimestre; o mês ao lado é a leitura
+   parcial dele. */
+function trimestreDe(sel){
+  if(/^\d{4}-T\d$/.test(sel)) return sel;
+  return sel.slice(0,4) + '-T' + (Math.floor((+sel.slice(5,7)-1)/3) + 1);
+}
+function blocoTrava(tMes, tTri, nome){
+  /* A régua começa pela META de tênis — o denominador — e as famílias se
+     empilham depois. Ela vai até a meta mais os 15% (ou até o fim do que
+     existe, quando passou), então o vazio entre a pilha e o tracinho É
+     exatamente o que falta. */
+  const uma = (rot, t) => {
+    if(!t) return '';
+    const i = !!t.informativo;
+    // sem trava, a régua vai só até onde as fatias somam
+    const ref = i ? (t.meta + t.num) : Math.max(t.meta + t.num, t.meta * (1 + TRAVA_15));
+    const w = v => (v/ref*100).toFixed(2);
+    const seg = `<i class="f-OLY" style="width:${w(t.meta)}%"></i>` +
+      FAMS15.map(([k]) => { const v = t.partes[k] || 0;
+        return v > 0 ? `<i class="f-${k}" style="width:${w(v)}%"></i>` : ''; }).join('');
+    return `<div class="un">
+      <span class="qd">${esc(rot)}</span>
+      <span class="trk">${i ? '' : `<i class="mk${t.ok ? ' ok' : ''}" style="left:${w(t.meta*(1+TRAVA_15))}%"></i>`}${seg}</span>
+      <span class="pc${t.ok ? ' ok' : ''}">${pctTxt(t.pct)}</span>
+      <span class="fa">${i ? 'das outras famílias sobre o tênis'
+        : (t.falta > 0 ? 'faltam R$ ' + kk(t.falta) : 'R$ ' + kk(-t.falta) + ' acima')}</span>
+    </div>`;
+  };
+  const base = tTri || tMes;
+  const info = !!base.informativo;
+  const detalhe = FAMS15.map(([k,r]) => { const v = base.partes[k] || 0;
+    return v > 0 ? `<span><i class="f-${k}"></i>${esc(r.toLowerCase())} ${pctTxt(v/base.meta)}</span>` : ''; }).join('');
+  const mesmo = /^\d{4}-T\d$/.test(F.mes);
+  return `<div class="t15">
+    <div class="rot">${info ? 'Composição do faturamento' : 'Trava dos 15% · ' + esc(nome)}<span class="so-largo"> ·
+      outras famílias e Under Armour sobre a meta de tênis Olympikus</span></div>
+    ${mesmo ? '' : uma(rotuloMes(F.mes), tMes)}
+    ${uma(mesmo ? rotuloMes(F.mes) : 'Trimestre', tTri)}
+    <div class="lg"><span><i class="f-OLY"></i>meta de tênis R$ ${kk(base.meta)}</span>${detalhe}
+      ${info ? '' : '<span><i class="mk"></i>15% da meta</span>'}
+      <span>${info ? 'a CMS não tem trava: os 15% são cobrados de cada vendedor'
+                   : 'a trava é cobrada no trimestre; o mês é a leitura parcial dele'}</span></div>
+  </div>`;
+}
+
+function blocoTenis(dCms, dVen, ctx){
+  const esc100 = !dCms.tot.meta_q ? Math.max(1, dCms.tot.pos_q, dVen.tot.pos_q) : null;
+  const cartoes = [cartao({
+    classe:'tot', nome:'TOTAL', c:dCms.tot, v:dVen.tot, gatilho:GATILHO_TOTAL,
+    unidade:'q', i:0, escala:esc100, okC:ctx.cmsDestravou, okV:ctx.porta ? 'ouro' : null,
+    segunda:true, grupo:'tot', ctx,
+  })];
+  dCms.faixas.forEach((f, i) => {
+    const v = dVen.faixas.find(x => x.chave === f.chave) || zero();
+    const okC = ctx.cmsDestravou && bateu(f.pos_q, f.meta_q, GATILHO_FAIXA);
+    const okV = ctx.porta && okC ? (bateu(v.pos_q, v.meta_q, GATILHO_FAIXA) ? 'ouro' : 'prata') : null;
+    cartoes.push(cartao({ nome:f.nome, c:f, v, gatilho:GATILHO_FAIXA, unidade:'q',
+      i:i+1, okC, okV, chave:f.chave, ctx }));
+  });
+  return `<div class="sec">
+    <div class="rot">Calçados · pares${F.medida === 'fat' ? ' faturados' : (F.medida === 'pot' ? ' · potencial' : '')}</div>
+    <div class="rolo"><div class="fila">${cartoes.join('')}</div></div>
+  </div>`;
+}
+
+function blocoFamilias(dCms, dVen, ctx){
+  const cartoes = dCms.familias.map((f, i) => {
+    const v = dVen.familias.find(x => x.chave === f.chave) || zero();
+    /* Regra do Gestor de 13/10: a família é INDEPENDENTE dos tênis. Ele bateu
+       os 95%, doura e ganha a estrela — sem porta e sem esperar a CMS. A prata
+       (os 50% da carta) é quando a CMS bateu a família, ele não, e ele tem os
+       15% do trimestre. As faixas de tênis seguem com a porta tripla. */
+    const okC = bateu(f.pos_r, f.meta_r, GATILHO_FAMILIA);
+    const okV = bateu(v.pos_r, v.meta_r, GATILHO_FAMILIA) ? 'ouro'
+              : ((ctx.tem15 && okC) ? 'prata' : null);
+    return cartao({ nome:f.nome, c:f, v, gatilho:GATILHO_FAMILIA, unidade:'r',
+      i, okC, okV, chave:f.chave, ctx });
+  });
+  return `<div class="sec">
+    <div class="rot">Outras famílias · R$</div>
+    <div class="rolo"><div class="fila">${cartoes.join('')}</div></div>
+  </div>`;
+}
+
+/* Tira do recorte agregado o grupo deste cartão — o total, a faixa ou a
+   família, pela chave. */
+function grupoDo(d, o){
+  if(!d) return zero();
+  if(o.grupo === 'tot') return d.tot;
+  return d.faixas.find(x => x.chave === o.chave) || d.familias.find(x => x.chave === o.chave) || zero();
+}
+
+/* Um cartão: nome, as barras com a régua do gatilho e os números embaixo —
+   a falta (ou o excedente) grande, a meta pequena. */
+function cartao(o){
+  const ctx = o.ctx, q = o.unidade === 'q';
+  const pos = g => q ? g.pos_q : g.pos_r, meta = g => q ? g.meta_q : g.meta_r;
+  const num = v => q ? nf(v) : 'R$ ' + kk(v);
+  const gap = (g, a) => { const d = a - pos(g);
+    return !meta(g) ? '—' : (d > 0 ? '−' + num(d) : '+' + num(-d)); };
+  const metaTxt = g => !meta(g) ? 'sem meta'
+    : Math.round(o.gatilho*100) + '% de ' + num(meta(g));
+
+  let barras, rodape;
+  if(F.comparar){
+    barras = barrasComparadas(o);
+    rodape = legendaComparados(o);
+  }else if(ctx.porMes){
+    barras = barrasPorMes(o);
+    rodape = tiraQuem(o) + legendaPorMes(o);
+  }else{
+    barras = coluna('c', pos(o.c), meta(o.c), o.okC, null, o.i*0.06, o.escala)
+      + (ctx.soCms ? '' : coluna('v', pos(o.v), meta(o.v), !!o.okV, o.okV, o.i*0.06 + 0.05, o.escala));
+    rodape = `<div class="num">
+      <div><span class="q">CMS</span><b class="g c${o.okC ? ' ok' : ''}">${gap(o.c, alvo(meta(o.c), o.gatilho))}</b></div>
+      ${ctx.soCms ? '' : `<div><span class="q">${esc(ctx.nome)}</span>
+        <b class="g v${bateu(pos(o.v), meta(o.v), o.gatilho) ? ' ok' : ''}">${gap(o.v, alvo(meta(o.v), o.gatilho))}</b></div>`}
+    </div>
+    <span class="mm">${esc(metaTxt(ctx.soCms ? o.c : o.v))}</span>`;
+  }
+
+  const reguas = linhaRegua(o.gatilho, Math.round(o.gatilho*100) + '%')
+    + (o.segunda && o.gatilho !== 1 ? linhaRegua(1, 'meta', 'lref') : '');
+
+  return `<div class="cd ${o.classe || ''}">
+    <div class="nm">${esc(o.nome)}</div>
+    <div class="bars">${reguas}${barras}</div>
+    ${rodape}
+  </div>`;
+}
+
+/* ── o trimestre, mês a mês ───────────────────────────────────────────
+   Uma coluna por mês. Com um vendedor escolhido são duas barras por mês
+   (CMS e ele); com a CMS, uma só. As regras são as mesmas de um mês
+   isolado, aplicadas dentro de cada um. */
+function barrasPorMes(o){
+  const ctx = o.ctx;
+  return ctx.porMes.map((m, i) => {
+    const gc = grupoDo(m.cms, o), gv = grupoDo(m.ven, o);
+    const q = o.unidade === 'q';
+    const pc = q ? gc.pos_q : gc.pos_r, mc = q ? gc.meta_q : gc.meta_r;
+    const pv = q ? gv.pos_q : gv.pos_r, mv = q ? gv.meta_q : gv.meta_r;
+    // o destrave da CMS é do mês, não do trimestre
+    const destravou = bateu(m.cms.tot.pos_q, m.cms.tot.meta_q, GATILHO_TOTAL);
+    const familia = o.unidade === 'r';
+    const okC = o.grupo === 'tot' ? destravou
+      : (familia ? bateu(pc, mc, o.gatilho) : destravou && bateu(pc, mc, o.gatilho));
+    // família: ele bateu, acende; tênis: só com a CMS tendo destravado o mês
+    const okV = ctx.soCms ? null
+      : (familia ? (bateu(pv, mv, o.gatilho) ? 'ouro' : ((ctx.tem15 && okC) ? 'prata' : null))
+                 : ((okC && bateu(pv, mv, o.gatilho)) ? 'ouro' : null));
+    return `<div class="mb">
+      ${coluna('c', pc, mc, okC, null, i*0.06, o.escala)}
+      ${ctx.soCms ? '' : coluna('v', pv, mv, !!okV, okV, i*0.06 + 0.04, o.escala)}
+    </div>`;
+  }).join('');
+}
+/* Uma casa e uma silhueta sob cada par de barras, na mesma grade dos meses —
+   assim cada desenho cai sob a sua coluna. Com a CMS escolhida há uma barra
+   só por mês, e a silhueta não aparece. */
+function tiraQuem(o){
+  const ctx = o.ctx;
+  return `<div class="quem" aria-hidden="true">${ctx.porMes.map(() =>
+    `<span class="par"><i class="c">${ICO_CMS}</i>${ctx.soCms ? '' : `<i class="v">${ICO_VEND}</i>`}</span>`
+  ).join('')}</div>`;
+}
+function legendaPorMes(o){
+  const ctx = o.ctx, q = o.unidade === 'q';
+  return `<div class="leg-mes">${ctx.porMes.map(m => {
+    const g = grupoDo(ctx.soCms ? m.cms : m.ven, o);
+    const pos = q ? g.pos_q : g.pos_r, meta = q ? g.meta_q : g.meta_r;
+    return `<span><b>${meta ? Math.round(100*pos/meta) + '%' : '—'}</b>${MES3[+m.mes.slice(5,7)-1]}</span>`;
+  }).join('')}</div>`;
+}
+
+/* ── comparar vendedores ──────────────────────────────────────────────
+   Uma barra por vendedor no mesmo cartão, na ordem dos chips, com a CMS
+   primeiro — ela é a régua contra a qual os outros se leem. */
+function prepostosComparar(){
+  return [{ codigo:'TODOS', nome:'CMS', cms:true },
+          ...prepostosVisiveis().filter(p => !ehCms(p))];
+}
+/* Cada coluna do comparativo é um recorte caro de montar (as linhas de todos
+   os meses do preposto), e os onze cartões pedem o mesmo. Calcula uma vez por
+   pintura e guarda. */
+let CMP = null;
+function dadosComparar(){
+  if(CMP && CMP.chave === F.mes + '|' + F.marca + '|' + F.medida) return CMP.lista;
+  const cms = agregar(F.mes, 'TODOS', F.marca);
+  const destravou = bateu(cms.tot.pos_q, cms.tot.meta_q, GATILHO_TOTAL);
+  const lista = prepostosComparar().map(p => {
+    const d = p.cms ? cms : agregar(F.mes, String(p.codigo), F.marca);
+    const t15 = p.cms ? null : trava(trimestreDe(F.mes), String(p.codigo));
+    // a porta do vendedor, só para as faixas de tênis
+    const porta = !p.cms && destravou && bateu(d.tot.pos_q, d.tot.meta_q, GATILHO_TOTAL)
+                  && !!(t15 && t15.ok);
+    return { p, d, porta };
+  });
+  CMP = { chave: F.mes + '|' + F.marca + '|' + F.medida, lista };
+  return lista;
+}
+function barrasComparadas(o){
+  const familia = o.unidade === 'r';
+  return dadosComparar().map(({ p, d, porta }, i) => {
+    const g = grupoDo(d, o);
+    const pos = familia ? g.pos_r : g.pos_q, meta = familia ? g.meta_r : g.meta_q;
+    const bateuEle = bateu(pos, meta, o.gatilho);
+    // a CMS acende ao bater; o vendedor também, mas nas faixas de tênis só com
+    // a porta aberta — a família é independente (regra de 13/10)
+    const ok = p.cms ? bateuEle : (familia ? bateuEle : (bateuEle && porta));
+    return coluna(p.cms ? 'c' : 'v', pos, meta, ok, null, i*0.05, o.escala);
+  }).join('');
+}
+function legendaComparados(o){
+  const q = o.unidade === 'q';
+  return `<div class="leg-prep">${dadosComparar().map(({ p, d }) => {
+    const g = grupoDo(d, o);
+    const pos = q ? g.pos_q : g.pos_r, meta = q ? g.meta_q : g.meta_r;
+    const pc = meta ? Math.round(100*pos/meta) + '%' : '—';
+    const nome = p.cms ? 'CMS' : nomeBonito(p.nome);
+    return `<span title="${esc(p.nome)}"${p.cms ? ' class="cms"' : ''}><b>${pc}</b>${esc(nome)}</span>`;
+  }).join('')}</div>`;
+}
+
+function blocoLegenda(soCms, nome){
+  if(F.comparar) return `<div class="leg">
+    <span><i class="q c"></i>CMS, a primeira barra</span>
+    <span><i class="q v"></i>cada vendedor, na ordem dos chips</span>
+    <span><i class="q o"></i>bateu</span>
+    <span><i class="s">${ESTRELA}</i>total ${Math.round(GATILHO_TOTAL*100)}% ·
+      faixa ${Math.round(GATILHO_FAIXA*100)}% · família ${Math.round(GATILHO_FAMILIA*100)}%</span>
+  </div>`;
+  return `<div class="leg">
+    <span><i class="q c"></i>CMS</span>
+    ${soCms ? '' : `<span><i class="q v"></i>${esc(nome)}</span>`}
+    <span><i class="q o"></i>bateu</span>
+    <span><i class="s">${ESTRELA}</i>total ${Math.round(GATILHO_TOTAL*100)}% ·
+      faixa ${Math.round(GATILHO_FAIXA*100)}% · família ${Math.round(GATILHO_FAMILIA*100)}%</span>
+  </div>`;
+}
+
+/* A altura do menu muda com a largura da tela e com o "+" dos meses, então
+   ela é medida, não chutada: é dela que a trava sabe onde parar. */
+function medirMenu(){
+  const f = document.querySelector('.filtros');
+  if(!f || f.hidden) return;
+  document.documentElement.style.setProperty('--alt-menu',
+    Math.round(f.getBoundingClientRect().height) + 'px');
+}
+new ResizeObserver(medirMenu).observe(document.querySelector('.filtros'));
+window.addEventListener('resize', medirMenu, { passive:true });
+
+carregar();
 </script>
 </body>
 </html>
