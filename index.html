@@ -1266,14 +1266,22 @@
   }
 
   // ── CARTA CAMPANHA ────────────────────────────────────────────────────────
-  // Mostra a situação DO VENDEDOR LOGADO no cabeçalho. O dado vem pronto do
-  // painel de performance (apps-oly-v2), que já publica um resumo pequeno —
-  // não é preciso recalcular nada aqui.
+  // Mostra a situação DO VENDEDOR LOGADO no cabeçalho: a trava dos 15%, a
+  // mesma que a tela de Metas desenha.
   //
-  // Os dois repositórios são publicados no mesmo domínio, mudando só a pasta,
-  // e o GitHub Pages responde com Access-Control-Allow-Origin: *, então a
-  // leitura funciona direto, sem worker no meio.
-  var CARTA_URL = 'https://cms-representacoes.github.io/apps-oly-v2/data/widget_performance.json';
+  // O chip lia o resumo do painel de performance (apps-oly-v2), que ficou
+  // para trás em duas coisas de uma vez: a base parou em 06/10 e a conta é a
+  // ANTIGA — as outras famílias sobre o tênis VENDIDO. Desde 12/10 a régua é
+  // sobre a META de tênis, e a diferença muda conclusão: o Willame aparecia
+  // elegível com 16,3% e, pela conta de hoje, está em 9,0%.
+  //
+  // Agora os dois leem o mesmo arquivo, o metas.json que o robô da Carta
+  // publica todo dia às 5h. Chip e tela de Metas não têm como divergir.
+  var CARTA_URL = 'metas/dados/metas.json';
+  var CARTA_TRAVA = 0.15;
+  // o numerador: as outras famílias Olympikus e a Under Armour inteira
+  var CARTA_FAM = ['ACOLY', 'CHOLY', 'MEOLY', 'CFOLY'];
+  var CARTA_UA = ['UA_TN', 'UA_AC', 'UA_CH', 'UA_ME', 'UA_CF'];
 
   function normalizarNome(v){
     return String(v == null ? '' : v)
@@ -1281,52 +1289,83 @@
       .trim().toUpperCase();
   }
 
-  function pintarCartaCampanha(dados, session){
-    var chip = document.getElementById('cartaChip');
-    if(!chip || !dados || !Array.isArray(dados.vendedores) || !session) return;
-
-    var alvo = null;
-
-    // O usuário CMS representa a empresa toda, e não um vendedor: o painel
-    // publica esse total no campo `empresa`. O vendedor que antes se chamava
-    // CMS virou "Núcleo" e continua na lista comum.
-    if(temTudoLiberado(session.nome) && dados.empresa){
-      alvo = dados.empresa;
+  // O trimestre em que o mês corrente cai, nos três meses dele.
+  function cartaTrimestre(){
+    var h = new Date(), ini = Math.floor(h.getMonth() / 3) * 3, ms = [];
+    for(var i = 0; i < 3; i++){
+      ms.push(h.getFullYear() + '-' + ('0' + (ini + i + 1)).slice(-2));
     }
+    return ms;
+  }
 
-    for(var i = 0; !alvo && i < dados.vendedores.length; i++){
-      if(normalizarNome(dados.vendedores[i].nome) === normalizarNome(session.nome)){
-        alvo = dados.vendedores[i];
-        break;
+  // O potencial é o que abre na tela de Metas: é o número que a equipe
+  // acompanha, porque inclui o vendido que ainda não faturou.
+  function cartaValor(l){
+    var p = l.pot_rs;
+    return (p == null ? l.real_rs : p) || 0;
+  }
+
+  /* A conta, igual à da tela de Metas: as outras famílias mais a UA inteira,
+     sobre a META de tênis Olympikus em R$, somadas nos três meses. Com
+     `codigo` nulo soma a casa toda, que é o que a CMS e quem desenvolve veem
+     — para eles não é trava, é leitura. */
+  function cartaTrava(dados, codigo){
+    var meses = cartaTrimestre(), meta = 0, num = 0, achou = false;
+    for(var i = 0; i < (dados.meses || []).length; i++){
+      var m = dados.meses[i];
+      if(meses.indexOf(m.mes) < 0) continue;
+      for(var j = 0; j < (m.prepostos || []).length; j++){
+        var p = m.prepostos[j];
+        if(codigo && String(p.codigo) !== String(codigo)) continue;
+        achou = true;
+        for(var k = 0; k < (p.linhas || []).length; k++){
+          var l = p.linhas[k];
+          if(l.marca === 'OLY'){ meta += l.meta_rs || 0; }
+          else if(CARTA_FAM.indexOf(l.marca) >= 0 || CARTA_UA.indexOf(l.marca) >= 0){
+            num += cartaValor(l);
+          }
+        }
       }
     }
-    // Vendedor sem linha no painel (ex.: cadastro novo) não recebe nada:
-    // mostrar "0%" pareceria um resultado ruim, e não ausência de dado.
-    if(!alvo) return;
+    if(!achou || !meta) return null;
+    return { pct: num / meta, meta: meta, num: num, meses: meses };
+  }
 
-    var pct = Number(alvo.ratio || 0).toFixed(1).replace('.', ',') + '%';
-    var eleg = !!alvo.elegivel;
+  function pintarCartaCampanha(dados, session){
+    var chip = document.getElementById('cartaChip');
+    if(!chip || !dados || !Array.isArray(dados.meses) || !session) return;
 
-    // A data que vale é a da BASE do painel de performance (quando a
-    // planilha foi publicada), e não a hora em que este resumo foi gravado:
-    // um resumo republicado hoje pode estar repetindo números de semana
-    // passada. `base` vem em ISO; `atualizado` é a data do commit, e só
-    // serve de reserva enquanto o painel não publica o formato novo.
-    var hoje = new Date();
-    var quando = dados.base ? new Date(dados.base) : null;
+    // A CMS e quem desenvolve representam a casa, não um vendedor: somam todo
+    // mundo. Para eles o número é leitura, não trava — mas o chip é o mesmo.
+    var daCasa = temTudoLiberado(session.nome);
+    var t = cartaTrava(dados, daCasa ? null : session.codigo);
+    // Vendedor sem linha na Carta (cadastro novo) não recebe nada: mostrar
+    // "0%" pareceria um resultado ruim, e não ausência de dado.
+    if(!t) return;
+
+    var pct = (t.pct * 100).toFixed(1).replace('.', ',') + '%';
+    var eleg = t.pct >= CARTA_TRAVA;
+
+    // A data que vale é a da leitura da Carta, não a do commit: um arquivo
+    // republicado hoje pode estar repetindo números de ontem.
+    var quando = dados.atualizado_em ? new Date(dados.atualizado_em) : null;
     if(quando && isNaN(quando.getTime())) quando = null;
-    var rotulo = dados.baseRotulo || String(dados.atualizado || '');
-    var hojeDDMM = ('0' + hoje.getDate()).slice(-2) + '/' + ('0' + (hoje.getMonth() + 1)).slice(-2);
-    var doDia = quando ? quando.toDateString() === hoje.toDateString()
-                       : rotulo.indexOf(hojeDDMM) === 0;
+    var hoje = new Date();
+    var doDia = quando ? quando.toDateString() === hoje.toDateString() : false;
+    var rotulo = quando
+      ? ('0' + quando.getDate()).slice(-2) + '/' + ('0' + (quando.getMonth() + 1)).slice(-2)
+      : '';
+
     chip.className = 'cc-chip ' + (eleg ? 'cc-ok' : 'cc-no') + (doDia ? '' : ' cc-velho');
     chip.querySelector('.cc-txt').textContent = 'C. Campanha · ' + pct + ' ' + (eleg ? '✓' : '✗') +
-      (doDia ? '' : ' · ' + rotulo.split(' ')[0]);
-    chip.title = 'Carta campanha: ' + (eleg ? 'elegível' : 'não elegível') +
-                 ' · ' + pct + ' de participação FTW · meta ' + dados.meta + '%' +
-                 (dados.trimestre ? ' · ' + dados.trimestre : '') +
-                 (rotulo ? ' · dados de ' + rotulo : '') +
-                 (dados.base && dados.atualizado ? ' · resumo publicado em ' + dados.atualizado : '');
+      (doDia || !rotulo ? '' : ' · ' + rotulo);
+    var tri = Math.floor(hoje.getMonth() / 3) + 1;
+    chip.title = 'Carta campanha: ' + (daCasa ? 'leitura da casa' : (eleg ? 'elegível' : 'não elegível')) +
+                 ' · ' + pct + ' das outras famílias e da Under Armour sobre a meta de tênis' +
+                 ' · mínimo ' + Math.round(CARTA_TRAVA * 100) + '%' +
+                 ' · ' + tri + 'º trimestre' +
+                 (quando ? ' · lido em ' + rotulo + ' ' +
+                   ('0' + quando.getHours()).slice(-2) + ':' + ('0' + quando.getMinutes()).slice(-2) : '');
     chip.hidden = false;
   }
 

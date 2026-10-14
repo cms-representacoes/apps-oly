@@ -899,13 +899,14 @@ function pintar(){
 
   const cmsDestravou = bateu(dCms.tot.pos_q, dCms.tot.meta_q, GATILHO_TOTAL);
   const t15Mes = trava(F.mes, F.prep);
-  const porta = !soCms && cmsDestravou && bateu(dVen.tot.pos_q, dVen.tot.meta_q, GATILHO_TOTAL)
-                && !!(t15Mes && t15Mes.ok);
-
   const t15Tri = trava(trimestreDe(F.mes), F.prep);
-  const ctx = { soCms, cmsDestravou, porta, nome, porMes, tem15: !!(t15Tri && t15Tri.ok) };
+  const tem15 = !!(t15Tri && t15Tri.ok);
+  const porta = !soCms && cmsDestravou && bateu(dVen.tot.pos_q, dVen.tot.meta_q, GATILHO_TOTAL)
+                && tem15;
+
+  const ctx = { soCms, cmsDestravou, porta, nome, porMes, tem15 };
   const html = [];
-  if(t15Mes) html.push(blocoTrava(t15Mes, trava(trimestreDe(F.mes), F.prep), nome));
+  if(t15Mes) html.push(blocoTrava(t15Mes, t15Tri, nome));
   html.push(blocoTenis(dCms, dVen, ctx));
   if(dCms.familias.length) html.push(blocoFamilias(dCms, dVen, ctx));
   html.push(blocoLegenda(soCms, nome));
