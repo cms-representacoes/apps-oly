@@ -288,6 +288,13 @@ button{ font-family:inherit; cursor:pointer; border:0; background:none; color:in
   padding:13px 15px; color:var(--tinta);
   position:sticky; top:calc(56px + var(--alt-menu, 116px) + env(safe-area-inset-top)); z-index:20;
   box-shadow:0 10px 24px -16px rgba(0,0,0,.85) }
+/* Grudada, só no desktop. No tablet e no celular a tela é baixa e ela
+   roubava o espaço dos cartões o tempo todo: num iPhone SE são 260px de 568
+   presos em cima, e sobrava menos de um cartão para ler. Solta, ela rola
+   junto com o resto e devolve a tela a quem está olhando os números. */
+@media(max-width:1024px){
+  .mt .t15{ position:static; top:auto; box-shadow:none }
+}
 .mt .t15 > .rot{ margin:0; color:var(--fraco) }
 .mt .t15 .un{ display:flex; align-items:center; gap:10px; flex-wrap:wrap }
 .mt .t15 .qd{ font-size:9.5px; font-weight:800; color:var(--tenue); letter-spacing:.07em;
@@ -415,6 +422,22 @@ button{ font-family:inherit; cursor:pointer; border:0; background:none; color:in
     gap:7px; padding:10px 12px }
   .mt .t15 .so-largo{ display:none }
   .mt .t15 .lg{ font-size:9.5px; gap:4px 10px }
+}
+
+/* ── no aparelho estreito (iPhone SE) ──
+   Com 320px de tela a régua não cabia ao lado do rótulo e descia sozinha,
+   gastando uma linha a mais por mês. Encolher a largura mínima dela põe as
+   duas de volta na mesma linha, e o bloco inteiro cabe sem rolar. */
+@media(max-width:400px){
+  .env{ padding:11px }
+  .mt .t15{ padding:10px 11px; gap:6px }
+  .mt .t15 .trk{ flex:1 1 150px; height:14px }
+  .mt .t15 .qd{ font-size:9px; letter-spacing:.05em }
+  .mt .t15 .pc{ font-size:13px }
+  .mt .t15 .fa{ font-size:10px }
+  .mt .t15 .lg{ font-size:9px; gap:3px 8px }
+  .mt .t15 .lg i{ width:9px; height:9px }
+  .mt .t15 > .rot{ font-size:9px }
 }
 
 /* No modo comparar cada barra leva nome e % embaixo: o cartão precisa de
