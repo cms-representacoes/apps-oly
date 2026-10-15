@@ -72,7 +72,7 @@ button{font:inherit}
 /* Do tablet pra cima e uma linha so: o que nao couber rola dentro da propria
    faixa de filtros. No celular o flex-wrap joga os filtros pra baixo, sem
    duplicar marcação — o gap de 9px vira o espaço entre as duas linhas. */
-.topo-l1{display:flex;align-items:center;gap:9px;flex-wrap:nowrap;max-width:1180px;margin:0 auto;
+.topo-l1{display:flex;align-items:center;gap:9px;flex-wrap:nowrap;max-width:min(1400px,100%);margin:0 auto;
   position:relative}
 /* as setas: redondas, encostadas nas pontas da linha, por cima da fita */
 .rola-seta{position:absolute;top:50%;transform:translateY(-50%);z-index:6;
@@ -1817,6 +1817,23 @@ body{ font-family:'Plus Jakarta Sans', Inter, system-ui, -apple-system, 'Segoe U
 .cat button.on{ border-color:color-mix(in srgb,var(--marca) 45%,transparent); color:var(--marca-tinta); font-weight:800;
   background:color-mix(in srgb,var(--marca) 10%,var(--carta)); }
 .cat button.vazia:hover{ border-style:solid; }
+
+/* ── a faixa inteira numa tela de 1366 ──
+   A barra parava em 1180px com 186px de janela sobrando de cada lado,
+   enquanto "Meias" e os botões da direita ficavam fora da vista. Ela passa a
+   usar a largura da janela, até 1400px (acima disso ela se descolaria da
+   grade de produtos sem ganhar nada). Só alargar ainda deixava 61px de
+   sobra num notebook de 1366, então as pílulas e os vãos cedem alguns
+   pixels cada: 3px de respiro por botão ninguém percebe, a fila cortada
+   todo mundo percebe. */
+@media(min-width:1024px){
+  .topo-rolo{ gap:6px }
+  .topo-acoes{ gap:6px }
+  .seg{ gap:4px }
+  .cat{ gap:4px }
+  .seg button{ padding:0 11px }
+  .cat button{ padding:0 10px }
+}
 /* Flutuante em TODOS os tamanhos, no canto esquerdo — oposto à sacola, para
    os dois nunca disputarem o mesmo lugar. Saiu da fila do topo: lá ele
    disputava espaço com os filtros que ele mesmo limpa, e é embaixo que a mão
