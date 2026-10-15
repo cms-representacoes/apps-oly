@@ -78,6 +78,17 @@ button{ font-family:inherit; cursor:pointer; border:0; background:none; color:in
   font-weight:800; font-size:12.5px; letter-spacing:.04em }
 .topo h1{ font-size:16px; font-weight:800; letter-spacing:-.01em; line-height:1.15 }
 .topo .sub{ font-size:11px; font-weight:600; color:#B9B2A3; letter-spacing:.02em }
+/* Quando a Carta foi lida pela última vez. Fica sob o nome, como na
+   Detalhada: a dúvida "estes números são de hoje?" vem antes de qualquer
+   outra, e respondê-la no rodapé seria responder tarde. Discreta pelo
+   tamanho — cabe na sobra do selo e não empurra o cabeçalho. */
+.topo .quando{ display:flex; align-items:center; gap:4px; margin-top:1px;
+  font-size:9.5px; font-weight:600; color:#8F8778; white-space:nowrap }
+.topo .quando svg{ width:9px; height:9px; flex:none }
+.topo .quando[hidden]{ display:none }
+/* O robô publica todo dia às 5h: passou de ontem, alguma coisa travou e a
+   linha deixa de ser discreta. */
+.topo .quando.velha{ color:var(--marca); font-weight:800 }
 .topo .dir{ margin-left:auto; display:flex; align-items:center; gap:8px }
 .bt-voltar{ display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 14px;
   border-radius:999px; background:rgba(255,255,255,.08); color:#F5F1E8;
@@ -459,7 +470,8 @@ button{ font-family:inherit; cursor:pointer; border:0; background:none; color:in
 <header class="topo">
   <div class="marca">
     <div class="selo">CMS</div>
-    <div><h1>Metas</h1></div>
+    <div><h1>Metas</h1>
+      <div class="quando" id="quando" hidden></div></div>
   </div>
   <div class="dir">
     <a class="bt-voltar" href="../index.html">
@@ -625,6 +637,7 @@ async function carregar(){
       (${esc(e.message)}). O arquivo é publicado pelo robô da Carta.</div>`;
     return;
   }
+  pintarQuando(METAS.atualizado_em);
   const meses = (METAS.meses || []).map(m => m.mes).sort();
   if(!meses.length){ $('painel').innerHTML = '<div class="aviso">O arquivo não tem mês nenhum.</div>'; return; }
   // abre no mês corrente quando ele existe; senão, no último que veio
@@ -638,6 +651,34 @@ async function carregar(){
 }
 
 /* ── os filtros ───────────────────────────────────────────────────── */
+/* A data que vale é a da LEITURA da Carta, não a do commit: um arquivo
+   republicado hoje pode estar repetindo os números de ontem. É o mesmo
+   `atualizado_em` que o chip do portal lê. */
+function pintarQuando(iso){
+  const el = $('quando');
+  if(!el) return;
+  const d = iso ? new Date(iso) : null;
+  if(!d || isNaN(d.getTime())){ el.hidden = true; return; }
+
+  // dias de calendário, não 24 horas: às 4h da manhã a leitura de ontem às 5h
+  // ainda é "ontem", e dizer "há 23 horas" não ajudaria ninguém.
+  const dia = x => { const y = new Date(x); y.setHours(0,0,0,0); return y.getTime(); };
+  const dias = Math.round((dia(new Date()) - dia(d)) / 86400000);
+  const hora = d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  const quando = dias <= 0 ? 'hoje às ' + hora
+               : dias === 1 ? 'ontem às ' + hora
+               : 'há ' + dias + ' dias';
+
+  el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+    'stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>' +
+    '<span>' + esc(quando) + '</span>';
+  el.title = 'Carta lida em ' + d.toLocaleDateString('pt-BR') + ' às ' + hora +
+    (dias > 1 ? ' — o robô publica todo dia às 5h' : '');
+  el.classList.toggle('velha', dias > 1);
+  el.hidden = false;
+}
+
 function mesesDoArquivo(){ return (METAS.meses || []).map(m => m.mes).sort(); }
 function trimestresDoArquivo(){
   const t = new Set();
