@@ -90,12 +90,6 @@ button{ font-family:inherit; cursor:pointer; border:0; background:none; color:in
    linha deixa de ser discreta. */
 .topo .quando.velha{ color:var(--marca); font-weight:800 }
 .topo .dir{ margin-left:auto; display:flex; align-items:center; gap:8px }
-.bt-voltar{ display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 14px;
-  border-radius:999px; background:rgba(255,255,255,.08); color:#F5F1E8;
-  font-size:13px; font-weight:700; border:1px solid rgba(255,255,255,.14);
-  transition:background .18s ease, border-color .18s ease }
-.bt-voltar:hover{ background:rgba(255,255,255,.14); border-color:rgba(255,190,11,.5) }
-.bt-voltar svg{ width:15px; height:15px; fill:currentColor }
 
 .env{ max-width:1320px; margin:0 auto; padding:16px }
 
@@ -412,7 +406,6 @@ button{ font-family:inherit; cursor:pointer; border:0; background:none; color:in
     max-width:100% }
   .topo .marca{ flex:1 1 0; min-width:0 } .topo .marca > div{ min-width:0 }
   .topo .dir{ margin-left:0; flex:none }
-  .bt-voltar{ height:32px; padding:0 12px; font-size:12px }
   .env{ padding:13px }
   .grupo > .rot{ width:auto; font-size:9.5px }
   .mt .bars{ height:116px } .mt .cd.tot .bars{ height:128px }
@@ -464,6 +457,28 @@ button{ font-family:inherit; cursor:pointer; border:0; background:none; color:in
   .carregando i{ animation-duration:2.4s }
 }
 </style>
+
+<style>
+/* ── Voltar ao Portal ─────────────────────────────────────
+   A mesma peça em todas as aplicações, para o vendedor reconhecer a saída
+   sem procurar: pílula branca de 36px, seta à esquerda e a palavra Portal.
+   Branca também sobre cabeçalho escuro — é o que mantém a peça a mesma. */
+.portal-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:7px;
+  flex:none; height:36px; padding:0 12px; border-radius:999px;
+  border:1px solid #E2E8F0; background:#FFFFFF; color:#475569;
+  font-family:inherit; font-size:14px; font-weight:700; line-height:1;
+  text-decoration:none; cursor:pointer; white-space:nowrap;
+  transition:background .15s ease, border-color .15s ease;
+}
+.portal-btn:hover{ background:#F8FAFC; border-color:#CBD5E1; color:#334155; }
+.portal-btn:focus-visible{ outline:2px solid #475569; outline-offset:2px; }
+.portal-btn svg{ width:14px; height:14px; flex:none; }
+.portal-btn i{ font-size:12px; }
+/* sem isto o display:inline-flex venceria o hidden, e as telas que escondem
+   o botão por JS continuariam mostrando ele */
+.portal-btn[hidden]{ display:none; }
+</style>
 </head>
 <body>
 
@@ -474,10 +489,7 @@ button{ font-family:inherit; cursor:pointer; border:0; background:none; color:in
       <div class="quando" id="quando" hidden></div></div>
   </div>
   <div class="dir">
-    <a class="bt-voltar" href="../index.html">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4.5 8 12l7.5 7.5 1.4-1.4L10.8 12l6.1-6.1z"/></svg>
-      Portal
-    </a>
+    <a class="portal-btn" href="../index.html" title="Voltar ao Portal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg><span>Portal</span></a>
   </div>
 </header>
 

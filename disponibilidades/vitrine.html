@@ -202,16 +202,6 @@
     }
     .upd-chip i{ font-size:9px; }
 
-    /* Voltar ao Portal — agora no canto superior direito */
-    .btn-portal{
-      display:inline-flex; align-items:center; gap:7px; flex:none;
-      padding:8px 14px; border-radius:999px;
-      border:1px solid var(--line); background:var(--card); color:var(--muted);
-      font-size:13px; font-weight:700; text-decoration:none;
-      transition:background .15s, color .15s, border-color .15s;
-    }
-    .btn-portal:hover{ color:var(--text); border-color:var(--muted); }
-
     /* ── Mobile e tablet: a barra de filtros vira uma faixa rolável ──
        Em vez de quebrar em várias linhas e comer altura de tela, os botões
        ficam lado a lado e a faixa desliza na horizontal. */
@@ -382,7 +372,7 @@
       width:100%; background:var(--accent); color:#fff; border:none;
       border-radius:11px; padding:12px; font-size:13px; font-weight:800;
       cursor:pointer; margin-top:18px;
-      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      display:inline-flex; align-items:center; justify-content:center; gap:7px;
     }
     .link-modal-card .btn-primary:disabled{ opacity:.6; cursor:not-allowed; }
     .link-modal-card .btn-primary:hover:not(:disabled){ background:#6aa100; }
@@ -1543,6 +1533,28 @@ body.theme-dark .drawer-foot{ background:var(--card2); }
 body.theme-dark .drawer-btn-ghost{ background:var(--card); }
 body.theme-dark .load-more-btn{ background:var(--card); }
   </style>
+
+<style>
+/* ── Voltar ao Portal ─────────────────────────────────────
+   A mesma peça em todas as aplicações, para o vendedor reconhecer a saída
+   sem procurar: pílula branca de 36px, seta à esquerda e a palavra Portal.
+   Branca também sobre cabeçalho escuro — é o que mantém a peça a mesma. */
+.portal-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:7px;
+  flex:none; height:36px; padding:0 12px; border-radius:999px;
+  border:1px solid #E2E8F0; background:#FFFFFF; color:#475569;
+  font-family:inherit; font-size:14px; font-weight:700; line-height:1;
+  text-decoration:none; cursor:pointer; white-space:nowrap;
+  transition:background .15s ease, border-color .15s ease;
+}
+.portal-btn:hover{ background:#F8FAFC; border-color:#CBD5E1; color:#334155; }
+.portal-btn:focus-visible{ outline:2px solid #475569; outline-offset:2px; }
+.portal-btn svg{ width:14px; height:14px; flex:none; }
+.portal-btn i{ font-size:12px; }
+/* sem isto o display:inline-flex venceria o hidden, e as telas que escondem
+   o botão por JS continuariam mostrando ele */
+.portal-btn[hidden]{ display:none; }
+</style>
 </head>
 <body>
 <script>
@@ -1687,9 +1699,7 @@ body.theme-dark .load-more-btn{ background:var(--card); }
         <i class="fa-solid fa-file-pdf text-sm"></i>
         PDF <span id="pdfCount" class="bg-slate-900 text-[var(--accent)] text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
       </button>
-      <a href="https://cms-representacoes.github.io/apps-oly/" class="btn-portal" title="Voltar ao Portal do Vendedor">
-        <i class="fa-solid fa-arrow-left text-xs"></i> <span>Portal</span>
-      </a>
+      <a class="portal-btn" href="https://cms-representacoes.github.io/apps-oly/" title="Voltar ao Portal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg><span>Portal</span></a>
     </div>
   </div>
 </header>
