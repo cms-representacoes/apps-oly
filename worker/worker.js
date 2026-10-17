@@ -1304,6 +1304,91 @@ export default {
           return new Response(JSON.stringify({ success: true, em }), { status: 200, headers: corsHeaders });
         }
 
+        // PATCH com action:"getMixGtm"/"saveMixGtm" → o mix do GTM.
+        //
+        // Cada vendedor reparte 100% da compra de cada modelo entre as cores,
+        // e a CMS le isso tudo junto para digitar o pedido.
+        //
+        // Uma chave por vendedor, e nao um documento com todos dentro: dois
+        // enviando ao mesmo tempo num documento so se apagariam, porque
+        // ler-alterar-gravar perde o que chegou no meio. Com `codigo` devolve
+        // so o daquele vendedor — e o que a tela dele precisa, e um nao ve o
+        // mix do outro; sem `codigo`, devolve todos, que e o painel da CMS.
+        if (body.action === "getMixGtm" || body.action === "saveMixGtm") {
+          if (!env.SACOLAS) {
+            return new Response(JSON.stringify({ success: false, error: "Armazenamento nao configurado." }),
+              { status: 501, headers: corsHeaders });
+          }
+          const colecao = String(body.colecao || "").trim().toUpperCase();
+          const marca   = String(body.marca || "oly").trim().toLowerCase();
+          if (!/^[0-9A-Z]{1,10}$/.test(colecao) || !/^[a-z]{1,12}$/.test(marca)) {
+            return new Response(JSON.stringify({ success: false, error: "Colecao ou marca invalidas." }),
+              { status: 400, headers: corsHeaders });
+          }
+          const prefixo = `gtmmix:${colecao}:${marca}:`;
+          const codigoOk = (c) => /^[0-9A-Za-z_-]{1,32}$/.test(c);
+
+          if (body.action === "getMixGtm") {
+            const codigo = String(body.codigo || "").trim();
+            if (codigo) {
+              if (!codigoOk(codigo)) {
+                return new Response(JSON.stringify({ success: false, error: "Vendedor invalido." }),
+                  { status: 400, headers: corsHeaders });
+              }
+              const um = await env.SACOLAS.get(prefixo + codigo, { type: "json" });
+              return new Response(JSON.stringify(um ? { [codigo]: um } : {}),
+                { status: 200, headers: corsHeaders });
+            }
+            const todos = {};
+            let cursor = undefined;
+            for (let volta = 0; volta < 20; volta++) {
+              const pagina = await env.SACOLAS.list({ prefix: prefixo, cursor });
+              for (const k of pagina.keys) {
+                const v = await env.SACOLAS.get(k.name, { type: "json" });
+                if (v && v.codigo) todos[String(v.codigo)] = v;
+              }
+              if (pagina.list_complete) break;
+              cursor = pagina.cursor;
+            }
+            return new Response(JSON.stringify(todos), { status: 200, headers: corsHeaders });
+          }
+
+          // saveMixGtm — o mix de UM vendedor, assinado com o codigo dele.
+          const mix = (body.mix && typeof body.mix === "object") ? body.mix : null;
+          const codigo = String((mix && mix.codigo) || "").trim();
+          if (!mix || !codigoOk(codigo) || !Array.isArray(mix.itens)) {
+            return new Response(JSON.stringify({ success: false, error: "Mix invalido." }),
+              { status: 400, headers: corsHeaders });
+          }
+          if (mix.itens.length > 600) {
+            return new Response(JSON.stringify({ success: false, error: "Mix grande demais." }),
+              { status: 413, headers: corsHeaders });
+          }
+          // So os campos que a tela usa, e com tamanho limitado: o que chega
+          // daqui vem de um navegador, nao de alguem de confianca.
+          const registro = {
+            codigo,
+            nome: String(mix.nome || "").slice(0, 60),
+            em: new Date().toISOString(),
+            itens: mix.itens.map((it) => ({
+              artigo:  String(it && it.artigo  || "").slice(0, 20),
+              produto: String(it && it.produto || "").slice(0, 60),
+              cor:     String(it && it.cor     || "").slice(0, 20),
+              rotulo:  String(it && it.rotulo  || "").slice(0, 40),
+              pct: Math.max(0, Math.min(100, Math.round(Number(it && it.pct) || 0)))
+            }))
+          };
+          const valor = JSON.stringify(registro);
+          if (valor.length > 2e6) {
+            return new Response(JSON.stringify({ success: false, error: "Mix grande demais." }),
+              { status: 413, headers: corsHeaders });
+          }
+          // Um ano: o mix vale a temporada inteira, nao a semana.
+          await env.SACOLAS.put(prefixo + codigo, valor, { expirationTtl: 60 * 60 * 24 * 365 });
+          return new Response(JSON.stringify({ success: true, em: registro.em }),
+            { status: 200, headers: corsHeaders });
+        }
+
         // PATCH com action:"getDispo" → retorna dispo.json
         if (body.action === "getDispo") {
           const { content } = await getFile(GITHUB_DISPO);
