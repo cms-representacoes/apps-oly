@@ -47,6 +47,17 @@
     @media (min-width:640px){ .portal-card{ border-radius:20px; padding:16px 18px; min-height:128px; } }
     @media (min-width:1024px){ .portal-card{ border-radius:22px; padding:18px 20px; min-height:136px; } }
     .portal-card:active{ transform:scale(.98); }
+
+    /* A ordem muda de uma tela para a outra, e só nestes dois: no desktop,
+       Catálogo e Detalhada dividem a segunda linha, com o Catálogo à
+       esquerda; no celular, em coluna única, a Detalhada vem antes. O DOM
+       segue a ordem do desktop e aqui só se trocam os dois. */
+    @media (max-width:639px){
+      .card-detalhada{ order:1; }
+      .card-catalogo{ order:2; }
+      .card-showroom{ order:3; }
+      .card-disp{ order:4; }
+    }
     .resumo-pill{
       position:absolute; top:14px; right:14px; z-index:5;
       display:flex; align-items:center; gap:6px;
@@ -111,6 +122,19 @@
     @media (min-width:1024px){ .portal-card-title{ font-size:18px; } }
     .portal-card-desc{ font-size:11.5px;line-height:1.4; margin-bottom:8px; flex:1; }
     @media (min-width:640px){ .portal-card-desc{ font-size:12px; margin-bottom:10px; } }
+    /* Quando a base daquela aplicação subiu pela última vez. Fica junto do
+       "Acessar", na mesma linha: ocupa o espaço vazio à direita e não
+       empurra a altura do card. */
+    .pc-quando{
+      margin-left:auto; display:inline-flex; align-items:center; gap:4px;
+      font-size:10.5px; font-weight:800; letter-spacing:.01em;
+      opacity:.75; white-space:nowrap;
+    }
+    .pc-quando[hidden]{ display:none !important; }
+    .pc-quando svg{ width:10px; height:10px; flex:none; }
+    .pc-quando.pc-velho{ opacity:1; }
+    @media (min-width:640px){ .pc-quando{ font-size:11px; } }
+
     .portal-card-cta{ display:inline-flex;align-items:center;gap:7px; font-size:12.5px;font-weight:700; margin-top:auto; }
     @media (min-width:640px){ .portal-card-cta{ font-size:13.5px; } }
     .arrow-icon{ transition:transform .2s; }
@@ -761,6 +785,16 @@
         </div>
       </a>
 
+      <a href="metas/" class="portal-card card-metas focus-ring">
+        <div class="portal-card-title"><span class="pc-ico tag-metas"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7"/><path d="M2 20h20"/></svg></span><span class="pc-nome">Metas</span></div>
+        <div class="portal-card-desc">A meta do mês por faixa e família, com a trava dos 15%.</div>
+        <div class="portal-card-cta">
+          Acessar
+          <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          <span class="pc-quando" id="quandoMetas" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="pc-quando-txt"></span></span>
+        </div>
+      </a>
+
       <a href="https://cms-representacoes.github.io/apps-oly/repasses/" class="portal-card card-repasse focus-ring">
         <span id="resumoRepassesBtn" class="resumo-pill admin-only" hidden
           onclick="event.preventDefault(); event.stopPropagation(); window.location.href='https://cms-representacoes.github.io/apps-oly/admin/dashboard.html';">
@@ -775,18 +809,6 @@
         </div>
       </a>
 
-      <!-- Disponibilidades saiu do acesso da equipe e da CMS: só quem
-           desenvolve vê. Nasce escondido para não piscar na tela antes de a
-           sessão ser lida. -->
-      <a id="btnDisponibilidades" hidden href="https://cms-representacoes.github.io/apps-oly/disponibilidades/vitrine.html?marca=oly" class="portal-card card-disp dev-only focus-ring">
-        <div class="portal-card-title"><span class="pc-ico tag-disp"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></span><span class="pc-nome">Disponibilidades</span></div>
-        <div class="portal-card-desc" style="color:#a8d700">Consulte o estoque da fábrica, Oly e UA.</div>
-        <div class="portal-card-cta" style="color:#ccff00">
-          Acessar
-          <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </div>
-      </a>
-
       <a id="btnCatalogo" href="https://cms-representacoes.github.io/apps-oly-v2/?marca=oly" class="portal-card card-catalogo focus-ring">
         <div class="portal-card-title"><span class="pc-ico tag-catalogo"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="pc-nome">Catálogo</span></div>
         <div class="portal-card-desc text-purple-200">Vitrine completa Oly e UA. Monte pedidos.</div>
@@ -796,12 +818,13 @@
         </div>
       </a>
 
-      <a href="metas/" class="portal-card card-metas focus-ring">
-        <div class="portal-card-title"><span class="pc-ico tag-metas"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7"/><path d="M2 20h20"/></svg></span><span class="pc-nome">Metas</span></div>
-        <div class="portal-card-desc">A meta do mês por faixa e família, com a trava dos 15%.</div>
+      <a href="https://cms-representacoes.github.io/apps-oly-v2/detalhada/" class="portal-card card-detalhada focus-ring">
+        <div class="portal-card-title"><span class="pc-ico tag-detalhada"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 5h16M4 12h16M4 19h10"/></svg></span><span class="pc-nome">Detalhada</span></div>
+        <div class="portal-card-desc">Sua carteira e o que faturou, produto por produto.</div>
         <div class="portal-card-cta">
           Acessar
           <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          <span class="pc-quando" id="quandoDetalhada" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="pc-quando-txt"></span></span>
         </div>
       </a>
 
@@ -811,13 +834,17 @@
         <div class="portal-card-cta">
           Acessar
           <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          <span class="pc-quando" id="quandoShowroom" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="pc-quando-txt"></span></span>
         </div>
       </a>
 
-      <a href="https://cms-representacoes.github.io/apps-oly-v2/detalhada/" class="portal-card card-detalhada focus-ring">
-        <div class="portal-card-title"><span class="pc-ico tag-detalhada"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 5h16M4 12h16M4 19h10"/></svg></span><span class="pc-nome">Detalhada</span></div>
-        <div class="portal-card-desc">Sua carteira e o que faturou, produto por produto.</div>
-        <div class="portal-card-cta">
+      <!-- Disponibilidades saiu do acesso da equipe e da CMS: só quem
+           desenvolve vê. Nasce escondido para não piscar na tela antes de a
+           sessão ser lida. -->
+      <a id="btnDisponibilidades" hidden href="https://cms-representacoes.github.io/apps-oly/disponibilidades/vitrine.html?marca=oly" class="portal-card card-disp dev-only focus-ring">
+        <div class="portal-card-title"><span class="pc-ico tag-disp"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></span><span class="pc-nome">Disponibilidades</span></div>
+        <div class="portal-card-desc" style="color:#a8d700">Consulte o estoque da fábrica, Oly e UA.</div>
+        <div class="portal-card-cta" style="color:#ccff00">
           Acessar
           <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </div>
@@ -1358,6 +1385,80 @@
     return { pct: num / meta, meta: meta, num: num, meses: meses };
   }
 
+
+  /* ----- quando cada base subiu, dentro do card -----------------------
+     A data que vale e a do DADO, nao a do arquivo. O Last-Modified do
+     GitHub Pages responde a hora do deploy para todo mundo igual: medido
+     em 22/10, app_status.json (de 8/out) e dispo.json (daquela manha)
+     vieram com o mesmo carimbo. Entao cada card le o carimbo de dentro da
+     sua propria base. */
+  function _quandoTexto(iso){
+    if(!iso) return null;
+    var d = new Date(iso);
+    if(isNaN(d.getTime())) return null;
+    var dias = Math.floor((Date.now() - d.getTime()) / 86400000);
+    var hhmm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    var ddmm = ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2);
+    return {
+      curto: dias <= 0 ? ('hoje ' + hhmm) : dias === 1 ? 'ontem' : ('há ' + dias + ' dias'),
+      titulo: 'Base atualizada em ' + ddmm + ' às ' + hhmm,
+      dias: dias
+    };
+  }
+
+  function pintarQuando(id, iso){
+    var el = document.getElementById(id);
+    if(!el) return;
+    var q = _quandoTexto(iso);
+    if(!q){ el.hidden = true; return; }
+    el.querySelector('.pc-quando-txt').textContent = q.curto;
+    el.title = q.titulo;
+    // Tres dias sem subir e uma base que merece ser olhada, nao um detalhe.
+    el.classList.toggle('pc-velho', q.dias >= 3);
+    el.hidden = false;
+  }
+
+  /* A Detalhada pesa 4,3 MB e o `publicadoEm` mora nos ultimos bytes do
+     arquivo: pedir um Range de 400 bytes evita baixar a base inteira so
+     para saber a data. Sem Range, fica sem a linha - melhor nada do que
+     4 MB no celular do vendedor. */
+  /* O Showroom vive de duas bases - o repasse e a producao -, e nenhuma
+     delas carrega data por dentro. Quem sabe a hora e o Worker, que e quem
+     grava: ele carimba no KV a cada publicacao e devolve aqui. Vale a mais
+     recente das duas: o card responde "mudou alguma coisa la dentro?". */
+  var WORKER = 'https://repasse-worker-cms.marcosrep-cms.workers.dev/';
+
+  function buscarQuandoShowroom(){
+    fetch(WORKER, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'getAtualizado' })
+    })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){
+        if(!d) return;
+        var datas = [d.dispo, d.disponibilidades]
+          .filter(Boolean)
+          .map(function(x){ return new Date(x).getTime(); })
+          .filter(function(t){ return !isNaN(t); });
+        if(!datas.length) return;
+        pintarQuando('quandoShowroom', new Date(Math.max.apply(null, datas)).toISOString());
+      })
+      .catch(function(){ /* sem rede: o card fica sem a linha */ });
+  }
+
+  function buscarQuandoDetalhada(){
+    var url = 'https://cms-representacoes.github.io/apps-oly-v2/detalhada/dados/detalhada.json';
+    fetch(url, { headers: { Range: 'bytes=-400' }, cache: 'no-store' })
+      .then(function(r){ return r.status === 206 ? r.text() : null; })
+      .then(function(t){
+        if(!t) return;
+        var m = t.match(/"publicadoEm"\s*:\s*"([^"]+)"/);
+        if(m) pintarQuando('quandoDetalhada', m[1]);
+      })
+      .catch(function(){ /* sem rede: o card fica sem a linha */ });
+  }
+
   function pintarCartaCampanha(dados, session){
     var chip = document.getElementById('cartaChip');
     if(!chip || !dados || !Array.isArray(dados.meses) || !session) return;
@@ -1375,6 +1476,9 @@
 
     // A data que vale é a da leitura da Carta, não a do commit: um arquivo
     // republicado hoje pode estar repetindo números de ontem.
+    // O card de Metas mostra a mesma data desta leitura.
+    pintarQuando('quandoMetas', dados.atualizado_em);
+
     var quando = dados.atualizado_em ? new Date(dados.atualizado_em) : null;
     if(quando && isNaN(quando.getTime())) quando = null;
     var hoje = new Date();
@@ -1447,6 +1551,9 @@
     welcomeBar.hidden = false;
 
     carregarCartaCampanha(session);
+    // Detalhada e Showroom têm bases próprias: cada data vem de um lugar.
+    buscarQuandoDetalhada();
+    buscarQuandoShowroom();
 
     var isCms = temTudoLiberado(session.nome);
     Array.prototype.forEach.call(adminEls, function(el){ el.hidden = !isCms; });

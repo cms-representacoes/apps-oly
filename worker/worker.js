@@ -1389,6 +1389,37 @@ export default {
             { status: 200, headers: corsHeaders });
         }
 
+        // ---- quando cada base foi publicada ----
+        //
+        // Os arquivos do Showroom sao listas puras, sem cabecalho de data, e
+        // o Last-Modified do GitHub Pages responde a hora do DEPLOY para
+        // todos iguais. Quem sabe a hora de verdade e quem grava, e e aqui.
+        //
+        // Vai no KV e nao num arquivo: um arquivo renderia um commit a mais
+        // a cada publicacao, so para guardar uma data.
+        const carimbar = async (o_que) => {
+          if (!env.SACOLAS) return;
+          try { await env.SACOLAS.put("atualizado:" + o_que, new Date().toISOString()); }
+          catch (e) { /* o carimbo nao vale derrubar a publicacao */ }
+        };
+
+        // PATCH com action:"getAtualizado" → quando cada base subiu. Publico:
+        // e o que o portal mostra no card, antes de abrir o aplicativo.
+        if (body.action === "getAtualizado") {
+          if (!env.SACOLAS) {
+            return new Response(JSON.stringify({}), { status: 200, headers: corsHeaders });
+          }
+          const quais = ["dispo", "disponibilidades"];
+          const saida = {};
+          for (const q of quais) {
+            try {
+              const v = await env.SACOLAS.get("atualizado:" + q);
+              if (v) saida[q] = v;
+            } catch (e) { /* segue sem esse */ }
+          }
+          return new Response(JSON.stringify(saida), { status: 200, headers: corsHeaders });
+        }
+
         // PATCH com action:"getDispo" → retorna dispo.json
         if (body.action === "getDispo") {
           const { content } = await getFile(GITHUB_DISPO);
@@ -1399,6 +1430,7 @@ export default {
         if (body.action === "saveDispo" && body.data !== undefined) {
           const { sha } = await getFile(GITHUB_DISPO);
           await saveFile(GITHUB_DISPO, Array.isArray(body.data) ? body.data : [], sha, "update dispo");
+          await carimbar("dispo");
           return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
         }
 
@@ -1995,6 +2027,7 @@ export default {
         if (body.action === "saveDisponibilidades" && body.data !== undefined) {
           const { sha } = await getFile(GITHUB_DISPONIB);
           await saveFile(GITHUB_DISPONIB, Array.isArray(body.data) ? body.data : [], sha, "update disponibilidades");
+          await carimbar("disponibilidades");
           return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
         }
 
