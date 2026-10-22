@@ -1418,10 +1418,6 @@
     el.hidden = false;
   }
 
-  /* A Detalhada pesa 4,3 MB e o `publicadoEm` mora nos ultimos bytes do
-     arquivo: pedir um Range de 400 bytes evita baixar a base inteira so
-     para saber a data. Sem Range, fica sem a linha - melhor nada do que
-     4 MB no celular do vendedor. */
   /* O Showroom vive de duas bases - o repasse e a producao -, e nenhuma
      delas carrega data por dentro. Quem sabe a hora e o Worker, que e quem
      grava: ele carimba no KV a cada publicacao e devolve aqui. Vale a mais
@@ -1447,14 +1443,23 @@
       .catch(function(){ /* sem rede: o card fica sem a linha */ });
   }
 
+  /* A data da Detalhada vem do WORKER, e nao do arquivo do repositorio.
+     O `dados/detalhada.json` e reserva: o proprio app avisa que "e uma
+     foto que envelhece" e que "vive atrasada", e so entra quando o worker
+     esta fora. Lendo dela, este card anunciou 30 dias enquanto a tela da
+     Detalhada, que pergunta ao worker, mostrava a base da manha.
+
+     `getDetalhadaInfo` pesa 170 bytes e traz o mesmo `publicadoEm` que a
+     tela usa. */
   function buscarQuandoDetalhada(){
-    var url = 'https://cms-representacoes.github.io/apps-oly-v2/detalhada/dados/detalhada.json';
-    fetch(url, { headers: { Range: 'bytes=-400' }, cache: 'no-store' })
-      .then(function(r){ return r.status === 206 ? r.text() : null; })
-      .then(function(t){
-        if(!t) return;
-        var m = t.match(/"publicadoEm"\s*:\s*"([^"]+)"/);
-        if(m) pintarQuando('quandoDetalhada', m[1]);
+    fetch(WORKER, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'getDetalhadaInfo' })
+    })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){
+        if(d) pintarQuando('quandoDetalhada', d.publicadoEm || d.gerado);
       })
       .catch(function(){ /* sem rede: o card fica sem a linha */ });
   }
