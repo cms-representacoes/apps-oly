@@ -90,21 +90,6 @@
     .card-metas .portal-card-desc{ color:rgba(26,20,7,.76); }
     .card-metas .portal-card-cta{ color:#5A3B00; }
     .card-metas .pc-ico{ background:rgba(26,20,7,.16); color:#1A1407; }
-    /* GTM Digitação — verde-limão da Olympikus (#C4FA28, o da loja da
-       marca). É cor clara, então a tinta do card é escura, como no de Metas.
-       Ocupa as duas colunas: é o maior da grade. */
-    .card-gtm{ background:linear-gradient(112deg,#E6FF95 0%,#C4FA28 38%,#A3E400 68%,#5E8F00 100%); border:1px solid rgba(196,250,40,.5); }
-    .card-gtm::before{ content:'';position:absolute;inset:0; background:radial-gradient(ellipse at 88% 10%, rgba(245,255,215,.40) 0%, transparent 58%); pointer-events:none; }
-    @media (hover:hover){ .card-gtm:hover{ border-color:rgba(214,255,110,.9); box-shadow:0 24px 64px rgba(140,200,0,.42); } }
-    .card-gtm .portal-card-title{ color:#132000; }
-    .card-gtm .portal-card-desc{ color:rgba(19,32,0,.78); }
-    .card-gtm .portal-card-cta{ color:#2E4A00; }
-    .card-gtm .pc-ico{ background:rgba(19,32,0,.16); color:#132000; }
-    .card-gtm .gtm-logos{ display:flex; align-items:center; gap:7px; margin-top:4px; }
-    .card-gtm .gtm-logos img{ height:15px; width:auto; object-fit:contain;
-      filter:brightness(0) saturate(100%); opacity:.62; }
-    @media (min-width:640px){ .card-gtm .gtm-logos img{ height:17px; } }
-
     .card-catalogo{ background:linear-gradient(150deg,#9c66ff 0%,#7c3aed 48%,#3b0c8e 100%); border:1px solid rgba(190,160,255,.35); }
     .card-catalogo::before{ content:'';position:absolute;inset:0; background:radial-gradient(ellipse at 82% 14%, rgba(210,180,255,.28) 0%, transparent 62%); pointer-events:none; }
     @media (hover:hover){ .card-catalogo:hover{ border-color:rgba(190,160,255,.7); box-shadow:0 24px 64px rgba(124,58,237,.45); } }
@@ -118,6 +103,9 @@
     .portal-card-tag{ display:inline-flex;align-items:center;gap:6px; border-radius:999px; padding:4px 10px; font-size:10.5px;font-weight:700; margin-bottom:8px; width:fit-content; }
     @media (min-width:640px){ .portal-card-tag{ font-size:11px; padding:5px 11px; margin-bottom:10px; } }
     .portal-card-title{ font-size:16px;font-weight:800;color:#fff;line-height:1.15; margin-bottom:4px;letter-spacing:-.02em; }
+    /* O selo de novidade entra na linha do nome: no canto do card ele caia
+       em cima do botão Resumo, que a CMS vê no Repasses. */
+    .portal-card-title:has(> .pc-novos:not([hidden])){ flex-wrap:wrap; }
     @media (min-width:640px){ .portal-card-title{ font-size:17px; } }
     @media (min-width:1024px){ .portal-card-title{ font-size:18px; } }
     .portal-card-desc{ font-size:11.5px;line-height:1.4; margin-bottom:8px; flex:1; }
@@ -125,6 +113,25 @@
     /* Quando a base daquela aplicação subiu pela última vez. Fica junto do
        "Acessar", na mesma linha: ocupa o espaço vazio à direita e não
        empurra a altura do card. */
+    /* O selo de novidade do Repasses. Pulsa devagar: a graca e ser visto de
+       relance, ao abrir o portal, sem competir com o resto da tela. */
+    .pc-novos{
+      display:inline-flex; align-items:center; gap:5px; flex:none;
+      border-radius:999px; padding:3px 9px 3px 8px;
+      background:#16A34A; color:#fff;
+      font-size:10.5px; font-weight:800; letter-spacing:.01em;
+      box-shadow:0 4px 14px -5px rgba(22,163,74,.9);
+      animation:pcNovosPulso 2.4s ease-in-out infinite;
+    }
+    .pc-novos[hidden]{ display:none !important; }
+    .pc-novos svg{ width:11px; height:11px; flex:none; }
+    @keyframes pcNovosPulso{
+      0%, 100%{ transform:scale(1);    box-shadow:0 6px 18px -6px rgba(22,163,74,.9); }
+      50%     { transform:scale(1.06); box-shadow:0 8px 24px -4px rgba(22,163,74,1); }
+    }
+    @media (prefers-reduced-motion:reduce){ .pc-novos{ animation:none; } }
+    @media (min-width:640px){ .pc-novos{ font-size:11px; } }
+
     .pc-quando{
       margin-left:auto; display:inline-flex; align-items:center; gap:4px;
       font-size:10.5px; font-weight:800; letter-spacing:.01em;
@@ -769,22 +776,7 @@
 
     <div class="w-full max-w-4xl grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-5 fade-up-3">
 
-      <!-- GTM — liberado para a equipe: são os vendedores que repartem o mix.
-           O painel de resultado, dentro da tela, continua só da CMS e do DEV. -->
-      <a id="btnGtm" href="https://cms-representacoes.github.io/apps-oly-v2/gtm/"
-         class="portal-card card-gtm focus-ring sm:col-span-2">
-        <div class="portal-card-title"><span class="pc-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg></span><span class="pc-nome">GTM Digitação</span></div>
-        <div class="portal-card-desc">O mix da 1S27 por cor: cada vendedor reparte 100&#37; da compra de cada tênis, e a tabela sai pronta para digitar o pedido.</div>
-        <div class="gtm-logos" aria-hidden="true">
-          <img src="logo-oly-simbolo.png" alt="">
-          <img src="logo-ua-simbolo.png" alt="">
-        </div>
-        <div class="portal-card-cta">
-          Acessar
-          <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </div>
-      </a>
-
+      
       <a href="metas/" class="portal-card card-metas focus-ring">
         <div class="portal-card-title"><span class="pc-ico tag-metas"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7"/><path d="M2 20h20"/></svg></span><span class="pc-nome">Metas</span></div>
         <div class="portal-card-desc">A meta do mês por faixa e família, com a trava dos 15%.</div>
@@ -801,7 +793,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>
           Resumo
         </span>
-        <div class="portal-card-title"><span class="pc-ico tag-repasse"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg></span><span class="pc-nome">Repasses</span></div>
+        <div class="portal-card-title"><span class="pc-ico tag-repasse"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg></span><span class="pc-nome">Repasses</span><span class="pc-novos" id="novosRepasse" hidden><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.2 5.8L20 10l-5.8 2.2L12 18l-2.2-5.8L4 10l5.8-2.2L12 2z"/></svg><span class="pc-novos-txt"></span></span></div>
         <div class="portal-card-desc text-blue-200">Faça pedidos do estoque em repasse.</div>
         <div class="portal-card-cta text-blue-300">
           Acessar
@@ -1424,6 +1416,91 @@
      recente das duas: o card responde "mudou alguma coisa la dentro?". */
   var WORKER = 'https://repasse-worker-cms.marcosrep-cms.workers.dev/';
 
+  /* ----- novidades no repasse -------------------------------------
+     A conta e a MESMA que o Repasses faz por dentro, senao os dois numeros
+     discordam e quem abre encontra outra coisa: produto+cor com saldo que
+     tenha algum lote novo, dentro da janela de 3 dias.
+
+     O registro de "ja visto" e gravado pelo Repasses no proprio aparelho,
+     e portal e repasse moram no mesmo endereco - entao da para ler. Mas
+     daqui so se LE: quem grava e o Repasses, ao ser aberto. Se o portal
+     gravasse, a novidade acabaria antes de a pessoa ver.
+
+     Sem registro nenhum (nunca abriu o Repasses neste celular) o card nao
+     anuncia nada: o app, na primeira visita, marca tudo como "ja estava",
+     e anunciar a vitrine inteira como novidade nao ajudaria ninguem.
+
+     O saldo aqui e o do estoque, sem descontar o que pedidos pendentes ja
+     reservaram - para isso seria preciso baixar tambem os 2 MB dos
+     pedidos. Na pratica a diferenca so aparece num produto que entrou nos
+     ultimos tres dias e JA foi inteiro reservado; e raro, e o preco de o
+     portal abrir rapido. */
+  var REPASSE_NOVO_DIAS = 3;
+  var REPASSE_CH_VISTOS = 'repasse_lotes_vistos_v1';
+
+  // a mesma normalizacao do Repasses, para o agrupamento bater
+  function _norm(v){
+    return String(v == null ? '' : v).trim().toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+
+  function buscarNovosRepasse(){
+    var mapa = null;
+    try{ mapa = JSON.parse(localStorage.getItem(REPASSE_CH_VISTOS) || 'null'); }catch(_){}
+    if(!mapa || typeof mapa !== 'object') return;      // nunca abriu aqui
+
+    Promise.all([
+      fetch('data/dispo.json?t=' + Date.now(), { cache: 'no-store' })
+        .then(function(r){ return r.ok ? r.json() : null; }),
+      fetch('data/ocultos.json?t=' + Date.now(), { cache: 'no-store' })
+        .then(function(r){ return r.ok ? r.json() : []; })
+        .catch(function(){ return []; })
+    ])
+      .then(function(par){
+        var lista = par[0], ocultos = par[1];
+        if(!Array.isArray(lista)) return;
+        var escondido = {};
+        if(Array.isArray(ocultos)) for(var j = 0; j < ocultos.length; j++) escondido[ocultos[j]] = true;
+
+        var hoje = Date.now();
+        for(var i = 0; i < lista.length; i++){
+          var it = lista[i];
+          if(!(Number(it.saldo) > 0)) continue;            // lote esgotado nao e novidade
+          var chaveOculta = String(it.codigo || '').trim().toUpperCase() + '|' +
+                            String(it.cor || '').trim().toUpperCase() + '|' +
+                            String(it.gci || '').trim();
+          if(escondido[chaveOculta]) continue;             // o admin tirou da vitrine
+          var lote = String(it.num || '').trim() + '|' + String(it.gci || '').trim();
+          if(lote === '|') continue;
+
+          var dia = mapa[lote];
+          // lote que o aparelho ainda nao viu entrou depois da ultima visita
+          if(dia === undefined){ pintarNovosRepasse(true); return; }
+          if(dia === 'ja-estava') continue;
+          var t = Date.parse(dia + 'T12:00:00');
+          if(t && Math.floor((hoje - t) / 86400000) <= REPASSE_NOVO_DIAS){
+            pintarNovosRepasse(true); return;
+          }
+        }
+        pintarNovosRepasse(false);
+      })
+      .catch(function(){ /* sem rede: o card fica sem o selo */ });
+  }
+
+  /* Sem numero, de proposito. O Repasses nao mostra tudo o que esta no
+     estoque: cruza com o catalogo de produtos, tira o que nao tem foto e
+     tira o que o admin ocultou. Medido, de 8 produtos que daqui se
+     contaria, 6 apareciam la dentro - e um numero que discorda do que a
+     pessoa encontra e pior do que numero nenhum. */
+  function pintarNovosRepasse(tem){
+    var el = document.getElementById('novosRepasse');
+    if(!el) return;
+    if(!tem){ el.hidden = true; return; }
+    el.querySelector('.pc-novos-txt').textContent = 'Novidades';
+    el.title = 'Entrou coisa nova no repasse nos ultimos ' + REPASSE_NOVO_DIAS + ' dias';
+    el.hidden = false;
+  }
+
   function buscarQuandoShowroom(){
     fetch(WORKER, {
       method: 'PATCH',
@@ -1559,6 +1636,7 @@
     // Detalhada e Showroom têm bases próprias: cada data vem de um lugar.
     buscarQuandoDetalhada();
     buscarQuandoShowroom();
+    buscarNovosRepasse();
 
     var isCms = temTudoLiberado(session.nome);
     Array.prototype.forEach.call(adminEls, function(el){ el.hidden = !isCms; });
