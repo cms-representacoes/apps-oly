@@ -5126,18 +5126,15 @@ function pintarMetas(){
   const totC = mtSomar(todos, oly), totV = mtSomar(meu, oly);
   const cmsDestravou = mtBateu(totC && totC.qtd, totC && totC.meta_qtd, GATILHO_TOTAL);
 
-  // o resumo da linha de cima continua existindo: % geral e o que a vitrine tem
-  const OF = ofertaDaVitrine();
-  let temTudo = 0; for(const q of Object.values(OF.cat)) temTudo += q;
+  /* Sobra só o % da CMS. "para você" e "na vitrine" saíram: eram dois números
+     grandes que ninguém usava para decidir nada e disputavam a linha com os
+     botões que se clica. O que a vitrine tem já está na contagem do botão
+     "Ver N produtos" e nos selos de cada card. */
   const pcG = (totC && totC.meta_qtd) ? Math.round(100 * totC.qtd / totC.meta_qtd) : 0;
-  const faltaG = Math.round(Math.max(0,
-    mtAlvo(totV && totV.meta_qtd, GATILHO_TOTAL) - (totV ? totV.qtd : 0)));
   $('mtResumo').innerHTML =
     `<span class="cx cms"${cmsDestravou ? ' style="color:var(--pronta)"' : ''}
        title="A CMS inteira contra a meta de tênis. Abaixo de ${Math.round(GATILHO_TOTAL*100)}% ninguém ganha estrela, por melhor que tenha ido."
-       >${pcG}% <small>a CMS</small></span>` +
-    (faltaG ? `<span class="cx">${nf(faltaG)} <small>para você</small></span>` : '') +
-    `<span class="cx" style="color:var(--repasse-tinta)">${nf(temTudo)} <small>na vitrine</small></span>`;
+       >${pcG}% <small>a CMS</small></span>`;
 
   // ── a trava dos 15%, numa linha fina ────────────────────────────────
   const tri = mtTrimestre(mes);
