@@ -1780,6 +1780,18 @@ body{ font-family:'Plus Jakarta Sans', Inter, system-ui, -apple-system, 'Segoe U
    tablet que os dois botões amarelos ficavam lado a lado sem nome, que é o
    que esta mudança veio resolver. */
 .risco{ background:var(--linha-forte); margin:6px 2px; }
+/* ── as categorias saem da fita no tablet e no celular ──
+   Tênis, Chinelos, Vestuário, Acessórios e Meias custavam uns 330px de uma
+   fila que não cabia, e empurravam para fora justamente os botões de ação.
+   Lá elas passam a morar dentro do painel de Filtros, como primeira seção.
+   No computador a fila inteira cabe, então nada muda: continuam no topo,
+   a um clique, e o painel não repete o que já está à vista. */
+@media(max-width:1099px){
+  #catFiltros,#riscoCat{ display:none !important; }
+}
+@media(min-width:1100px){
+  .pn-corpo .so-estreito{ display:none; }
+}
 /* ── ações × escolhas ──
    Pílula redonda é escolher o que ver (origens e categorias). Os botões que
    abrem alguma coisa — busca, Filtros, avisos, pedidos, sacola, voltar —
@@ -4601,8 +4613,30 @@ function ordemOpcoes(id, itens){
   return itens.sort((a, b) => b[1] - a[1]);
 }
 
+/* A categoria é escolha única, não marcação múltipla como os outros grupos:
+   clicar na que já está ligada desliga, igual à pílula do topo. */
+const catNoPainel = () => matchMedia('(max-width:1099px)').matches;
+
+function secaoCategoria(){
+  const daMarcaAtual = STATE.produtos.filter(daMarca);
+  const paraCategoria = STATE.produtos.filter(o => passa(o, 'categoria'));
+  const cats = CATEGORIAS.filter(([id]) => daMarcaAtual.some(o => o.categoria === id));
+  if(!cats.length) return '';
+  const ops = cats.map(([id, rot]) => {
+    const ativo = STATE.categoria === id;
+    const q = paraCategoria.filter(o => o.categoria === id).length;
+    const vazia = !ativo && !q;
+    return `<button class="${ativo ? 'on' : ''}${vazia ? ' vazia' : ''}"
+      onclick="setCategoria('${id}')" aria-pressed="${ativo}"
+      ${vazia ? 'disabled title="Nada aqui com os filtros atuais"' : ''}>` +
+      `${esc(rot)}<span class="q">${nf(q)}</span></button>`;
+  }).join('');
+  return `<section class="gr so-estreito"><h3>Categoria</h3><div class="ops">${ops}</div></section>`;
+}
+
 function pintarPainel(){
-  const n = nSelecionados();
+  // onde a categoria mora no painel, ela conta como filtro dele
+  const n = nSelecionados() + (catNoPainel() && STATE.categoria ? 1 : 0);
   $('badgeFiltros').hidden = !n;
   $('badgeFiltros').textContent = n;
   $('btnFiltros').setAttribute('aria-expanded', String(!$('painel').hidden));
@@ -4660,7 +4694,11 @@ function pintarPainel(){
   const fora = GRUPOS.findIndex(g => g.id === 'selo');
   const antes = secoes.slice(0, fora + 1).join('');
   const depois = secoes.slice(fora + 1).join('');
-  $('pnCorpo').innerHTML = antes + ordenar + depois;
+  // A categoria abre o painel no tablet e no celular, onde ela deixou de
+  // existir na fita do topo. Vai sempre no HTML e quem a esconde no
+  // computador é o CSS: assim virar o aparelho de pé para deitado não
+  // depende de o painel ser repintado.
+  $('pnCorpo').innerHTML = secaoCategoria() + antes + ordenar + depois;
 
   rolarAteADD();
 }
@@ -4743,6 +4781,9 @@ $('pnCorpo').addEventListener('click', e => {
 ligarCliques($('pnCorpo'));
 ligarCliques($('pnAtivos'));
 function limparFiltros(){
+  // no computador a categoria é pílula do topo e não pertence ao painel:
+  // limpá-la daqui apagaria uma escolha feita fora dele
+  if(catNoPainel()) STATE.categoria = '';
   for(const g of GRUPOS) STATE.sel[g.id].clear();
   STATE.soNovos = false;
   STATE.premioId = '';
