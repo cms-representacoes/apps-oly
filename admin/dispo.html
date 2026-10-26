@@ -960,6 +960,14 @@
           <p>Clique em <strong>Atualizar DISPO</strong> para carregar os dados de estoque.</p>
         </div>
 
+        <!-- Pedido com data mais velha que a da DISPO. Some sozinha quando
+             não há nenhum. -->
+        <div id="avisoDatasVelhas" style="display:none;align-items:center;gap:12px;margin-bottom:10px;padding:11px 15px;border-radius:14px;background:#fef3c7;border:1px solid #fcd34d">
+          <i class="fa-solid fa-calendar-xmark" style="color:#b45309;font-size:15px"></i>
+          <span id="avisoDatasTxt" style="font-weight:700;color:#78350f;font-size:13px"></span>
+          <button onclick="abrirAjusteDeDatas()" style="margin-left:auto;display:flex;align-items:center;gap:7px;background:#b45309;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-wand-magic-sparkles" style="font-size:12px"></i> Ajustar as datas</button>
+        </div>
+
         <!-- BARRA DE SELEÇÃO (excluir em lote) -->
         <div id="dispoBulkBar" style="display:none;align-items:center;gap:12px;margin-bottom:10px;padding:10px 14px;border-radius:14px;background:var(--brand-soft,#eef0fe);border:1px solid var(--line,#c7cdfb)">
           <span id="dispoBulkCount" style="font-weight:800;color:var(--brand,#3730a3);font-size:13px"></span>
@@ -1573,6 +1581,7 @@ async function salvarEdicaoProduto(){
   const btn = $('editarProdutoBtnSalvar');
   const prevLabel = btn.textContent;
   btn.disabled = true; btn.textContent = 'Salvando...';
+  const dataAntiga = formatDate(row.dataEntrega) || '';
 
   try{
     // Atualiza só esta linha, mantendo o restante de STATE.dispoRows intacto
@@ -1592,6 +1601,8 @@ async function salvarEdicaoProduto(){
     fecharEditarProduto();
     renderDispo();
     showToast(`"${row.produto}" atualizado.`, 'success');
+    // mudou a data? os pedidos daquele lote nao vem junto
+    if((formatDate(dataStr) || '') !== dataAntiga) avisarDataDoLoteMudou(row);
   }catch(err){
     console.error(err);
     showToast('Erro ao salvar. Tente novamente.', 'error');
@@ -2103,6 +2114,86 @@ function sugerirClientes(){
   dl.innerHTML = [...vistos.entries()]
     .sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'))
     .map(([c, n]) => `<option value="${safeHtml(c + ' · ' + n)}"></option>`).join('');
+}
+
+
+/* ── Pedido com data mais velha que a da DISPO ───────────────────────────
+   A prev. faturamento é COPIADA para dentro do pedido no momento do
+   repasse. Quando a fábrica remarca o lote, a vitrine já mostra a data
+   nova — ela lê a DISPO a cada carga — mas o pedido já feito fica na
+   antiga. Quem acerta é a tela "Ajustar prev. faturamento" do admin, e ela
+   é manual: em 26/10/2026 eram 28 lotes, 93 pedidos e 1.782 pares parados
+   assim, e a diretoria cobrou as datas.
+
+   A faixa olha o ESTADO, não o que acabou de ser feito: pega também o que
+   veio pela importação da planilha da fábrica, não só a edição à mão. */
+function pedidosComDataVelha(num){
+  const n = num == null ? null : sanitizeDisplayText(String(num));
+  const porNum = new Map();
+  for(const r of (STATE.dispoRows || [])){
+    const k = sanitizeDisplayText(String(r.num || ''));
+    if(k && !porNum.has(k)) porNum.set(k, formatDate(r.dataEntrega) || '');
+  }
+  const achados = [];
+  for(const o of (STATE.orders || [])){
+    if(o.archived) continue;
+    if(canonicalStatus(o.status) === 'Cancelado') continue;
+    for(const it of (o.items || [])){
+      const k = sanitizeDisplayText(String(it.num || ''));
+      if(!k || (n && k !== n)) continue;
+      const naDispo = porNum.get(k);
+      const noPedido = formatDate(it.prevFaturamento) || '';
+      if(!naDispo || !noPedido || naDispo === noPedido) continue;
+      achados.push({ num: k, pedido: o.id, cliente: o.clienteNome || o.clienteCodigo || '—',
+                     status: canonicalStatus(o.status), pares: getItemUnits(it),
+                     de: noPedido, para: naDispo });
+    }
+  }
+  return achados;
+}
+
+/* A faixa amarela. Chamada a cada render, some sozinha quando zera. */
+function pintarAvisoDatasVelhas(){
+  const faixa = $('avisoDatasVelhas');
+  if(!faixa) return;
+  const achados = pedidosComDataVelha();
+  if(!achados.length){ faixa.style.display = 'none'; return; }
+  const lotes = new Set(achados.map(a => a.num)).size;
+  const pedidos = new Set(achados.map(a => a.pedido)).size;
+  const pares = achados.reduce((t, a) => t + Number(a.pares || 0), 0);
+  $('avisoDatasTxt').textContent =
+    `${pedidos} pedido${pedidos > 1 ? 's' : ''} com a data de faturamento mais velha que a da DISPO ` +
+    `· ${lotes} lote${lotes > 1 ? 's' : ''} · ${formatInt(pares)} pares`;
+  faixa.style.display = 'flex';
+}
+
+/* Abre a tela de ajuste do admin já procurando os lotes. Sem número, vai
+   com todos os que estão para trás. */
+function abrirAjusteDeDatas(nums){
+  const lista = (nums && nums.length) ? nums : [...new Set(pedidosComDataVelha().map(a => a.num))];
+  if(!lista.length){ showToast('Nenhum pedido está com data diferente da DISPO.', 'info'); return; }
+  window.open('index.html?prevfat=' + encodeURIComponent(lista.join(',')), '_blank');
+}
+
+/* O aviso na hora de salvar uma data nova. Só aparece quando aquele lote
+   tem pedido para trás — e aí leva direto ao ajuste daquele lote. */
+async function avisarDataDoLoteMudou(row){
+  const achados = pedidosComDataVelha(row.num);
+  if(!achados.length) return;
+  const pedidos = new Set(achados.map(a => a.pedido)).size;
+  const pares = achados.reduce((t, a) => t + Number(a.pares || 0), 0);
+  const aprovados = achados.filter(a => a.status === 'Aprovado').length;
+  const ok = await uiConfirm({
+    title: 'Os pedidos deste lote ficaram na data antiga',
+    message: `Nº ${row.num} · ${row.produto || ''} ${row.cor || ''}\n\n` +
+             `${pedidos} pedido${pedidos > 1 ? 's' : ''} (${formatInt(pares)} pares` +
+             `${aprovados ? `, ${aprovados} já aprovado${aprovados > 1 ? 's' : ''}` : ''}) ` +
+             `continua${pedidos > 1 ? 'm' : ''} com ${achados[0].de}.\n\n` +
+             `A vitrine já mostra ${achados[0].para}, porque lê a DISPO — mas o pedido guarda ` +
+             `a data do momento do repasse e não se acerta sozinho.`,
+    okText: 'Ajustar agora',
+  });
+  if(ok) abrirAjusteDeDatas([String(row.num)]);
 }
 
 function montarBlocoCancelamento(row){
@@ -3029,6 +3120,7 @@ function gradesIguais(a, b){
 
 function renderDispo(){
   if(!STATE.dispoRows.length) return;
+  pintarAvisoDatasVelhas();     // some sozinha quando nao ha pedido para tras
 
   const rows = computeRows();
   const sorted = sortRows(rows);

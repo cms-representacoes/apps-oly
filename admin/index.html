@@ -5675,6 +5675,23 @@ async function abrirAjusteDatas(){
   document.body.style.overflow = 'hidden';
   $('dtNums').focus();
 }
+/* Atalho vindo da DISPO: `index.html?prevfat=219,256` abre esta tela já
+   procurando por aqueles lotes. É o que fecha o ciclo — quem muda a data lá
+   chega aqui com o trabalho meio pronto, em vez de ter de lembrar sozinho. */
+async function abrirAjusteDatasPelaUrl(){
+  let nums = '';
+  try{ nums = new URLSearchParams(location.search).get('prevfat') || ''; }catch(_){}
+  if(!nums.trim()) return;
+  // espera os pedidos chegarem: sem eles a busca não acha nada
+  for(let i = 0; i < 120 && !(STATE.orders || []).length; i++){
+    await new Promise(r => setTimeout(r, 500));
+  }
+  await abrirAjusteDatas();
+  $('dtNums').value = nums.split(/[^0-9]+/).filter(Boolean).join(', ');
+  if($('dtNums').value) dtPesquisar();
+}
+document.addEventListener('DOMContentLoaded', abrirAjusteDatasPelaUrl);
+
 function fecharAjusteDatas(){
   if(DT.aplicadas && !confirm('Há alterações aplicadas que ainda não foram salvas. Fechar assim mesmo?')) return;
   $('datasModal').classList.add('hidden');
