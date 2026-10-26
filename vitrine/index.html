@@ -1763,6 +1763,25 @@ body{ font-family:'Plus Jakarta Sans', Inter, system-ui, -apple-system, 'Segoe U
 .busca.aberta{ background:var(--suave); }
 /* o Filtros tem texto: não pode herdar a largura fixa dos botões redondos */
 .icone.btn-filtro{ width:auto; padding:0 14px; font-size:13px; font-weight:700; color:var(--tinta); }
+/* ── as três ações do vendedor levam o nome escrito ──
+   Filtros, Meus pedidos e Sacola são o que ele de fato usa no cabeçalho.
+   Em ícone puro os dois últimos ficavam iguais entre si — dois retângulos
+   azuis — e obrigavam a adivinhar qual era qual. O sino fica só no ícone:
+   ele é raro, aparece com cor própria quando toca e tem o aviso no título. */
+.icone.btn-pedidos,.icone.btn-sacola{ width:auto; padding:0 14px; gap:7px;
+  font-size:13px; font-weight:700; }
+.icone.btn-filtro > span:not(.badge),
+.icone.btn-pedidos > span:not(.badge),
+.icone.btn-sacola > span:not(.badge){ white-space:nowrap; }
+/* Tablet e celular: só os ícones, como já era. Lá a fila rola de qualquer
+   jeito, e as duas palavras custariam 110px que não existem — o preço seria
+   empurrar a sacola para fora da vista justo onde a tela é menor. O Filtros
+   mantém o nome porque sempre teve, e a sacola ganha o botão flutuante. */
+@media(max-width:1099px){
+  .icone.btn-pedidos > span:not(.badge),
+  .icone.btn-sacola > span:not(.badge){ display:none; }
+  .icone.btn-pedidos,.icone.btn-sacola{ width:var(--pilula,32px); padding:0; gap:0; }
+}
 .risco{ background:var(--linha-forte); margin:6px 2px; }
 /* ── ações × escolhas ──
    Pílula redonda é escolher o que ver (origens e categorias). Os botões que
@@ -1848,24 +1867,42 @@ body{ font-family:'Plus Jakarta Sans', Inter, system-ui, -apple-system, 'Segoe U
    sobra num notebook de 1366, então as pílulas e os vãos cedem alguns
    pixels cada: 3px de respiro por botão ninguém percebe, a fila cortada
    todo mundo percebe. */
+/* ── no computador os botões não viajam com a fita ──
+   Com o nome escrito, Filtros + Meus pedidos + Sacola passaram a custar uns
+   160px a mais, e a fila, que já raspava o limite num 1920, empurrava a
+   Sacola e o Portal para fora da vista. Quem rola agora são só as
+   categorias: elas passam por baixo do bloco de botões, que fica preso na
+   direita com o mesmo branco do cabeçalho e um esmaecido na borda, para o
+   chip não aparecer cortado na metade. A seta da direita recua a largura do
+   bloco (--acoes-w, medida no JS) para não cobrir o Portal. */
+@media(min-width:1100px){
+  .topo-rolo > .topo-acoes{ position:sticky; right:0; z-index:5; background:var(--carta); }
+  .topo-rolo > .topo-acoes::after{ content:''; position:absolute; top:-3px; bottom:-3px;
+    left:-22px; width:22px; pointer-events:none;
+    background:linear-gradient(90deg, transparent, var(--carta)); }
+  .rola-seta.dir{ right:calc(var(--acoes-w, 0px) + 4px); }
+  /* Busca aberta: o campo toma a largura e o trilho para de rolar, então o
+     bloco de botões não tem mais onde se prender e era a sacola que caía
+     fora. Enquanto se digita, os três voltam a ser só ícone — a mesma
+     resposta do tablet, e o nome volta assim que a busca fecha. */
+  .topo-rolo:has(.busca.aberta) .icone.btn-filtro > span:not(.badge),
+  .topo-rolo:has(.busca.aberta) .icone.btn-pedidos > span:not(.badge),
+  .topo-rolo:has(.busca.aberta) .icone.btn-sacola > span:not(.badge){ display:none; }
+  .topo-rolo:has(.busca.aberta) .icone.btn-filtro,
+  .topo-rolo:has(.busca.aberta) .icone.btn-pedidos,
+  .topo-rolo:has(.busca.aberta) .icone.btn-sacola{ width:var(--pilula,32px); padding:0; gap:0; }
+}
 @media(min-width:1024px){
   .topo-rolo{ gap:6px }
   .topo-acoes{ gap:6px }
-  /* O botão do Portal passou a levar a palavra, como nas outras telas, e
-     com ela foram 50px da faixa — com um nome longo de vendedor a fila
-     voltava a rolar num 1366. Entre 1024 e 1439 o Filtros fica só no ícone,
-     que é o botão cujo desenho se explica sozinho e ainda carrega o
-     contador. De 1440 em diante a palavra volta. */
-  .icone.btn-filtro > span:not(.badge){ display:none }
-  .icone.btn-filtro{ width:var(--pilula); padding:0 }
+  /* O Filtros chegou a ficar só no ícone entre 1024 e 1439 para a fila não
+     rolar num 1366. Voltou a levar a palavra junto com Pedidos e Sacola:
+     quem cede espaço agora são os vãos e as pílulas, e o que passar disso
+     rola no trilho — melhor rolar do que ter de adivinhar o botão. */
   .seg{ gap:4px }
   .cat{ gap:4px }
   .seg button{ padding:0 11px }
   .cat button{ padding:0 10px }
-}
-@media(min-width:1440px){
-  .icone.btn-filtro > span:not(.badge){ display:inline }
-  .icone.btn-filtro{ width:auto; padding:0 14px }
 }
 /* Flutuante em TODOS os tamanhos, no canto esquerdo — oposto à sacola, para
    os dois nunca disputarem o mesmo lugar. Saiu da fila do topo: lá ele
@@ -2552,6 +2589,7 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
         <path d="M8 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-2"/>
         <rect x="8" y="2" width="8" height="4" rx="1"/>
         <path d="M8 11h8M8 16h5"/></svg>
+      <span>Meus pedidos</span>
     </button>
     <button class="icone btn-sacola" id="btnSacolaTopo" title="Abrir a sacola"
             aria-label="Abrir a sacola" onclick="abrirSacola()">
@@ -2559,6 +2597,7 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
            stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
         <path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      <span>Sacola</span>
       <span class="badge" id="badgeSacola" hidden></span>
     </button>
     <!-- a seta era o caractere ←, fino demais ao lado dos outros ícones -->
@@ -10034,6 +10073,18 @@ _mqEstreito.addEventListener('change', arrumarTopo);
   };
   if(esq) esq.onclick = () => andar(-1);
   if(dir) dir.onclick = () => andar(1);
+  // a seta da direita recua a largura do bloco de botoes, que no computador
+  // fica preso ali e a cobriria
+  const acoes = $('topoAcoes'), l1 = $('topoL1');
+  const medirAcoes = () => {
+    if(!acoes || !l1) return;
+    const preso = acoes.parentElement === rolo && matchMedia('(min-width:1100px)').matches;
+    l1.style.setProperty('--acoes-w', preso ? acoes.offsetWidth + 'px' : '0px');
+  };
+  medirAcoes();
+  addEventListener('resize', medirAcoes);
+  if(window.ResizeObserver && acoes) new ResizeObserver(medirAcoes).observe(acoes);
+
   rolo.addEventListener('scroll', arrumarSetas, { passive:true });
   addEventListener('resize', arrumarSetas);
   if(window.ResizeObserver) new ResizeObserver(arrumarSetas).observe(rolo);
