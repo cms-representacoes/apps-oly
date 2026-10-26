@@ -964,7 +964,7 @@
         <div id="dispoBulkBar" style="display:none;align-items:center;gap:12px;margin-bottom:10px;padding:10px 14px;border-radius:14px;background:var(--brand-soft,#eef0fe);border:1px solid var(--line,#c7cdfb)">
           <span id="dispoBulkCount" style="font-weight:800;color:var(--brand,#3730a3);font-size:13px"></span>
           <button onclick="cancelarSelecionadosDispo()" style="margin-left:auto;display:flex;align-items:center;gap:7px;background:var(--danger,#b91c1c);color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-ban" style="font-size:12px"></i> Cancelar selecionados</button>
-          <button onclick="relatorioCancelamentos()" style="background:transparent;border:1px solid var(--line,#c7cdfb);color:var(--brand,#3730a3);border-radius:999px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer" title="Baixar o relatorio de cancelamentos"><i class="fa-solid fa-file-excel"></i> Relatorio</button>
+          <button onclick="relatorioDispo()" style="background:transparent;border:1px solid var(--line,#c7cdfb);color:var(--brand,#3730a3);border-radius:999px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer" title="Baixar o relatorio de cancelamentos"><i class="fa-solid fa-file-excel"></i> Relatorio</button>
           <button onclick="excluirSelecionadosDispo()" style="display:flex;align-items:center;gap:7px;background:#dc2626;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-trash-can" style="font-size:12px"></i> Excluir selecionados</button>
           <button onclick="limparSelecaoDispo()" style="background:transparent;border:1px solid var(--line,#c7cdfb);color:var(--brand,#3730a3);border-radius:999px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer">Limpar</button>
         </div>
@@ -1790,6 +1790,8 @@ async function cancelarSelecionadosDispo(){
   const pares = linhas.reduce((a, r) => a + Number(r.saldo || 0), 0);
   const comPedido = linhas.filter(r => { const p = pedidosDoNum(r.num); return (p.pendente + p.aprovado) > 0; });
 
+  if(!await passouNaTrava(linhas)){ return; }
+
   const motivo = await uiEscolher({
     title: `Cancelar ${linhas.length} lote${linhas.length > 1 ? 's' : ''}`,
     message: `Serão descontados ${formatInt(pares)} pares, o saldo inteiro das linhas marcadas.`
@@ -1860,6 +1862,79 @@ function uiEscolher(opts){
 
 /* ---------- relatório em xlsx ----------
    Sem biblioteca: o xlsx é um zip de XML, e é o formato que o financeiro abre. */
+/* Duas opções em cartões, para escolher com um toque. O uiEscolher traz um
+   <select> e um botão escrito "Cancelar lotes" — serve para motivo, não
+   para isto. */
+function uiDuasOpcoes({ title, message, a, b }){
+  return new Promise(resolve => {
+    const fundo = document.createElement('div');
+    fundo.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(2,6,23,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+    const cartao = (id, o) =>
+      '<button id="' + id + '" style="display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;' +
+      'background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:13px 14px;cursor:pointer;color:var(--text)">' +
+      '<i class="' + o.icone + '" style="font-size:18px;color:var(--brand,#3730a3);margin-top:2px;width:20px"></i>' +
+      '<span><b style="font-size:14px;font-weight:800">' + safeHtml(o.titulo) + '</b>' +
+      '<small style="display:block;font-size:12px;color:var(--muted);margin-top:3px;font-weight:600">' + safeHtml(o.dica) + '</small></span></button>';
+    fundo.innerHTML =
+      '<div style="width:100%;max-width:440px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">' +
+      '<div style="font-size:16px;font-weight:900;color:var(--text)">' + safeHtml(title) + '</div>' +
+      '<div style="font-size:13px;color:var(--muted);margin:8px 0 14px;white-space:pre-line">' + safeHtml(message) + '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:10px">' + cartao('__a', a) + cartao('__b', b) + '</div>' +
+      '<div style="display:flex;justify-content:flex-end;margin-top:14px">' +
+      '<button id="__no" style="background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer">Voltar</button>' +
+      '</div></div>';
+    document.body.appendChild(fundo);
+    const fim = v => { fundo.remove(); resolve(v); };
+    fundo.querySelector('#__a').onclick = () => fim('a');
+    fundo.querySelector('#__b').onclick = () => fim('b');
+    fundo.querySelector('#__no').onclick = () => fim(null);
+    fundo.onclick = e => { if(e.target === fundo) fim(null); };
+  });
+}
+
+/* O botão Relatório pergunta primeiro o que é para sair. */
+async function relatorioDispo(){
+  const marcados = _dispoSelecionados.size;
+  const escolha = await uiDuasOpcoes({
+    title: 'Gerar relatório',
+    message: marcados
+      ? `${marcados} lote${marcados > 1 ? 's marcados' : ' marcado'} na tela.`
+      : 'Nenhum lote marcado — sai a lista inteira, como está filtrada.',
+    a: { icone: 'fa-solid fa-box-open', titulo: 'Lotes ativos',
+         dica: marcados ? 'Só os marcados, com saldo, pedidos e situação'
+                        : 'O que ainda está no repasse, com saldo, pedidos e situação' },
+    b: { icone: 'fa-solid fa-ban', titulo: 'Saídas do repasse',
+         dica: 'Cancelamentos e devoluções, com motivo e quem fez' },
+  });
+  if(escolha === 'a') relatorioAtivos();
+  else if(escolha === 'b') relatorioCancelamentos();
+}
+
+/* Os lotes que ainda estão no repasse. As colunas são as da tela, mais o
+   que já saiu daquele Nº — é a pergunta seguinte de quem olha a lista. */
+function relatorioAtivos(){
+  const marcados = _dispoSelecionados;
+  const base = (STATE.dispoRows || []).filter(r =>
+    marcados.size ? marcados.has(String(r.num || '')) : true);
+  const linhasOrd = base.slice().sort((x, y) => Number(x.num || 0) - Number(y.num || 0));
+  if(!linhasOrd.length){ showToast('Nenhum lote para o relatório.', 'info'); return; }
+
+  const cab = ['Nº', 'GCI', 'Código', 'Produto', 'Cor', 'Prev. Fat',
+               'Saldo dispo', 'Pendente', 'Aprovado', 'Saldo real', 'Situação', 'Já cancelado'];
+  const linhas = linhasOrd.map(r => {
+    const p = pedidosDoNum(r.num);
+    const saldo = Number(r.saldo || 0);
+    const real = saldo - Number(p.pendente || 0) - Number(p.aprovado || 0);
+    return [
+      r.num || '', r.gci || '', r.codigo || '', r.produto || '', r.cor || '', r.dataEntrega || '',
+      saldo, Number(p.pendente || 0), Number(p.aprovado || 0), real,
+      getSituacao(real, saldo).label, paresCanceladosDoNum(r.num),
+    ];
+  });
+  const hoje = new Date().toLocaleDateString('pt-BR').split('/').join('-');
+  baixarXlsxCanc(cab, linhas, 'LOTES NO REPASSE ' + hoje + '.xlsx');
+}
+
 function relatorioCancelamentos(){
   const lista = (STATE.cancelamentos || []).slice()
     .sort((a, b) => String(b.em).localeCompare(String(a.em)));
@@ -1935,7 +2010,7 @@ function baixarXlsxCanc(cab, linhas, nome){
   a.download = nome;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-  showToast('Relatório com ' + linhas.length + ' cancelamento(s).', 'success');
+  showToast('Relatório com ' + linhas.length + ' linha(s).', 'success');
 }
 
 /* zip sem compressão (store): basta para XML pequeno e evita dependência */
@@ -2150,9 +2225,77 @@ function cancRecalcular(){
   $('cancBtConfirmar').disabled = !$('cancMotivo').value || pares <= 0 || saldo <= 0 || semCliente;
 }
 
+
+/* ── Trava contra cancelar o mesmo lote duas vezes ───────────────────────
+   Em 26/10 o Nº 469 foi cancelado às 12:13 e de novo às 12:14: dois
+   registros de "120 -> 0" num lote de 120. O saldo gravado ficou certo (o
+   código grava o saldo final, não subtrai), mas o histórico passou a somar
+   240 pares cancelados.
+
+   Deu para cancelar de novo porque o saldo na mão da tela ainda era 120: o
+   dispo.json vem do GitHub Pages, que serve com cache, e quem recarrega
+   logo depois recebe o saldo de antes.
+
+   A conferência é a mesma que o app já faz para redescontar depois de uma
+   importação: havendo cancelamento ATIVO cujo desconto ainda não aparece
+   no saldo, a tela está velha.                                          */
+function jaSaiuDoRepasse(row){
+  const saldo = Number((row && row.saldo) || 0);
+  return cancelamentosDoNum(row && row.num).filter(c => {
+    const antes = Number(c.saldoAntes || 0);
+    return antes > 0 && saldo >= antes;      // o desconto nao entrou no saldo
+  });
+}
+
+/* Relê os cancelamentos do servidor e devolve a lista de verdade. Serve
+   para duas coisas: ver o que outra aba gravou e ter a base certa para
+   gravar por cima — antes, duas abas abertas apagavam o registro uma da
+   outra. Se a leitura falhar, segue com o que está na memória: travar o
+   cancelamento por causa de uma oscilação de rede seria pior. */
+async function cancelamentosFrescos(){
+  try{
+    const r = await workerFetch({ method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'getCancelamentosDispo' }) });
+    if(!r.ok) return null;
+    const lista = await r.json();
+    if(!Array.isArray(lista)) return null;
+    STATE.cancelamentos = lista;
+    return lista;
+  }catch(_){ return null; }
+}
+
+/* O aviso que explica e manda recarregar. Devolve true quando pode seguir. */
+async function passouNaTrava(linhas){
+  await cancelamentosFrescos();
+  const presas = [];
+  for(const row of linhas){
+    const ja = jaSaiuDoRepasse(row);
+    if(ja.length) presas.push({ row, ja });
+  }
+  if(!presas.length) return true;
+  const detalhe = presas.slice(0, 6).map(({ row, ja }) => {
+    const c = ja[ja.length - 1];
+    return `Nº ${row.num} · ${row.produto || ''} ${row.cor || ''} — ` +
+           `${formatInt(c.pares)} pares em ${new Date(c.em).toLocaleString('pt-BR')}` +
+           (c.por ? ` por ${c.por}` : '');
+  }).join('\n');
+  await uiConfirm({
+    title: presas.length > 1 ? 'Estes lotes já saíram do repasse' : 'Este lote já saiu do repasse',
+    message: `${detalhe}${presas.length > 6 ? `\n… e mais ${presas.length - 6}` : ''}\n\n` +
+             `O saldo que está na tela ainda é o de antes do cancelamento — ` +
+             `a página está com o número velho. Recarregue antes de cancelar de novo, ` +
+             `senão o mesmo lote sai duas vezes no histórico.`,
+    okText: 'Recarregar agora',
+  }).then(ok => { if(ok) location.reload(); });
+  return false;
+}
+
 async function confirmarCancelamento(){
   if(!_cancRow) return;
   const row = _cancRow;
+  // a trava vem antes do "tem certeza?": nao faz sentido perguntar para
+  // depois dizer que nao pode
+  if(!await passouNaTrava([row])) return;
   const tudo = document.querySelector('input[name=canctipo]:checked').value === 'tudo';
   const maxCx = caixasDaLinha(row);
   const cx = tudo ? (maxCx || 1) : Number($('cancCaixas').value || 0);
