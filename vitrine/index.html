@@ -8659,11 +8659,29 @@ function abrirModal(i, comFicha){
   $('mTit').textContent = o.nome || o.artigo;
   $('mSub').textContent = o.artigo + ' · ' + o.cor + (o.pdv ? ' · ' + brl(o.pdv) : '');
 
+  /* ── o detalhe mostra só a origem que está escolhida ──
+     Em Repasse o vendedor via tambem o estoque e a producao do mesmo
+     produto, e saia do modal sem saber o que afinal estava olhando. Com uma
+     origem escolhida, so ela aparece; em "Tudo" aparecem as tres, como
+     sempre. Os selos do card nao mudam: la eles dizem o que existe, aqui
+     dizemos o que se esta vendo.
+
+     A ressalva do "tem": o zoom abre uma cor que pode estar fora do filtro,
+     e sem ela o detalhe abriria vazio — nesse caso volta a mostrar tudo. */
+  const temEst = !!o.pronta, temRep = !!o.repasse, temPro = !!o.meta;
+  const soUma = STATE.origem !== 'tudo' && (
+    (STATE.origem === 'pronta'  && temEst) ||
+    (STATE.origem === 'repasse' && temRep) ||
+    (STATE.origem === 'meta'    && temPro));
+  const verEst = temEst && (!soUma || STATE.origem === 'pronta');
+  const verRep = temRep && (!soUma || STATE.origem === 'repasse');
+  const verPro = temPro && (!soUma || STATE.origem === 'meta');
+
   let h = '';
-  if(o.pronta){
+  if(verEst){
     h += `<div class="bloco"><p class="rot r-pronta">${svgIcone('c-pronta')}Estoque · ${nf(o.pronta.total)} un</p>${celulas(o.pronta.grade, 'g-est')}</div>`;
   }
-  if(o.repasse){
+  if(verRep){
     h += `<div class="bloco"><p class="rot r-repasse">${svgIcone('c-repasse')}Repasse · ${o.repasse.lotes.length} ${o.repasse.lotes.length === 1 ? 'lote' : 'lotes'} · ${nf(o.repasse.total)} un</p>
       <div class="lotes">${o.repasse.lotes.map(l =>
         `<div class="lote">
@@ -8682,7 +8700,7 @@ function abrirModal(i, comFicha){
           </button>
         </div>`).join('')}</div></div>`;
   }
-  if(o.meta){
+  if(verPro){
     h += `<div class="bloco"><p class="rot r-plano">${svgIcone('c-plano')}Produção</p>
       <div class="meses">${o.meta.quinzenas.map(({rot, v}) =>
         `<div class="mes"><span class="m">${esc(rot)}</span>
@@ -8711,17 +8729,17 @@ function abrirModal(i, comFicha){
   let pe = '<button class="acao" onclick="fecharModal()">Fechar</button>';
   // Estoque e produção vão os dois para a planilha do EBM, cada um pelo seu
   // botão: o teto e o mês são diferentes.
-  if(o.pronta){
+  if(verEst){
     const dentro = naSacola('est|' + o.k);
     pe += `<button class="acao forte na-sacola" id="mAddEst" ${dentro ? 'disabled' : ''}>` +
       `${dentro ? 'Estoque na sacola' : 'Adicionar estoque'}</button>`;
   }
   // O mês é sempre o mais próximo, o mesmo do chip do card. Vai escrito no
   // botão para ninguém descobrir só na sacola qual mês entrou.
-  if(o.meta && o.meta.quinzenas.length){
+  if(verPro && o.meta.quinzenas.length){
     const q0 = o.meta.quinzenas[0];
     const dentro = naSacola(`pro|${o.k}|${q0.mes}`);
-    pe += `<button class="acao${o.pronta ? '' : ' forte'} na-sacola" id="mAddPro" ${dentro ? 'disabled' : ''}>` +
+    pe += `<button class="acao${verEst ? '' : ' forte'} na-sacola" id="mAddPro" ${dentro ? 'disabled' : ''}>` +
       `${dentro ? 'Produção na sacola' : 'Adicionar produção · ' + esc(q0.rot)}</button>`;
   }
   $('mPe').innerHTML = pe;
