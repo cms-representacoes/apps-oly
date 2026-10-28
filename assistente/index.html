@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Assistente da Detalhada</title>
+<meta name="theme-color" content="#0F766E">
+<link rel="icon" href="../icon-192.png">
+<style>
+/* TESTE: assistente que responde perguntas sobre a Detalhada.
+   A IA (worker, action chatDetalhada) só traduz a pergunta numa consulta;
+   a conta é feita aqui, sobre a mesma base que a Detalhada baixa. */
+:root{
+  --verde:#0F766E; --verde-2:#14b8a6; --verde-claro:#ccfbf1; --verde-fundo:#f0fdfa;
+  --tinta:#0f172a; --tinta-2:#475569; --tinta-3:#94a3b8;
+  --linha:#e2e8f0; --fundo:#f8fafc; --branco:#ffffff; --erro:#b91c1c;
+}
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0; background:var(--fundo); color:var(--tinta);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; font-size:15px;
+  display:flex; flex-direction:column;
+}
+/* ── Voltar ao Portal (mesma peça de todas as telas) ── */
+.portal-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:7px;
+  flex:none; height:36px; padding:0 12px; border-radius:999px;
+  border:1px solid #E2E8F0; background:#FFFFFF; color:#475569;
+  font-family:inherit; font-size:14px; font-weight:700; line-height:1;
+  text-decoration:none; cursor:pointer; white-space:nowrap;
+  transition:background .15s ease, border-color .15s ease;
+}
+.portal-btn:hover{ background:#F8FAFC; border-color:#CBD5E1; color:#334155; }
+.portal-btn:focus-visible{ outline:2px solid #475569; outline-offset:2px; }
+.portal-btn svg{ width:14px; height:14px; flex:none; }
+.portal-btn[hidden]{ display:none; }
+
+header{
+  background:linear-gradient(150deg,#14b8a6 0%,#0F766E 55%,#062f2b 100%); color:#fff;
+  padding:12px 16px; padding-top:max(12px, env(safe-area-inset-top));
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+}
+header .tit{ flex:1; min-width:150px; }
+header h1{ margin:0; font-size:17px; font-weight:800; letter-spacing:-.01em; }
+header .sub{ font-size:12px; color:#99f6e4; margin-top:2px; }
+.teste{ font-size:10px; font-weight:800; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.3);
+  padding:2px 6px; border-radius:6px; margin-left:6px; vertical-align:2px; }
+.ver-como{ display:flex; align-items:center; gap:6px; font-size:12px; color:#ccfbf1; }
+.ver-como[hidden]{ display:none; }
+.ver-como select{ height:32px; border-radius:8px; border:1px solid rgba(255,255,255,.35);
+  background:rgba(255,255,255,.12); color:#fff; font:inherit; font-size:13px; padding:0 8px; }
+.ver-como select option{ color:#0f172a; }
+
+main{ flex:1; overflow-y:auto; padding:16px; }
+.conversa{ max-width:820px; margin:0 auto; display:flex; flex-direction:column; gap:14px; }
+
+.boas{ text-align:center; padding:24px 8px 8px; color:var(--tinta-2); }
+.boas h2{ color:var(--tinta); font-size:19px; margin:0 0 6px; }
+.boas p{ margin:0 0 16px; font-size:14px; }
+.sugestoes{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+.sug{ border:1px solid #99f6e4; background:var(--verde-fundo); color:var(--verde); border-radius:999px;
+  padding:8px 13px; font:inherit; font-size:13px; font-weight:600; cursor:pointer; text-align:left; }
+.sug:hover{ background:var(--verde-claro); }
+a.sug{ text-decoration:none; display:inline-block; }
+
+.msg{ display:flex; }
+.msg.eu{ justify-content:flex-end; }
+.bolha{ max-width:100%; border-radius:14px; padding:10px 13px; line-height:1.4; }
+.eu .bolha{ background:var(--verde); color:#fff; border-bottom-right-radius:4px; max-width:85%; }
+.ia .bolha{ background:var(--branco); border:1px solid var(--linha); border-bottom-left-radius:4px; width:100%; }
+.entendi{ font-size:12px; color:var(--tinta-2); background:var(--verde-fundo); border:1px dashed #5eead4;
+  border-radius:8px; padding:6px 9px; margin-bottom:8px; }
+.entendi b{ color:var(--verde); }
+.resumo{ font-weight:700; margin:2px 0 8px; }
+.aviso{ color:var(--erro); }
+.digitando{ color:var(--tinta-3); font-style:italic; }
+
+.tabela-wrap{ overflow-x:auto; border:1px solid var(--linha); border-radius:10px; }
+table{ border-collapse:collapse; width:100%; font-size:13px; }
+th,td{ padding:7px 10px; text-align:left; border-bottom:1px solid #f1f5f9; white-space:nowrap; }
+th{ background:#f8fafc; color:var(--tinta-2); font-size:11px; text-transform:uppercase; letter-spacing:.04em; position:sticky; top:0; }
+td.n, th.n{ text-align:right; font-variant-numeric:tabular-nums; }
+td.nome{ white-space:normal; min-width:160px; }
+tr.total td{ font-weight:800; background:var(--verde-fundo); border-bottom:none; }
+.acoes{ display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+.btn-sec{ border:1px solid var(--linha); background:#fff; color:var(--tinta-2); border-radius:8px;
+  height:32px; padding:0 11px; font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+.btn-sec:hover{ border-color:#cbd5e1; color:var(--tinta); }
+
+footer{ border-top:1px solid var(--linha); background:#fff; padding:10px 16px;
+  padding-bottom:max(10px, env(safe-area-inset-bottom)); }
+form{ max-width:820px; margin:0 auto; display:flex; gap:8px; }
+textarea{ flex:1; resize:none; border:1px solid #cbd5e1; border-radius:12px; padding:10px 12px;
+  font:inherit; font-size:16px; line-height:1.35; max-height:120px; min-height:44px; }
+textarea:focus{ outline:2px solid var(--verde-2); outline-offset:-1px; border-color:transparent; }
+.enviar{ flex:none; width:46px; height:44px; border:none; border-radius:12px; background:var(--verde); color:#fff; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center; align-self:flex-end; }
+.enviar:disabled{ opacity:.45; cursor:default; }
+.base-info{ max-width:820px; margin:6px auto 0; font-size:11px; color:var(--tinta-3); }
+
+.bloqueio{ max-width:420px; margin:60px auto; text-align:center; color:var(--tinta-2); }
+@media (max-width:520px){
+  main{ padding:12px; }
+  header h1{ font-size:16px; }
+  .ver-como{ width:100%; }
+  .ver-como select{ flex:1; }
+}
+</style>
+</head>
+<body>
+<header>
+  <a class="portal-btn" href="https://cms-representacoes.github.io/apps-oly/" title="Voltar ao Portal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg><span>Portal</span></a>
+  <div class="tit">
+    <h1>Assistente da Detalhada <span class="teste">TESTE</span></h1>
+    <div class="sub" id="quem">Carregando…</div>
+  </div>
+  <label class="ver-como" id="verComoWrap" hidden>Ver como
+    <select id="verComo"></select>
+  </label>
+</header>
+
+<main id="main">
+  <div class="conversa" id="conversa"></div>
+</main>
+
+<footer>
+  <form id="form" autocomplete="off">
+    <textarea id="pergunta" rows="1" placeholder="Pergunte sobre a Detalhada…" disabled></textarea>
+    <button class="enviar" id="enviar" type="submit" disabled aria-label="Enviar">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 14-7-5 14-2-6-7-1z"/></svg>
+    </button>
+  </form>
+  <div class="base-info" id="baseInfo"></div>
+</footer>
+
+<script>
+const WORKER_URL = 'https://repasse-worker-cms.marcosrep-cms.workers.dev/';
+const SESSION_KEY = 'cms_portal_session_v1';
+const MANDA_EM_TUDO = ['CMS', 'MARCOS (DEV)'];
+// Em obra: só o DEV entra, mesmo com o endereço na mão. Para liberar à
+// equipe, false aqui e tirar a classe dev-only do card no portal.
+const SO_DEV = true;
+// Mesma posição de campos da Detalhada (apps-oly-v2/detalhada, const C)
+const C = { PREP: 0, CLI: 1, MARCA: 2, FAB: 3, FIL: 4, REF: 5, COR: 6, GCI: 7, NF: 8, OC: 9, PREV: 10, CART: 11, FAT: 12, DFAT: 13, FAIXA: 14 };
+const MOSTRAR = 50;
+
+const $ = id => document.getElementById(id);
+const APP = { sessao: null, veTudo: false, base: null, dic: null, L: [], prep: -1, anteriores: [] };
+
+const SUGESTOES = [
+  'Quais clientes não compraram o Rush?',
+  'Carteira da Luar Sport',
+  'Quanto faturei em setembro por cliente?',
+  'Quantos pares ainda faltam faturar, por mês?',
+  'Top 10 clientes em carteira para novembro',
+];
+
+/* ── utilidades ───────────────────────────────────────── */
+const norm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+const fmt = n => Number(n || 0).toLocaleString('pt-BR');
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const diaDe = iso => { const [y, m, d] = String(iso).split('-').map(Number); return Math.floor(Date.UTC(y, m - 1, d) / 86400000); };
+const dataDe = dia => { const d = new Date(dia * 86400000); return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`; };
+const mesDe = dia => { const d = new Date(dia * 86400000); return `${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`; };
+const hojeIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const ehUA = m => /^UA/.test(String(m || ''));
+
+async function chamarWorker(action, extra = {}, ms = 15000) {
+  const corta = new AbortController();
+  const t = setTimeout(() => corta.abort(), ms);
+  try {
+    const r = await fetch(WORKER_URL, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ...extra }), signal: corta.signal,
+    });
+    if (!r.ok) throw new Error(`worker respondeu ${r.status}`);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+
+/* ── sessão e base ────────────────────────────────────── */
+function lerSessao() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+    if (!s || !s.expiraEm || new Date(s.expiraEm).getTime() < Date.now()) return null;
+    return s;
+  } catch (_) { return null; }
+}
+
+// O nome do portal nem sempre é o da base ("CHRISTIAN LUCAS" x "CHRISTIAN").
+function acharPreposto(nome) {
+  const n = norm(nome), prep = APP.dic.prep.map(norm);
+  let i = prep.indexOf(n);
+  if (i < 0) i = prep.findIndex(p => p && (n.startsWith(p + ' ') || p.startsWith(n.split(' ')[0])));
+  return i;
+}
+
+async function carregarBase() {
+  // Igual à Detalhada: o worker às vezes devolve 503 ao montar a base; a
+  // segunda tentativa costuma vir. A cópia do repositório é só reserva.
+  for (let t = 1; t <= 2; t++) {
+    try {
+      const b = await chamarWorker('getDetalhada', {}, 45000);
+      if (b && Array.isArray(b.l)) return b;
+    } catch (_) {}
+  }
+  const r = await fetch('../data/detalhada.json', { cache: 'no-store' });
+  return r.ok ? r.json() : null;
+}
+
+function prepAtivo() {
+  if (!APP.veTudo) return APP.prep;
+  const v = $('verComo').value;
+  return v === '' ? -1 : Number(v);
+}
+
+/* ── casar o que a IA entendeu com a base ─────────────── */
+// Código exato primeiro; depois a frase dentro do nome; por fim todas as
+// palavras (cada uma igual a uma palavra do nome, ou começo dela com 3+ letras).
+function casar(lista, termo) {
+  const t = norm(termo);
+  if (!t) return null;
+  const exato = lista.filter(x => x.cod === t);
+  if (exato.length) return exato.map(x => x.i);
+  const frase = lista.filter(x => x.txt.includes(t));
+  if (frase.length) return frase.map(x => x.i);
+  const tokens = t.split(/[^A-Z0-9]+/).filter(Boolean);
+  // Cada palavra digitada usa uma palavra diferente do nome: "TOK TOK" não
+  // pode casar duas vezes com o mesmo "TOK" de "TOK DO PE".
+  return lista.filter(x => {
+    const livres = x.txt.split(/[^A-Z0-9]+/);
+    return tokens.every(k => {
+      const j = livres.findIndex(p => p === k || (k.length >= 3 && p.startsWith(k)));
+      if (j < 0) return false;
+      livres.splice(j, 1);
+      return true;
+    });
+  }).map(x => x.i);
+}
+
+/* Erro de digitação: quando nada casa, procura o nome mais PARECIDO.
+   Nota de 0 a 1 por palavra digitada contra a palavra mais próxima do nome
+   ("ESPORT" x "SPORT" = 0,83), e a média delas. Volta agrupado por nome,
+   porque o mesmo cliente aparece com vários códigos. */
+// Letras trocadas de lugar ("RSUH") contam como um erro só.
+function distancia(a, b) {
+  if (a === b) return 0;
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) {
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+  }
+  return d[a.length][b.length];
+}
+const parecenca = (a, b) => 1 - distancia(a, b) / Math.max(a.length, b.length, 1);
+// Trocas de quem escreve pelo som: "KENTE" = "QUENTE", "ARMAZEN" = "ARMAZEM".
+const pelaFala = s => s.replace(/QU/g, 'K').replace(/C(?=[AOU]|$)/g, 'K').replace(/SS/g, 'S').replace(/Z/g, 'S')
+  .replace(/Y/g, 'I').replace(/W/g, 'V').replace(/PH/g, 'F').replace(/N$/, 'M');
+
+function parecidos(lista, termo) {
+  const tokens = norm(termo).split(/[^A-Z0-9]+/).filter(k => k.length >= 2 || /\d/.test(k)).map(pelaFala);
+  if (!tokens.length) return [];
+  const porNome = new Map();
+  for (const x of lista) {
+    const palavras = x.txt.split(/[^A-Z0-9]+/).filter(Boolean).map(pelaFala);
+    if (!palavras.length) continue;
+    const nota = tokens.reduce((s, k) => s + Math.max(...palavras.map(p => parecenca(k, p))), 0) / tokens.length;
+    if (nota < 0.75) continue;
+    const g = porNome.get(x.txt) || { nome: x.txt, idx: [], nota };
+    g.idx.push(x.i); porNome.set(x.txt, g);
+  }
+  return [...porNome.values()].sort((a, b) => b.nota - a.nota);
+}
+
+function indices() {
+  if (APP.idx) return APP.idx;
+  const D = APP.dic;
+  APP.idx = {
+    cli: D.cli.map(([cod, nome], i) => ({ i, cod: norm(cod), txt: norm(nome) })),
+    ref: D.ref.map(([ref, desc], i) => ({ i, cod: norm(ref), txt: norm(desc) })),
+    cor: D.cor.map((c, i) => ({ i, cod: norm(c), txt: norm(c) })),
+    faixa: (D.faixa || []).map((f, i) => ({ i, cod: norm(f), txt: norm(f) })),
+    prep: D.prep.map((p, i) => ({ i, cod: norm(p), txt: norm(p) })),
+  };
+  return APP.idx;
+}
+
+const ROTULO_TIPO = {
+  carteira: 'Carteira (a faturar)', faturado: 'Faturado', pedidos: 'Pedidos (faturado + carteira)',
+  compraram: 'Clientes que compraram', nao_compraram: 'Clientes que não compraram',
+  catalogo: 'Catálogo da carteira',
+};
+// Quem gera o catálogo é a própria Detalhada (mesmo arquivo do botão de lá).
+// Caminho relativo: no GitHub Pages as duas pastas moram lado a lado.
+const DETALHADA_URL = '../../apps-oly-v2/detalhada/';
+
+function executar(q) {
+  const D = APP.dic, X = indices();
+  const tipo = ROTULO_TIPO[q.tipo] ? q.tipo : 'nao_entendi';
+  q.limite = Number(q.limite) > 0 ? Math.floor(Number(q.limite)) : 0;
+  if (tipo === 'nao_entendi') return { pede: true, erro: (q.duvida ? q.duvida + ' ' : '') + 'Pode explicar de outro jeito? Falo de carteira, faturado e de quem comprou ou não comprou um produto.' };
+
+  const entendi = [`<b>${ROTULO_TIPO[tipo]}</b>`];
+  const falta = [];
+  let escolha = null;   // "Você quis dizer…?" — a primeira dúvida que aparecer
+  const exato = q._exato || {};
+  // Acha o termo do campo na lista. Sem nada parecido, anota em `falta`;
+  // com um só nome bem perto, segue com ele e avisa; com vários, pergunta.
+  const pegar = (lista, campo, rotulo, mostra, perguntaSeVarios) => {
+    const termo = q[campo];
+    if (!termo) return null;
+    let achou = exato[campo] ? lista.filter(x => x.txt === exato[campo]).map(x => x.i) : casar(lista, termo);
+    let nota = '';
+    if (!exato[campo] && achou && achou.length && perguntaSeVarios && !(q._todos || {})[campo]) {
+      const nomesDif = [...new Set(achou.map(i => lista.find(x => x.i === i).txt))];
+      if (nomesDif.length > 1 && nomesDif.length <= 8 && !escolha) {
+        escolha = { campo, rotulo, termo, opcoes: nomesDif, todos: true };
+      }
+    }
+    if (!achou || !achou.length) {
+      const cand = parecidos(lista, termo);
+      const [a, b] = cand;
+      if (a && ((a.nota >= 0.85 && (!b || b.nota <= a.nota - 0.1)) || (!b && a.nota >= 0.8))) {
+        achou = a.idx;
+        nota = ` <i>(você escreveu “${esc(termo)}”)</i>`;
+      } else if (cand.length) {
+        if (!escolha) escolha = { campo, rotulo, termo, opcoes: cand.slice(0, 4).map(c => c.nome) };
+        return new Set();
+      } else { falta.push(`${rotulo} “${termo}”`); return new Set(); }
+    }
+    const nomes = [...new Set(achou.map(mostra))];
+    entendi.push(`${rotulo}: ${esc(nomes.slice(0, 4).join(', '))}${nomes.length > 4 ? ` e mais ${nomes.length - 4}` : ''}${nota}`);
+    return new Set(achou);
+  };
+
+  let p = prepAtivo();
+  if (q.vendedor && APP.veTudo && p < 0) {
+    const s = pegar(X.prep, 'vendedor', 'vendedor', i => D.prep[i]);
+    if (s && s.size) p = [...s][0];
+  } else if (p >= 0) entendi.push(`vendedor: ${esc(D.prep[p])}`);
+  // Cliente só entre os do vendedor: senão "achava" o cliente de outro e
+  // respondia "nenhum par", como se ele não tivesse pedido nada.
+  const meus = p < 0 ? null : new Set(APP.L.filter(r => r[C.PREP] === p).map(r => r[C.CLI]));
+  // Cliente com nomes diferentes que casam ("ARMAZEM" → Paraíba e Eldorado)
+  // pergunta qual; produto não, porque "CORRE" juntando a família é o esperado.
+  const sCli = pegar(meus ? X.cli.filter(x => meus.has(x.i)) : X.cli, 'cliente', 'cliente', i => D.cli[i][1], true);
+  const sRef = pegar(X.ref, 'produto', 'produto', i => `${D.ref[i][1]} (${D.ref[i][0]})`);
+  const sCor = pegar(X.cor, 'cor', 'cor', i => D.cor[i]);
+  const sFx = pegar(X.faixa, 'linha', 'linha', i => D.faixa[i]);
+  if (escolha) return { entendi, escolha };
+  const marca = q.marca === 'UA' || q.marca === 'OLY' ? q.marca : null;
+  if (marca) entendi.push(`marca: ${marca === 'UA' ? 'Under Armour' : 'Olympikus'}`);
+  const de = /^\d{4}-\d{2}-\d{2}$/.test(q.de || '') ? diaDe(q.de) : null;
+  const ate = /^\d{4}-\d{2}-\d{2}$/.test(q.ate || '') ? diaDe(q.ate) : null;
+  if (de != null || ate != null) entendi.push(`período: ${de != null ? dataDe(de) : 'início'} a ${ate != null ? dataDe(ate) : 'fim'}`);
+  if (falta.length) return { entendi, pede: true, erro: `Não achei ${falta.join(' nem ')} ${p >= 0 ? 'na carteira deste vendedor' : 'na base'}. Confira o nome e me diga de novo.` };
+
+  /* catálogo: só precisa do cliente e do formato; o resto (filtros, grade,
+     fotos, repasse) é a Detalhada que resolve, igual ao botão de lá. */
+  if (tipo === 'catalogo') {
+    if (!sCli || !sCli.size) return { entendi, pede: true, erro: 'De qual cliente? Diga o nome ou o código.' };
+    const cods = [...sCli].map(i => String(D.cli[i][0]));
+    const formato = q.formato === 'pdf' || q.formato === 'xlsx' ? q.formato : null;
+    const imagens = q.imagens === true || q.imagens === false ? q.imagens : null;
+    if (formato) entendi.push(formato === 'pdf' ? 'PDF' : `Excel${imagens == null ? '' : imagens ? ' com imagens' : ' sem imagens'}`);
+    const nomes = [...new Set([...sCli].map(i => D.cli[i][1]))];
+    return { entendi, catalogo: { cods, nome: nomes.join(', '), formato, imagens } };
+  }
+
+  const doProduto = r => (!sRef || sRef.has(r[C.REF])) && (!sCor || sCor.has(r[C.COR])) &&
+    (!sFx || sFx.has(r[C.FAIXA])) && (!marca || (marca === 'UA') === ehUA(D.marca[r[C.MARCA]]));
+  const noPeriodo = d => d >= 0 && (de == null || d >= de) && (ate == null || d <= ate);
+  // Quanto da linha conta para o tipo, e em que dia
+  const partes = r => {
+    const out = [];
+    if (tipo !== 'faturado' && r[C.CART] > 0) out.push([r[C.CART], r[C.PREV]]);
+    if (tipo !== 'carteira' && r[C.FAT] > 0) out.push([r[C.FAT], r[C.DFAT] >= 0 ? r[C.DFAT] : r[C.PREV]]);
+    return out;
+  };
+
+  const linhas = APP.L.filter(r => (p < 0 || r[C.PREP] === p) && (!sCli || sCli.has(r[C.CLI])));
+  const mostraVend = APP.veTudo && p < 0;
+  const vendDoCli = new Map();
+  if (mostraVend) for (const r of linhas) if (!vendDoCli.has(r[C.CLI])) vendDoCli.set(r[C.CLI], D.prep[r[C.PREP]]);
+
+  /* não compraram: todo cliente do vendedor que aparece na base, menos quem
+     teve pedido do produto no período. Os maiores clientes vêm primeiro. */
+  if (tipo === 'nao_compraram' || tipo === 'compraram') {
+    if (!sRef && !sFx && !marca && !sCor) return { entendi, pede: true, erro: 'De qual produto? Diga o modelo, a referência ou a linha.' };
+    const total = new Map(), ult = new Map(), doProd = new Map(), ultProd = new Map();
+    for (const r of linhas) {
+      for (const [qt, d] of partes(r)) {
+        const c = r[C.CLI];
+        total.set(c, (total.get(c) || 0) + qt);
+        if (d > (ult.get(c) ?? -1)) ult.set(c, d);
+        if (doProduto(r) && noPeriodo(d)) {
+          doProd.set(c, (doProd.get(c) || 0) + qt);
+          if (d > (ultProd.get(c) ?? -1)) ultProd.set(c, d);
+        }
+      }
+    }
+    const lista = tipo === 'compraram' ? [...doProd.keys()] : [...total.keys()].filter(c => !doProd.has(c));
+    const cols = ['Cliente', 'Código', ...(mostraVend ? ['Vendedor'] : []),
+      tipo === 'compraram' ? 'Pares do produto' : 'Pares (tudo)', tipo === 'compraram' ? 'Último pedido' : 'Último pedido (qualquer)'];
+    const rows = lista.map(c => ({
+      v: [D.cli[c][1], D.cli[c][0], ...(mostraVend ? [vendDoCli.get(c)] : []),
+        tipo === 'compraram' ? doProd.get(c) : total.get(c), tipo === 'compraram' ? ultProd.get(c) : ult.get(c)],
+      ord: tipo === 'compraram' ? doProd.get(c) : total.get(c),
+    })).sort((a, b) => b.ord - a.ord);
+    if (q.limite > 0) rows.length = Math.min(rows.length, q.limite);
+    const n = rows.length;
+    return {
+      entendi, cols, num: [cols.length - 2], data: [cols.length - 1],
+      rows: rows.map(x => x.v),
+      resumo: tipo === 'compraram'
+        ? `${fmt(n)} cliente${n === 1 ? '' : 's'} compraram · ${fmt(rows.reduce((s, x) => s + x.ord, 0))} pares`
+        : `${fmt(n)} cliente${n === 1 ? '' : 's'} sem pedido desse produto${de != null || ate != null ? ' no período' : ''}, de ${fmt(total.size)} na carteira`,
+    };
+  }
+
+  /* carteira / faturado / pedidos */
+  let agrupar = ['cliente', 'produto', 'produto_cor', 'mes'].includes(q.agrupar) ? q.agrupar : null;
+  if (!agrupar) agrupar = sCli ? 'produto_cor' : 'cliente';
+  const chave = {
+    cliente: r => r[C.CLI], produto: r => r[C.REF], produto_cor: r => r[C.REF] + '|' + r[C.COR], mes: (r, d) => mesDe(d),
+  }[agrupar];
+  const grupos = new Map();
+  let soma = 0;
+  for (const r of linhas) {
+    if (!doProduto(r)) continue;
+    for (const [qt, d] of partes(r)) {
+      if (!noPeriodo(d)) continue;
+      const k = chave(r, d);
+      let g = grupos.get(k);
+      if (!g) grupos.set(k, g = { r, d, qt: 0, cli: new Set() });
+      g.qt += qt; g.cli.add(r[C.CLI]); if (d < g.d) g.d = d;
+      soma += qt;
+    }
+  }
+  let rows, cols;
+  if (agrupar === 'cliente') {
+    cols = ['Cliente', 'Código', ...(mostraVend ? ['Vendedor'] : []), 'Pares'];
+    rows = [...grupos.values()].map(g => ({ v: [D.cli[g.r[C.CLI]][1], D.cli[g.r[C.CLI]][0], ...(mostraVend ? [vendDoCli.get(g.r[C.CLI])] : []), g.qt], ord: g.qt }));
+  } else if (agrupar === 'mes') {
+    cols = ['Mês', 'Clientes', 'Pares'];
+    rows = [...grupos.entries()].map(([k, g]) => ({ v: [k, g.cli.size, g.qt], ord: -g.d }));
+  } else {
+    const comCor = agrupar === 'produto_cor';
+    cols = ['Produto', 'Referência', ...(comCor ? ['Cor'] : []), 'Clientes', 'Pares'];
+    rows = [...grupos.values()].map(g => ({ v: [D.ref[g.r[C.REF]][1], D.ref[g.r[C.REF]][0], ...(comCor ? [D.cor[g.r[C.COR]]] : []), g.cli.size, g.qt], ord: g.qt }));
+  }
+  rows.sort((a, b) => b.ord - a.ord);
+  if (q.limite > 0) rows.length = Math.min(rows.length, q.limite);
+  const numCols = agrupar === 'cliente' ? [cols.length - 1] : agrupar === 'mes' ? [1, 2] : [cols.length - 2, cols.length - 1];
+  return {
+    entendi, cols, num: numCols, data: [], rows: rows.map(x => x.v), total: soma,
+    resumo: soma ? `${fmt(soma)} pares${q.limite > 0 ? ` no total · mostrando os ${rows.length} maiores` : ''}` : 'Nenhum par encontrado com esses filtros.',
+  };
+}
+
+/* ── tela ─────────────────────────────────────────────── */
+function rolar() { const m = $('main'); m.scrollTop = m.scrollHeight; }
+
+function addMsg(quem, html) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + quem;
+  d.innerHTML = `<div class="bolha">${html}</div>`;
+  $('conversa').appendChild(d);
+  rolar();
+  return d.firstChild;
+}
+
+function tabelaHtml(res, limite) {
+  const cel = (v, j) => {
+    if (res.data.includes(j)) return `<td>${v != null && v >= 0 ? dataDe(v) : ''}</td>`;
+    if (res.num.includes(j)) return `<td class="n">${fmt(v)}</td>`;
+    return `<td class="${j === 0 ? 'nome' : ''}">${esc(v)}</td>`;
+  };
+  const corpo = res.rows.slice(0, limite).map(r => `<tr>${r.map(cel).join('')}</tr>`).join('');
+  const tot = res.total ? `<tr class="total"><td>Total</td>${res.cols.slice(1).map((_, j) => j + 1 === res.cols.length - 1 ? `<td class="n">${fmt(res.total)}</td>` : '<td></td>').join('')}</tr>` : '';
+  return `<div class="tabela-wrap"><table><thead><tr>${res.cols.map((c, j) => `<th class="${res.num.includes(j) ? 'n' : ''}">${esc(c)}</th>`).join('')}</tr></thead><tbody>${corpo}${limite >= res.rows.length ? tot : ''}</tbody></table></div>`;
+}
+
+/* ── planilha e PDF ────────────────────────────────────
+   Mesmo desenho dos relatórios da Detalhada (RFV): título, linha de
+   filtros, data de geração; no PDF, cabeçalho verde-água e rodapé com a
+   página. As bibliotecas só carregam quando alguém pede o arquivo. */
+const textoPlano = html => { const d = document.createElement('div'); d.innerHTML = html; return d.textContent; };
+
+function carregarScript(src) {
+  return new Promise((ok, nao) => {
+    const t = document.createElement('script');
+    t.src = src; t.onload = ok; t.onerror = nao;
+    document.head.appendChild(t);
+  });
+}
+
+function dadosExport(res) {
+  const titulo = textoPlano(res.entendi[0]);
+  const filtros = res.entendi.slice(1).map(textoPlano).join(' · ');
+  const corpo = res.rows.map(r => r.map((v, j) => res.data.includes(j) ? (v != null && v >= 0 ? dataDe(v) : '') : v));
+  if (res.total) corpo.push(res.cols.map((_, j) => j === 0 ? 'Total' : j === res.cols.length - 1 ? res.total : ''));
+  const quando = new Date().toLocaleString('pt-BR');
+  const nome = `Assistente - ${titulo.replace(/[()]/g, '')} - ${hojeIso().split('-').reverse().join('-')}`.replace(/[\\/:*?"<>|]/g, '');
+  return { titulo, filtros, corpo, quando, nome, linhas: res.rows.length };
+}
+
+async function baixarXlsx(res) {
+  if (typeof XLSX === 'undefined') await carregarScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+  const x = dadosExport(res);
+  const aoa = [[x.titulo], [x.filtros || 'Sem filtros'], [`${fmt(x.linhas)} linha(s) · gerado em ${x.quando}`], [], res.cols, ...x.corpo];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const linhaCab = 4;
+  ws['!cols'] = res.cols.map((c, i) => ({ wch: i === 0 ? 38 : Math.max(10, c.length + 3) }));
+  ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: linhaCab, c: 0 }, e: { r: linhaCab + res.rows.length, c: res.cols.length - 1 } }) };
+  for (let r = 0; r < x.corpo.length; r++) for (const c of res.num) {
+    const cel = ws[XLSX.utils.encode_cell({ r: linhaCab + 1 + r, c })];
+    if (cel && typeof cel.v === 'number') cel.z = '#,##0';
+  }
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Assistente');
+  XLSX.writeFile(wb, x.nome + '.xlsx');
+}
+
+async function baixarPdf(res) {
+  const pronto = () => window.jspdf && window.jspdf.jsPDF && typeof window.jspdf.jsPDF.API.autoTable === 'function';
+  if (!pronto()) {
+    await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+  }
+  const x = dadosExport(res);
+  const doc = new window.jspdf.jsPDF({ orientation: res.cols.length > 4 ? 'landscape' : 'portrait', unit: 'pt', format: 'a4' });
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(15, 118, 110);
+  doc.text(x.titulo, 24, 34);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(110, 116, 110);
+  doc.text(doc.splitTextToSize(x.filtros || 'Sem filtros', doc.internal.pageSize.getWidth() - 48), 24, 48);
+  doc.text(`${fmt(x.linhas)} linha(s) · ${x.quando}`, 24, 62);
+  const colunas = {};
+  res.cols.forEach((_, j) => { colunas[j] = { halign: res.num.includes(j) ? 'right' : 'left' }; });
+  doc.autoTable({
+    head: [res.cols],
+    body: x.corpo.map(l => l.map((v, j) => typeof v === 'number' && res.num.includes(j) ? fmt(v) : v)),
+    startY: 72, theme: 'grid',
+    styles: { font: 'helvetica', fontSize: 8, cellPadding: 3, lineColor: [214, 222, 219], lineWidth: 0.4, textColor: [40, 46, 42] },
+    headStyles: { fillColor: [15, 118, 110], textColor: 255 },
+    alternateRowStyles: { fillColor: [244, 250, 248] },
+    columnStyles: colunas,
+    margin: { left: 24, right: 24, bottom: 28 },
+    didParseCell: d => { if (res.total && d.section === 'body' && d.row.index === x.corpo.length - 1) d.cell.styles.fontStyle = 'bold'; },
+    didDrawPage: () => {
+      const alt = doc.internal.pageSize.getHeight(), larg = doc.internal.pageSize.getWidth();
+      doc.setFontSize(7); doc.setTextColor(150, 156, 150);
+      doc.text('CMS Representações · Detalhada', 24, alt - 14);
+      doc.text('página ' + doc.internal.getNumberOfPages(), larg - 24, alt - 14, { align: 'right' });
+    },
+  });
+  doc.save(x.nome + '.pdf');
+}
+
+async function baixar(botao, res, formato) {
+  const rot = botao ? botao.textContent : '';
+  if (botao) { botao.disabled = true; botao.textContent = 'Gerando…'; }
+  try { await (formato === 'pdf' ? baixarPdf(res) : baixarXlsx(res)); }
+  catch (e) { addMsg('ia', `<span class="aviso">Não consegui gerar o ${formato === 'pdf' ? 'PDF' : 'Excel'} (${esc(e.message || e)}).</span>`); }
+  finally { if (botao) { botao.disabled = false; botao.textContent = rot; } }
+}
+
+function mostrarResposta(bolha, res, q) {
+  let h = res.entendi ? `<div class="entendi">Entendi: ${res.entendi.join(' · ')}</div>` : '';
+  if (res.escolha) {
+    const e = res.escolha;
+    h += `<div>Qual ${esc(e.rotulo)} você quis dizer com “${esc(e.termo)}”?</div><div class="acoes">` +
+      e.opcoes.map((o, i) => `<button class="sug" data-escolha="${i}">${esc(o)}</button>`).join('') +
+      (e.todos ? `<button class="btn-sec" data-escolha="todos">Todos esses</button>` : '') + '</div>';
+    bolha.innerHTML = h;
+    bolha.addEventListener('click', ev => {
+      const b = ev.target.closest('[data-escolha]');
+      if (!b || bolha.dataset.escolhido) return;
+      bolha.dataset.escolhido = '1';
+      bolha.querySelectorAll('[data-escolha]').forEach(x => { x.disabled = true; });
+      const todos = b.dataset.escolha === 'todos';
+      const q2 = todos ? { ...q, _todos: { ...(q._todos || {}), [e.campo]: true } }
+                       : { ...q, _exato: { ...(q._exato || {}), [e.campo]: e.opcoes[Number(b.dataset.escolha)] } };
+      APP.pendente = null;
+      addMsg('eu', esc(todos ? 'Todos esses' : e.opcoes[Number(b.dataset.escolha)]));
+      mostrarResposta(addMsg('ia', ''), executar(q2), q2);
+      rolar();
+    });
+    return;
+  }
+  if (res.catalogo) {
+    // Abrir a outra aba precisa do toque do vendedor (o celular bloqueia
+    // aba aberta sozinha), e o toque serve também de confirmação.
+    const c = res.catalogo;
+    const link = (gerar, fotos) => DETALHADA_URL + '?' + new URLSearchParams({ cliente: c.cods.join(','), gerar, ...(fotos == null ? {} : { fotos: fotos ? '1' : '0' }) });
+    const btn = (gerar, fotos, rot) => `<a class="sug" target="_blank" rel="noopener" href="${esc(link(gerar, fotos))}">${rot}</a>`;
+    let botoes;
+    if (c.formato === 'pdf') botoes = btn('pdf', null, 'Gerar PDF na Detalhada');
+    else if (c.formato === 'xlsx' && c.imagens != null) botoes = btn('xlsx', c.imagens, `Gerar Excel ${c.imagens ? 'com' : 'sem'} imagens na Detalhada`);
+    else botoes = (c.formato ? '' : btn('pdf', null, 'PDF')) + btn('xlsx', true, 'Excel com imagens') + btn('xlsx', false, 'Excel sem imagens');
+    const pergunta = c.formato === 'pdf' || (c.formato === 'xlsx' && c.imagens != null)
+      ? `O catálogo de <b>${esc(c.nome)}</b> sai pela Detalhada, igual ao botão de lá. Toque para gerar:`
+      : `Em que formato vai o catálogo de <b>${esc(c.nome)}</b>?`;
+    const varios = c.cods.length > 1 ? `<div class="digitando" style="margin-top:6px">São ${c.cods.length} códigos com esse nome: se mais de um tiver carteira, a Detalhada pergunta se junta num arquivo só ou separa.</div>` : '';
+    bolha.innerHTML = h + `<div>${pergunta}</div><div class="acoes">${botoes}</div>${varios}`;
+    return;
+  }
+  if (res.erro) { bolha.innerHTML = h + `<div>${esc(res.erro)}</div>`; return; }
+  h += `<div class="resumo">${esc(res.resumo)}</div>`;
+  if (res.rows.length) {
+    h += `<div class="tab">${tabelaHtml(res, MOSTRAR)}</div><div class="acoes">`;
+    if (res.rows.length > MOSTRAR) h += `<button class="btn-sec" data-acao="todas">Ver todas (${fmt(res.rows.length)})</button>`;
+    h += `<button class="btn-sec" data-acao="xlsx">Baixar Excel</button><button class="btn-sec" data-acao="pdf">Baixar PDF</button>`;
+    h += `<button class="btn-sec" data-acao="copiar">Copiar tabela</button></div>`;
+  }
+  bolha.innerHTML = h;
+  bolha.addEventListener('click', e => {
+    const a = e.target.closest('[data-acao]');
+    if (!a) return;
+    if (a.dataset.acao === 'todas') { bolha.querySelector('.tab').innerHTML = tabelaHtml(res, Infinity); a.remove(); }
+    if (a.dataset.acao === 'xlsx' || a.dataset.acao === 'pdf') baixar(a, res, a.dataset.acao);
+    if (a.dataset.acao === 'copiar') {
+      const tsv = [res.cols, ...res.rows.map(r => r.map((v, j) => res.data.includes(j) ? (v >= 0 ? dataDe(v) : '') : v))].map(r => r.join('\t')).join('\n');
+      navigator.clipboard.writeText(tsv).then(() => { a.textContent = 'Copiado ✓'; setTimeout(() => a.textContent = 'Copiar tabela', 1800); });
+    }
+  });
+  // Pediu o arquivo na pergunta ("me manda em Excel…"): já baixa.
+  if (res.rows.length && (q.formato === 'xlsx' || q.formato === 'pdf')) {
+    baixar(bolha.querySelector(`[data-acao="${q.formato}"]`), res, q.formato);
+  }
+}
+
+async function perguntar(texto) {
+  texto = texto.trim();
+  if (!texto) return;
+  $('boas')?.remove();
+  addMsg('eu', esc(texto));
+  const bolha = addMsg('ia', '<span class="digitando">Pensando…</span>');
+  $('enviar').disabled = true;
+  // Resposta curta logo depois de uma pergunta do assistente ("De qual
+  // produto?") completa a pergunta anterior; frase longa é pergunta nova.
+  const enviada = APP.pendente && texto.split(/\s+/).length <= 6 ? `${APP.pendente} (complemento: ${texto})` : texto;
+  APP.pendente = null;
+  try {
+    const p = prepAtivo();
+    const r = await chamarWorker('chatDetalhada', {
+      pergunta: enviada, hoje: hojeIso(), linhas: APP.dic.faixa || [],
+      vendedores: APP.veTudo && p < 0 ? APP.dic.prep : [], anteriores: APP.anteriores,
+    }, 30000);
+    if (!r || !r.ok) throw new Error(r?.erro || 'sem resposta');
+    const q = r.consulta || {};
+    const res = executar(q);
+    mostrarResposta(bolha, res, q);
+    if (res.pede || res.escolha) APP.pendente = enviada;
+    else {
+      APP.anteriores.push({ p: enviada, c: r.consulta });
+      APP.anteriores = APP.anteriores.slice(-3);
+    }
+  } catch (e) {
+    bolha.innerHTML = `<span class="aviso">Não consegui responder agora (${esc(e.message || e)}). Tente de novo em instantes.</span>`;
+  } finally {
+    $('enviar').disabled = false;
+    rolar();
+  }
+}
+
+function boasVindas() {
+  const d = document.createElement('div');
+  d.className = 'boas'; d.id = 'boas';
+  d.innerHTML = `<h2>O que você quer saber da Detalhada?</h2>
+    <p>Escreva do seu jeito. Eu mostro o que entendi antes da resposta, para você conferir.</p>
+    <div class="sugestoes">${SUGESTOES.map(s => `<button class="sug" type="button">${esc(s)}</button>`).join('')}</div>`;
+  d.addEventListener('click', e => { const b = e.target.closest('.sug'); if (b) perguntar(b.textContent); });
+  $('conversa').appendChild(d);
+}
+
+async function iniciar() {
+  APP.sessao = lerSessao();
+  if (!APP.sessao) {
+    $('conversa').innerHTML = '<div class="bloqueio"><h2>Entre pelo Portal</h2><p>O assistente usa o login do Portal do Vendedor.</p></div>';
+    $('quem').textContent = 'Sem login';
+    return;
+  }
+  if (SO_DEV && norm(APP.sessao.nome) !== 'MARCOS (DEV)') {
+    $('conversa').innerHTML = '<div class="bloqueio"><h2>Em desenvolvimento</h2><p>O assistente ainda não foi liberado para a equipe.</p></div>';
+    $('quem').textContent = APP.sessao.nome;
+    return;
+  }
+  APP.veTudo =MANDA_EM_TUDO.includes(norm(APP.sessao.nome));
+  $('quem').textContent = 'Carregando a base…';
+  const base = await carregarBase();
+  if (!base) { $('quem').textContent = 'Não foi possível carregar a base'; return; }
+  APP.base = base; APP.dic = base.dic; APP.L = base.l;
+
+  if (APP.veTudo) {
+    $('verComo').innerHTML = '<option value="">Todos os vendedores</option>' +
+      APP.dic.prep.map((p, i) => `<option value="${i}">${esc(p)}</option>`).join('');
+    $('verComoWrap').hidden = false;
+    $('verComo').addEventListener('change', () => { APP.anteriores = []; });
+  } else {
+    APP.prep = acharPreposto(APP.sessao.nome);
+    if (APP.prep < 0) { $('quem').textContent = `Nenhuma linha de ${APP.sessao.nome} na base`; return; }
+  }
+  $('quem').textContent = APP.veTudo ? APP.sessao.nome : `Carteira de ${APP.dic.prep[APP.prep]}`;
+  $('baseInfo').textContent = `Base da Detalhada de ${new Date(base.gerado || base.publicadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} · as respostas podem errar: confira o “Entendi”.`;
+  $('pergunta').disabled = false; $('enviar').disabled = false;
+  boasVindas();
+  $('pergunta').focus();
+}
+
+$('form').addEventListener('submit', e => { e.preventDefault(); const t = $('pergunta'); const v = t.value; t.value = ''; t.style.height = ''; perguntar(v); });
+$('pergunta').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('form').requestSubmit(); } });
+$('pergunta').addEventListener('input', e => { const t = e.target; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 120) + 'px'; });
+iniciar();
+</script>
+</body>
+</html>

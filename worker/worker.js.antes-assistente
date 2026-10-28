@@ -1,0 +1,3486 @@
+export default {
+  async fetch(request, env) {
+    // ── CORS: lista de origens permitidas ────────────────────────────────────
+    // Adicione aqui qualquer outro domínio que vá consumir o Worker (catálogo, admin, etc)
+    const ALLOWED_ORIGINS = [
+      "https://cms-representacoes.github.io",
+      "https://marcosrep-cms.workers.dev",
+      "http://localhost:3000",
+      "http://127.0.0.1:5500"
+    ];
+    const origin = request.headers.get("Origin") || "";
+    const isAllowedOrigin = ALLOWED_ORIGINS.includes(origin);
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": isAllowedOrigin ? origin : ALLOWED_ORIGINS[0],
+      "Vary": "Origin",
+      "Access-Control-Allow-Headers": "Content-Type, X-Admin-Token, If-None-Match",
+      "Access-Control-Expose-Headers": "ETag",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Content-Type": "application/json; charset=utf-8"
+    };
+
+    // ── ACTIONS QUE EXIGEM AUTENTICAÇÃO (writes) ────────────────────────────
+    const WRITE_ACTIONS = new Set([
+      "save",
+      "saveDispo",
+      "saveProdutos",
+      "uploadImagem",
+      "saveImagensHistorico",
+      "saveDisponibilidades",
+      "saveOcultosDisp",
+      "saveOcultos",
+      "saveCategoryImage",
+      "saveHeroImage",
+      "saveTabelaEspecial",
+      "saveStatus",
+      "setStatusVitrine",
+      "saveCarteira",
+      "saveAcaoCarteira",
+      "saveClientesCadastrados",
+      "saveFaturados",
+      "saveRateio",
+      "saveCampanhas",
+      "saveCancelamentosDispo",
+      "resolverMatrizPendente",
+      "cadastrarMatrizItem",
+      "deleteMatrizItens",
+      "limparHistoricoMatriz",
+      "uploadMatrizImagem",
+      "clearPedidosHistorico",
+      "tsBuscarImagens",
+      "tsFicha",
+      "tsFichas",
+      "uacFicha",
+      "uacFichas",
+      "tsDiagnostico",
+      "tsInspecionarLogin",
+      "saveExclusivos"
+    ]);
+
+    function requireAdmin(action) {
+      // Só exige token em writes
+      if (!WRITE_ACTIONS.has(action)) return null;
+      // Se não houver token configurado no Worker, registra aviso mas libera (modo de transição)
+      if (!env.ADMIN_TOKEN) {
+        console.warn("[SECURITY] ADMIN_TOKEN não configurado — write liberado em modo legado:", action);
+        return null;
+      }
+      const provided = request.headers.get("X-Admin-Token") || "";
+      if (provided !== env.ADMIN_TOKEN) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Não autorizado" }),
+          { status: 401, headers: corsHeaders }
+        );
+      }
+      return null;
+    }
+
+    // Versão por método HTTP — DESATIVADA: vendedor precisa criar/editar pedidos
+    // sem login (POST/PUT/DELETE liberados). A proteção fica nas actions de write
+    // do PATCH (saveDisponibilidades, uploadImagem, etc).
+
+    const githubHeaders = {
+      Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+      Accept: "application/vnd.github+json",
+      "User-Agent": "repasse-worker"
+    };
+
+    // Defesa contra espaço invisível colado nas variáveis de ambiente da Cloudflare
+    // (já causou 404 silencioso antes em GITHUB_BRANCH — agora protegido pra sempre).
+    env.GITHUB_OWNER = String(env.GITHUB_OWNER || "").trim();
+    env.GITHUB_REPO  = String(env.GITHUB_REPO  || "").trim();
+    if (env.GITHUB_IMG_REPO) env.GITHUB_IMG_REPO = String(env.GITHUB_IMG_REPO).trim();
+
+    const GITHUB_PEDIDOS       = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/pedidos.json`;
+    const GITHUB_DESM          = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/desmembramentos.json`;
+    const GITHUB_OCULTOS       = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/ocultos.json`;
+    const GITHUB_DISPO         = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/dispo.json`;
+    const GITHUB_PRODUTOS      = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/produtos.json`;
+    const GITHUB_DISPONIB      = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/disponibilidades.json`;
+    const GITHUB_OCULTOS_DISP  = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/ocultos_disponibilidades.json`;
+    const GITHUB_TABELA_ESP    = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/tabela_especial.json`;
+    // Produtos de canal exclusivo (DTC / ML) — NÃO vão para a vitrine.
+    // Mapa { "ARTIGO|COR": "DTC" | "ML" | "DTC+ML" }
+    const GITHUB_EXCLUSIVOS    = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/exclusivos.json`;
+    const GITHUB_LINKS         = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/links_compartilhados.json`;
+    const GITHUB_IMG_HIST      = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/disponibilidades_imagens.json`;
+    const GITHUB_STATUS        = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/app_status.json`;
+    // Ficha técnica vinda do Trade Squash: { "ARTIGO|COR": {...} }
+    const GITHUB_FICHAS        = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/fichas.json`;
+    const GITHUB_RATEIO        = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/rateio.json`;
+    // Campanhas de incentivo: prêmio por par repassado, por produto e período
+    const GITHUB_CAMPANHAS     = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/campanhas.json`;
+    // Cancelamentos de lote da DISPO: o que a fábrica tirou, e quando
+    const GITHUB_CANC_DISPO    = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/cancelamentos-dispo.json`;
+    const GITHUB_PREPOSTOS     = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/prepostos.json`;
+    // Histórico de pedidos do Catálogo Digital — 1 arquivo por comissionista
+    const GITHUB_CAT_HIST_BASE = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/catalogo-historico`;
+    // Rascunhos de pedido do Catálogo Digital — 1 arquivo por comissionista
+    const GITHUB_CAT_RASC_BASE = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/catalogo-rascunhos`;
+    // Imagens das categorias da home do Catálogo Digital
+    const GITHUB_CAT_IMG_BASE  = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/imagens_olympikus/categorias`;
+    const GITHUB_HERO_IMG_BASE = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/imagens_olympikus/hero`;
+    // Listagem de clientes — 1 arquivo por vendedor (código)
+    const GITHUB_CLIENTES_BASE = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/clientes`;
+    // Desejos do vendedor (watchlist de produtos)
+    const GITHUB_DESEJOS_BASE = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/desejos`;
+    // Status da vitrine (pausada / ativa)
+    const GITHUB_VITRINE_STATUS = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/vitrine_status.json`;
+    // Análise de Giro — o que o cliente marcou para cancelar, 1 arquivo por
+    // cliente: { itens: [...], atualizadoEm, por }
+    const GITHUB_GIRO_CORTES = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/giro-cortes`;
+    // Carteira CMS — pedidos importados + ações dos vendedores
+    const GITHUB_CARTEIRA       = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/carteira-cms.json`;
+    // Carteira CMS — apenas as AÇÕES (arquivo pequeno: { acoes: { chave: {acao, repasse} } })
+    const GITHUB_CARTEIRA_ACOES = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/carteira-cms-acoes.json`;
+    // Carteira CMS — clientes cadastrados manualmente (sem compra): { clientes: { cod: {codigo,razao,nomeFantasia,porta} } }
+    const GITHUB_CLIENTES = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/carteira-cms-clientes.json`;
+    // Carteira CMS — histórico de faturados: { faturados: { cod: { artigo: {desc, cores:{cor:pares}} } } }
+    const GITHUB_FATURADOS = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/carteira-cms-faturados.json`;
+    const GITHUB_PERFORMANCE = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/performance.json`;
+    // Relatório RFV (Recência · Frequência · Valor) — dados publicados
+    const GITHUB_RFV = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/rfv.json`;
+    // Estoque Virtual — Matriz Esportes (lojas + itens reportados por cada loja + pendentes de cadastro)
+    const GITHUB_MATRIZ = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/matriz_estoque.json`;
+    // Detalhada por preposto — base publicada pelo script diário (CMS_DETALHADA_GERAL)
+    // e pela tela de admin do app. O resumo fica num arquivo à parte: assim o app
+    // pergunta "mudou?" gastando alguns bytes, em vez de baixar 3 MB a cada abertura.
+    const GITHUB_DETALHADA      = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/detalhada.json`;
+    const GITHUB_DETALHADA_INFO = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/detalhada-info.json`;
+    const GITHUB_CLI_FANTASIA   = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/clientes-fantasia.json`;
+    // Grade da carteira CORRE — planilha importada pela tela de admin da
+    // Detalhada. Não é diária: entra quando a CMS resolve atualizar. Guarda a
+    // planilha inteira (todas as colunas), porque o envio à fábrica vai
+    // precisar de endereço, campanha e condição de pagamento — hoje a tela
+    // do vendedor usa só a grade. Mesmo par de arquivos da detalhada: o
+    // resumo à parte evita baixar 1 MB só para perguntar "mudou?".
+    const GITHUB_GRADE_CORRE      = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/grade-corre.json`;
+    const GITHUB_GRADE_CORRE_INFO = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/grade-corre-info.json`;
+    // Segunda família de grade: tudo que não é CORRE (tênis e chinelo, Oly e
+    // UA). Arquivo separado de propósito — cada importação substitui só a sua
+    // família, e uma não tem como apagar a outra por engano.
+    const GITHUB_GRADE_GERAL      = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/grade-geral.json`;
+    const GITHUB_GRADE_GERAL_INFO = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/grade-geral-info.json`;
+    const GRADE_ARQ = {
+      corre: { base: GITHUB_GRADE_CORRE, info: GITHUB_GRADE_CORRE_INFO },
+      geral: { base: GITHUB_GRADE_GERAL, info: GITHUB_GRADE_GERAL_INFO }
+    };
+    // Repositório onde ficam as imagens de produto (pode ser diferente do repo de dados)
+    const GITHUB_IMG_REPO = env.GITHUB_IMG_REPO || "apps-oly-v2";
+    // Painel de TV — os dois arquivos vivem no repo do painel (apps-oly-v2),
+    // porque a TV os lê pelo GitHub Pages, com caminho relativo.
+    //   tv_data.json          o que a TV mostra (alguns KB)
+    //   tv_gci_registry.json  as encomendas já conhecidas, para saber quais são novas
+    const GITHUB_TV_REPO = env.GITHUB_TV_REPO || GITHUB_IMG_REPO;
+    const GITHUB_TV_DATA = `https://api.github.com/repos/${env.GITHUB_OWNER}/${GITHUB_TV_REPO}/contents/data/tv_data.json`;
+    const GITHUB_TV_REG  = `https://api.github.com/repos/${env.GITHUB_OWNER}/${GITHUB_TV_REPO}/contents/data/tv_gci_registry.json`;
+
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: corsHeaders });
+    }
+
+    // ── HELPERS ──────────────────────────────────────────────────────────────
+
+    // Decodifica Base64 (suporta UTF-8 corretamente)
+    function decodeB64(b64) {
+      const clean = String(b64 || "").replace(/\s/g, "");
+      if (!clean) return "";
+      const bin = atob(clean);
+      // Converte binário → UTF-8
+      const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+      return new TextDecoder("utf-8").decode(bytes);
+    }
+
+    /** Devolve o arquivo do GitHub como veio, sem abrir.
+     *
+     *  A base da Detalhada tem 3,7 MB. Lendo pelo getFile(), cada pedido
+     *  decodificava ~5 MB de base64 caractere a caractere, fazia JSON.parse
+     *  e JSON.stringify de novo — três passadas no arquivo inteiro. Isso
+     *  estourava o limite de CPU do Cloudflare e uma em cada cinco respostas
+     *  voltava 503 ("Worker exceeded resource limits"), jogando o app na
+     *  cópia de reserva, que vive atrasada. Pedindo o formato cru e
+     *  devolvendo o corpo em fluxo, o worker não toca no conteúdo. */
+    async function streamFile(url) {
+      const res = await fetch(url, {
+        headers: { ...githubHeaders, Accept: "application/vnd.github.raw" }
+      });
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error(`GET cru GitHub falhou (${res.status})`);
+      return res;
+    }
+
+    async function getFile(url) {
+      const res = await fetch(url, { headers: githubHeaders });
+      if (res.status === 404) return { content: null, sha: null };
+      if (!res.ok) throw new Error(`GET GitHub falhou (${res.status}): ${await res.text()}`);
+      const data = await res.json();
+      const sha = data.sha;
+
+      let rawText = "";
+      // A Contents API só retorna 'content' em Base64 para arquivos até 1 MB.
+      // Acima disso, 'content' vem vazio e precisamos buscar o blob pela git_url.
+      if (data.content && data.content.trim() !== "") {
+        rawText = decodeB64(data.content);
+      } else if (data.git_url) {
+        // Arquivo grande (> 1 MB): busca o blob diretamente (sem limite de tamanho)
+        const blobRes = await fetch(data.git_url, { headers: githubHeaders });
+        if (!blobRes.ok) {
+          throw new Error(`GET blob GitHub falhou (${blobRes.status}): ${await blobRes.text()}`);
+        }
+        const blob = await blobRes.json();
+        rawText = decodeB64(blob.content);
+      } else if (data.download_url) {
+        // Fallback final: baixa o conteúdo cru
+        const dlRes = await fetch(data.download_url, { headers: githubHeaders });
+        if (!dlRes.ok) {
+          throw new Error(`GET download GitHub falhou (${dlRes.status})`);
+        }
+        rawText = await dlRes.text();
+      } else {
+        throw new Error("GET GitHub: não foi possível obter o conteúdo do arquivo.");
+      }
+
+      let parsed;
+      try {
+        parsed = JSON.parse(rawText);
+      } catch (e) {
+        // JSON inválido NÃO deve ser tratado como "arquivo vazio" —
+        // isso protegeria contra sobrescrever dados bons com lista vazia.
+        throw new Error(`JSON inválido no arquivo: ${e.message}`);
+      }
+      return { content: parsed, sha, raw: rawText };
+    }
+
+    // Repassa o arquivo CRU, sem JSON.parse e sem re-serializar.
+    // Ler os ~550 KB de pedidos.json, decodificar de base64, parsear e
+    // stringificar de volta estourava o limite de CPU do worker: a Cloudflare
+    // matava a requisicao com erro 1102 e derrubava vendedor e admin em
+    // horario de movimento. O media type "raw" entrega o arquivo direto,
+    // entao o corpo so atravessa — custo de CPU praticamente zero.
+    // pedidos.json passa de 900 KB e cada vitrine aberta pede o arquivo a cada
+    // minuto para saber o que esgotou. Com a marca da versao (ETag) devolvida
+    // aqui e reenviada pelo app, quase sempre a resposta e 304 sem corpo: o
+    // app so baixa o arquivo quando alguem fez um pedido de verdade.
+    async function streamFile(url, vazio = "[]", usarMarca = false) {
+      const { owner, repo, path } = parseRepoUrl(url);
+      const branch = env.GITHUB_BRANCH || "main";
+      const rawUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${encodeURIComponent(branch)}`;
+      const marca = usarMarca ? request.headers.get("If-None-Match") : null;
+      const res = await fetch(rawUrl, {
+        headers: {
+          ...githubHeaders,
+          Accept: "application/vnd.github.raw",
+          ...(marca ? { "If-None-Match": marca } : {})
+        }
+      });
+      if (res.status === 304) {
+        return new Response(null, { status: 304, headers: { ...corsHeaders, ETag: marca } });
+      }
+      if (res.status === 404) {
+        return new Response(vazio, { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      if (!res.ok) throw new Error(`GET raw falhou (${res.status}): ${await res.text()}`);
+      const etag = res.headers.get("ETag");
+      return new Response(res.body, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          ...(etag ? { ETag: etag } : {})
+        }
+      });
+    }
+
+    // ── Git Data API: cria/atualiza um arquivo via blob+tree+commit ─────────
+    // Substitui a Contents API simples (PUT /contents/{path}), que falha com
+    // 404/erro em arquivos que passam de ~1MB depois de codificados em Base64.
+    // A Git Data API não tem esse limite prático de tamanho.
+    function parseRepoUrl(url) {
+      const m = url.match(/^https:\/\/api\.github\.com\/repos\/([^/]+)\/([^/]+)\/contents\/(.+)$/);
+      if (!m) throw new Error(`URL de repositório inesperada: ${url}`);
+      return { owner: m[1].trim(), repo: m[2].trim(), path: m[3].trim() };
+    }
+
+    // Converte texto -> base64 sem criar copias gigantes da string.
+    // O caminho antigo, btoa(unescape(encodeURIComponent(s))), fazia TRES
+    // copias do conteudo inteiro antes de codificar. Numa base de 3 MB isso
+    // estourava o limite de memoria do worker: a Cloudflare matava a
+    // requisicao com um erro DELA, que nao carrega os cabecalhos de CORS -
+    // e o navegador reportava "Failed to fetch", escondendo a causa real.
+    function textoParaBase64(texto) {
+      const bytes = new TextEncoder().encode(texto);
+      let bin = "";
+      for (let i = 0; i < bytes.length; i += 0x8000) {
+        bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+      }
+      return btoa(bin);
+    }
+
+    async function gitCreateBlob(owner, repo, contentStr) {
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/blobs`, {
+        method: "POST",
+        headers: { ...githubHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ content: textoParaBase64(contentStr), encoding: "base64" })
+      });
+      if (!res.ok) throw new Error(`Git blob falhou (${res.status}): ${await res.text()}`);
+      const data = await res.json();
+      return data.sha;
+    }
+
+    // Para conteúdo binário que JÁ vem em base64 (ex: imagens) — sem re-codificar como texto.
+    async function gitCreateBlobFromBase64(owner, repo, base64Content) {
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/blobs`, {
+        method: "POST",
+        headers: { ...githubHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ content: base64Content, encoding: "base64" })
+      });
+      if (!res.ok) throw new Error(`Git blob (binário) falhou (${res.status}): ${await res.text()}`);
+      const data = await res.json();
+      return data.sha;
+    }
+
+    // Passos 1-2 e 4-6 do commit via Git Data API, reutilizável tanto para texto quanto para
+    // binário — recebe um blobSha já pronto em vez de criar o blob internamente.
+    async function gitCommitBlob(owner, repo, branch, path, blobSha, message) {
+      const cleanBranch = String(branch || "main").trim();
+      const refUrl = `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(cleanBranch)}`;
+      const refRes = await fetch(refUrl, { headers: githubHeaders });
+      if (!refRes.ok) throw new Error(`Git ref falhou (${refRes.status}) em ${refUrl}: ${await refRes.text()}`);
+      const parentCommitSha = (await refRes.json()).object.sha;
+
+      const commitRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/commits/${parentCommitSha}`, { headers: githubHeaders });
+      if (!commitRes.ok) throw new Error(`Git commit (get) falhou (${commitRes.status}): ${await commitRes.text()}`);
+      const baseTreeSha = (await commitRes.json()).tree.sha;
+
+      const treeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees`, {
+        method: "POST",
+        headers: { ...githubHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ base_tree: baseTreeSha, tree: [{ path, mode: "100644", type: "blob", sha: blobSha }] })
+      });
+      if (!treeRes.ok) throw new Error(`Git tree falhou (${treeRes.status}): ${await treeRes.text()}`);
+      const treeSha = (await treeRes.json()).sha;
+
+      const newCommitRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/commits`, {
+        method: "POST",
+        headers: { ...githubHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ message, tree: treeSha, parents: [parentCommitSha] })
+      });
+      if (!newCommitRes.ok) throw new Error(`Git commit (create) falhou (${newCommitRes.status}): ${await newCommitRes.text()}`);
+      const newCommitSha = (await newCommitRes.json()).sha;
+
+      const updateRefRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${encodeURIComponent(cleanBranch)}`, {
+        method: "PATCH",
+        headers: { ...githubHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ sha: newCommitSha })
+      });
+      if (!updateRefRes.ok) throw new Error(`Git ref (update) falhou (${updateRefRes.status}): ${await updateRefRes.text()}`);
+      return newCommitSha;
+    }
+
+    async function gitCommitFile(owner, repo, branch, path, contentStr, message) {
+      const blobSha = await gitCreateBlob(owner, repo, contentStr);
+      return gitCommitBlob(owner, repo, branch, path, blobSha, message);
+    }
+
+    async function saveFile(url, content, sha, message, compacto = false) {
+      const { owner, repo, path } = parseRepoUrl(url);
+      const branch = env.GITHUB_BRANCH || "main";
+
+      // Backup: salva snapshot antes de sobrescrever (só para arquivos principais)
+      const isMainFile = [GITHUB_PEDIDOS, GITHUB_DISPO, GITHUB_PRODUTOS].includes(url);
+      if (isMainFile && sha) {
+        try {
+          const backupPath = path.replace("data/", "data/backups/").replace(".json", `_backup_${new Date().toISOString().slice(0,10)}.json`);
+          const backupUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${backupPath}`;
+          // Verifica se backup do dia já existe
+          const existingBackup = await fetch(backupUrl, { headers: githubHeaders });
+          if (existingBackup.status === 404) {
+            // Lê o conteúdo atual (getFile já lida com arquivos > 1 MB)
+            const cur = await getFile(url);
+            if (cur && cur.raw) {
+              await gitCommitFile(owner, repo, branch, backupPath, cur.raw, `backup: ${message}`);
+            }
+          }
+        } catch (_) { /* não bloqueia a escrita principal se backup falhar */ }
+      }
+
+      // compacto = sem indentacao. Só a detalhada usa: são 3 MB que a
+      // indentacao de 2 espacos transformava em 9 MB antes do base64.
+      // Os demais arquivos continuam legiveis no diff do GitHub.
+      const jsonStr = compacto ? JSON.stringify(content) : JSON.stringify(content, null, 2);
+      await gitCommitFile(owner, repo, branch, path, jsonStr, message);
+      return { success: true };
+    }
+
+    // Atalhos para pedidos
+    async function getPedidos() { return getFile(GITHUB_PEDIDOS); }
+    async function savePedidos(list, sha, msg = "update pedidos") {
+      return saveFile(GITHUB_PEDIDOS, list, sha, msg);
+    }
+
+    // ── Retry para colisao de gravacao ────────────────────────────────────
+    // O GitHub recusa o PATCH da branch quando outra gravacao entrou entre a
+    // leitura e o commit (nao-fast-forward). Repetir SO o commit seria pior
+    // que o erro: o conteudo veio de uma leitura velha e apagaria o pedido do
+    // outro vendedor. Por isso o retry recebe a operacao INTEIRA -- cada
+    // tentativa rele o arquivo e refaz a alteracao sobre o estado mais novo.
+    function ehConflitoDeGravacao(e) {
+      const msg = String((e && e.message) || e);
+      if (/Git ref \(update\) falhou/.test(msg)) return true;   // nao-fast-forward
+      if (/falhou \((?:409|422)\)/.test(msg)) return true;      // conflito
+      if (/falhou \(5\d\d\)/.test(msg)) return true;           // instabilidade
+      if (/falhou \((?:403|429)\)/.test(msg) && /rate limit|secondary|abuse/i.test(msg)) return true;
+      return false;
+    }
+
+    async function comRetry(operacao, tentativas = 4) {
+      for (let i = 0; i < tentativas; i++) {
+        try { return await operacao(); }
+        catch (e) {
+          if (!ehConflitoDeGravacao(e) || i === tentativas - 1) throw e;
+          // Espera crescente com variacao, para que duas gravacoes que
+          // colidiram nao voltem a tentar no mesmo instante.
+          const espera = 300 * Math.pow(2, i) + Math.floor(Math.random() * 250);
+          await new Promise(r => setTimeout(r, espera));
+        }
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // TRADE SQUASH — busca automática de imagens de produto
+    // ═══════════════════════════════════════════════════════════════════════
+    // Porta o que o app Python fazia na máquina do usuário. O Selenium sai de
+    // cena: o login vira um POST de formulário Rails, e o resto (busca e
+    // download) já era HTTP puro lá.
+    // Exige os secrets TS_USERNAME e TS_PASSWORD no painel da Cloudflare.
+
+    const TS_BASE      = "https://app.tradesquash.com";
+    const TS_SEARCH    = `${TS_BASE}/search/showcase/products`;
+    const TS_TENANTS   = { oly: "olympikus", ua: "under-armour" };
+    const TS_UA_HEADER = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                         "(KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+
+    // Espelha normalizarChave() do painel admin. As duas regras PRECISAM ser
+    // idênticas, senão a imagem sobe com um nome que o painel não reconhece.
+    function tsNormalizarChave(valor) {
+      return String(valor || "")
+        .replace(/\.(jpe?g|png|webp)$/i, "")
+        .toUpperCase()
+        .replace(/[\/\-\s.]+/g, "_")
+        .replace(/_+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .trim();
+    }
+    function tsNomeArquivo(artigo, cor) {
+      return `${tsNormalizarChave(artigo)}_${tsNormalizarChave(cor)}.jpg`;
+    }
+
+    // Comparação frouxa usada pelo Python: ignora espaço, _, - e /
+    function tsSolto(texto) {
+      return String(texto || "").replace(/[\s_\-/]/g, "").toUpperCase();
+    }
+
+    // Workers novos expõem getSetCookie(); mantemos fallback para o header
+    // concatenado, que é como as runtimes antigas devolvem.
+    function tsColherCookies(cookieAtual, res) {
+      const jar = {};
+      for (const par of String(cookieAtual || "").split(";")) {
+        const [k, ...v] = par.trim().split("=");
+        if (k) jar[k] = v.join("=");
+      }
+      let novos = [];
+      try { novos = res.headers.getSetCookie ? res.headers.getSetCookie() : []; }
+      catch (_) { novos = []; }
+      if (!novos.length) {
+        const bruto = res.headers.get("set-cookie");
+        if (bruto) novos = bruto.split(/,(?=[^;]+?=)/);
+      }
+      for (const sc of novos) {
+        const [k, ...v] = String(sc).split(";")[0].trim().split("=");
+        if (k) jar[k] = v.join("=");
+      }
+      return Object.entries(jar).map(([k, v]) => `${k}=${v}`).join("; ");
+    }
+
+    // Lê um atributo de uma tag HTML solta (ex.: name="x" de um <input ...>)
+    function tsAttr(tag, attr) {
+      const m = String(tag).match(new RegExp(attr + '\\s*=\\s*"([^"]*)"', "i"));
+      return m ? m[1] : "";
+    }
+
+    // Encontra o <form> de login: é aquele que contém um input de senha.
+    // A página tem outros formulários (busca, newsletter), e pegar o primeiro
+    // levaria a postar no endereço errado.
+    function tsFormLogin(html) {
+      const forms = [...String(html).matchAll(/<form\b[^>]*>([\s\S]*?)<\/form>/gi)];
+      for (const f of forms) {
+        if (/type\s*=\s*"password"/i.test(f[1])) {
+          const abre = f[0].match(/<form\b[^>]*>/i);
+          return { tag: abre ? abre[0] : "", corpo: f[1] };
+        }
+      }
+      return null;
+    }
+
+    // Monta o corpo do POST lendo os campos REAIS do formulário.
+    // Não fixamos "user[email]" — o Trade Squash já renomeou esses campos antes
+    // (o scraper Python tinha comentário sobre isso), e o Selenium não se
+    // importava porque localizava por type. Aqui descobrimos os nomes na hora.
+    function tsMontarPayload(corpo, usuario, senha) {
+      const inputs = [...String(corpo).matchAll(/<input\b[^>]*>/gi)].map(m => m[0]);
+      const dados = new URLSearchParams();
+      const achados = { email: "", senha: "", termos: "", valorTermos: "1", ocultos: [] };
+
+      for (const tag of inputs) {
+        const name = tsAttr(tag, "name");
+        if (!name) continue;
+        const type = (tsAttr(tag, "type") || "text").toLowerCase();
+        const value = tsAttr(tag, "value");
+
+        if (type === "email" || (!achados.email && /e-?mail|login|user(name)?$/i.test(name))) {
+          achados.email = name; continue;
+        }
+        if (type === "password") { achados.senha = name; continue; }
+        if (type === "checkbox") {
+          // "Remember me" fica de fora de propósito
+          if (/term|accept|aceite|polic|privac/i.test(name)) {
+            achados.termos = name;
+            achados.valorTermos = value || "1";
+          }
+          continue;
+        }
+        // hidden (authenticity_token, utf8, _method...) e submit vão como estão
+        if (type === "hidden" || type === "submit") {
+          dados.set(name, value);
+          if (type === "hidden") achados.ocultos.push(name);
+        }
+      }
+
+      if (achados.email)  dados.set(achados.email, usuario);
+      if (achados.senha)  dados.set(achados.senha, senha);
+      // depois dos hidden: o Rails emite um hidden "0" com o mesmo nome do
+      // checkbox, e o valor marcado precisa sobrescrever aquele zero
+      if (achados.termos) dados.set(achados.termos, achados.valorTermos);
+
+      return { dados, achados };
+    }
+
+    // Rails clássico: GET no formulário para pegar authenticity_token + cookie,
+    // POST com as credenciais, e GET na showcase para o servidor contextualizar
+    // o tenant (o Python fazia isso clicando no botão "Vitrine").
+    async function tsLogin(tenant) {
+      if (!env.TS_USERNAME || !env.TS_PASSWORD) {
+        throw new Error("TS_USERNAME/TS_PASSWORD não configurados nos secrets do Worker.");
+      }
+      const cab = { "User-Agent": TS_UA_HEADER, "Accept-Language": "pt-BR,pt;q=0.9" };
+
+      const r1 = await fetch(`${TS_BASE}/session/new`, { headers: cab, redirect: "follow" });
+      if (!r1.ok) throw new Error(`GET /session/new falhou (${r1.status})`);
+      const html = await r1.text();
+      let cookie = tsColherCookies("", r1);
+
+      const formulario = tsFormLogin(html);
+      if (!formulario) {
+        throw new Error("Formulário de login não encontrado (nenhum <form> com campo de senha).");
+      }
+
+      const acao = tsAttr(formulario.tag, "action") || "/session";
+      const urlPost = acao.startsWith("http")
+        ? acao
+        : TS_BASE + (acao.startsWith("/") ? acao : "/" + acao);
+
+      const { dados, achados } = tsMontarPayload(formulario.corpo, env.TS_USERNAME, env.TS_PASSWORD);
+      if (!achados.email || !achados.senha) {
+        throw new Error(`Campos de login não identificados (email="${achados.email}", senha="${achados.senha}").`);
+      }
+
+      const r2 = await fetch(urlPost, {
+        method: "POST",
+        headers: {
+          ...cab,
+          "Content-Type": "application/x-www-form-urlencoded",
+          Cookie: cookie,
+          Referer: `${TS_BASE}/session/new`,
+          Origin: TS_BASE
+        },
+        body: dados.toString(),
+        redirect: "manual"
+      });
+      cookie = tsColherCookies(cookie, r2);
+      if (r2.status >= 400) throw new Error(`POST de login falhou (${r2.status})`);
+      // Guarda o que foi detectado, para o diagnóstico conseguir mostrar
+      globalThis.__TS_ULTIMO_FORM = { urlPost, ...achados, statusPost: r2.status };
+
+      const showcase = `${TS_BASE}/${tenant}/showcase`;
+      const r3 = await fetch(showcase, { headers: { ...cab, Cookie: cookie }, redirect: "follow" });
+      cookie = tsColherCookies(cookie, r3);
+      const htmlShow = await r3.text();
+      if (/name="authenticity_token"/i.test(htmlShow) && /session/i.test(r3.url || "")) {
+        throw new Error("Login recusado — voltou para a tela de sessão. Confira TS_USERNAME/TS_PASSWORD.");
+      }
+      return { cookie, tenant, showcase, criadoEm: Date.now() };
+    }
+
+    async function tsSessao(tenant, forcar) {
+      const valida = globalThis.__TS_SESSAO &&
+                     globalThis.__TS_SESSAO.tenant === tenant &&
+                     (Date.now() - globalThis.__TS_SESSAO.criadoEm) < 20 * 60 * 1000;
+      if (valida && !forcar) return globalThis.__TS_SESSAO;
+      globalThis.__TS_SESSAO = await tsLogin(tenant);
+      return globalThis.__TS_SESSAO;
+    }
+
+    // UA traz ARTIGO_COR_TAMANHO (vários tamanhos por cor); Olympikus, ARTIGO-COR.
+    // Removemos o último pedaço só quando ele parece tamanho.
+    function tsChaveSemTamanho(sku) {
+      const partes = String(sku).split(/[_-]/);
+      if (partes.length <= 2) return String(sku).toUpperCase();
+      const ultimo = partes[partes.length - 1].toUpperCase();
+      const tamanhos = ["P","PP","M","G","GG","EG","EGG","XS","S","L","XL","XXL"];
+      const ehTamanho = ultimo.length <= 3 && (
+        tamanhos.includes(ultimo) || /^\d+G+$/.test(ultimo) || /^\d{2,3}$/.test(ultimo)
+      );
+      return (ehTamanho ? partes.slice(0, -1).join("_") : String(sku)).toUpperCase();
+    }
+
+    async function tsBuscar(sessao, artigo, cor) {
+      const url = `${TS_SEARCH}?format=json&tenant=${encodeURIComponent(sessao.tenant)}` +
+                  `&limit=50&query=${encodeURIComponent(artigo)}`;
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent": TS_UA_HEADER,
+          Accept: "application/json, text/html, */*",
+          Referer: sessao.showcase,
+          "X-Requested-With": "XMLHttpRequest",
+          Cookie: sessao.cookie
+        }
+      });
+      if (res.status === 401 || res.status === 403) throw new Error("SESSAO_EXPIRADA");
+      if (!res.ok) return [];
+
+      let lista;
+      try { lista = await res.json(); } catch (_) { return []; }
+      if (!Array.isArray(lista)) return [];
+
+      const artigoN = tsSolto(artigo);
+      const corN    = tsSolto(cor);
+      const vistos  = new Set();
+      const casados = [];
+      for (const p of lista) {
+        const sku = tsSolto(p && p.sku);
+        if (!sku.includes(artigoN)) continue;
+        if (corN && !sku.includes(corN)) continue;
+        const chave = tsChaveSemTamanho(String((p && p.sku) || ""));
+        if (vistos.has(chave)) continue;
+        vistos.add(chave);
+        casados.push(p);
+      }
+      return casados;
+    }
+
+    // Mesma escada de preferências do downloader.py, sem BeautifulSoup:
+    // candidatas do CDN → exclui logos → prefere _FC (UA) → prefere a principal
+    // da Olympikus (sem sufixo _A/_B antes do -500x500) → primeira candidata.
+    async function tsUrlImagem(sessao, redirect, artigo) {
+      const res = await fetch(TS_BASE + redirect, {
+        headers: {
+          "User-Agent": TS_UA_HEADER,
+          Accept: "text/html,*/*",
+          Referer: sessao.showcase,
+          Cookie: sessao.cookie
+        }
+      });
+      if (res.status === 401 || res.status === 403) throw new Error("SESSAO_EXPIRADA");
+      if (!res.ok) return null;
+      const html = await res.text();
+
+      const todas = [...html.matchAll(/<img[^>]+src="([^"]*static\.tradesquash\.com[^"]*)"/gi)]
+        .map(m => m[1]);
+      const excluir = /(logo|lockup|tsq-logo|banner|powered|aws-logo)/i;
+      const candidatas = todas.filter(src =>
+        src && !excluir.test(src) && (!artigo || src.includes(artigo)));
+      if (!candidatas.length) return null;
+
+      const fc = candidatas.find(s => s.toUpperCase().includes("_FC"));
+      if (fc) return fc;
+
+      const principalOly = candidatas.find(src => {
+        const nome = src.split("/").pop() || "";
+        const m = nome.match(/^(.+?)-\d+x\d+\.[a-z]+$/i);
+        return m ? !/_[A-Z]$/i.test(m[1]) : false;
+      });
+      return principalOly || candidatas[0];
+    }
+
+    // ── Ficha técnica do produto ─────────────────────────────────────────
+    // Composição, origem, peso e tecnologias só existem na página do produto:
+    // nenhuma planilha traz esses campos. O HTML vira uma lista de textos e os
+    // rótulos conhecidos levam ao valor da linha seguinte — assim uma mudança
+    // de layout não derruba a leitura inteira, só o campo que mudou.
+    function tsTextos(html) {
+      return String(html || "")
+        .replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<[^>]+>/g, "\n")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&").replace(/&quot;/gi, '"')
+        .replace(/&#0?39;|&apos;/gi, "'")
+        .replace(/&lt;/gi, "<").replace(/&gt;/gi, ">")
+        .split("\n").map(t => t.replace(/\s+/g, " ").trim()).filter(Boolean);
+    }
+
+    // Na página, cada atributo é um bloco que termina em "Ver menos" e repete
+    // o valor: ["Artigo", "1382797", "1382797", "Ver menos"]. Ler por esse
+    // fecho vale para as duas marcas, que usam rótulos diferentes.
+    function tsAtributos(t) {
+      const attr = {};
+      let buf = [];
+      for (const linha of t) {
+        if (/^ver menos$/i.test(linha)) {
+          if (buf.length >= 2) {
+            const n = buf.length;
+            const repetiu = buf[n - 1] === buf[n - 2];
+            const rot = repetiu ? buf[n - 3] : buf[n - 2];
+            const val = buf[n - 1];
+            if (rot && val && rot !== val) attr[rot] = val;
+            else if (rot && val) attr[rot] = val;
+          }
+          buf = [];
+          continue;
+        }
+        if (/^(ver mais|copiar)$/i.test(linha)) continue;
+        buf.push(linha);
+        if (buf.length > 4) buf.shift();
+      }
+      return attr;
+    }
+
+    // Descrição solta da Olympikus: vem depois de "Descrição"/"Copiar" e
+    // segue até "Disclaimers", quebrada em várias linhas.
+    function tsDescricaoSolta(t) {
+      const i = t.findIndex((x, k) => /^descrição$/i.test(x) && /^copiar$/i.test(t[k + 1] || ""));
+      if (i < 0) return "";
+      const linhas = [];
+      for (let j = i + 2; j < t.length && linhas.length < 20; j++) {
+        if (/^(disclaimers|atributos|destaques|catálogo|catalogo|ver mais)$/i.test(t[j])) break;
+        linhas.push(t[j]);
+      }
+      return linhas.join(" ").trim();
+    }
+
+    // O Trade Squash escreve "vazio" no atributo que a marca não preencheu:
+    // isso é ausência de informação, não conteúdo, e não pode ir para a tela.
+    function tsValorUtil(v) {
+      const t = String(v || "").trim();
+      return /^(vazio|vazia|n\/?a|nao informado|não informado|-{1,2}|\.)$/i.test(t) ? "" : t;
+    }
+
+    function tsPrimeiro(attr, nomes) {
+      for (const n of nomes) {
+        for (const k of Object.keys(attr)) {
+          if (k.toLowerCase().replace(/\s+/g, " ").trim() === n) {
+            const v = tsValorUtil(attr[k]);
+            if (v) return v;
+          }
+        }
+      }
+      return "";
+    }
+
+    function tsFichaDoHtml(html) {
+      const t = tsTextos(html);
+      const attr = tsAtributos(t);
+      const tec = tsPrimeiro(attr, ["tecnologias"]);
+      const ficha = {
+        artigo:        tsPrimeiro(attr, ["artigo"]),
+        // cor só como referência do SKU que foi lido: a ficha vale para o
+        // artigo inteiro
+        corLida:       tsPrimeiro(attr, ["cód. cor", "codigo da cor", "código da cor"]),
+        composicao:    tsPrimeiro(attr, ["material / composição", "material/composição", "composição"]),
+        origem:        tsPrimeiro(attr, ["país origem do produto", "origem"]),
+        peso:          tsPrimeiro(attr, ["unidade para peso", "peso"]),
+        grade:         tsPrimeiro(attr, ["grade", "sistema de tamanho do item"]),
+        genero:        tsPrimeiro(attr, ["gênero traduzido", "gênero"]),
+        colecao:       tsPrimeiro(attr, ["coleção"]),
+        tipo:          tsPrimeiro(attr, ["tipo de produto"]),
+        categoria:     tsPrimeiro(attr, ["categoria (pai)", "tipo de produto geral"]),
+        subcategoria:  tsPrimeiro(attr, ["sub categoria (filho)"]),
+        pisada:        tsPrimeiro(attr, ["pisada"]),
+        ean:           tsPrimeiro(attr, ["ean13", "upc / ean"]),
+        precoSugerido: tsPrimeiro(attr, ["preço sugerido"]),
+        // as tecnologias vêm separadas por barra vertical
+        tecnologias:   tec ? tec.split("|").map(x => tsValorUtil(x)).filter(Boolean) : [],
+        descricao:     tsPrimeiro(attr, ["descrição"]) || tsDescricaoSolta(t)
+      };
+      return { ficha, atributos: attr, textos: t };
+    }
+
+    // A ficha é do ARTIGO, não da cor: composição, origem, peso, grade e
+    // tecnologias são as mesmas em todas as cores. Guardar por cor seria
+    // repetir o mesmo conteúdo e multiplicar as consultas por quatro.
+    // ── Catálogo oficial da Under Armour ─────────────────────────────────
+    // O Trade Squash não tem tudo o que a UA publica. Este catálogo tem, mas
+    // é fechado: login por e-mail e senha (Laravel), guardados nos secrets do
+    // Worker. O endereço do produto é /colecoes/<colecao>/<artigo>/<cor>, e a
+    // mesma peça pode estar em mais de uma coleção — por isso a busca tenta
+    // uma coleção por vez e para na primeira que responder.
+    const UAC_BASE = "https://catalogo.underarmourbr.com.br";
+    // O catálogo é dividido em duas seções, cada uma com as suas coleções:
+    // vestuário e calçados. O mesmo artigo nunca está nas duas.
+    const UAC_SECOES = ["vestuario-e-acessorios", "calcados"];
+    const UAC_LISTA = `${UAC_BASE}/user/${UAC_SECOES[0]}/colecoes`;
+
+    // A lista de coleções é montada em JavaScript; o que sobra no HTML é o
+    // seletor, com um data-slug por coleção. WHSL primeiro: é onde está o
+    // atacado, que é o que a gente vende.
+    function uacColecoes(html) {
+      const achadas = [];
+      const vistas = new Set();
+      for (const m of String(html).matchAll(/data-slug="([a-z0-9\-]+)"/gi)) {
+        const slug = m[1].toLowerCase();
+        // DTC é canal direto: aqueles produtos não entram na nossa vitrine
+        if (slug.includes("dtc") || vistas.has(slug)) continue;
+        vistas.add(slug);
+        achadas.push(slug);
+      }
+      achadas.sort((a, b) => (b.includes("whsl") ? 1 : 0) - (a.includes("whsl") ? 1 : 0));
+      return achadas;
+    }
+
+    // ── Ficha do catálogo UA ─────────────────────────────────────────────
+    // A página é direta: rótulo numa linha, valor na seguinte. As tecnologias
+    // vêm em pares (nome + explicação) — é o que o Trade Squash não dá.
+    const UAC_ROTULOS = {
+      "pdv": "precoSugerido", "gênero": "genero", "genero": "genero",
+      "peso": "peso", "origem": "origem",
+      "composicao": "composicao", "composição": "composicao",
+      "tamanhos": "tamanhos", "descrição": "descricao", "descricao": "descricao",
+      "drop": "drop", "período de vendas": "periodoVendas"
+    };
+
+    function uacFichaDoHtml(html, artigo) {
+      const t = tsTextos(html);
+      const ficha = {
+        artigo: String(artigo || ""), composicao: "", origem: "", peso: "",
+        genero: "", tipo: "", descricao: "", precoSugerido: "", tamanhos: "",
+        drop: "", tecnologias: [], cores: [], fonte: "ua-catalogo"
+      };
+      for (let i = 0; i < t.length; i++) {
+        const rot = UAC_ROTULOS[t[i].toLowerCase().replace(/:\s*$/, "")];
+        const val = t[i + 1];
+        if (rot && !ficha[rot] && val && !UAC_ROTULOS[val.toLowerCase()]) {
+          ficha[rot] = val.trim();
+        }
+        if (/^tecnologias$/i.test(t[i])) {
+          for (let j = i + 1; j + 1 < t.length && ficha.tecnologias.length < 12; j += 2) {
+            const nome = t[j], texto = t[j + 1];
+            if (!nome || /enviar sugest|voltar|tabela de medidas/i.test(nome)) break;
+            ficha.tecnologias.push({ nome, texto });
+          }
+        }
+      }
+      // O tipo não tem rótulo: vem logo acima do artigo, no topo da página
+      const iArt = t.findIndex(x => x.trim() === String(artigo));
+      if (iArt > 0) ficha.tipo = t[iArt - 1];
+      // Cores: código seguido do nome comercial ("AEBLBK", "430 - Aegean Blue")
+      for (let i = 0; i < t.length - 1; i++) {
+        if (/^[A-Z0-9/_\-]{3,10}$/.test(t[i]) && /^\d{3}\s*-\s*\S/.test(t[i + 1])) {
+          ficha.cores.push({ codigo: t[i], nome: t[i + 1] });
+        }
+      }
+      return { ficha, textos: t };
+    }
+
+    async function uacLogin() {
+      if (!env.UACAT_EMAIL || !env.UACAT_SENHA) {
+        throw new Error("UACAT_EMAIL/UACAT_SENHA não configurados nos secrets do Worker.");
+      }
+      const cab = { "User-Agent": TS_UA_HEADER, "Accept-Language": "pt-BR,pt;q=0.9" };
+
+      const r1 = await fetch(`${UAC_BASE}/acessos`, { headers: cab, redirect: "follow" });
+      if (!r1.ok) throw new Error(`GET /acessos falhou (${r1.status})`);
+      const html = await r1.text();
+      let cookie = tsColherCookies("", r1);
+
+      const formulario = tsFormLogin(html);
+      if (!formulario) throw new Error("Formulário de login não encontrado no catálogo.");
+      const acao = tsAttr(formulario.tag, "action") || "/admin/login";
+      const urlPost = acao.startsWith("http") ? acao
+        : UAC_BASE + (acao.startsWith("/") ? acao : "/" + acao);
+      const { dados, achados } = tsMontarPayload(formulario.corpo, env.UACAT_EMAIL, env.UACAT_SENHA);
+      if (!achados.email || !achados.senha) {
+        throw new Error(`Campos de login não identificados (email="${achados.email}", senha="${achados.senha}").`);
+      }
+
+      const r2 = await fetch(urlPost, {
+        method: "POST",
+        headers: {
+          ...cab,
+          "Content-Type": "application/x-www-form-urlencoded",
+          Cookie: cookie,
+          Referer: `${UAC_BASE}/acessos`,
+          Origin: UAC_BASE
+        },
+        body: dados.toString(),
+        redirect: "manual"
+      });
+      cookie = tsColherCookies(cookie, r2);
+      if (r2.status >= 400) throw new Error(`POST de login falhou (${r2.status})`);
+
+      // Uma lista por seção: o endereço do produto leva a seção dentro dele
+      const colecoes = [];
+      for (const secao of UAC_SECOES) {
+        const r3 = await fetch(`${UAC_BASE}/user/${secao}/colecoes`,
+                               { headers: { ...cab, Cookie: cookie }, redirect: "follow" });
+        cookie = tsColherCookies(cookie, r3);
+        const htmlLista = await r3.text();
+        if (/\/acessos/.test(r3.url || "") || /type\s*=\s*"password"/i.test(htmlLista)) {
+          throw new Error("Login recusado — voltou para a tela de acesso. Confira UACAT_EMAIL/UACAT_SENHA.");
+        }
+        for (const slug of uacColecoes(htmlLista)) colecoes.push({ secao, slug });
+      }
+      if (!colecoes.length) throw new Error("Nenhuma coleção encontrada no catálogo.");
+      return { cookie, colecoes, statusPost: r2.status, criadoEm: Date.now() };
+    }
+
+    async function uacSessao(forcar) {
+      const valida = globalThis.__UAC_SESSAO &&
+                     (Date.now() - globalThis.__UAC_SESSAO.criadoEm) < 20 * 60 * 1000;
+      if (valida && !forcar) return globalThis.__UAC_SESSAO;
+      globalThis.__UAC_SESSAO = await uacLogin();
+      return globalThis.__UAC_SESSAO;
+    }
+
+    // ── Índice do catálogo ───────────────────────────────────────────────
+    // A página de cada coleção traz a lista inteira de produtos embutida
+    // (codigo, cor, numeração). Lendo isso uma vez, sabemos em que coleção
+    // cada artigo está e uma cor válida dele — sem isso, era tentar sete
+    // endereços por produto e ainda cair em erro 500 do próprio site.
+    async function uacIndice(sessao, forcar) {
+      const cache = globalThis.__UAC_INDICE;
+      if (!forcar && cache && (Date.now() - cache.criadoEm) < 20 * 60 * 1000) {
+        return cache.mapa;
+      }
+      const mapa = {};
+      for (const c of (sessao.colecoes || [])) {
+        const url = `${UAC_BASE}/user/${c.secao}/colecoes/${c.slug}`;
+        const r = await fetch(url, {
+          headers: {
+            "User-Agent": TS_UA_HEADER, Accept: "text/html,*/*",
+            "Accept-Language": "pt-BR,pt;q=0.9", Cookie: sessao.cookie, Referer: UAC_LISTA
+          },
+          redirect: "follow"
+        });
+        if (!r.ok) continue;
+        const html = await r.text();
+        // entre um campo e outro há quebras e campos vazios no meio: a janela
+        // precisa de folga (o par fica a ~210 caracteres de distância)
+        for (const m of html.matchAll(/codigo:\s*"([^"]+)"[\s\S]{0,400}?codigo_cor:\s*"([^"]*)"/g)) {
+          const art = String(m[1]).trim().toUpperCase();
+          if (!art || mapa[art]) continue;
+          mapa[art] = { secao: c.secao, slug: c.slug, cor: String(m[2]).trim() };
+        }
+      }
+      globalThis.__UAC_INDICE = { mapa, criadoEm: Date.now() };
+      return mapa;
+    }
+
+    // Procura a página do produto, uma coleção por vez.
+    async function uacPaginaProduto(sessao, artigo, cor) {
+      const cab = { "User-Agent": TS_UA_HEADER, Accept: "text/html,*/*",
+                    "Accept-Language": "pt-BR,pt;q=0.9", Cookie: sessao.cookie,
+                    Referer: UAC_LISTA };
+      const tentativas = [];
+
+      // Caminho curto: o índice diz a coleção e uma cor que existe lá. A cor
+      // que a gente usa internamente nem sempre é a do catálogo.
+      const indice = await uacIndice(sessao);
+      const achado = indice[String(artigo).trim().toUpperCase()];
+      if (achado) {
+        for (const tentarCor of [cor, achado.cor].filter(Boolean)) {
+          const url = `${UAC_BASE}/user/${achado.secao}/colecoes/${achado.slug}` +
+                      `/${encodeURIComponent(artigo)}/${encodeURIComponent(tentarCor)}`;
+          const r = await fetch(url, { headers: cab, redirect: "follow" });
+          const html = r.ok ? await r.text() : "";
+          tentativas.push({ secao: achado.secao, slug: achado.slug, cor: tentarCor,
+                            status: r.status, tamanho: html.length });
+          if (r.ok && html.includes(String(artigo))) {
+            return { url, html, slug: achado.slug, secao: achado.secao, tentativas };
+          }
+        }
+        return { url: "", html: "", slug: "", secao: "", tentativas };
+      }
+
+      for (const c of (sessao.colecoes || [])) {
+        const secao = c.secao || UAC_SECOES[0];
+        const slug = c.slug || c;
+        const url = `${UAC_BASE}/user/${secao}/colecoes/${slug}/${encodeURIComponent(artigo)}` +
+                    (cor ? `/${encodeURIComponent(cor)}` : "");
+        const r = await fetch(url, { headers: cab, redirect: "follow" });
+        const html = r.ok ? await r.text() : "";
+        tentativas.push({ secao, slug, status: r.status, tamanho: html.length });
+        // a página de produto tem o artigo escrito nela; a de erro não
+        if (r.ok && html.includes(String(artigo))) {
+          return { url, html, slug, secao, tentativas };
+        }
+      }
+      return { url: "", html: "", slug: "", secao: "", tentativas };
+    }
+
+    // Ficha de um artigo pelo Trade Squash, sem gravar nada: serve de reserva
+    // para o catálogo da UA, que só publica as coleções da temporada.
+    async function tsFichaDeArtigo(tenant, artigo) {
+      try {
+        const sessao = await tsSessao(tenant, false);
+        const achados = await tsBuscar(sessao, artigo, "");
+        const redirect = achados.length ? (achados[0].redirect || "") : "";
+        if (!redirect) return null;
+        const r = await fetch(TS_BASE + redirect, {
+          headers: {
+            "User-Agent": TS_UA_HEADER, Accept: "text/html,*/*",
+            Referer: sessao.showcase, Cookie: sessao.cookie
+          }
+        });
+        if (!r.ok) return null;
+        const { ficha } = tsFichaDoHtml(await r.text());
+        const temAlgo = ficha.composicao || ficha.origem || ficha.descricao ||
+                        (ficha.tecnologias || []).length;
+        if (!temAlgo) return null;
+        ficha.marca = tenant === "under-armour" ? "ua" : "oly";
+        ficha.fonte = "trade-squash";
+        ficha.sku = achados[0].sku || "";
+        ficha.lidoEm = new Date().toISOString();
+        return ficha;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function tsChaveFicha(artigo) {
+      return tsNormalizarChave(artigo);
+    }
+
+    // O Python usava MD5, mas a Web Crypto não oferece MD5 — para detectar
+    // "duas cores com a mesma foto", qualquer hash serve.
+    async function tsHash(buf) {
+      const d = await crypto.subtle.digest("SHA-256", buf);
+      return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    function tsBase64(buf) {
+      const bytes = new Uint8Array(buf);
+      let bin = "";
+      for (let i = 0; i < bytes.length; i += 0x8000) {
+        bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+      }
+      return btoa(bin);
+    }
+
+    // ── ROTEAMENTO ───────────────────────────────────────────────────────────
+
+    try {
+
+      // GET — retorna pedidos (array, mantém retrocompatibilidade).
+      // É de longe a chamada mais frequente: cada vendedor consulta a cada
+      // 30s. Por isso vai por repasse direto, sem parsear nada.
+      if (request.method === "GET") {
+        return await streamFile(GITHUB_PEDIDOS, "[]", true);
+      }
+
+      // POST — novo pedido (público — vendedor cria pedidos sem login)
+      if (request.method === "POST") {
+        const body = await request.json();
+
+        // Cadastro de prepostos (compartilhado com outra aplicacao que usa este worker).
+        // Guarda numa lista propria (data/prepostos.json), NUNCA em pedidos.json.
+        if (body && body.action === "getPrepostos") {
+          const { content } = await getFile(GITHUB_PREPOSTOS);
+          const lista = Array.isArray(content) ? content : (content && Array.isArray(content.data) ? content.data : []);
+          return new Response(JSON.stringify(lista), { status: 200, headers: corsHeaders });
+        }
+        if (body && body.action === "savePrepostos" && Array.isArray(body.data)) {
+          const { sha } = await getFile(GITHUB_PREPOSTOS);
+          await saveFile(GITHUB_PREPOSTOS, body.data, sha, "update prepostos");
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // Protecao: so grava se for REALMENTE um pedido (tem id e items).
+        // Evita que chamadas como {action:"getPrepostos"} caiam no pedidos.json.
+        if (!body || body.action || !body.id || !Array.isArray(body.items)) {
+          return new Response(JSON.stringify({ success: false, error: "Payload nao e um pedido valido." }), { status: 400, headers: corsHeaders });
+        }
+
+        const novo = { ...body, createdAt: body.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
+        await comRetry(async () => {
+          const { content, sha } = await getPedidos();
+          const list = content || [];
+          // Se uma tentativa anterior chegou a gravar antes de falhar, o
+          // pedido ja esta na lista -- reenviar nao pode duplicar.
+          if (list.some(p => p && p.id === novo.id)) return;
+          list.push(novo);
+          await savePedidos(list, sha, "novo pedido");
+        });
+        return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+      }
+
+      // PUT — atualiza pedido existente (público — vendedor edita seus próprios pedidos)
+      if (request.method === "PUT") {
+        const body = await request.json();
+
+        // Atualizacao em LOTE: um unico commit para N pedidos.
+        // Existe porque a exportacao do admin gravava um pedido por vez --
+        // dezenas de commits seguidos no mesmo arquivo, o que derrubava os
+        // vendedores que tentassem enviar pedido durante a exportacao.
+        //
+        // Recebe SO os campos que mudam, nunca o pedido inteiro: assim uma
+        // copia velha na tela do admin nao pode sobrescrever nada que ele
+        // desconheca. O merge acontece sempre sobre o que esta no servidor.
+        if (body.action === "updateOrders" && Array.isArray(body.updates)) {
+          if (body.updates.length > 1000) {
+            return new Response(JSON.stringify({ success: false, error: "Lote grande demais (max 1000)." }), { status: 413, headers: corsHeaders });
+          }
+          let aplicados = [], naoEncontrados = [];
+          await comRetry(async () => {
+            // Zera a cada tentativa: o relatorio tem que refletir a gravacao
+            // que realmente passou, nao a soma das tentativas.
+            aplicados = []; naoEncontrados = [];
+            const { content, sha } = await getPedidos();
+            const list = content || [];
+            const agora = new Date().toISOString();
+            for (const u of body.updates) {
+              if (!u || !u.id) continue;
+              const idx = list.findIndex(p => p && p.id === u.id);
+              if (idx === -1) { naoEncontrados.push(u.id); continue; }
+              const atual = list[idx];
+              const campos = (u.campos && typeof u.campos === "object") ? u.campos : {};
+              const merged = { ...atual, ...campos, id: atual.id, updatedAt: agora };
+              if (u.historyAppend) {
+                const hist = Array.isArray(atual.history) ? atual.history : [];
+                // Se a resposta se perdeu e o admin reenviou, o mesmo evento
+                // nao pode entrar duas vezes no historico.
+                const jaTem = u.historyAppend.id && hist.some(h => h && h.id === u.historyAppend.id);
+                merged.history = jaTem ? hist : [...hist, u.historyAppend];
+              }
+              list[idx] = merged;
+            }
+            aplicados = body.updates.map(u => u && u.id).filter(id => id && !naoEncontrados.includes(id));
+            if (aplicados.length) await savePedidos(list, sha, `update ${aplicados.length} pedido(s) em lote`);
+          });
+          return new Response(JSON.stringify({ success: true, aplicados, naoEncontrados }), { status: 200, headers: corsHeaders });
+        }
+
+        if (!body?.id) return new Response(JSON.stringify({ success: false, error: "ID não informado." }), { status: 400, headers: corsHeaders });
+        let achou = false;
+        await comRetry(async () => {
+          const { content, sha } = await getPedidos();
+          const list = content || [];
+          const idx = list.findIndex(p => p && p.id === body.id);
+          if (idx === -1) { achou = false; return; }
+          achou = true;
+          list[idx] = { ...list[idx], ...body, updatedAt: new Date().toISOString() };
+          await savePedidos(list, sha, "update pedido");
+        });
+        if (!achou) return new Response(JSON.stringify({ success: false, error: "Pedido não encontrado." }), { status: 404, headers: corsHeaders });
+        return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+      }
+
+      // DELETE — exclui pedido e limpa desmembramentos órfãos (público — vendedor cancela seus pedidos)
+      if (request.method === "DELETE") {
+        const body = await request.json();
+        if (!body?.id) return new Response(JSON.stringify({ success: false, error: "ID não informado." }), { status: 400, headers: corsHeaders });
+
+        // Remove o pedido
+        let tentativa = 0, removido = false;
+        await comRetry(async () => {
+          tentativa++;
+          const { content, sha } = await getPedidos();
+          const atual = content || [];
+          const list = atual.filter(p => p && p.id !== body.id);
+          if (list.length === atual.length) {
+            // Sumiu entre tentativas: a gravacao anterior passou. So e
+            // "nao encontrado" de verdade se ja faltava na 1a leitura.
+            removido = tentativa > 1;
+            return;
+          }
+          await savePedidos(list, sha, "delete pedido");
+          removido = true;
+        });
+        if (!removido) return new Response(JSON.stringify({ success: false, error: "Pedido não encontrado." }), { status: 404, headers: corsHeaders });
+
+        // Limpa entradas do desmembramentos que referenciam este pedido
+        // Chave do desmembramento: "codigo|cor|prevFat" → { "orderId||gci||cor": status }
+        try {
+          const { content: desm, sha: desmSha } = await getFile(GITHUB_DESM);
+          if (desm && typeof desm === 'object') {
+            const desmLimpo = {};
+            for (const [chave, lojas] of Object.entries(desm)) {
+              const lojasFiltradas = {};
+              for (const [lineKey, status] of Object.entries(lojas || {})) {
+                // lineKey formato: "orderId||gci||cor" — remove se contém o id excluído
+                if (!lineKey.startsWith(body.id + '||')) {
+                  lojasFiltradas[lineKey] = status;
+                }
+              }
+              // Só mantém a chave se ainda tem lojas
+              if (Object.keys(lojasFiltradas).length > 0) {
+                desmLimpo[chave] = lojasFiltradas;
+              }
+            }
+            await saveFile(GITHUB_DESM, desmLimpo, desmSha, "limpar desmembramentos do pedido " + body.id);
+          }
+        } catch(_) { /* não bloqueia o delete se desmembramentos falhar */ }
+
+        return new Response(JSON.stringify({ success: true, deletedId: body.id }), { status: 200, headers: corsHeaders });
+      }
+
+      // PATCH — salva/lê desmembramentos (arquivo separado)
+      if (request.method === "PATCH") {
+        const body = await request.json();
+
+        // 🔒 Bloqueia writes sem token de admin (no-op para reads)
+        const authFail = requireAdmin(body?.action);
+        if (authFail) return authFail;
+
+        // PATCH sem body ou com action:"get" → retorna desmembramentos
+        if (!body || body.action === "get") {
+          const { content } = await getFile(GITHUB_DESM);
+          return new Response(JSON.stringify(content || {}), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"save" e data:{} → salva desmembramentos
+        if (body.action === "save" && body.data) {
+          const { content, sha } = await getFile(GITHUB_DESM);
+          const merged = { ...(content || {}), ...body.data };
+          await saveFile(GITHUB_DESM, merged, sha, "update desmembramentos");
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // ── sacola do vendedor (CMS PASS) ──────────────────────────────
+        // A sacola vivia so no aparelho: trocar de celular ou limpar o
+        // navegador jogava fora a grade montada. Aqui ela fica no KV, uma
+        // chave por vendedor e marca. Nao vai para o GitHub porque cada
+        // ajuste de grade viraria um commit.
+        // Publica como o resto das leituras do app: a vitrine roda no
+        // navegador do vendedor e nao tem onde guardar segredo.
+        if (body.action === "getSacola" || body.action === "saveSacola") {
+          if (!env.SACOLAS) {
+            return new Response(JSON.stringify({ success: false, error: "Sacola no servidor nao configurada." }),
+              { status: 501, headers: corsHeaders });
+          }
+          const codigo = String(body.codigo || "").trim();
+          const marca  = String(body.marca || "").trim().toLowerCase();
+          if (!/^[0-9A-Za-z_-]{1,32}$/.test(codigo) || !/^[a-z]{1,12}$/.test(marca)) {
+            return new Response(JSON.stringify({ success: false, error: "Vendedor ou marca invalidos." }),
+              { status: 400, headers: corsHeaders });
+          }
+          const chave = `sacola:${codigo}:${marca}`;
+
+          if (body.action === "getSacola") {
+            const guardado = await env.SACOLAS.get(chave, { type: "json" });
+            return new Response(JSON.stringify(guardado || { itens: null, em: null }),
+              { status: 200, headers: corsHeaders });
+          }
+
+          // saveSacola. Sacola vazia tambem fica gravada, com a data: apagar a
+          // chave fazia o outro aparelho achar que o servidor tinha perdido a
+          // sacola e mandar a dele de volta — o esvaziar nao se espalhava.
+          const itens = Array.isArray(body.itens) ? body.itens : null;
+          if (!itens) {
+            return new Response(JSON.stringify({ success: false, error: "Itens ausentes." }),
+              { status: 400, headers: corsHeaders });
+          }
+          if (itens.length > 400) {
+            return new Response(JSON.stringify({ success: false, error: "Sacola grande demais (max 400 itens)." }),
+              { status: 413, headers: corsHeaders });
+          }
+          const em = new Date().toISOString();
+          const valor = JSON.stringify({ itens, em, de: String(body.de || "").slice(0, 40) });
+          if (valor.length > 2e6) {
+            return new Response(JSON.stringify({ success: false, error: "Sacola grande demais." }),
+              { status: 413, headers: corsHeaders });
+          }
+          // 90 dias sem mexer e a sacola se apaga sozinha.
+          await env.SACOLAS.put(chave, valor, { expirationTtl: 60 * 60 * 24 * 90 });
+          return new Response(JSON.stringify({ success: true, em }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getMixGtm"/"saveMixGtm" → o mix do GTM.
+        //
+        // Cada vendedor reparte 100% da compra de cada modelo entre as cores,
+        // e a CMS le isso tudo junto para digitar o pedido.
+        //
+        // Uma chave por vendedor, e nao um documento com todos dentro: dois
+        // enviando ao mesmo tempo num documento so se apagariam, porque
+        // ler-alterar-gravar perde o que chegou no meio. Com `codigo` devolve
+        // so o daquele vendedor — e o que a tela dele precisa, e um nao ve o
+        // mix do outro; sem `codigo`, devolve todos, que e o painel da CMS.
+        if (body.action === "getMixGtm" || body.action === "saveMixGtm") {
+          if (!env.SACOLAS) {
+            return new Response(JSON.stringify({ success: false, error: "Armazenamento nao configurado." }),
+              { status: 501, headers: corsHeaders });
+          }
+          const colecao = String(body.colecao || "").trim().toUpperCase();
+          const marca   = String(body.marca || "oly").trim().toLowerCase();
+          if (!/^[0-9A-Z]{1,10}$/.test(colecao) || !/^[a-z]{1,12}$/.test(marca)) {
+            return new Response(JSON.stringify({ success: false, error: "Colecao ou marca invalidas." }),
+              { status: 400, headers: corsHeaders });
+          }
+          const prefixo = `gtmmix:${colecao}:${marca}:`;
+          const codigoOk = (c) => /^[0-9A-Za-z_-]{1,32}$/.test(c);
+
+          if (body.action === "getMixGtm") {
+            const codigo = String(body.codigo || "").trim();
+            if (codigo) {
+              if (!codigoOk(codigo)) {
+                return new Response(JSON.stringify({ success: false, error: "Vendedor invalido." }),
+                  { status: 400, headers: corsHeaders });
+              }
+              const um = await env.SACOLAS.get(prefixo + codigo, { type: "json" });
+              return new Response(JSON.stringify(um ? { [codigo]: um } : {}),
+                { status: 200, headers: corsHeaders });
+            }
+            const todos = {};
+            let cursor = undefined;
+            for (let volta = 0; volta < 20; volta++) {
+              const pagina = await env.SACOLAS.list({ prefix: prefixo, cursor });
+              for (const k of pagina.keys) {
+                const v = await env.SACOLAS.get(k.name, { type: "json" });
+                if (v && v.codigo) todos[String(v.codigo)] = v;
+              }
+              if (pagina.list_complete) break;
+              cursor = pagina.cursor;
+            }
+            return new Response(JSON.stringify(todos), { status: 200, headers: corsHeaders });
+          }
+
+          // saveMixGtm — o mix de UM vendedor, assinado com o codigo dele.
+          const mix = (body.mix && typeof body.mix === "object") ? body.mix : null;
+          const codigo = String((mix && mix.codigo) || "").trim();
+          if (!mix || !codigoOk(codigo) || !Array.isArray(mix.itens)) {
+            return new Response(JSON.stringify({ success: false, error: "Mix invalido." }),
+              { status: 400, headers: corsHeaders });
+          }
+          if (mix.itens.length > 600) {
+            return new Response(JSON.stringify({ success: false, error: "Mix grande demais." }),
+              { status: 413, headers: corsHeaders });
+          }
+          // So os campos que a tela usa, e com tamanho limitado: o que chega
+          // daqui vem de um navegador, nao de alguem de confianca.
+          const registro = {
+            codigo,
+            nome: String(mix.nome || "").slice(0, 60),
+            em: new Date().toISOString(),
+            itens: mix.itens.map((it) => ({
+              artigo:  String(it && it.artigo  || "").slice(0, 20),
+              produto: String(it && it.produto || "").slice(0, 60),
+              cor:     String(it && it.cor     || "").slice(0, 20),
+              rotulo:  String(it && it.rotulo  || "").slice(0, 40),
+              pct: Math.max(0, Math.min(100, Math.round(Number(it && it.pct) || 0)))
+            }))
+          };
+          const valor = JSON.stringify(registro);
+          if (valor.length > 2e6) {
+            return new Response(JSON.stringify({ success: false, error: "Mix grande demais." }),
+              { status: 413, headers: corsHeaders });
+          }
+          // Um ano: o mix vale a temporada inteira, nao a semana.
+          await env.SACOLAS.put(prefixo + codigo, valor, { expirationTtl: 60 * 60 * 24 * 365 });
+          return new Response(JSON.stringify({ success: true, em: registro.em }),
+            { status: 200, headers: corsHeaders });
+        }
+
+        // ---- quando cada base foi publicada ----
+        //
+        // Os arquivos do Showroom sao listas puras, sem cabecalho de data, e
+        // o Last-Modified do GitHub Pages responde a hora do DEPLOY para
+        // todos iguais. Quem sabe a hora de verdade e quem grava, e e aqui.
+        //
+        // Vai no KV e nao num arquivo: um arquivo renderia um commit a mais
+        // a cada publicacao, so para guardar uma data.
+        const carimbar = async (o_que) => {
+          if (!env.SACOLAS) return;
+          try { await env.SACOLAS.put("atualizado:" + o_que, new Date().toISOString()); }
+          catch (e) { /* o carimbo nao vale derrubar a publicacao */ }
+        };
+
+        // PATCH com action:"getAtualizado" → quando cada base subiu. Publico:
+        // e o que o portal mostra no card, antes de abrir o aplicativo.
+        if (body.action === "getAtualizado") {
+          if (!env.SACOLAS) {
+            return new Response(JSON.stringify({}), { status: 200, headers: corsHeaders });
+          }
+          const quais = ["dispo", "disponibilidades"];
+          const saida = {};
+          for (const q of quais) {
+            try {
+              const v = await env.SACOLAS.get("atualizado:" + q);
+              if (v) saida[q] = v;
+            } catch (e) { /* segue sem esse */ }
+          }
+          return new Response(JSON.stringify(saida), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getDispo" → retorna dispo.json
+        if (body.action === "getDispo") {
+          const { content } = await getFile(GITHUB_DISPO);
+          return new Response(JSON.stringify(Array.isArray(content) ? content : []), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"saveDispo" e data:[] → salva dispo.json completo
+        if (body.action === "saveDispo" && body.data !== undefined) {
+          const { sha } = await getFile(GITHUB_DISPO);
+          await saveFile(GITHUB_DISPO, Array.isArray(body.data) ? body.data : [], sha, "update dispo");
+          await carimbar("dispo");
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getStatus" → retorna status do app (manutenção). Público.
+        if (body.action === "getStatus") {
+          const { content } = await getFile(GITHUB_STATUS);
+          const status = (content && typeof content === "object") ? content : { paused: false, message: "" };
+          return new Response(JSON.stringify(status), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"saveStatus" → pausa/retoma o app (write, exige admin)
+        if (body.action === "saveStatus" && body.data !== undefined) {
+          const { sha } = await getFile(GITHUB_STATUS);
+          const status = {
+            paused: !!body.data.paused,
+            message: String(body.data.message || ""),
+            updatedAt: new Date().toISOString()
+          };
+          await saveFile(GITHUB_STATUS, status, sha, status.paused ? "app pausado (manutencao)" : "app retomado");
+          return new Response(JSON.stringify({ success: true, status }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getFichas" → ficha técnica por "ARTIGO|COR". Público:
+        // a vitrine mostra composição e origem para o vendedor.
+        if (body.action === "getFichas") {
+          const { content } = await getFile(GITHUB_FICHAS);
+          const fichas = (content && typeof content === "object" && !Array.isArray(content)) ? content : {};
+          return new Response(JSON.stringify(fichas), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getRateio" → cotas por vendedor (objeto por Nº). Público.
+        if (body.action === "getRateio") {
+          const { content } = await getFile(GITHUB_RATEIO);
+          const rateio = (content && typeof content === "object" && !Array.isArray(content)) ? content : {};
+          return new Response(JSON.stringify(rateio), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"saveRateio" → grava cotas (write, exige admin)
+        if (body.action === "saveRateio" && body.data !== undefined) {
+          const { sha } = await getFile(GITHUB_RATEIO);
+          const data = (body.data && typeof body.data === "object" && !Array.isArray(body.data)) ? body.data : {};
+          await saveFile(GITHUB_RATEIO, data, sha, "update rateio");
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getCampanhas" → campanhas de incentivo (lista). Público:
+        // o vendedor precisa ler para saber o que está valendo.
+        if (body.action === "getCampanhas") {
+          const { content } = await getFile(GITHUB_CAMPANHAS);
+          const lista = Array.isArray(content) ? content : [];
+          return new Response(JSON.stringify(lista), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"saveCampanhas" → grava a lista inteira (write, exige admin)
+        if (body.action === "saveCampanhas" && body.data !== undefined) {
+          const { sha } = await getFile(GITHUB_CAMPANHAS);
+          const lista = Array.isArray(body.data) ? body.data : [];
+          await saveFile(GITHUB_CAMPANHAS, lista, sha, "update campanhas");
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getCancelamentosDispo" → o que já foi cancelado na
+        // DISPO. Público: o dashboard lê, e quem abre o dashboard já é da casa.
+        if (body.action === "getCancelamentosDispo") {
+          const { content } = await getFile(GITHUB_CANC_DISPO);
+          const lista = Array.isArray(content) ? content : [];
+          return new Response(JSON.stringify(lista), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"saveCancelamentosDispo" → grava a lista inteira
+        // (write, exige admin). O histórico guarda inclusive o que foi desfeito,
+        // com a marca de quando — apagar a linha esconderia o engano.
+        if (body.action === "saveCancelamentosDispo" && body.data !== undefined) {
+          const { sha } = await getFile(GITHUB_CANC_DISPO);
+          const lista = Array.isArray(body.data) ? body.data : [];
+          await saveFile(GITHUB_CANC_DISPO, lista, sha, "cancelamentos da DISPO");
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getPrepostos" -> lista de prepostos (compartilhada)
+        if (body.action === "getPrepostos") {
+          const { content } = await getFile(GITHUB_PREPOSTOS);
+          const lista = Array.isArray(content) ? content : (content && Array.isArray(content.data) ? content.data : []);
+          return new Response(JSON.stringify(lista), { status: 200, headers: corsHeaders });
+        }
+        // PATCH com action:"savePrepostos" + data:[{codigo,nome}] -> grava a lista
+        if (body.action === "savePrepostos" && Array.isArray(body.data)) {
+          const { sha } = await getFile(GITHUB_PREPOSTOS);
+          await saveFile(GITHUB_PREPOSTOS, body.data, sha, "update prepostos");
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getProdutos" → retorna produtos.json
+        if (body.action === "getProdutos") {
+          const { content } = await getFile(GITHUB_PRODUTOS);
+          return new Response(JSON.stringify(Array.isArray(content) ? content : []), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"saveProdutos" e data:[] → salva produtos.json completo
+        if (body.action === "saveProdutos" && body.data !== undefined) {
+          const { sha } = await getFile(GITHUB_PRODUTOS);
+          await saveFile(GITHUB_PRODUTOS, Array.isArray(body.data) ? body.data : [], sha, "update produtos");
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // ── CARTEIRA CMS ──────────────────────────────────────────────────
+        // PATCH com action:"getCarteira" → retorna carteira-cms.json
+        // Estrutura: { pedidos: [...], atualizadoEm: "ISO", importadoPor: "NOME" }
+        if (body.action === "getCarteira") {
+          const { content } = await getFile(GITHUB_CARTEIRA);
+          const data = (content && typeof content === "object")
+            ? content
+            : { pedidos: [], atualizadoEm: null, importadoPor: null };
+          return new Response(JSON.stringify(data), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"saveCarteira" e data:{pedidos:[], importadoPor:""} → salva carteira completa
+        if (body.action === "saveCarteira" && body.data !== undefined) {
+          const { sha } = await getFile(GITHUB_CARTEIRA);
+          const payload = {
+            pedidos: Array.isArray(body.data.pedidos) ? body.data.pedidos : [],
+            atualizadoEm: new Date().toISOString(),
+            importadoPor: String(body.data.importadoPor || "")
+          };
+          const msg = body.data.modo === "acoes"
+            ? `update acoes carteira por ${payload.importadoPor || "?"}`
+            : `update carteira (${payload.pedidos.length} pedidos) por ${payload.importadoPor || "?"}`;
+          await saveFile(GITHUB_CARTEIRA, payload, sha, msg);
+          return new Response(JSON.stringify({ success: true, atualizadoEm: payload.atualizadoEm }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getAcoesCarteira" → retorna { acoes: { chave: {acao, repasse} } }
+        if (body.action === "getAcoesCarteira") {
+          const { content } = await getFile(GITHUB_CARTEIRA_ACOES);
+          const data = (content && typeof content === "object" && content.acoes) ? content : { acoes: {} };
+          return new Response(JSON.stringify(data), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"saveAcaoCarteira" + itens:[{key, acao, repasse}] → upsert no arquivo pequeno
+        if (body.action === "saveAcaoCarteira" && Array.isArray(body.itens)) {
+          const { content, sha } = await getFile(GITHUB_CARTEIRA_ACOES);
+          const mapa = (content && typeof content === "object" && content.acoes) ? content.acoes : {};
+          for (const it of body.itens) {
+            if (!it || !it.key) continue;
+            // Grava SEMPRE (inclusive MANTER) — assim a reversão se propaga para os outros dispositivos
+            mapa[it.key] = { acao: it.acao || "MANTER", repasse: it.repasse || null };
+          }
+          const payload = { acoes: mapa, atualizadoEm: new Date().toISOString(), por: String(body.por || "") };
+          await saveFile(GITHUB_CARTEIRA_ACOES, payload, sha, `acoes carteira (${body.itens.length}) por ${payload.por || "?"}`);
+          return new Response(JSON.stringify({ success: true, total: Object.keys(mapa).length }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getCortesGiro" + cliente → o que já está marcado
+        // para cancelar naquele cliente, venha de que aparelho vier
+        if (body.action === "getCortesGiro" && body.cliente) {
+          const alvo = `${GITHUB_GIRO_CORTES}/${encodeURIComponent(String(body.cliente).toLowerCase())}.json`;
+          const { content } = await getFile(alvo);
+          const itens = (content && Array.isArray(content.itens)) ? content.itens : [];
+          return new Response(JSON.stringify({ itens, atualizadoEm: (content && content.atualizadoEm) || null }),
+            { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"saveCortesGiro" + cliente + itens:[...] → grava a lista inteira
+        if (body.action === "saveCortesGiro" && body.cliente && Array.isArray(body.itens)) {
+          const nome = String(body.cliente).toLowerCase();
+          const alvo = `${GITHUB_GIRO_CORTES}/${encodeURIComponent(nome)}.json`;
+          const { sha } = await getFile(alvo);
+          const payload = { cliente: nome, itens: body.itens,
+                            atualizadoEm: new Date().toISOString(), por: String(body.por || "") };
+          await saveFile(alvo, payload, sha, `giro: ${body.itens.length} para cancelar em ${nome}`);
+          return new Response(JSON.stringify({ success: true, total: body.itens.length }),
+            { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getClientesCadastrados" → retorna { clientes: { cod: {...} } }
+        if (body.action === "getClientesCadastrados") {
+          const { content } = await getFile(GITHUB_CLIENTES);
+          const data = (content && typeof content === "object" && content.clientes) ? content : { clientes: {} };
+          return new Response(JSON.stringify(data), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"saveClientesCadastrados" + itens:[{codigo,razao,nomeFantasia,porta,remover?}] → upsert/remove
+        if (body.action === "saveClientesCadastrados" && Array.isArray(body.itens)) {
+          const { content, sha } = await getFile(GITHUB_CLIENTES);
+          const mapa = (content && typeof content === "object" && content.clientes) ? content.clientes : {};
+          for (const it of body.itens) {
+            if (!it || !it.codigo) continue;
+            if (it.remover) {
+              delete mapa[String(it.codigo)];
+            } else {
+              mapa[String(it.codigo)] = {
+                codigo: String(it.codigo),
+                razao: it.razao || "",
+                nomeFantasia: it.nomeFantasia || "",
+                porta: it.porta || "",
+              };
+            }
+          }
+          const payload = { clientes: mapa, atualizadoEm: new Date().toISOString(), por: String(body.por || "") };
+          await saveFile(GITHUB_CLIENTES, payload, sha, `clientes cadastrados (${body.itens.length}) por ${payload.por || "?"}`);
+          return new Response(JSON.stringify({ success: true, total: Object.keys(mapa).length }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getFaturados" → retorna { faturados: { cod: { artigo: {...} } } }
+        if (body.action === "getFaturados") {
+          const { content } = await getFile(GITHUB_FATURADOS);
+          const data = (content && typeof content === "object" && content.faturados) ? content : { faturados: {} };
+          return new Response(JSON.stringify(data), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"saveFaturados" + faturados:{...} → salva o histórico completo (substitui)
+        if (body.action === "saveFaturados" && body.faturados && typeof body.faturados === "object") {
+          const { sha } = await getFile(GITHUB_FATURADOS);
+          const payload = { faturados: body.faturados, atualizadoEm: new Date().toISOString(), por: String(body.por || "") };
+          await saveFile(GITHUB_FATURADOS, payload, sha, `faturados (${Object.keys(body.faturados).length} clientes) por ${payload.por || "?"}`);
+          return new Response(JSON.stringify({ success: true, clientes: Object.keys(body.faturados).length }), { status: 200, headers: corsHeaders });
+        }
+        // ── DETALHADA POR PREPOSTO ────────────────────────────────────────
+        // Base que o app dos vendedores lê. Publicada pelo script diário e
+        // pela tela de admin — nenhum dos dois passa por commit manual, e por
+        // isso não esperam o GitHub Pages reconstruir o site inteiro.
+
+        // getDetalhadaInfo → só o resumo (alguns bytes). O app consulta isto a
+        // cada abertura e só baixa a base inteira quando `gerado` mudou.
+        if (body.action === "getDetalhadaInfo") {
+          try {
+            const { content } = await getFile(GITHUB_DETALHADA_INFO);
+            return new Response(JSON.stringify(content || { gerado: null }),
+              { status: 200, headers: corsHeaders });
+          } catch (_) {
+            // Sem resumo o app apenas baixa a base; não é motivo de erro.
+            return new Response(JSON.stringify({ gerado: null }),
+              { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // getDetalhada → a base inteira. Pública, como o resto das leituras.
+        if (body.action === "getDetalhada") {
+          const res = await streamFile(GITHUB_DETALHADA);
+          if (!res) return new Response("null", { status: 200, headers: corsHeaders });
+          return new Response(res.body, { status: 200, headers: corsHeaders });
+        }
+
+        // saveDetalhada → publica a base.
+        // Fora de WRITE_ACTIONS pelo mesmo motivo de savePerformance e saveRfv:
+        // quem publica é um script na máquina da CMS e uma tela de navegador, e
+        // nenhum dos dois consegue guardar o ADMIN_TOKEN sem expô-lo. A proteção
+        // aqui é a validação do payload — recusar lixo é o que importa, porque
+        // uma base quebrada apagaria a de todos os vendedores e o erro só
+        // apareceria no dia seguinte.
+        if (body.action === "saveDetalhada" && body.data && typeof body.data === "object") {
+          const base = body.data;
+          if (!Array.isArray(base.l) || !base.l.length || !base.dic) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: "Base inválida: esperado { dic, l:[...] } com pelo menos uma linha."
+            }), { status: 400, headers: corsHeaders });
+          }
+
+          const { sha } = await getFile(GITHUB_DETALHADA);
+          const payload = { ...base, publicadoEm: new Date().toISOString(), por: String(body.por || "") };
+          await saveFile(GITHUB_DETALHADA, payload, sha,
+            `detalhada: base por ${payload.por || "?"} (${base.l.length} linhas)`, true);
+
+          // O resumo vai depois da base: se a base falhar, ninguém fica achando
+          // que publicou. Resumo velho incomoda menos que base velha.
+          const info = {
+            gerado: base.gerado || payload.publicadoEm,
+            publicadoEm: payload.publicadoEm,
+            origem: base.origem || "",
+            linhas: base.l.length,
+            por: payload.por
+          };
+          try {
+            const { sha: shaInfo } = await getFile(GITHUB_DETALHADA_INFO);
+            await saveFile(GITHUB_DETALHADA_INFO, info, shaInfo, "detalhada: resumo");
+          } catch (_) { /* o resumo é conveniência, não bloqueia a publicação */ }
+
+          // Nome fantasia por código, para o Catálogo Digital mostrar nos
+          // pedidos. ACUMULA: cliente que sai da carteira continua na lista,
+          // e um nome que mudou fica com o mais novo. Grava só se mudou algo.
+          // Arquivo pequeno (~30 KB) para o app não baixar a base de 3 MB.
+          try {
+            const pares = Array.isArray(base.dic.cli) ? base.dic.cli : [];
+            const { content: atual, sha: shaCli } = await getFile(GITHUB_CLI_FANTASIA);
+            const clientes = (atual && atual.clientes && typeof atual.clientes === "object") ? { ...atual.clientes } : {};
+            let mudou = !atual;
+            for (const par of pares) {
+              if (!Array.isArray(par)) continue;
+              const cod = String(par[0] ?? "").trim();
+              const nome = String(par[1] ?? "").trim();
+              if (!cod || !nome || clientes[cod] === nome) continue;
+              clientes[cod] = nome;
+              mudou = true;
+            }
+            if (mudou) {
+              await saveFile(GITHUB_CLI_FANTASIA, { atualizadoEm: payload.publicadoEm, clientes }, shaCli,
+                `clientes: nome fantasia (${Object.keys(clientes).length})`);
+            }
+          } catch (_) { /* conveniência do catálogo; não bloqueia a publicação */ }
+
+          return new Response(JSON.stringify({ success: true, ...info }),
+            { status: 200, headers: corsHeaders });
+        }
+
+        // ── GRADE DA CARTEIRA CORRE ───────────────────────────────────────
+        // getGradeCorreInfo — só o resumo. O app pergunta a cada abertura e
+        // só baixa a planilha quando `gerado` mudou.
+        if (body.action === "getGradeCorreInfo") {
+          try {
+            const { content } = await getFile(GITHUB_GRADE_CORRE_INFO);
+            return new Response(JSON.stringify(content || { gerado: null }),
+              { status: 200, headers: corsHeaders });
+          } catch (_) {
+            // Sem resumo o app apenas baixa; não é motivo de erro.
+            return new Response(JSON.stringify({ gerado: null }),
+              { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // getGradeCorre — a planilha inteira. Pública, como as demais leituras.
+        if (body.action === "getGradeCorre") {
+          try {
+            const { content } = await getFile(GITHUB_GRADE_CORRE);
+            return new Response(JSON.stringify(content || null),
+              { status: 200, headers: corsHeaders });
+          } catch (_) {
+            // Ainda não importaram nenhuma: o app trata `null` como "sem grade".
+            return new Response(JSON.stringify(null),
+              { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // saveGradeCorre — publica a planilha importada.
+        // Fora de WRITE_ACTIONS pelo mesmo motivo de saveDetalhada: quem
+        // publica é uma tela de navegador, que não consegue guardar o
+        // ADMIN_TOKEN sem expô-lo. A proteção aqui é a validação do payload —
+        // recusar lixo é o que importa, porque uma planilha quebrada apagaria
+        // a grade de todo mundo e o erro só apareceria depois.
+        if (body.action === "saveGradeCorre" && body.data && typeof body.data === "object") {
+          const g = body.data;
+          if (!Array.isArray(g.cab) || !g.cab.length || !Array.isArray(g.l) || !g.l.length) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: "Grade inválida: esperado { cab:[...], l:[[...]] } com pelo menos uma linha."
+            }), { status: 400, headers: corsHeaders });
+          }
+          // Toda linha tem de ter a largura do cabeçalho. Sem isto, uma
+          // planilha com coluna a mais ou a menos entraria e a leitura por
+          // índice traria o campo errado, silenciosamente.
+          const largura = g.cab.length;
+          const torta = g.l.findIndex(l => !Array.isArray(l) || l.length !== largura);
+          if (torta !== -1) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: `Grade inválida: a linha ${torta + 1} tem largura diferente do cabeçalho (${largura}).`
+            }), { status: 400, headers: corsHeaders });
+          }
+
+          const { sha } = await getFile(GITHUB_GRADE_CORRE);
+          const payload = { ...g, publicadoEm: new Date().toISOString(), por: String(body.por || "") };
+          await saveFile(GITHUB_GRADE_CORRE, payload, sha,
+            `grade corre: ${g.l.length} linhas por ${payload.por || "?"}`, true);
+
+          // O resumo vai depois: se a planilha falhar, ninguém fica achando
+          // que publicou.
+          const info = {
+            gerado: g.gerado || payload.publicadoEm,
+            publicadoEm: payload.publicadoEm,
+            origem: g.origem || "",
+            linhas: g.l.length,
+            por: payload.por
+          };
+          try {
+            const { sha: shaInfo } = await getFile(GITHUB_GRADE_CORRE_INFO);
+            await saveFile(GITHUB_GRADE_CORRE_INFO, info, shaInfo, "grade corre: resumo");
+          } catch (_) { /* o resumo é conveniência, não bloqueia a publicação */ }
+
+          return new Response(JSON.stringify({ success: true, ...info }),
+            { status: 200, headers: corsHeaders });
+        }
+
+        // ── GRADE POR FAMÍLIA ─────────────────────────────────────────────
+        // As três de cima ficam como estão: a versão publicada da Detalhada
+        // ainda as chama, e renomear derrubaria a grade de quem não recarregou.
+        // Estas atendem as duas famílias pelo campo `familia`, e aceitam tanto
+        // o formato antigo ({cab,l}, uma aba) quanto o novo ({blocos:[...]}),
+        // porque a planilha geral vem com quatro abas em dois layouts.
+        if (body.action === "getGradeInfo" || body.action === "getGrade" ||
+            body.action === "saveGrade") {
+          const fam = String(body.familia || "corre").toLowerCase();
+          const arq = GRADE_ARQ[fam];
+          if (!arq) {
+            return new Response(JSON.stringify({
+              success: false, error: `Família desconhecida: ${fam}` }),
+              { status: 400, headers: corsHeaders });
+          }
+
+          if (body.action === "getGradeInfo") {
+            try {
+              const { content } = await getFile(arq.info);
+              return new Response(JSON.stringify(content || { gerado: null }),
+                { status: 200, headers: corsHeaders });
+            } catch (_) {
+              return new Response(JSON.stringify({ gerado: null }),
+                { status: 200, headers: corsHeaders });
+            }
+          }
+
+          if (body.action === "getGrade") {
+            try {
+              const res = await streamFile(arq.base);
+              if (!res) return new Response("null", { status: 200, headers: corsHeaders });
+              return new Response(res.body, { status: 200, headers: corsHeaders });
+            } catch (_) {
+              return new Response("null", { status: 200, headers: corsHeaders });
+            }
+          }
+
+          // saveGrade — mesma proteção da saveGradeCorre: sem token, porque
+          // quem publica é uma tela de navegador, e a defesa é recusar lixo.
+          // Uma planilha torta entraria calada e daria o tamanho errado a
+          // quem for montar a caixa.
+          const g = body.data;
+          if (!g || typeof g !== "object") {
+            return new Response(JSON.stringify({
+              success: false, error: "Grade inválida: nada recebido." }),
+              { status: 400, headers: corsHeaders });
+          }
+          const blocos = Array.isArray(g.blocos) ? g.blocos
+                       : (Array.isArray(g.cab) && Array.isArray(g.l) ? [{ cab: g.cab, l: g.l }] : null);
+          if (!blocos || !blocos.length) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: "Grade inválida: esperado { blocos:[{cab:[...], l:[[...]]}] }." }),
+              { status: 400, headers: corsHeaders });
+          }
+          let total = 0;
+          for (let i = 0; i < blocos.length; i++) {
+            const b = blocos[i];
+            if (!b || !Array.isArray(b.cab) || !b.cab.length || !Array.isArray(b.l) || !b.l.length) {
+              return new Response(JSON.stringify({
+                success: false,
+                error: `Grade inválida: o bloco ${i + 1} está sem cabeçalho ou sem linha.` }),
+                { status: 400, headers: corsHeaders });
+            }
+            const largura = b.cab.length;
+            const torta = b.l.findIndex(l => !Array.isArray(l) || l.length !== largura);
+            if (torta !== -1) {
+              return new Response(JSON.stringify({
+                success: false,
+                error: `Grade inválida: no bloco ${i + 1} (${b.aba || "?"}), a linha ${torta + 1} ` +
+                       `tem largura diferente do cabeçalho (${largura}).` }),
+                { status: 400, headers: corsHeaders });
+            }
+            total += b.l.length;
+          }
+
+          const { sha } = await getFile(arq.base);
+          const payload = { ...g, blocos, publicadoEm: new Date().toISOString(),
+                            familia: fam, por: String(body.por || "") };
+          await saveFile(arq.base, payload, sha,
+            `grade ${fam}: ${total} linhas por ${payload.por || "?"}`, true);
+
+          const info = {
+            gerado: g.gerado || payload.publicadoEm,
+            publicadoEm: payload.publicadoEm,
+            origem: g.origem || "",
+            familia: fam,
+            abas: blocos.map(b => b.aba || ""),
+            linhas: total,
+            por: payload.por
+          };
+          try {
+            const { sha: shaInfo } = await getFile(arq.info);
+            await saveFile(arq.info, info, shaInfo, `grade ${fam}: resumo`);
+          } catch (_) { /* o resumo é conveniência, não bloqueia a publicação */ }
+
+          return new Response(JSON.stringify({ success: true, ...info }),
+            { status: 200, headers: corsHeaders });
+        }
+
+        // ── PAINEL DE TV ──────────────────────────────────────────────────
+        // getTvRegistry — o registro de encomendas conhecidas. Quem publica
+        // precisa dele para saber o que é novidade desde a última vez.
+        if (body.action === "getTvRegistry") {
+          try {
+            const { content } = await getFile(GITHUB_TV_REG);
+            const reg = (content && Array.isArray(content.seen))
+              ? { seen: content.seen, log: Array.isArray(content.log) ? content.log : [] }
+              : { seen: [], log: [] };
+            return new Response(JSON.stringify(reg), { status: 200, headers: corsHeaders });
+          } catch (_) {
+            // Sem registro ainda: quem publica trata como primeiro dia.
+            return new Response(JSON.stringify({ seen: [], log: [] }),
+              { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // saveTv — grava os dois arquivos numa chamada só.
+        // Fora de WRITE_ACTIONS pelo mesmo motivo do saveDetalhada: quem
+        // publica é o script diário, que não guarda o ADMIN_TOKEN. A defesa
+        // aqui é a validação do payload.
+        if (body.action === "saveTv" && body.data && typeof body.data === "object") {
+          const d = body.data;
+          if (!d.generatedAt || !d.carteira || !d.mes) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: "tv_data inválido: esperado { generatedAt, carteira, mes, ... }."
+            }), { status: 400, headers: corsHeaders });
+          }
+          const reg = body.registro;
+          if (reg !== undefined && !(reg && Array.isArray(reg.seen))) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: "registro inválido: esperado { seen: [...], log: [...] }."
+            }), { status: 400, headers: corsHeaders });
+          }
+
+          // A ORDEM importa. Os dados vão primeiro; o registro depois.
+          //
+          // Se o registro subisse antes e os dados falhassem, as encomendas
+          // já ficariam marcadas como conhecidas e a novidade nunca seria
+          // mostrada — perdida em silêncio. Na ordem inversa, uma falha faz
+          // a mesma novidade aparecer de novo amanhã. Repetir incomoda;
+          // perder, não dá para recuperar.
+          const { sha } = await getFile(GITHUB_TV_DATA);
+          const payload = { ...d, publicadoEm: new Date().toISOString(), por: String(body.por || "") };
+          await saveFile(GITHUB_TV_DATA, payload, sha,
+            `tv: dados por ${payload.por || "?"}`);
+
+          let registroOk = true;
+          if (reg) {
+            try {
+              const { sha: shaReg } = await getFile(GITHUB_TV_REG);
+              await saveFile(GITHUB_TV_REG, reg, shaReg,
+                `tv: registro (${reg.seen.length} encomendas) por ${payload.por || "?"}`, true);
+            } catch (e) {
+              registroOk = false;
+            }
+          }
+
+          return new Response(JSON.stringify({
+            success: true,
+            publicadoEm: payload.publicadoEm,
+            registro: registroOk ? "gravado" : "falhou — a novidade repete amanhã",
+            conhecidas: reg ? reg.seen.length : null,
+          }), { status: 200, headers: corsHeaders });
+        }
+
+        if (body.action === "uploadImagem" && body.nome && body.base64) {
+          const nome = body.nomeArquivo || body.nome; // nome final do arquivo ex: "43242437_PTO_PT.jpg"
+          // Disponibilidades sempre guardou imagem no MESMO repositório dos dados
+          // (env.GITHUB_REPO, ex: apps-oly), na pasta "Catalogo" — configuração original.
+          const url = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/Catalogo/${nome}`;
+          const existing = await fetch(url, { headers: githubHeaders });
+          const sha = existing.ok ? (await existing.json()).sha : undefined;
+          const uploadBody = {
+            message: `disponibilidades: upload imagem — ${nome}`,
+            content: body.base64,
+            branch: env.GITHUB_BRANCH || "main"
+          };
+          if (sha) uploadBody.sha = sha;
+          const res = await fetch(url, {
+            method: "PUT",
+            headers: { ...githubHeaders, "Content-Type": "application/json" },
+            body: JSON.stringify(uploadBody)
+          });
+          if (!res.ok) throw new Error(`Upload imagem falhou (${res.status}) em ${url}: ${await res.text()}`);
+          return new Response(JSON.stringify({ success: true, arquivo: nome }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getImagensHistorico" → retorna mapa artigo|cor → imagem
+        if (body.action === "getImagensHistorico") {
+          const { content } = await getFile(GITHUB_IMG_HIST);
+          return new Response(JSON.stringify(content && typeof content === 'object' ? content : {}), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"saveImagensHistorico" e data:{} → salva mapa imagens
+        if (body.action === "saveImagensHistorico" && body.data !== undefined) {
+          const { content, sha } = await getFile(GITHUB_IMG_HIST);
+          const merged = { ...(content || {}), ...body.data };
+          await saveFile(GITHUB_IMG_HIST, merged, sha, "update historico imagens disponibilidades");
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getDisponibilidades" → retorna disponibilidades.json
+        if (body.action === "getDisponibilidades") {
+          const { content } = await getFile(GITHUB_DISPONIB);
+          return new Response(JSON.stringify(Array.isArray(content) ? content : []), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"saveDisponibilidades" e data:[] → salva disponibilidades.json completo
+        if (body.action === "saveDisponibilidades" && body.data !== undefined) {
+          const { sha } = await getFile(GITHUB_DISPONIB);
+          await saveFile(GITHUB_DISPONIB, Array.isArray(body.data) ? body.data : [], sha, "update disponibilidades");
+          await carimbar("disponibilidades");
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getOcultosDisp" → retorna ocultos_disponibilidades.json
+        if (body.action === "getOcultosDisp") {
+          const { content } = await getFile(GITHUB_OCULTOS_DISP);
+          return new Response(JSON.stringify(Array.isArray(content) ? content : []), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"saveOcultosDisp" e data:[] → salva ocultos_disponibilidades.json
+        if (body.action === "saveOcultosDisp" && body.data !== undefined) {
+          const { sha } = await getFile(GITHUB_OCULTOS_DISP);
+          await saveFile(GITHUB_OCULTOS_DISP, Array.isArray(body.data) ? body.data : [], sha, "update ocultos disponibilidades");
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH action:"getDispoInfo" → quando o catálogo foi atualizado.
+        // Não existe timestamp dentro do disponibilidades.json, então usamos a
+        // data do último commit do arquivo — que é exatamente quando o admin
+        // gravou. Público (a vitrine mostra no cabeçalho).
+        if (body.action === "getDispoInfo") {
+          try {
+            const url = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}` +
+                        `/commits?path=data/disponibilidades.json&per_page=1`;
+            const res = await fetch(url, { headers: githubHeaders });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const lista = await res.json();
+            const c = Array.isArray(lista) && lista[0] ? lista[0] : null;
+            return new Response(JSON.stringify({
+              success: true,
+              atualizadoEm: c ? (c.commit?.committer?.date || c.commit?.author?.date || null) : null,
+              mensagem: c ? (c.commit?.message || "") : ""
+            }), { status: 200, headers: corsHeaders });
+          } catch (e) {
+            // Sem data não é erro fatal: a vitrine só não mostra o selo
+            return new Response(JSON.stringify({ success: false, atualizadoEm: null }),
+              { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // ── EXCLUSIVOS DE CANAL (DTC / ML) ────────────────────────────────
+        // getExclusivos → mapa { "ARTIGO|COR": "DTC"|"ML"|"DTC+ML" }. Público:
+        // a vitrine e o admin precisam ler para não exibir esses produtos.
+        if (body.action === "getExclusivos") {
+          const { content } = await getFile(GITHUB_EXCLUSIVOS);
+          const mapa = (content && typeof content === "object" && !Array.isArray(content)) ? content : {};
+          return new Response(JSON.stringify(mapa), { status: 200, headers: corsHeaders });
+        }
+
+        // saveExclusivos → grava o mapa COMPLETO (write, exige admin).
+        // Substitui em vez de mesclar: é assim que a remoção funciona — o admin
+        // manda a lista final, e o que não está nela deixa de ser exclusivo.
+        if (body.action === "saveExclusivos" && body.data !== undefined) {
+          const entrada = (body.data && typeof body.data === "object" && !Array.isArray(body.data)) ? body.data : {};
+          const canaisOk = new Set(["DTC", "ML", "DTC+ML"]);
+          const limpo = {};
+          for (const [chave, canal] of Object.entries(entrada)) {
+            // chave precisa ser "ARTIGO|COR" e o canal precisa ser conhecido,
+            // senão um erro no front viraria lixo permanente no arquivo
+            if (!/^[^|]+\|[^|]+$/.test(String(chave))) continue;
+            const c = String(canal || "").toUpperCase().trim();
+            if (!canaisOk.has(c)) continue;
+            limpo[String(chave).toUpperCase()] = c;
+          }
+          const { sha } = await getFile(GITHUB_EXCLUSIVOS);
+          await saveFile(GITHUB_EXCLUSIVOS, limpo, sha, `exclusivos de canal (${Object.keys(limpo).length})`);
+          return new Response(JSON.stringify({ success: true, total: Object.keys(limpo).length }),
+            { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getTabelaEspecial" → retorna tabela_especial.json
+        if (body.action === "getTabelaEspecial") {
+          const { content } = await getFile(GITHUB_TABELA_ESP);
+          return new Response(JSON.stringify(content && typeof content === "object" ? content : {}), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"saveTabelaEspecial" e data:{} → salva tabela_especial.json
+        if (body.action === "saveTabelaEspecial" && body.data !== undefined) {
+          const { sha } = await getFile(GITHUB_TABELA_ESP);
+          await saveFile(GITHUB_TABELA_ESP, (body.data && typeof body.data === "object") ? body.data : {}, sha, "update tabela especial");
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // VITRINE COMPARTILHADA — links vendedor↔cliente
+        // Estrutura de cada link em links_compartilhados.json:
+        //   { codigo: { vendedor, vendedorNome, cliente, marca, produtos:[],
+        //               criadoEm, expiraEm, status, resposta:{}, respondidoEm } }
+        // Estas actions NÃO entram em WRITE_ACTIONS: o cliente precisa gravar
+        // sua resposta sem token (igual savePedidoHistorico dos vendedores).
+        // ─────────────────────────────────────────────────────────────────────
+        const VL_48H = 48 * 60 * 60 * 1000;
+        // Validade escolhida pelo vendedor. Repasse nao oscila como
+        // disponibilidade, entao um link de 15 dias faz sentido la e nao aqui —
+        // quem decide e quem gera. Lista fechada: horas livres deixariam alguem
+        // criar um link eterno por engano.
+        const VL_OPCOES = { 24: 24, 48: 48, 168: 168, 360: 360 };
+        function validadeMs(horas) {
+          const h = VL_OPCOES[Number(horas)];
+          return h ? h * 60 * 60 * 1000 : VL_48H;   // sem escolha, segue 48h
+        }
+        function gerarCodigoLink() {
+          const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+          let s = "";
+          for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+          return s;
+        }
+
+        // criarLink — vendedor gera um link com produtos selecionados
+        if (body.action === "criarLink" && body.data) {
+          const { content } = await getFile(GITHUB_LINKS);
+          const links = (content && typeof content === "object") ? content : {};
+          let codigo = gerarCodigoLink();
+          let guard = 0;
+          while (links[codigo] && guard < 20) { codigo = gerarCodigoLink(); guard++; }
+          const agora = Date.now();
+          links[codigo] = {
+            vendedor:     String(body.data.vendedor || ""),
+            vendedorNome: String(body.data.vendedorNome || ""),
+            cliente:      String(body.data.cliente || ""),
+            // O nome vem da carteira do vendedor; a pagina do cliente nao tem
+            // essa base, e precisa dele para nomear o PDF que ela emite.
+            clienteNome:  String(body.data.clienteNome || ""),
+            marca:        String(body.data.marca || ""),
+            produtos:     Array.isArray(body.data.produtos) ? body.data.produtos : [],
+            criadoEm:     agora,
+            validadeHoras: Number(VL_OPCOES[Number(body.data.validadeHoras)] || 48),
+            expiraEm:     agora + validadeMs(body.data.validadeHoras),
+            status:       "aguardando",
+            resposta:     null,
+            respondidoEm: null
+          };
+          const { sha } = await getFile(GITHUB_LINKS);
+          await saveFile(GITHUB_LINKS, links, sha, "novo link compartilhado");
+          return new Response(JSON.stringify({ success: true, codigo }), { status: 200, headers: corsHeaders });
+        }
+
+        // getLink — cliente carrega os produtos de um link
+        if (body.action === "getLink" && body.codigo) {
+          const { content } = await getFile(GITHUB_LINKS);
+          const links = (content && typeof content === "object") ? content : {};
+          const link = links[body.codigo];
+          if (!link) {
+            return new Response(JSON.stringify({ success: false, erro: "nao_encontrado" }), { status: 200, headers: corsHeaders });
+          }
+          const expirado = Date.now() > Number(link.expiraEm || 0);
+          return new Response(JSON.stringify({ success: true, link, expirado }), { status: 200, headers: corsHeaders });
+        }
+
+        // salvarResposta — cliente grava sua seleção (pode reenviar)
+        if (body.action === "salvarResposta" && body.codigo && body.data) {
+          const { content } = await getFile(GITHUB_LINKS);
+          const links = (content && typeof content === "object") ? content : {};
+          const link = links[body.codigo];
+          if (!link) {
+            return new Response(JSON.stringify({ success: false, erro: "nao_encontrado" }), { status: 200, headers: corsHeaders });
+          }
+          if (Date.now() > Number(link.expiraEm || 0)) {
+            return new Response(JSON.stringify({ success: false, erro: "expirado" }), { status: 200, headers: corsHeaders });
+          }
+          link.resposta     = body.data.resposta || {};
+          link.respondidoEm = Date.now();
+          link.status       = "respondido";
+          const { sha } = await getFile(GITHUB_LINKS);
+          await saveFile(GITHUB_LINKS, links, sha, "resposta do cliente");
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // getLinksVendedor — lista os links de um vendedor (por código)
+        if (body.action === "getLinksVendedor" && body.vendedor) {
+          const { content } = await getFile(GITHUB_LINKS);
+          const links = (content && typeof content === "object") ? content : {};
+          const agora = Date.now();
+          const meus = [];
+          for (const [codigo, l] of Object.entries(links)) {
+            if (String(l.vendedor) !== String(body.vendedor)) continue;
+            meus.push({
+              codigo,
+              cliente:      l.cliente,
+              marca:        l.marca,
+              qtdProdutos:  Array.isArray(l.produtos) ? l.produtos.length : 0,
+              criadoEm:     l.criadoEm,
+              expiraEm:     l.expiraEm,
+              expirado:     agora > Number(l.expiraEm || 0),
+              status:       l.status,
+              respondidoEm: l.respondidoEm,
+              concluidoEm:  l.concluidoEm || null,
+              qtdResposta:  (l.resposta && l.resposta.itens) ? l.resposta.itens.length : 0
+            });
+          }
+          meus.sort((a, b) => Number(b.criadoEm) - Number(a.criadoEm));
+          return new Response(JSON.stringify({ success: true, links: meus }), { status: 200, headers: corsHeaders });
+        }
+
+        // getLinkCompleto — vendedor abre 1 link com a resposta completa
+        if (body.action === "getLinkCompleto" && body.codigo) {
+          const { content } = await getFile(GITHUB_LINKS);
+          const links = (content && typeof content === "object") ? content : {};
+          const link = links[body.codigo];
+          if (!link) {
+            return new Response(JSON.stringify({ success: false, erro: "nao_encontrado" }), { status: 200, headers: corsHeaders });
+          }
+          return new Response(JSON.stringify({ success: true, link }), { status: 200, headers: corsHeaders });
+        }
+
+        // reativarLink — vendedor dá +48h num link expirado
+        if (body.action === "reativarLink" && body.codigo) {
+          const { content } = await getFile(GITHUB_LINKS);
+          const links = (content && typeof content === "object") ? content : {};
+          const link = links[body.codigo];
+          if (!link) {
+            return new Response(JSON.stringify({ success: false, erro: "nao_encontrado" }), { status: 200, headers: corsHeaders });
+          }
+          const horas = Number(body.validadeHoras || link.validadeHoras || 48);
+          link.validadeHoras = Number(VL_OPCOES[horas] || 48);
+          link.expiraEm = Date.now() + validadeMs(horas);
+          if (link.status === "expirado") link.status = "aguardando";
+          const { sha } = await getFile(GITHUB_LINKS);
+          await saveFile(GITHUB_LINKS, links, sha, `reativar link +${link.validadeHoras}h`);
+          return new Response(JSON.stringify({ success: true, expiraEm: link.expiraEm }), { status: 200, headers: corsHeaders });
+        }
+
+        // apagarLinks — apaga 1 ou mais links pelo código
+        if (body.action === "apagarLinks" && Array.isArray(body.codigos)) {
+          const { content, sha } = await getFile(GITHUB_LINKS);
+          const links = (content && typeof content === "object") ? content : {};
+          let apagados = 0;
+          for (const cod of body.codigos) {
+            if (links[cod]) { delete links[cod]; apagados++; }
+          }
+          await saveFile(GITHUB_LINKS, links, sha, `apagar ${apagados} link(s)`);
+          return new Response(JSON.stringify({ success: true, apagados }), { status: 200, headers: corsHeaders });
+        }
+
+        // marcarLinkConcluido — vendedor marca como pedido gerado (status: concluido)
+        if (body.action === "marcarLinkConcluido" && body.codigo) {
+          const { content, sha } = await getFile(GITHUB_LINKS);
+          const links = (content && typeof content === "object") ? content : {};
+          const link = links[body.codigo];
+          if (!link) {
+            return new Response(JSON.stringify({ success: false, erro: "nao_encontrado" }), { status: 200, headers: corsHeaders });
+          }
+          link.status = "concluido";
+          link.concluidoEm = Date.now();
+          await saveFile(GITHUB_LINKS, links, sha, "marcar link como concluido");
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // ── CLIENTES (consulta por vendedor) ────────────────────────────────
+        // getClientes — retorna { vendedor, clientes:[] } de 1 vendedor
+        if (body.action === "getClientes" && body.vendedor) {
+          const codVend = String(body.vendedor).replace(/[^\w-]/g, "");
+          const url = `${GITHUB_CLIENTES_BASE}/${codVend}.json`;
+          try {
+            const { content } = await getFile(url);
+            return new Response(JSON.stringify({
+              success: true,
+              vendedor: codVend,
+              clientes: Array.isArray(content) ? content : (content?.clientes || [])
+            }), { status: 200, headers: corsHeaders });
+          } catch (e) {
+            return new Response(JSON.stringify({ success: true, vendedor: codVend, clientes: [] }), { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // saveClientes — admin sobe lista de clientes do vendedor
+        // Espera: { action:"saveClientes", vendedor:"114611", data:[...] }
+        if (body.action === "saveClientes" && body.vendedor && Array.isArray(body.data)) {
+          const codVend = String(body.vendedor).replace(/[^\w-]/g, "");
+          const url = `${GITHUB_CLIENTES_BASE}/${codVend}.json`;
+          let sha = null;
+          try { ({ sha } = await getFile(url)); } catch (_) { /* arquivo novo */ }
+          await saveFile(url, body.data, sha, `clientes ${codVend} (${body.data.length})`);
+          return new Response(JSON.stringify({ success: true, total: body.data.length }), { status: 200, headers: corsHeaders });
+        }
+
+        // listClientesVendedores — lista códigos de vendedores com base salva
+        if (body.action === "listClientesVendedores") {
+          try {
+            const r = await fetch(GITHUB_CLIENTES_BASE, { headers: githubHeaders });
+            if (!r.ok) {
+              return new Response(JSON.stringify({ success: true, vendedores: [] }), { status: 200, headers: corsHeaders });
+            }
+            const arr = await r.json();
+            const vendedores = (Array.isArray(arr) ? arr : [])
+              .filter(f => f.name && f.name.endsWith(".json"))
+              .map(f => ({ codigo: f.name.replace(/\.json$/, ""), size: f.size }));
+            return new Response(JSON.stringify({ success: true, vendedores }), { status: 200, headers: corsHeaders });
+          } catch (e) {
+            return new Response(JSON.stringify({ success: true, vendedores: [] }), { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // ── DESEJOS (watchlist de produtos por vendedor) ────────────────────
+        // getDesejos — retorna lista de chaves favoritadas do vendedor
+        if (body.action === "getDesejos" && body.vendedor) {
+          const codVend = String(body.vendedor).replace(/[^\w-]/g, "");
+          const url = `${GITHUB_DESEJOS_BASE}/${codVend}.json`;
+          try {
+            const { content } = await getFile(url);
+            return new Response(JSON.stringify({
+              success: true,
+              vendedor: codVend,
+              desejos: Array.isArray(content) ? content : (content?.desejos || [])
+            }), { status: 200, headers: corsHeaders });
+          } catch (e) {
+            return new Response(JSON.stringify({ success: true, vendedor: codVend, desejos: [] }), { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // saveDesejos — vendedor salva sua lista de favoritos (sem token, vendedor identifica via UI)
+        // Espera: { action:"saveDesejos", vendedor:"114611", data:["ARTIGO|COR", ...] }
+        if (body.action === "saveDesejos" && body.vendedor && Array.isArray(body.data)) {
+          const codVend = String(body.vendedor).replace(/[^\w-]/g, "");
+          // Limita: máx 100 desejos por vendedor + chave válida
+          const limpa = body.data
+            .filter(k => typeof k === "string" && /^[\w-]+\|[\w-]+$/.test(k))
+            .slice(0, 100);
+          const url = `${GITHUB_DESEJOS_BASE}/${codVend}.json`;
+          let sha = null;
+          try { ({ sha } = await getFile(url)); } catch (_) { /* novo */ }
+          await saveFile(url, limpa, sha, `desejos ${codVend} (${limpa.length})`);
+          return new Response(JSON.stringify({ success: true, total: limpa.length }), { status: 200, headers: corsHeaders });
+        }
+
+        // ── STATUS DA VITRINE (pausada / ativa) ─────────────────────────────
+        // getStatusVitrine — público (vitrine consulta a cada carregamento)
+        if (body.action === "getStatusVitrine") {
+          try {
+            const { content } = await getFile(GITHUB_VITRINE_STATUS);
+            const pausada = !!(content && content.pausada);
+            return new Response(JSON.stringify({
+              success: true,
+              pausada,
+              pausadoEm: content?.pausadoEm || null,
+              motivo: content?.motivo || ''
+            }), { status: 200, headers: corsHeaders });
+          } catch (e) {
+            return new Response(JSON.stringify({ success: true, pausada: false }), { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // setStatusVitrine — admin pausa/despausa
+        // Espera: { action:"setStatusVitrine", pausada:true|false, motivo:"opcional" }
+        if (body.action === "setStatusVitrine" && typeof body.pausada === "boolean") {
+          let sha = null;
+          try { ({ sha } = await getFile(GITHUB_VITRINE_STATUS)); } catch (_) { /* arquivo novo */ }
+          const novo = {
+            pausada: body.pausada,
+            pausadoEm: body.pausada ? Date.now() : null,
+            motivo: String(body.motivo || '')
+          };
+          await saveFile(GITHUB_VITRINE_STATUS, novo, sha, body.pausada ? "vitrine pausada" : "vitrine ativada");
+          return new Response(JSON.stringify({ success: true, ...novo }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getOcultos" → retorna lista de ocultos
+        if (body.action === "getOcultos") {
+          const { content } = await getFile(GITHUB_OCULTOS);
+          return new Response(JSON.stringify(Array.isArray(content) ? content : []), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"saveOcultos" e data:[] → salva lista de ocultos
+        if (body.action === "saveOcultos" && body.data !== undefined) {
+          const { sha } = await getFile(GITHUB_OCULTOS);
+          await saveFile(GITHUB_OCULTOS, Array.isArray(body.data) ? body.data : [], sha, "update ocultos");
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getPedidoHistorico" e comissionista → retorna array de pedidos
+        if (body.action === "getPedidoHistorico" && body.comissionista) {
+          const safeId = String(body.comissionista).replace(/[^a-zA-Z0-9_-]/g, "");
+          if (!safeId) return new Response(JSON.stringify([]), { status: 200, headers: corsHeaders });
+          const url = `${GITHUB_CAT_HIST_BASE}/${safeId}.json`;
+          try {
+            const { content } = await getFile(url);
+            return new Response(JSON.stringify(Array.isArray(content) ? content : []), { status: 200, headers: corsHeaders });
+          } catch (_) {
+            // Arquivo ainda não existe — retorna lista vazia
+            return new Response(JSON.stringify([]), { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // PATCH com action:"savePedidoHistorico" + comissionista + pedido → adiciona ao histórico
+        if (body.action === "savePedidoHistorico" && body.comissionista && body.pedido) {
+          const safeId = String(body.comissionista).replace(/[^a-zA-Z0-9_-]/g, "");
+          if (!safeId) {
+            return new Response(JSON.stringify({ success: false, error: "Comissionista inválido" }), { status: 400, headers: corsHeaders });
+          }
+          const url = `${GITHUB_CAT_HIST_BASE}/${safeId}.json`;
+          let lista = [];
+          let sha = null;
+          let arquivoExiste = false;
+          // Tenta ler o arquivo atual.
+          try {
+            const r = await getFile(url);
+            if (r.sha) {
+              // Arquivo EXISTE
+              arquivoExiste = true;
+              sha = r.sha;
+              lista = Array.isArray(r.content) ? r.content : [];
+            }
+            // r.sha null = arquivo realmente não existe (404) → primeiro pedido, lista vazia ok
+          } catch (err) {
+            // ⚠️ A leitura FALHOU mas o arquivo pode existir.
+            // NUNCA sobrescrever com lista vazia — isso apagaria todo o histórico.
+            // Aborta o save e devolve erro pro app tentar de novo.
+            return new Response(JSON.stringify({
+              success: false,
+              error: "Não foi possível ler o histórico atual. Pedido NÃO salvo (proteção contra perda de dados). Tente novamente.",
+              detail: String(err && err.message || err)
+            }), { status: 503, headers: corsHeaders });
+          }
+          // Backup ANTES de sobrescrever (snapshot do dia)
+          if (arquivoExiste && lista.length > 0) {
+            try {
+              const backupUrl = `${GITHUB_CAT_HIST_BASE.replace('/contents/data/', '/contents/data/backups/')}/${safeId}_backup_${new Date().toISOString().slice(0,10)}.json`;
+              const existingBk = await fetch(backupUrl, { headers: githubHeaders });
+              if (existingBk.status === 404) {
+                // Cria backup do dia (1x por dia por comissionista)
+                const bkContent = btoa(unescape(encodeURIComponent(JSON.stringify(lista))));
+                await fetch(backupUrl, {
+                  method: "PUT",
+                  headers: { ...githubHeaders, "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    message: `backup historico - ${safeId}`,
+                    content: bkContent,
+                    branch: env.GITHUB_BRANCH
+                  })
+                });
+              }
+            } catch (_) { /* backup não bloqueia o save principal */ }
+          }
+          // Adiciona o pedido novo no topo
+          lista.unshift(body.pedido);
+          // Limita a 1000 pedidos por comissionista (evita arquivo gigante)
+          if (lista.length > 1000) lista = lista.slice(0, 1000);
+          await saveFile(url, lista, sha, `historico catalogo - ${safeId}`);
+          return new Response(JSON.stringify({ success: true, total: lista.length }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"clearPedidosHistorico" + comissionista → apaga todos os pedidos finalizados
+        // Exige X-Admin-Token (validado no início pra ações de escrita).
+        // Faz backup manual antes de sobrescrever (histórico não está na lista de arquivos com backup automático).
+        if (body.action === "clearPedidosHistorico" && body.comissionista) {
+          const safeId = String(body.comissionista).replace(/[^a-zA-Z0-9_-]/g, "");
+          if (!safeId) {
+            return new Response(JSON.stringify({ success: false, error: "Comissionista inválido" }), { status: 400, headers: corsHeaders });
+          }
+          const url = `${GITHUB_CAT_HIST_BASE}/${safeId}.json`;
+          let sha = null;
+          let listaAtual = [];
+          try {
+            const r = await getFile(url);
+            sha = r.sha || null;
+            listaAtual = Array.isArray(r.content) ? r.content : [];
+          } catch (_) {
+            // Arquivo já não existe — nada a limpar
+            return new Response(JSON.stringify({ success: true, cleared: 0, message: "Sem histórico para limpar" }), { status: 200, headers: corsHeaders });
+          }
+          if (!sha || listaAtual.length === 0) {
+            return new Response(JSON.stringify({ success: true, cleared: 0, message: "Sem histórico para limpar" }), { status: 200, headers: corsHeaders });
+          }
+          const totalAntes = listaAtual.length;
+          // Backup manual: salva snapshot antes de limpar (independente do backup diário).
+          // Nome do backup carrega data + hora + total pra facilitar rastreio.
+          try {
+            const now = new Date();
+            const stamp = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);
+            const backupUrl = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/backups/catalogo-historico/${safeId}_pre-clear_${stamp}_${totalAntes}itens.json`;
+            await saveFile(backupUrl, listaAtual, null, `backup pre-clear historico ${safeId} (${totalAntes} pedidos)`);
+          } catch (bkErr) {
+            // Se o backup falhar, NÃO limpa (segurança).
+            return new Response(JSON.stringify({
+              success: false,
+              error: "Falha ao criar backup antes de limpar. Nada foi apagado.",
+              detail: String(bkErr && bkErr.message || bkErr)
+            }), { status: 500, headers: corsHeaders });
+          }
+          // Só depois do backup confirmado é que limpa o arquivo original (sobrescreve com []).
+          await saveFile(url, [], sha, `clear historico catalogo - ${safeId} (${totalAntes} pedidos removidos)`);
+          return new Response(JSON.stringify({ success: true, cleared: totalAntes }), { status: 200, headers: corsHeaders });
+        }
+
+        // ── RASCUNHOS DE PEDIDO ──────────────────────────────────────────
+        // getRascunhos + comissionista → retorna array de rascunhos
+        if (body.action === "getRascunhos" && body.comissionista) {
+          const safeId = String(body.comissionista).replace(/[^a-zA-Z0-9_-]/g, "");
+          if (!safeId) return new Response(JSON.stringify([]), { status: 200, headers: corsHeaders });
+          const url = `${GITHUB_CAT_RASC_BASE}/${safeId}.json`;
+          try {
+            const { content } = await getFile(url);
+            return new Response(JSON.stringify(Array.isArray(content) ? content : []), { status: 200, headers: corsHeaders });
+          } catch (err) {
+            // Erro de leitura — NÃO devolve vazio como se não houvesse rascunho
+            return new Response(JSON.stringify({ success: false, error: "Falha ao ler rascunhos. Tente novamente." }), { status: 503, headers: corsHeaders });
+          }
+        }
+
+        // saveRascunho + comissionista + rascunho → cria OU atualiza (por id)
+        if (body.action === "saveRascunho" && body.comissionista && body.rascunho) {
+          const safeId = String(body.comissionista).replace(/[^a-zA-Z0-9_-]/g, "");
+          if (!safeId) {
+            return new Response(JSON.stringify({ success: false, error: "Comissionista inválido" }), { status: 400, headers: corsHeaders });
+          }
+          const url = `${GITHUB_CAT_RASC_BASE}/${safeId}.json`;
+          let lista = [];
+          let sha = null;
+          let arquivoExiste = false;
+          try {
+            const r = await getFile(url);
+            if (r.sha) {
+              arquivoExiste = true;
+              sha = r.sha;
+              lista = Array.isArray(r.content) ? r.content : [];
+            }
+          } catch (err) {
+            // Proteção: não sobrescrever com lista vazia se a leitura falhar
+            return new Response(JSON.stringify({
+              success: false,
+              error: "Não foi possível ler os rascunhos atuais. Rascunho NÃO salvo. Tente novamente.",
+              detail: String(err && err.message || err)
+            }), { status: 503, headers: corsHeaders });
+          }
+          // Atualiza se já existe (mesmo id), senão adiciona no topo
+          const rid = String(body.rascunho.id || "");
+          const idx = lista.findIndex(x => String(x.id) === rid);
+          if (idx >= 0) {
+            lista[idx] = body.rascunho;
+          } else {
+            lista.unshift(body.rascunho);
+          }
+          if (lista.length > 200) lista = lista.slice(0, 200);
+          await saveFile(url, lista, sha, `rascunhos catalogo - ${safeId}`);
+          return new Response(JSON.stringify({ success: true, total: lista.length }), { status: 200, headers: corsHeaders });
+        }
+
+        // deleteRascunho + comissionista + id → remove um rascunho
+        if (body.action === "deleteRascunho" && body.comissionista && body.id) {
+          const safeId = String(body.comissionista).replace(/[^a-zA-Z0-9_-]/g, "");
+          if (!safeId) {
+            return new Response(JSON.stringify({ success: false, error: "Comissionista inválido" }), { status: 400, headers: corsHeaders });
+          }
+          const url = `${GITHUB_CAT_RASC_BASE}/${safeId}.json`;
+          let lista = [];
+          let sha = null;
+          try {
+            const r = await getFile(url);
+            if (!r.sha) {
+              // Arquivo não existe — nada a apagar
+              return new Response(JSON.stringify({ success: true, total: 0 }), { status: 200, headers: corsHeaders });
+            }
+            sha = r.sha;
+            lista = Array.isArray(r.content) ? r.content : [];
+          } catch (err) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: "Não foi possível ler os rascunhos. Exclusão não realizada.",
+              detail: String(err && err.message || err)
+            }), { status: 503, headers: corsHeaders });
+          }
+          const rid = String(body.id);
+          const nova = lista.filter(x => String(x.id) !== rid);
+          await saveFile(url, nova, sha, `rascunhos catalogo - ${safeId} (remover)`);
+          return new Response(JSON.stringify({ success: true, total: nova.length }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"saveCategoryImage" + categoria + base64 → upload imagem categoria
+        if (body.action === "saveCategoryImage" && body.categoria && body.base64) {
+          // Sanitiza nome: aceita apenas letras, números e &
+          const safeCat = String(body.categoria).replace(/[^a-zA-Z0-9&]/g, "");
+          if(!safeCat){
+            return new Response(JSON.stringify({ success: false, error: "Categoria inválida" }), { status: 400, headers: corsHeaders });
+          }
+          // Marca: "ua" salva em subpasta; demais (oly/ausente) na raiz de categorias
+          const marca = String(body.marca || "oly").toLowerCase();
+          const subPasta = (marca === "ua") ? "/ua" : "";
+          // Sempre salva como PNG (front-end converte antes)
+          const url = `${GITHUB_CAT_IMG_BASE}${subPasta}/${safeCat}.png`;
+          // Verifica se já existe (pra obter o sha)
+          const existing = await fetch(url, { headers: githubHeaders });
+          const sha = existing.ok ? (await existing.json()).sha : undefined;
+          const uploadBody = {
+            message: `imagem categoria: ${safeCat}`,
+            content: body.base64,
+            branch: env.GITHUB_BRANCH
+          };
+          if(sha) uploadBody.sha = sha;
+          const res = await fetch(url, {
+            method: "PUT",
+            headers: { ...githubHeaders, "Content-Type": "application/json" },
+            body: JSON.stringify(uploadBody)
+          });
+          if(!res.ok) throw new Error(`Upload categoria falhou (${res.status}): ${await res.text()}`);
+          return new Response(JSON.stringify({ success: true, categoria: safeCat }), { status: 200, headers: corsHeaders });
+        }
+
+
+        // PATCH com action:"saveHeroImage" + slot (1-3) + base64 → foto do banner
+        // da tela inicial do Catálogo Digital. Foto, e não ícone: vai em JPG, que
+        // o app já comprime (em PNG ficaria de 3 a 5 vezes mais pesada).
+        // Olympikus em hero/heroN.jpg; Under Armour em hero/ua/heroN.jpg.
+        if (body.action === "saveHeroImage" && body.base64) {
+          const slot = Number(body.slot);
+          if (![1, 2, 3].includes(slot)) {
+            return new Response(JSON.stringify({ success: false, error: "Posição inválida (1 a 3)" }), { status: 400, headers: corsHeaders });
+          }
+          // ~2 MB de base64 é folga para um JPG de 1400px; acima disso não é o que o app manda
+          if (String(body.base64).length > 2_800_000) {
+            return new Response(JSON.stringify({ success: false, error: "Imagem grande demais" }), { status: 413, headers: corsHeaders });
+          }
+          const marca = String(body.marca || "oly").toLowerCase();
+          const subPasta = (marca === "ua") ? "/ua" : "";
+          const url = `${GITHUB_HERO_IMG_BASE}${subPasta}/hero${slot}.jpg`;
+          const existing = await fetch(url, { headers: githubHeaders });
+          const sha = existing.ok ? (await existing.json()).sha : undefined;
+          const uploadBody = {
+            message: `banner catalogo: ${marca} foto ${slot}`,
+            content: body.base64,
+            branch: env.GITHUB_BRANCH
+          };
+          if (sha) uploadBody.sha = sha;
+          const res = await fetch(url, {
+            method: "PUT",
+            headers: { ...githubHeaders, "Content-Type": "application/json" },
+            body: JSON.stringify(uploadBody)
+          });
+          if (!res.ok) throw new Error(`Upload banner falhou (${res.status}): ${await res.text()}`);
+          return new Response(JSON.stringify({ success: true, slot, marca }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH action:"getPerformance" → retorna a planilha (base64). Público (leitura).
+        if (body.action === "getPerformance") {
+          try {
+            const { content } = await getFile(GITHUB_PERFORMANCE);
+            const data = (content && typeof content === "object") ? content : { name: "", b64: "" };
+            return new Response(JSON.stringify(data), { status: 200, headers: corsHeaders });
+          } catch (_) {
+            return new Response(JSON.stringify({ name: "", b64: "" }), { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // PATCH action:"savePerformance" + data:{key,ano,sem,name,b64} → grava 1 período (sem senha)
+        if (body.action === "savePerformance" && body.data && body.data.b64) {
+          const { content, sha } = await getFile(GITHUB_PERFORMANCE);
+          let periods = {};
+          if (content && typeof content === "object") {
+            if (content.periods && typeof content.periods === "object") {
+              periods = content.periods;
+            } else if (content.b64) {
+              const lk = (content.ano ? String(content.ano) : "2025") + "-ALL";
+              periods[lk] = { ano: String(content.ano || "2025"), sem: "ALL", name: content.name || "planilha.xlsx", b64: content.b64, updatedAt: content.updatedAt || new Date().toISOString() };
+            }
+          }
+          const ano = String(body.data.ano || "");
+          const sem = ["ALL", "S1", "S2"].includes(body.data.sem) ? body.data.sem : "ALL";
+          const key = String(body.data.key || (ano + "-" + sem));
+          periods[key] = { ano, sem, name: String(body.data.name || "planilha.xlsx"), b64: String(body.data.b64), updatedAt: new Date().toISOString() };
+          await saveFile(GITHUB_PERFORMANCE, { periods }, sha, "update performance " + key);
+          return new Response(JSON.stringify({ success: true, key }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH action:"getRfv" → retorna os dados publicados do RFV. Público (leitura).
+        if (body.action === "getRfv") {
+          try {
+            const res = await streamFile(GITHUB_RFV);
+            if (!res) return new Response("{}", { status: 200, headers: corsHeaders });
+            return new Response(res.body, { status: 200, headers: corsHeaders });
+          } catch (_) {
+            return new Response("{}", { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // PATCH action:"saveRfv" + data:{...} → grava os dados do RFV (sem senha, como o performance).
+        // O objeto 'data' é gravado como está (o front decide o formato: arquivos crus, dataset processado, etc.)
+        if (body.action === "saveRfv" && body.data && typeof body.data === "object") {
+          const { sha } = await getFile(GITHUB_RFV);
+          const payload = { ...body.data, updatedAt: new Date().toISOString() };
+          await saveFile(GITHUB_RFV, payload, sha, "update rfv");
+          return new Response(JSON.stringify({ success: true, updatedAt: payload.updatedAt }), { status: 200, headers: corsHeaders });
+        }
+        // ── ESTOQUE VIRTUAL · MATRIZ ESPORTES ──────────────────────────────────
+
+        // PATCH action:"getMatrizEstoque" → retorna lojas + pendentes. Público (leitura).
+        if (body.action === "getMatrizEstoque") {
+          const { content } = await getFile(GITHUB_MATRIZ);
+          const data = (content && typeof content === "object") ? content : { lojas: [], pendentes: [] };
+          return new Response(JSON.stringify({ success: true, data }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH action:"saveMatrizLoja" + token + marcas:{...} → a própria loja salva o estoque/venda
+        // dos itens já cadastrados. Aberto (o token na URL já identifica a loja).
+        if (body.action === "saveMatrizLoja" && body.token && body.marcas && typeof body.marcas === "object") {
+          const { content, sha } = await getFile(GITHUB_MATRIZ);
+          const data = (content && typeof content === "object") ? content : { lojas: [], pendentes: [] };
+          const loja = (data.lojas || []).find(l => l.token === body.token);
+          if (!loja) return new Response(JSON.stringify({ success: false, error: "Loja não encontrada." }), { status: 404, headers: corsHeaders });
+          loja.marcas = body.marcas;
+          loja.ultimaAtualizacaoLoja = new Date().toISOString();
+          await saveFile(GITHUB_MATRIZ, data, sha, `matriz: estoque atualizado — ${loja.nome}`);
+          return new Response(JSON.stringify({ success: true, updatedAt: loja.ultimaAtualizacaoLoja }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH action:"addMatrizPendente" + token + artigo/descricao/cor → loja reporta produto fora
+        // da lista cadastrada. Fica pendente até o admin cadastrar corretamente. Aberto.
+        if (body.action === "addMatrizPendente" && body.token) {
+          const { content, sha } = await getFile(GITHUB_MATRIZ);
+          const data = (content && typeof content === "object") ? content : { lojas: [], pendentes: [] };
+          const loja = (data.lojas || []).find(l => l.token === body.token);
+          if (!loja) return new Response(JSON.stringify({ success: false, error: "Loja não encontrada." }), { status: 404, headers: corsHeaders });
+          const pendente = {
+            id: `pend_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            tipo: "novo",
+            lojaCodigo: loja.codigo,
+            lojaNome: loja.nome,
+            marca: String(body.marca || ""),
+            artigo: String(body.artigo || ""),
+            descricao: String(body.descricao || ""),
+            cor: String(body.cor || ""),
+            estoqueAtual: Number(body.estoqueAtual) || 0,
+            venda: Number(body.venda) || 0,
+            status: "pendente",
+            criadoEm: new Date().toISOString()
+          };
+          data.pendentes = data.pendentes || [];
+          data.pendentes.push(pendente);
+          await saveFile(GITHUB_MATRIZ, data, sha, `matriz: pendente — ${loja.nome} — ${pendente.artigo}/${pendente.cor}`);
+          return new Response(JSON.stringify({ success: true, id: pendente.id }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH action:"flagMatrizRemocao" + token + marca + itemId → loja sinaliza que um produto
+        // já cadastrado NÃO existe na loja. Fica pendente até o admin excluir do catálogo. Aberto.
+        if (body.action === "flagMatrizRemocao" && body.token && body.marca && body.itemId) {
+          const { content, sha } = await getFile(GITHUB_MATRIZ);
+          const data = (content && typeof content === "object") ? content : { lojas: [], pendentes: [] };
+          const loja = (data.lojas || []).find(l => l.token === body.token);
+          if (!loja) return new Response(JSON.stringify({ success: false, error: "Loja não encontrada." }), { status: 404, headers: corsHeaders });
+          const item = (loja.marcas[body.marca] || []).find(i => i.id === body.itemId);
+          if (!item) return new Response(JSON.stringify({ success: false, error: "Item não encontrado." }), { status: 404, headers: corsHeaders });
+          // Evita duplicar sinalização do mesmo item
+          const jaSinalizado = (data.pendentes || []).some(p => p.tipo === "remocao" && p.itemId === body.itemId && p.lojaCodigo === loja.codigo && p.status === "pendente");
+          if (jaSinalizado) return new Response(JSON.stringify({ success: true, duplicate: true }), { status: 200, headers: corsHeaders });
+          const pendente = {
+            id: `pend_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            tipo: "remocao",
+            lojaCodigo: loja.codigo,
+            lojaNome: loja.nome,
+            marca: String(body.marca),
+            itemId: String(body.itemId),
+            artigo: item.artigo,
+            descricao: item.descricao,
+            cor: item.cor,
+            status: "pendente",
+            criadoEm: new Date().toISOString()
+          };
+          data.pendentes = data.pendentes || [];
+          data.pendentes.push(pendente);
+          await saveFile(GITHUB_MATRIZ, data, sha, `matriz: sinalizado para remoção — ${loja.nome} — ${item.artigo}/${item.cor}`);
+          return new Response(JSON.stringify({ success: true, id: pendente.id }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH action:"cancelarMatrizRemocao" + token + itemId -> a propria loja desfaz uma
+        // sinalizacao de "nao existe" ainda pendente (se errou ao marcar). Aberto.
+        if (body.action === "cancelarMatrizRemocao" && body.token && body.itemId) {
+          const { content, sha } = await getFile(GITHUB_MATRIZ);
+          const data = (content && typeof content === "object") ? content : { lojas: [], pendentes: [] };
+          const loja = (data.lojas || []).find(l => l.token === body.token);
+          if (!loja) return new Response(JSON.stringify({ success: false, error: "Loja nao encontrada." }), { status: 404, headers: corsHeaders });
+          const idx = (data.pendentes || []).findIndex(p => p.tipo === "remocao" && p.itemId === body.itemId && p.lojaCodigo === loja.codigo && p.status === "pendente");
+          if (idx === -1) return new Response(JSON.stringify({ success: true, notFound: true }), { status: 200, headers: corsHeaders });
+          data.pendentes.splice(idx, 1);
+          await saveFile(GITHUB_MATRIZ, data, sha, `matriz: sinalizacao cancelada - ${loja.nome} - ${body.itemId}`);
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH action:"resolverMatrizPendente" + id + status → admin marca um pendente como
+        // aprovado/rejeitado. Se for tipo "remocao" e aprovado, o item sai de fato do catálogo
+        // da loja. Se for tipo "novo" e aprovado, fica só marcado (o cadastro real é manual). Exige admin.
+        if (body.action === "resolverMatrizPendente" && body.id) {
+          const { content, sha } = await getFile(GITHUB_MATRIZ);
+          const data = (content && typeof content === "object") ? content : { lojas: [], pendentes: [] };
+          const idx = (data.pendentes || []).findIndex(p => p.id === body.id);
+          if (idx === -1) return new Response(JSON.stringify({ success: false, error: "Pendente não encontrado." }), { status: 404, headers: corsHeaders });
+          const pendente = data.pendentes[idx];
+          const novoStatus = ["aprovado", "rejeitado"].includes(body.status) ? body.status : "resolvido";
+          pendente.status = novoStatus;
+          pendente.resolvidoEm = new Date().toISOString();
+
+          if (pendente.tipo === "remocao" && novoStatus === "aprovado") {
+            const loja = (data.lojas || []).find(l => l.codigo === pendente.lojaCodigo);
+            if (loja && Array.isArray(loja.marcas[pendente.marca])) {
+              loja.marcas[pendente.marca] = loja.marcas[pendente.marca].filter(i => i.id !== pendente.itemId);
+            }
+          }
+
+          if ((pendente.tipo === "novo" || !pendente.tipo) && novoStatus === "aprovado") {
+            const loja = (data.lojas || []).find(l => l.codigo === pendente.lojaCodigo);
+            if (loja) {
+              if (!loja.marcas[pendente.marca]) loja.marcas[pendente.marca] = [];
+              const novoId = `${pendente.artigo}|${pendente.cor}`;
+              const jaExiste = loja.marcas[pendente.marca].some(i => i.id === novoId);
+              if (!jaExiste) {
+                loja.marcas[pendente.marca].push({
+                  id: novoId,
+                  artigo: pendente.artigo,
+                  descricao: pendente.descricao,
+                  cor: pendente.cor,
+                  estoqueAtual: Number(pendente.estoqueAtual) || 0,
+                  venda: Number(pendente.venda) || 0,
+                  preposto: null
+                });
+              }
+            }
+          }
+
+          await saveFile(GITHUB_MATRIZ, data, sha, `matriz: pendente resolvido — ${body.id}`);
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH action:"cadastrarMatrizItem" + lojaCodigo + marca + artigo + cor (+ descricao,
+        // estoqueAtual, venda, pendenteId) → admin cadastra na loja um produto escolhido na base
+        // de produtos. Com pendenteId, o aviso "novo produto" daquela loja fica resolvido junto —
+        // e o que entra é o produto da base, não o que a loja digitou. Exige admin.
+        if (body.action === "cadastrarMatrizItem" && body.lojaCodigo && body.marca && body.artigo && body.cor) {
+          const { content, sha } = await getFile(GITHUB_MATRIZ);
+          const data = (content && typeof content === "object") ? content : { lojas: [], pendentes: [] };
+          const loja = (data.lojas || []).find(l => String(l.codigo) === String(body.lojaCodigo));
+          if (!loja) return new Response(JSON.stringify({ success: false, error: "Loja não encontrada." }), { status: 404, headers: corsHeaders });
+          const marca = String(body.marca);
+          const artigo = String(body.artigo).trim();
+          const cor = String(body.cor).trim();
+          loja.marcas = loja.marcas || {};
+          if (!Array.isArray(loja.marcas[marca])) loja.marcas[marca] = [];
+          const id = `${artigo}|${cor}`;
+          // O mesmo produto em outra lista da loja também conta como já cadastrado.
+          const duplicado = Object.values(loja.marcas).some(lista => Array.isArray(lista) && lista.some(i => i.id === id));
+          if (!duplicado) {
+            loja.marcas[marca].push({
+              id, artigo, cor,
+              descricao: String(body.descricao || "").trim() || artigo,
+              estoqueAtual: Math.max(0, Number(body.estoqueAtual) || 0),
+              venda: Math.max(0, Number(body.venda) || 0),
+              preposto: null
+            });
+          }
+          if (body.pendenteId) {
+            const pend = (data.pendentes || []).find(p => p.id === body.pendenteId);
+            if (pend && pend.status === "pendente") {
+              pend.status = "aprovado";
+              pend.resolvidoEm = new Date().toISOString();
+              pend.cadastradoComo = { marca, artigo, cor, descricao: String(body.descricao || "").trim() };
+            }
+          }
+          await saveFile(GITHUB_MATRIZ, data, sha,
+            `matriz: cadastro pela base — ${loja.nome} — ${artigo}/${cor}${duplicado ? " (já existia)" : ""}`);
+          return new Response(JSON.stringify({ success: true, duplicado }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH action:"deleteMatrizItens" + lojaCodigo + marca + itemIds:[...] → admin remove um ou
+        // mais itens do catálogo de uma loja diretamente (exclusão manual, sem passar por pendente).
+        if (body.action === "deleteMatrizItens" && body.lojaCodigo && body.marca && Array.isArray(body.itemIds) && body.itemIds.length) {
+          const { content, sha } = await getFile(GITHUB_MATRIZ);
+          const data = (content && typeof content === "object") ? content : { lojas: [], pendentes: [] };
+          const loja = (data.lojas || []).find(l => String(l.codigo) === String(body.lojaCodigo));
+          if (!loja) return new Response(JSON.stringify({ success: false, error: "Loja não encontrada." }), { status: 404, headers: corsHeaders });
+          if (!Array.isArray(loja.marcas[body.marca])) return new Response(JSON.stringify({ success: false, error: "Marca não encontrada." }), { status: 404, headers: corsHeaders });
+          const idsSet = new Set(body.itemIds.map(String));
+          const antes = loja.marcas[body.marca].length;
+          loja.marcas[body.marca] = loja.marcas[body.marca].filter(i => !idsSet.has(String(i.id)));
+          const removidos = antes - loja.marcas[body.marca].length;
+          await saveFile(GITHUB_MATRIZ, data, sha, `matriz: exclusão manual — ${loja.nome} — ${removidos} item(ns)`);
+          return new Response(JSON.stringify({ success: true, removidos }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH action:"uploadMatrizImagem" + nomeArquivo + base64 → admin envia a foto de um produto
+        // sem imagem. Salva no repositório de imagens, na pasta imagens_olympikus, com o nome padrão
+        // ARTIGO_COR.jpg (mesma convenção usada pelas imagens já existentes). Usa a Git Data API
+        // (mesmo mecanismo confiável do saveFile) em vez da Contents API simples.
+        if (body.action === "uploadMatrizImagem" && body.nomeArquivo && body.base64) {
+          const nome = String(body.nomeArquivo);
+          const owner = env.GITHUB_OWNER;
+          const branch = env.GITHUB_BRANCH || "main";
+          const blobSha = await gitCreateBlobFromBase64(owner, GITHUB_IMG_REPO, body.base64);
+          await gitCommitBlob(owner, GITHUB_IMG_REPO, branch, `imagens_olympikus/${nome}`, blobSha, `matriz: upload imagem — ${nome}`);
+          return new Response(JSON.stringify({ success: true, arquivo: nome }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH action:"limparHistoricoMatriz" → admin apaga permanentemente as pendências já
+        // resolvidas (aprovadas/rejeitadas), mantendo só as que ainda estão em aberto.
+        if (body.action === "limparHistoricoMatriz") {
+          const { content, sha } = await getFile(GITHUB_MATRIZ);
+          const data = (content && typeof content === "object") ? content : { lojas: [], pendentes: [] };
+          const antes = (data.pendentes || []).length;
+          data.pendentes = (data.pendentes || []).filter(p => p.status === "pendente");
+          const removidos = antes - data.pendentes.length;
+          await saveFile(GITHUB_MATRIZ, data, sha, `matriz: histórico de pendências limpo (${removidos} removida(s))`);
+          return new Response(JSON.stringify({ success: true, removidos }), { status: 200, headers: corsHeaders });
+        }
+
+        // ── TRADE SQUASH: diagnóstico do login ────────────────────────────
+        // Rode uma vez após o deploy, para provar que o login funciona sem
+        // navegador antes de disparar o lote inteiro.
+        if (body.action === "tsDiagnostico") {
+          const tenant = TS_TENANTS[String(body.marca || "oly")] || TS_TENANTS.oly;
+          globalThis.__TS_ULTIMO_FORM = null;
+          try {
+            const s = await tsSessao(tenant, true);
+            const amostra = await tsBuscar(s, String(body.artigo || ""), String(body.cor || ""));
+            return new Response(JSON.stringify({
+              success: true,
+              tenant,
+              formulario: globalThis.__TS_ULTIMO_FORM,
+              cookies: s.cookie.split(";").length,
+              amostraEncontrada: amostra.length,
+              primeiroSku: amostra[0] ? amostra[0].sku : null
+            }), { status: 200, headers: corsHeaders });
+          } catch (e) {
+            // Devolve o que foi detectado no formulário mesmo quando falha —
+            // é isso que diz SE os campos foram achados e com quais nomes.
+            return new Response(JSON.stringify({
+              success: false,
+              tenant,
+              error: String((e && e.message) || e),
+              formulario: globalThis.__TS_ULTIMO_FORM
+            }), { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // ── TRADE SQUASH: ficha técnica de um produto ─────────────────────
+        // Diagnóstico: mostra o que dá para ler na página do produto
+        // (composição, origem, peso, tecnologias). Com "textos:true" devolve
+        // também as primeiras linhas da página, para ajustar os rótulos.
+        if (body.action === "tsFicha") {
+          const marcaKey = String(body.marca || "oly").toLowerCase();
+          const tenant = TS_TENANTS[marcaKey];
+          if (!tenant) {
+            return new Response(JSON.stringify({ success: false, error: "Marca inválida." }),
+              { status: 400, headers: corsHeaders });
+          }
+          const artigo = String(body.artigo || "").trim();
+          const cor    = String(body.cor || "").trim();
+          try {
+            const sessao = await tsSessao(tenant, !!body.relogar);
+            const achados = await tsBuscar(sessao, artigo, cor);
+            if (!achados.length) {
+              return new Response(JSON.stringify({
+                success: false, tenant, artigo, cor,
+                error: "Nenhum SKU casou com artigo + cor."
+              }), { status: 200, headers: corsHeaders });
+            }
+            const redirect = achados[0].redirect || "";
+            if (!redirect) {
+              return new Response(JSON.stringify({
+                success: false, tenant, artigo, cor, sku: achados[0].sku,
+                error: "SKU sem link de detalhe."
+              }), { status: 200, headers: corsHeaders });
+            }
+            const res = await fetch(TS_BASE + redirect, {
+              headers: {
+                "User-Agent": TS_UA_HEADER,
+                Accept: "text/html,*/*",
+                Referer: sessao.showcase,
+                Cookie: sessao.cookie
+              }
+            });
+            const html = await res.text();
+            const lida = tsFichaDoHtml(html);
+            return new Response(JSON.stringify({
+              success: res.ok,
+              tenant, artigo, cor,
+              sku: achados[0].sku,
+              url: TS_BASE + redirect,
+              status: res.status,
+              tamanhoHtml: html.length,
+              ficha: lida.ficha,
+              atributos: lida.atributos,
+              textos: body.textos ? lida.textos.slice(0, 200) : undefined
+            }), { status: 200, headers: corsHeaders });
+          } catch (e) {
+            return new Response(JSON.stringify({
+              success: false, tenant, artigo, cor,
+              error: String((e && e.message) || e)
+            }), { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // ── TRADE SQUASH: ficha técnica em lote ───────────────────────────
+        // Espera: { action:"tsFichas", marca:"oly"|"ua",
+        //           itens:[{artigo, cor}] }  — até 8 por chamada, como as
+        // imagens: cada item custa subrequisições e o plano tem teto.
+        // Grava em data/fichas.json, chave "ARTIGO|COR".
+        if (body.action === "tsFichas" && Array.isArray(body.itens)) {
+          const TS_MAX_FICHAS = 8;
+          // aceita {artigo} ou {artigo, cor}: a cor é ignorada
+          const soArtigos = [];
+          const vistosArt = new Set();
+          for (const it of body.itens) {
+            const a = String((it && it.artigo) || "").trim();
+            if (!a || vistosArt.has(a.toUpperCase())) continue;
+            vistosArt.add(a.toUpperCase());
+            soArtigos.push({ artigo: a });
+          }
+          const marcaKey = String(body.marca || "oly").toLowerCase();
+          const tenant = TS_TENANTS[marcaKey];
+          if (!tenant) {
+            return new Response(JSON.stringify({ success: false, error: "Marca inválida." }),
+              { status: 400, headers: corsHeaders });
+          }
+          const itens = soArtigos.slice(0, TS_MAX_FICHAS);
+
+          let sessao;
+          try {
+            sessao = await tsSessao(tenant, !!body.relogar);
+          } catch (e) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: "Falha no login do Trade Squash: " + String((e && e.message) || e)
+            }), { status: 200, headers: corsHeaders });
+          }
+
+          const { content, sha } = await getFile(GITHUB_FICHAS);
+          const fichas = (content && typeof content === "object" && !Array.isArray(content))
+            ? content : {};
+          const resultados = [];
+          let gravou = 0;
+
+          for (const it of itens) {
+            const artigo = String((it && it.artigo) || "").trim();
+            if (!artigo) {
+              resultados.push({ artigo, status: "erro", motivo: "Artigo vazio" });
+              continue;
+            }
+            try {
+              // sem cor: a primeira cor do artigo já traz a ficha inteira
+              const achados = await tsBuscar(sessao, artigo, "");
+              if (!achados.length) {
+                resultados.push({ artigo, status: "nao_encontrado",
+                                  motivo: "Artigo não encontrado no catálogo" });
+                continue;
+              }
+              const redirect = achados[0].redirect || "";
+              if (!redirect) {
+                resultados.push({ artigo, status: "nao_encontrado",
+                                  motivo: "SKU sem link de detalhe" });
+                continue;
+              }
+              const res = await fetch(TS_BASE + redirect, {
+                headers: {
+                  "User-Agent": TS_UA_HEADER,
+                  Accept: "text/html,*/*",
+                  Referer: sessao.showcase,
+                  Cookie: sessao.cookie
+                }
+              });
+              if (res.status === 401 || res.status === 403) throw new Error("SESSAO_EXPIRADA");
+              if (!res.ok) {
+                resultados.push({ artigo, status: "erro", motivo: `Página HTTP ${res.status}` });
+                continue;
+              }
+              const { ficha } = tsFichaDoHtml(await res.text());
+              // Sem nenhum campo util, nao adianta gravar uma casca vazia
+              const temAlgo = ficha.composicao || ficha.origem || ficha.descricao ||
+                              ficha.tecnologias.length || ficha.grade;
+              if (!temAlgo) {
+                resultados.push({ artigo, status: "nao_encontrado",
+                                  motivo: "Página sem atributos reconhecidos" });
+                continue;
+              }
+              ficha.marca = marcaKey;
+              ficha.sku = achados[0].sku || "";
+              ficha.lidoEm = new Date().toISOString();
+              const chave = tsChaveFicha(artigo);
+              fichas[chave] = ficha;
+              // limpa as fichas antigas, que eram gravadas por artigo+cor
+              for (const k of Object.keys(fichas)) {
+                if (k !== chave && k.startsWith(chave + "|")) delete fichas[k];
+              }
+              gravou++;
+              resultados.push({ artigo, status: "ok",
+                                composicao: ficha.composicao, origem: ficha.origem });
+            } catch (e) {
+              const msg = String((e && e.message) || e);
+              resultados.push({ artigo, status: "erro", motivo: msg });
+              if (msg === "SESSAO_EXPIRADA") break;
+            }
+          }
+
+          if (gravou) {
+            await saveFile(GITHUB_FICHAS, fichas, sha,
+                           `fichas: ${gravou} ficha(s) do Trade Squash`);
+          }
+          return new Response(JSON.stringify({ success: true, gravou, resultados }),
+            { status: 200, headers: corsHeaders });
+        }
+
+        // ── CATÁLOGO UA: diagnóstico de leitura ───────────────────────────
+        // Mostra em que coleção o produto está e o que dá para ler na página.
+        // Com "textos:true" devolve as linhas da página, para eu ajustar os
+        // rótulos antes de ligar a busca em lote.
+        if (body.action === "uacFicha") {
+          const artigo = String(body.artigo || "").trim();
+          const cor    = String(body.cor || "").trim();
+          try {
+            const sessao = await uacSessao(!!body.relogar);
+
+            // Espelho de uma página qualquer do catálogo, já logado: é assim
+            // que eu descubro como a lista e o produto são montados sem
+            // precisar de um deploy a cada tentativa.
+            if (body.caminho) {
+              const alvo = String(body.caminho).startsWith("http")
+                ? String(body.caminho)
+                : UAC_BASE + (String(body.caminho).startsWith("/") ? body.caminho : "/" + body.caminho);
+              const r = await fetch(alvo, {
+                headers: {
+                  "User-Agent": TS_UA_HEADER,
+                  Accept: body.json ? "application/json, text/plain, */*" : "text/html,*/*",
+                  "Accept-Language": "pt-BR,pt;q=0.9",
+                  "X-Requested-With": body.json ? "XMLHttpRequest" : undefined,
+                  Cookie: sessao.cookie,
+                  Referer: UAC_LISTA
+                },
+                redirect: "follow"
+              });
+              const corpo = await r.text();
+              const links = [...new Set([...corpo.matchAll(/href="([^"]+)"/gi)]
+                .map(m => m[1]).filter(h => /colecoes|produto|catalog|api/i.test(h)))].slice(0, 40);
+              const scripts = [...new Set([...corpo.matchAll(/(?:fetch|axios\.get|url)\s*[:(]\s*["'`]([^"'`]+)["'`]/gi)]
+                .map(m => m[1]).filter(u => /\//.test(u)))].slice(0, 40);
+              // procura no HTML cru: é onde os dados ficam quando a página
+              // monta tudo em JavaScript
+              let achados;
+              if (body.procurar) {
+                achados = [];
+                const volta = Number(body.antes || 120);
+                const adiante = Number(body.depois || 600);
+                try {
+                  const re = new RegExp(body.procurar, body.flags || "gi");
+                  let m, n = 0;
+                  while ((m = re.exec(corpo)) !== null && n < Number(body.max || 6)) {
+                    achados.push(corpo.slice(Math.max(0, m.index - volta), m.index + adiante));
+                    n++;
+                    if (m.index === re.lastIndex) re.lastIndex++;
+                  }
+                } catch (e) { achados = ["regex inválida: " + String(e && e.message)]; }
+              }
+              return new Response(JSON.stringify({
+                success: r.ok, url: r.url, status: r.status, tamanho: corpo.length,
+                links, scripts, achados,
+                textos: body.semTextos ? undefined : tsTextos(corpo).slice(0, 120),
+                trecho: body.trecho
+                  ? corpo.slice(Number(body.de || 0), Number(body.de || 0) + Number(body.quanto || 4000))
+                  : undefined
+              }), { status: 200, headers: corsHeaders });
+            }
+
+            if (body.soLogin) {
+              const indice = body.indice ? await uacIndice(sessao, !!body.relogar) : null;
+              return new Response(JSON.stringify({
+                success: true, colecoes: sessao.colecoes, statusPost: sessao.statusPost,
+                cookies: sessao.cookie.split(";").length,
+                artigosNoIndice: indice ? Object.keys(indice).length : undefined,
+                amostra: indice ? Object.entries(indice).slice(0, 5) : undefined
+              }), { status: 200, headers: corsHeaders });
+            }
+            const { url, html, slug, tentativas } = await uacPaginaProduto(sessao, artigo, cor);
+            if (!html) {
+              return new Response(JSON.stringify({
+                success: false, artigo, cor, colecoes: sessao.colecoes, tentativas,
+                error: "Produto não encontrado em nenhuma coleção."
+              }), { status: 200, headers: corsHeaders });
+            }
+            const lida = uacFichaDoHtml(html, artigo);
+            return new Response(JSON.stringify({
+              success: true, artigo, cor, colecao: slug, url,
+              tamanhoHtml: html.length,
+              ficha: lida.ficha,
+              textos: body.textos ? lida.textos.slice(0, 250) : undefined
+            }), { status: 200, headers: corsHeaders });
+          } catch (e) {
+            return new Response(JSON.stringify({
+              success: false, artigo, cor, error: String((e && e.message) || e)
+            }), { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // ── CATÁLOGO UA: ficha em lote ────────────────────────────────────
+        // Espera: { action:"uacFichas", itens:[{artigo, cor}] } — a cor serve
+        // só para montar o endereço da página; a ficha vale para o artigo.
+        if (body.action === "uacFichas" && Array.isArray(body.itens)) {
+          const UAC_MAX = 8;
+          const itens = body.itens.slice(0, UAC_MAX);
+          let sessao;
+          try {
+            sessao = await uacSessao(!!body.relogar);
+          } catch (e) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: "Falha no login do catálogo UA: " + String((e && e.message) || e)
+            }), { status: 200, headers: corsHeaders });
+          }
+
+          const { content, sha } = await getFile(GITHUB_FICHAS);
+          const fichas = (content && typeof content === "object" && !Array.isArray(content))
+            ? content : {};
+          const resultados = [];
+          let gravou = 0;
+
+          for (const it of itens) {
+            const artigo = String((it && it.artigo) || "").trim();
+            const cor    = String((it && it.cor) || "").trim();
+            if (!artigo) {
+              resultados.push({ artigo, status: "erro", motivo: "Artigo vazio" });
+              continue;
+            }
+            try {
+              const { html, slug, secao } = await uacPaginaProduto(sessao, artigo, cor);
+              if (!html) {
+                // Fora das coleções de hoje: o Trade Squash guarda as antigas,
+                // então vale tentar por lá antes de desistir do artigo.
+                const daReserva = await tsFichaDeArtigo("under-armour", artigo);
+                if (daReserva) {
+                  const chaveR = tsChaveFicha(artigo);
+                  fichas[chaveR] = daReserva;
+                  for (const k of Object.keys(fichas)) {
+                    if (k !== chaveR && k.startsWith(chaveR + "|")) delete fichas[k];
+                  }
+                  gravou++;
+                  resultados.push({ artigo, status: "ok", colecao: "trade-squash",
+                                    composicao: daReserva.composicao, origem: daReserva.origem,
+                                    tecnologias: (daReserva.tecnologias || []).length });
+                  continue;
+                }
+                resultados.push({ artigo, status: "nao_encontrado",
+                                  motivo: "Fora das coleções de hoje e sem ficha no Trade Squash" });
+                continue;
+              }
+              const { ficha } = uacFichaDoHtml(html, artigo);
+              if (!ficha.composicao && !ficha.origem && !ficha.descricao && !ficha.tecnologias.length) {
+                resultados.push({ artigo, status: "nao_encontrado",
+                                  motivo: "Página sem os campos da ficha" });
+                continue;
+              }
+              ficha.marca = "ua";
+              ficha.colecao = slug;
+              ficha.secao = secao;
+              ficha.lidoEm = new Date().toISOString();
+              const chave = tsChaveFicha(artigo);
+              fichas[chave] = ficha;
+              for (const k of Object.keys(fichas)) {
+                if (k !== chave && k.startsWith(chave + "|")) delete fichas[k];
+              }
+              gravou++;
+              resultados.push({ artigo, status: "ok", colecao: slug,
+                                composicao: ficha.composicao, origem: ficha.origem,
+                                tecnologias: ficha.tecnologias.length });
+            } catch (e) {
+              resultados.push({ artigo, status: "erro", motivo: String((e && e.message) || e) });
+            }
+          }
+
+          if (gravou) {
+            await saveFile(GITHUB_FICHAS, fichas, sha,
+                           `fichas: ${gravou} ficha(s) do catálogo UA`);
+          }
+          return new Response(JSON.stringify({ success: true, gravou, resultados }),
+            { status: 200, headers: corsHeaders });
+        }
+
+        // ── TRADE SQUASH: espelho cru da tela de login ────────────────────
+        // Só para depurar: mostra os campos que o site está renderizando hoje,
+        // sem tentar logar. Nenhuma credencial é enviada.
+        if (body.action === "tsInspecionarLogin") {
+          try {
+            const r = await fetch(`${TS_BASE}/session/new`, {
+              headers: { "User-Agent": TS_UA_HEADER, "Accept-Language": "pt-BR,pt;q=0.9" }
+            });
+            const html = await r.text();
+            const f = tsFormLogin(html);
+            if (!f) {
+              return new Response(JSON.stringify({
+                success: false, status: r.status, tamanhoHtml: html.length,
+                error: "Nenhum <form> com campo de senha na página."
+              }), { status: 200, headers: corsHeaders });
+            }
+            const campos = [...f.corpo.matchAll(/<input\b[^>]*>/gi)].map(m => ({
+              name: tsAttr(m[0], "name"),
+              type: (tsAttr(m[0], "type") || "text").toLowerCase(),
+              value: tsAttr(m[0], "type").toLowerCase() === "hidden"
+                ? (tsAttr(m[0], "value") ? "(preenchido)" : "(vazio)")
+                : tsAttr(m[0], "value")
+            })).filter(c => c.name);
+            return new Response(JSON.stringify({
+              success: true,
+              status: r.status,
+              action: tsAttr(f.tag, "action"),
+              method: tsAttr(f.tag, "method"),
+              campos
+            }), { status: 200, headers: corsHeaders });
+          } catch (e) {
+            return new Response(JSON.stringify({
+              success: false, error: String((e && e.message) || e)
+            }), { status: 200, headers: corsHeaders });
+          }
+        }
+
+        // ── TRADE SQUASH: busca e sobe as imagens de um LOTE ──────────────
+        // Espera: { action:"tsBuscarImagens", marca:"oly"|"ua",
+        //           itens:[{artigo, cor, descricao}] }
+        // Devolve: { success, resultados:[{artigo, cor, status, nome, motivo}] }
+        //   status: "ok" | "duplicada" | "nao_encontrado" | "erro"
+        //
+        // O admin agrupa os itens por ARTIGO ao montar o lote — assim todas as
+        // cores de um artigo chegam juntas e a deduplicação funciona.
+        // Cada item custa ~5 subrequisições; o teto do plano free é 50.
+        if (body.action === "tsBuscarImagens" && Array.isArray(body.itens)) {
+          const TS_MAX_ITENS_LOTE = 8;
+          const marcaKey = String(body.marca || "oly").toLowerCase();
+          const tenant = TS_TENANTS[marcaKey];
+          if (!tenant) {
+            return new Response(JSON.stringify({ success: false, error: "Marca inválida." }),
+              { status: 400, headers: corsHeaders });
+          }
+          const itens = body.itens.slice(0, TS_MAX_ITENS_LOTE);
+
+          let sessao;
+          try {
+            sessao = await tsSessao(tenant, !!body.relogar);
+          } catch (e) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: "Falha no login do Trade Squash: " + String((e && e.message) || e)
+            }), { status: 200, headers: corsHeaders });
+          }
+
+          const owner  = env.GITHUB_OWNER;
+          const branch = env.GITHUB_BRANCH || "main";
+          const vistosUrl  = new Map(); // artigo → Map(url → cor)
+          const vistosHash = new Map(); // artigo → Map(hash → cor)
+          const resultados = [];
+
+          for (const it of itens) {
+            const artigo = String((it && it.artigo) || "").trim();
+            const cor    = String((it && it.cor) || "").trim();
+            if (!artigo || !cor) {
+              resultados.push({ artigo, cor, status: "erro", motivo: "Artigo ou cor vazio" });
+              continue;
+            }
+            try {
+              const matches = await tsBuscar(sessao, artigo, cor);
+              if (!matches.length) {
+                resultados.push({ artigo, cor, status: "nao_encontrado",
+                                  motivo: "Nenhum SKU casou com artigo + cor" });
+                continue;
+              }
+              const redirect = matches[0].redirect || "";
+              if (!redirect) {
+                resultados.push({ artigo, cor, status: "nao_encontrado",
+                                  motivo: "SKU sem link de detalhe" });
+                continue;
+              }
+              const urlImg = await tsUrlImagem(sessao, redirect, artigo);
+              if (!urlImg) {
+                resultados.push({ artigo, cor, status: "nao_encontrado",
+                                  motivo: "Nenhuma imagem do CDN na página do produto" });
+                continue;
+              }
+
+              // Duplicata por URL — a segunda cor não chega a ser baixada
+              if (!vistosUrl.has(artigo)) vistosUrl.set(artigo, new Map());
+              const porUrl = vistosUrl.get(artigo);
+              if (porUrl.has(urlImg)) {
+                resultados.push({ artigo, cor, status: "duplicada",
+                                  motivo: `Mesma imagem da cor ${porUrl.get(urlImg)}` });
+                continue;
+              }
+
+              const imgRes = await fetch(urlImg, {
+                headers: { "User-Agent": TS_UA_HEADER, Referer: sessao.showcase }
+              });
+              if (!imgRes.ok) {
+                resultados.push({ artigo, cor, status: "erro", motivo: `Download HTTP ${imgRes.status}` });
+                continue;
+              }
+              const tipo = imgRes.headers.get("Content-Type") || "";
+              if (!/image/i.test(tipo)) {
+                resultados.push({ artigo, cor, status: "erro", motivo: `Não é imagem (${tipo})` });
+                continue;
+              }
+              const buf = await imgRes.arrayBuffer();
+              if (buf.byteLength < 2048) {
+                resultados.push({ artigo, cor, status: "erro", motivo: "Imagem menor que 2 KB (suspeita)" });
+                continue;
+              }
+
+              // Duplicata por conteúdo
+              const hash = await tsHash(buf);
+              if (!vistosHash.has(artigo)) vistosHash.set(artigo, new Map());
+              const porHash = vistosHash.get(artigo);
+              if (porHash.has(hash)) {
+                resultados.push({ artigo, cor, status: "duplicada",
+                                  motivo: `Conteúdo idêntico ao da cor ${porHash.get(hash)}` });
+                continue;
+              }
+
+              // Sobe para Catalogo/ com o nome que o painel espera.
+              // Usa a Git Data API (mesma do saveFile), sem limite prático de tamanho.
+              const nome = tsNomeArquivo(artigo, cor);
+              const blobSha = await gitCreateBlobFromBase64(owner, env.GITHUB_REPO, tsBase64(buf));
+              await gitCommitBlob(owner, env.GITHUB_REPO, branch, `Catalogo/${nome}`, blobSha,
+                                  `disponibilidades: imagem automática — ${nome}`);
+
+              porUrl.set(urlImg, cor);
+              porHash.set(hash, cor);
+              resultados.push({ artigo, cor, status: "ok", nome });
+
+            } catch (e) {
+              const msg = String((e && e.message) || e);
+              if (msg === "SESSAO_EXPIRADA") {
+                globalThis.__TS_SESSAO = null;
+                return new Response(JSON.stringify({
+                  success: false, sessaoExpirada: true,
+                  error: "Sessão do Trade Squash expirou. Repita o lote.",
+                  resultados
+                }), { status: 200, headers: corsHeaders });
+              }
+              resultados.push({ artigo, cor, status: "erro", motivo: msg });
+            }
+          }
+
+          // Atualiza o histórico de imagens de uma vez só (1 commit por lote)
+          const novas = {};
+          for (const r of resultados) {
+            if (r.status === "ok") novas[`${r.artigo}|${r.cor}`] = r.nome.replace(/\.jpg$/i, "");
+          }
+          if (Object.keys(novas).length) {
+            try {
+              const { content, sha } = await getFile(GITHUB_IMG_HIST);
+              await saveFile(GITHUB_IMG_HIST, { ...(content || {}), ...novas }, sha,
+                             "historico imagens (busca automatica)");
+            } catch (_) { /* não invalida as imagens já enviadas */ }
+          }
+
+          return new Response(JSON.stringify({ success: true, resultados }),
+            { status: 200, headers: corsHeaders });
+        }
+
+        return new Response(JSON.stringify({ success: false, error: "PATCH: action inválida." }), { status: 400, headers: corsHeaders });
+      }
+
+      return new Response(JSON.stringify({ error: "Not found" }), { status: 404, headers: corsHeaders });
+
+    } catch (error) {
+      return new Response(JSON.stringify({ success: false, error: error.message || "Erro interno" }), { status: 500, headers: corsHeaders });
+    }
+  }
+};

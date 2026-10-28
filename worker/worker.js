@@ -1653,6 +1653,99 @@ export default {
         // pela tela de admin — nenhum dos dois passa por commit manual, e por
         // isso não esperam o GitHub Pages reconstruir o site inteiro.
 
+        // chatDetalhada → TESTE do assistente da Detalhada (apps-oly/assistente).
+        // A IA da Cloudflare (binding AI) só traduz a pergunta do vendedor numa
+        // consulta em JSON; quem filtra e soma os pares é a página, em cima da
+        // base que ela já baixa. Assim nenhum dado de cliente vai para a IA, e
+        // o worker não precisa abrir os 4 MB da base (estoura o limite de CPU).
+        // Ainda confia no vendedor que a página diz ser: a trava de verdade
+        // fica para a versão final, junto com o login novo.
+        if (body.action === "chatDetalhada") {
+          const pergunta = String(body.pergunta || "").trim().slice(0, 500);
+          if (!pergunta) {
+            return new Response(JSON.stringify({ ok: false, erro: "Pergunta vazia." }), { status: 400, headers: corsHeaders });
+          }
+          if (!env.AI) {
+            return new Response(JSON.stringify({ ok: false, erro: "Falta ligar a IA no worker (binding AI)." }), { status: 200, headers: corsHeaders });
+          }
+          const hoje = /^\d{4}-\d{2}-\d{2}$/.test(String(body.hoje || "")) ? body.hoje : new Date().toISOString().slice(0, 10);
+          const linhas = Array.isArray(body.linhas) ? body.linhas.slice(0, 40).map(String) : [];
+          const vendedores = Array.isArray(body.vendedores) ? body.vendedores.slice(0, 20).map(String) : [];
+          // Histórico curto: deixa o vendedor dizer "e em setembro?" depois
+          // de uma pergunta. Só as consultas anteriores, nunca as respostas.
+          const anteriores = (Array.isArray(body.anteriores) ? body.anteriores : []).slice(-3)
+            .map(a => ({ p: String(a?.p || "").slice(0, 300), c: a?.c && typeof a.c === "object" ? a.c : null }))
+            .filter(a => a.p && a.c);
+
+          const sistema = [
+            "Você traduz perguntas de vendedores de calçados (Olympikus e Under Armour) em uma consulta JSON sobre a carteira de pedidos.",
+            `Hoje é ${hoje}.`,
+            "Responda SOMENTE com um objeto JSON, sem texto antes ou depois, neste formato:",
+            '{"tipo":"carteira|faturado|pedidos|compraram|nao_compraram|catalogo|nao_entendi","cliente":null,"produto":null,"cor":null,"marca":null,"linha":null,"vendedor":null,"de":null,"ate":null,"agrupar":null,"limite":null,"formato":null,"imagens":null,"duvida":null}',
+            "Os vendedores escrevem rápido, pelo celular: espere erros de digitação, de gramática e falta de acento. Entenda a intenção. Copie nomes de cliente e produto como vieram, sem corrigir (quem confere o nome é o sistema).",
+            "Se a mensagem trouxer '(complemento: ...)', é a resposta do vendedor a uma pergunta sua: junte com a pergunta antes dela.",
+            "Significado de tipo:",
+            "- carteira: pares pedidos que AINDA NÃO faturaram (saldo a faturar, em aberto, pendente). Período = mês previsto de faturamento.",
+            "- faturado: pares que JÁ faturaram (notas emitidas, entregues). Período = data do faturamento.",
+            "- pedidos: tudo o que foi pedido, faturado mais carteira (quanto comprou, volume total).",
+            "- compraram: lista de clientes que compraram um produto.",
+            "- nao_compraram: lista de clientes que NÃO compraram um produto (oportunidade de venda).",
+            "- catalogo: o vendedor quer o ARQUIVO com os pedidos/carteira de um cliente para mandar ou imprimir (catálogo, relatório, pedidos do cliente em PDF, Excel ou planilha, com ou sem foto). Pode pedir de muitos jeitos: 'manda', 'gera', 'quero', 'emite', 'tira', 'baixa'. Preencha cliente, formato e imagens.",
+            "- nao_entendi: a pergunta não é sobre pedidos, carteira ou faturamento. Explique em 'duvida', em português, numa frase.",
+            "Campos (null quando a pergunta não disser):",
+            "- cliente: nome ou código do cliente, como o vendedor escreveu.",
+            "- produto: nome do modelo ou código de referência (ex.: RUSH, CORRE 3, 43667419).",
+            "- cor: cor do produto, se citada.",
+            '- marca: "OLY" para Olympikus, "UA" para Under Armour.',
+            linhas.length ? `- linha: uma destas, se a pergunta citar a linha/categoria: ${linhas.join(", ")}.` : "- linha: categoria do produto, se citada.",
+            vendedores.length ? `- vendedor: um destes, se a pergunta citar o vendedor: ${vendedores.join(", ")}.` : "- vendedor: nome do vendedor, se citado.",
+            "- de / ate: datas AAAA-MM-DD do período. 'outubro' = mês inteiro do ano corrente; 'este mês' = mês de hoje; 'próximo mês' = mês seguinte; 'este ano' = 01/01 até 31/12. Sem período citado, deixe null.",
+            '- agrupar: "cliente", "produto", "produto_cor" ou "mes". "por mês" = mes; "por cliente" = cliente; "quais produtos/modelos" = produto; "por cor" = produto_cor.',
+            "- limite: número, quando pedir 'top 10', 'os 5 maiores' etc.",
+            '- formato: "xlsx" quando pedir planilha, Excel ou xlsx; "pdf" quando pedir PDF ou relatório para imprimir/enviar. Senão null.',
+            "- imagens: true quando pedir com foto/imagem; false quando pedir sem foto/imagem; senão null.",
+            "Exemplos:",
+            'Pergunta: quais clientes não compraram o rush? → {"tipo":"nao_compraram","produto":"RUSH"}',
+            'Pergunta: carteira da luar sport → {"tipo":"carteira","cliente":"LUAR SPORT"}',
+            'Pergunta: quanto o armazem paraiba faturou em setembro → {"tipo":"faturado","cliente":"ARMAZEM PARAIBA","de":"AAAA-09-01","ate":"AAAA-09-30"}',
+            'Pergunta: top 10 clientes em carteira para novembro → {"tipo":"carteira","de":"AAAA-11-01","ate":"AAAA-11-30","agrupar":"cliente","limite":10}',
+            'Pergunta: quantos pares ainda faltam faturar por mês → {"tipo":"carteira","agrupar":"mes"}',
+            'Pergunta: me manda em excel a carteira do pe quente → {"tipo":"catalogo","cliente":"PE QUENTE","formato":"xlsx"}',
+            'Pergunta: gera o pdf dos pedidos da luar → {"tipo":"catalogo","cliente":"LUAR","formato":"pdf"}',
+            'Pergunta: quero o catalogo do armazem com foto → {"tipo":"catalogo","cliente":"ARMAZEM","formato":"xlsx","imagens":true}',
+            'Pergunta: tira o relatorio da toc toc → {"tipo":"catalogo","cliente":"TOC TOC"}',
+            'Pergunta: planilha sem imagem da destake → {"tipo":"catalogo","cliente":"DESTAKE","formato":"xlsx","imagens":false}',
+            'Pergunta: top 10 clientes em carteira em excel → {"tipo":"carteira","agrupar":"cliente","limite":10,"formato":"xlsx"}',
+            'Pergunta: qeum nao comprou → {"tipo":"nao_compraram"}',
+            'Pergunta: qeum nao comprou (complemento: o venus 3) → {"tipo":"nao_compraram","produto":"VENUS 3"}',
+            "(troque AAAA pelo ano certo a partir de hoje)"
+          ].join("\n");
+
+          const mensagens = [{ role: "system", content: sistema }];
+          for (const a of anteriores) {
+            mensagens.push({ role: "user", content: a.p });
+            mensagens.push({ role: "assistant", content: JSON.stringify(a.c) });
+          }
+          mensagens.push({ role: "user", content: pergunta });
+
+          // O primeiro é o melhor; o segundo é reserva se o primeiro sair do ar.
+          const MODELOS = ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/meta/llama-3.1-8b-instruct-fast"];
+          let ultimoErro = "";
+          for (const modelo of MODELOS) {
+            try {
+              const r = await env.AI.run(modelo, { messages: mensagens, max_tokens: 300, temperature: 0 });
+              const bruto = r && typeof r.response === "object" ? JSON.stringify(r.response) : String(r?.response || "");
+              const m = bruto.match(/\{[\s\S]*\}/);
+              if (!m) { ultimoErro = "a IA não devolveu JSON"; continue; }
+              const consulta = JSON.parse(m[0]);
+              return new Response(JSON.stringify({ ok: true, consulta, modelo }), { status: 200, headers: corsHeaders });
+            } catch (e) {
+              ultimoErro = String(e?.message || e);
+            }
+          }
+          return new Response(JSON.stringify({ ok: false, erro: "A IA não respondeu: " + ultimoErro }), { status: 200, headers: corsHeaders });
+        }
+
         // getDetalhadaInfo → só o resumo (alguns bytes). O app consulta isto a
         // cada abertura e só baixa a base inteira quando `gerado` mudou.
         if (body.action === "getDetalhadaInfo") {
