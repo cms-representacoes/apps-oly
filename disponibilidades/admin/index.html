@@ -1409,6 +1409,60 @@ function workerFetch(opts = {}){
   }
   return fetch(WORKER_URL, { ...opts, headers });
 }
+
+// ── MODO ROBÔ ──────────────────────────────────────────────────────────
+// A importação de todo dia é feita por um script que abre esta tela num Firefox
+// oculto (CMS_DISPO_IMPORTAR.py, em C:\SCRIPTS AUTONOMOS). Ele não tem onde
+// clicar, então o modo robô responde pelos dois únicos pontos em que a
+// importação pergunta algo — a configuração dos arquivos e o XLSX dos sem
+// imagem — com as mesmas respostas que se dá na mão.
+//
+// A diferença que não é só de atalho: na mão a importação SOMA à base que já
+// está lá, e por isso é preciso apagar tudo antes. O robô troca a base pela que
+// veio dos arquivos, de uma vez. O resultado é o mesmo, sem o intervalo em que
+// a vitrine fica vazia — e sem deixar o site sem produto se algo falhar no meio.
+//
+// ?robo=1 liga. Com ?ensaio=1 junto, faz a rodada inteira e para antes de
+// gravar: é assim que se confere uma mudança aqui sem mexer no que está no ar.
+const _roboQS    = new URLSearchParams(location.search);
+const MODO_ROBO   = _roboQS.get('robo') === '1';
+const MODO_ENSAIO = MODO_ROBO && _roboQS.get('ensaio') === '1';
+
+// O script lê isto para saber como a rodada terminou.
+window.ROBO = { estado:'ocioso', erro:'', resumo:null, ensaio:MODO_ENSAIO };
+
+function roboFim(estado, dados){
+  window.ROBO = { ...window.ROBO, estado, ...(dados || {}) };
+  console.log('[robo] ' + estado, window.ROBO.erro || window.ROBO.resumo || '');
+}
+
+// Números que o log do script mostra — e pelos quais dá para desconfiar de uma
+// rodada torta antes de ir olhar a vitrine.
+function roboResumo(listaFinal, prontos, aguardando, descartados){
+  const a = (typeof _analise !== 'undefined' && _analise) ? _analise : null;
+  return {
+    arquivos: a ? a.arquivos.map(x => ({ nome:x.nome, linhas:x.qtd })) : [],
+    lidos: a ? a.total : 0,
+    baseAntes: (typeof _jsonAtual !== 'undefined' && _jsonAtual ? _jsonAtual.length : 0),
+    baseDepois: listaFinal.length,
+    prontos, aguardandoImagem: aguardando, descartados,
+    buckets: a ? Object.keys(a.buckets).reduce((o,k) => (o[k] = a.buckets[k].length, o), {}) : {}
+  };
+}
+
+// Um erro solto no meio da rodada deixaria o script esperando até o tempo
+// acabar, sem saber de nada. Assim ele recebe a notícia na hora.
+if(MODO_ROBO){
+  window.addEventListener('error', e => {
+    if(window.ROBO.estado === 'rodando')
+      roboFim('erro', { erro: 'Erro de JS: ' + (e.message || '') });
+  });
+  window.addEventListener('unhandledrejection', e => {
+    if(window.ROBO.estado === 'rodando')
+      roboFim('erro', { erro: 'Falha nao tratada: ' +
+        ((e.reason && e.reason.message) || e.reason || '') });
+  });
+}
 // ── Sessão compartilhada do Portal (login único) ───────────────────────────
 function getPortalSession(){
   try{
@@ -2261,7 +2315,9 @@ async function loadData(){
         limpadosSemEstoque++;
       }
     }
-    if(limpadosSemEstoque > 0){
+    // No robô essa limpeza não grava: seria mais um save da base antiga
+    // correndo junto com o da importação. A troca de base já tira a flag.
+    if(limpadosSemEstoque > 0 && !MODO_ROBO){
       // Persiste a limpeza no GitHub em background
       workerFetch({
         method:'PATCH', headers:{'Content-Type':'application/json'},
@@ -2275,8 +2331,10 @@ async function loadData(){
     popularFiltrosSec();
     applyFilters();
     updateLastSyncLabel();
-    // Após renderizar, dispara check de imagens em background
-    verifyAllImages();
+    // Após renderizar, dispara check de imagens em background. O robô pula:
+    // são milhares de requisições disputando rede com a importação, que já
+    // verifica, uma a uma, as imagens dos produtos que está trazendo.
+    if(!MODO_ROBO) verifyAllImages();
   }catch(err){
     console.error(err);
     showToast('Erro ao carregar dados.', 'error');
@@ -3967,6 +4025,14 @@ const _anlGruposAbertos = new Set(); // chave = bucket+tipo
 
 function abrirAnalise(){
   if(!_analise){ return; }
+  // O robô não tem ninguém para conferir a tela. Não há o que marcar: os itens
+  // já nascem marcados em COMPLETO e PARCIAL, que é exatamente o que se marca
+  // na mão — crítico, sem preço e exclusivo nunca entram.
+  if(MODO_ROBO){
+    $('modalImportar').classList.add('hidden');
+    anlConfirmar();
+    return;
+  }
   // Fecha o modal de importar
   $('modalImportar').classList.add('hidden');
   $('modalAnalise').classList.remove('hidden');
@@ -4245,6 +4311,10 @@ async function anlConfirmar(){
     }
   }
   if(!selecionados.length){
+    // No robô isso é defeito, não escolha: arquivo vazio, baixado torto ou lido
+    // errado. Avisa em vez de deixar o script esperando até o tempo acabar.
+    if(MODO_ROBO) roboFim('erro', { erro:
+      'Nenhum produto classificado como completo ou parcial — arquivo vazio?' });
     showToast('Nenhum produto selecionado.', 'info');
     return;
   }
@@ -4253,8 +4323,10 @@ async function anlConfirmar(){
   const comImg = selecionados.filter(r => r.temImg);
   const semImg = selecionados.filter(r => !r.temImg);
 
-  // Se há sem imagem, pergunta sobre baixar o XLSX paralelo
-  if(semImg.length){
+  // Se há sem imagem, pergunta sobre baixar o XLSX paralelo. O robô segue sem
+  // baixar: esse arquivo serve a quem vai atrás das imagens na hora, e às 5h30
+  // não há ninguém para recebê-lo.
+  if(semImg.length && !MODO_ROBO){
     abrirConfirm(
       `${semImg.length} produto(s) sem imagem`,
       `Esses produtos serão importados marcados como "Aguardando imagem" — ficarão ocultos da vitrine até você subir as imagens.\n\nDeseja baixar um XLSX com a lista deles para facilitar o processo de busca das imagens?`,
@@ -4373,7 +4445,21 @@ async function anlExecutarSalvar(itens){
       const k = chaveTipo(r);
       return !novosMap.has(k);
     });
-    const listaFinal = [...filtrado, ...novosMap.values()];
+    // O robô TROCA a base: fica só o que veio nos arquivos de hoje — o mesmo
+    // resultado de apagar tudo antes de importar. Na mão segue somando.
+    const listaFinal = MODO_ROBO
+      ? [...novosMap.values()]
+      : [...filtrado, ...novosMap.values()];
+    const resumoRobo = MODO_ROBO
+      ? roboResumo(listaFinal, prontos, aguardando, filtrado.length) : null;
+
+    // Ensaio: fez a rodada inteira e para aqui, sem gravar.
+    if(MODO_ENSAIO){
+      roboFim('ok', { resumo: resumoRobo });
+      fecharAnalise();
+      fecharImportar();
+      return;
+    }
 
     const res = await workerFetch({
       method:'PATCH', headers:{'Content-Type':'application/json'},
@@ -4392,10 +4478,12 @@ async function anlExecutarSalvar(itens){
     let msg = `${prontos} pronto(s) na vitrine`;
     if(aguardando > 0) msg += ` · ${aguardando} aguardando imagem`;
     showToast(msg, 'success');
+    if(MODO_ROBO) roboFim('ok', { resumo: resumoRobo });
     fecharAnalise();
     fecharImportar();
   }catch(e){
     console.error(e);
+    if(MODO_ROBO) roboFim('erro', { erro: e.message || String(e) });
     showToast('Erro ao salvar: ' + (e.message || ''), 'error');
   }finally{
     btn.disabled = false;
@@ -4740,6 +4828,35 @@ function pedirConfigImportacao(arquivos){
       detec: detectarDoNome(f.name)
     }));
 
+    // O robô não tem onde clicar: responde o que a tela perguntaria. A marca e
+    // a categoria já saem do nome do arquivo (\"PRONTA_ENTREGA\", \"2_QUINZ_*\"),
+    // que é quem o próprio robô do EBM nomeia. Se um arquivo chegar com nome
+    // que a tela não reconhece, a rodada para aqui em vez de adivinhar.
+    if(MODO_ROBO){
+      const semCat = analises.filter(a => !a.detec.categoria);
+      if(semCat.length){
+        roboFim('erro', { erro: 'Categoria nao reconhecida pelo nome do arquivo: ' +
+          semCat.map(a => a.nome).join(', ') });
+        resolve(null);
+        return;
+      }
+      const ML = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO',
+                  'JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+      const h = new Date();
+      resolve({
+        prevFat: ML[h.getMonth()] + ' ' + h.getFullYear(),
+        configsPorArquivo: analises.map(a => ({
+          arquivo: a.nome,
+          marca:   a.detec.marca,
+          categoria: a.detec.categoria,
+          ehMeta:  a.detec.ehMeta,
+          ehProntaEntrega: a.detec.ehProntaEntrega,
+          quinzena: a.detec.quinzena || ''
+        }))
+      });
+      return;
+    }
+
     // Detecta se TUDO foi reconhecido (arquivos "Pronta Entrega" sempre contam como OK —
     // a categoria deles é classificada produto a produto, não precisa de seleção manual)
     const algumNaoDetectado = analises.some(a => !a.detec.categoria);
@@ -4908,6 +5025,7 @@ function setImportProcessando(visivel, texto, pct){
 async function processarXlsxMulti(fileList){
   if(!fileList || !fileList.length) return;
   const arquivos = Array.from(fileList);
+  if(MODO_ROBO) roboFim('rodando', { erro:'', resumo:null });
 
   // ── NOVO: pede config (marca + categoria + prev.fat) UMA VEZ ─────────────
   const cfg = await pedirConfigImportacao(arquivos);
@@ -5081,8 +5199,11 @@ async function processarXlsxMulti(fileList){
 
   // ALÉM disso, re-verifica os itens AGUARDANDO IMAGEM já no banco
   // (caso a imagem já tenha sido subida via GitHub ou outro canal)
+  // Fora do robô: promove quem já ganhou imagem e grava em segundo plano. No
+  // robô isso fica de lado — seria um save da base ANTIGA correndo junto com o
+  // save final, e quem chegasse por último mandaria. A próxima rodada promove.
   const aguardandoBanco = (_jsonAtual||[]).filter(i => i._aguardandoImagem);
-  if(aguardandoBanco.length){
+  if(aguardandoBanco.length && !MODO_ROBO){
     await verificarImagensImport(aguardandoBanco);
     // Promove aqueles cuja imagem agora foi confirmada
     let promovidos = 0;
