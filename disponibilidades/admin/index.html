@@ -1427,6 +1427,10 @@ function workerFetch(opts = {}){
 const _roboQS    = new URLSearchParams(location.search);
 const MODO_ROBO   = _roboQS.get('robo') === '1';
 const MODO_ENSAIO = MODO_ROBO && _roboQS.get('ensaio') === '1';
+// O mês de faturamento vem de quem baixou os arquivos, que é quem sabe de que
+// quinzena eles são. Não é o mês de hoje: em 28/10 a pronta entrega é a janela
+// de 16 a 30/11, e o que está nela fatura em novembro.
+const ROBO_PREV_FAT = (_roboQS.get('prevfat') || '').trim().toUpperCase();
 
 // O script lê isto para saber como a rodada terminou.
 window.ROBO = { estado:'ocioso', erro:'', resumo:null, ensaio:MODO_ENSAIO };
@@ -4887,7 +4891,7 @@ function pedirConfigImportacao(arquivos){
                   'JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
       const h = new Date();
       resolve({
-        prevFat: ML[h.getMonth()] + ' ' + h.getFullYear(),
+        prevFat: ROBO_PREV_FAT || (ML[h.getMonth()] + ' ' + h.getFullYear()),
         configsPorArquivo: analises.map(a => ({
           arquivo: a.nome,
           marca:   a.detec.marca,
