@@ -1453,6 +1453,34 @@ function roboResumo(listaFinal, prontos, aguardando, descartados){
   };
 }
 
+// O Selenium roda seus comandos num escopo à parte, de onde os nomes
+// declarados aqui com const não são visíveis — window.STATE, por exemplo, não
+// existe. Tudo o que o script precisa saber passa por esta função, que mora
+// na página e por isso enxerga o resto.
+window.roboEstado = function(){
+  const txt = document.getElementById('importProcessandoTxt');
+  return {
+    carregada: !!(typeof STATE !== 'undefined' && STATE.lastSync),
+    itens: (typeof STATE !== 'undefined' && STATE.itens) ? STATE.itens.length : 0,
+    estado: window.ROBO.estado,
+    erro: window.ROBO.erro || '',
+    resumo: window.ROBO.resumo || null,
+    texto: txt ? txt.textContent.trim() : ''
+  };
+};
+
+// Deixa a tela pronta para receber os arquivos: abre a janela de importar e
+// revela o campo de arquivo, que fica escondido atrás do visual da dropzone —
+// o Selenium só consegue escrever num campo visível.
+window.roboPreparar = function(){
+  abrirImportar();
+  const i = document.getElementById('inputXlsx');
+  if(!i) return false;
+  i.classList.remove('hidden');
+  i.style.display = 'block';
+  return true;
+};
+
 // Um erro solto no meio da rodada deixaria o script esperando até o tempo
 // acabar, sem saber de nada. Assim ele recebe a notícia na hora.
 if(MODO_ROBO){
