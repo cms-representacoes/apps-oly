@@ -1676,18 +1676,31 @@ export default {
           const anteriores = (Array.isArray(body.anteriores) ? body.anteriores : []).slice(-3)
             .map(a => ({ p: String(a?.p || "").slice(0, 300), c: a?.c && typeof a.c === "object" ? a.c : null }))
             .filter(a => a.p && a.c);
+          // A consulta que está na tela. Pergunta que emenda ("e com
+          // faturamento?") volta só com o que muda, e a página junta — a IA
+          // remontando tudo do zero perdia o cliente ou o agrupamento.
+          const atual = body.atual && typeof body.atual === "object" ? JSON.stringify(body.atual).slice(0, 600) : "";
+          // "Ontem" das entradas é o dia útil anterior: segunda olha a sexta.
+          const dHoje = new Date(hoje + "T12:00:00Z");
+          const dOntem = new Date(dHoje.getTime() - (dHoje.getUTCDay() === 1 ? 3 : dHoje.getUTCDay() === 0 ? 2 : 1) * 86400000);
+          const ontem = dOntem.toISOString().slice(0, 10);
+          const segunda = new Date(dHoje.getTime() - ((dHoje.getUTCDay() + 6) % 7) * 86400000).toISOString().slice(0, 10);
 
           const sistema = [
             "Você traduz perguntas de vendedores de calçados (Olympikus e Under Armour) em uma consulta JSON sobre a carteira de pedidos.",
-            `Hoje é ${hoje}.`,
+            `Hoje é ${hoje}. Ontem (dia útil anterior) é ${ontem}.`,
             "Responda SOMENTE com um objeto JSON, sem texto antes ou depois, neste formato:",
-            '{"tipo":"carteira|faturado|pedidos|compraram|nao_compraram|catalogo|nao_entendi","cliente":null,"produto":null,"cor":null,"marca":null,"linha":null,"vendedor":null,"de":null,"ate":null,"agrupar":null,"limite":null,"formato":null,"imagens":null,"duvida":null}',
+            '{"tipo":"carteira|faturado|pedidos|entradas|saidas|compraram|nao_compraram|catalogo|nao_entendi","cliente":null,"produto":null,"cor":null,"marca":null,"linha":null,"vendedor":null,"de":null,"ate":null,"agrupar":null,"limite":null,"formato":null,"imagens":null,"duvida":null}',
+            atual ? `CONSULTA NA TELA AGORA: ${atual}` : "Ainda não há consulta na tela.",
+            atual ? 'Se a mensagem CONTINUA o assunto da consulta na tela ("e…", "com…", "sem…", "agora…", "só…", "por…", "e em setembro?", "e o faturado?", "mostra os produtos"), responda {"continua":true, ...SOMENTE os campos que mudam}. Para tirar um filtro, use "limpar":["campo"]. Se for assunto novo, responda a consulta completa, sem "continua".' : "",
             "Os vendedores escrevem rápido, pelo celular: espere erros de digitação, de gramática e falta de acento. Entenda a intenção. Copie nomes de cliente e produto como vieram, sem corrigir (quem confere o nome é o sistema).",
             "Se a mensagem trouxer '(complemento: ...)', é a resposta do vendedor a uma pergunta sua: junte com a pergunta antes dela.",
             "Significado de tipo:",
             "- carteira: pares pedidos que AINDA NÃO faturaram (saldo a faturar, em aberto, pendente). Período = mês previsto de faturamento.",
             "- faturado: pares que JÁ faturaram (notas emitidas, entregues). Período = data do faturamento.",
-            "- pedidos: tudo o que foi pedido, faturado mais carteira (quanto comprou, volume total).",
+            "- pedidos: tudo o que foi pedido, faturado mais carteira (quanto comprou, volume total). Também quando pedir carteira COM faturamento, ou as duas colunas.",
+            "- entradas: pares que ENTRARAM na carteira (pedidos novos, implantados, digitados) num dia ou período. Só existe o mês atual.",
+            "- saidas: pares que SAÍRAM da carteira (faturaram, foram transferidos ou cancelados) num dia ou período. Só existe o mês atual.",
             "- compraram: lista de clientes que compraram um produto.",
             "- nao_compraram: lista de clientes que NÃO compraram um produto (oportunidade de venda).",
             "- catalogo: o vendedor quer o ARQUIVO com os pedidos/carteira de um cliente para mandar ou imprimir (catálogo, relatório, pedidos do cliente em PDF, Excel ou planilha, com ou sem foto). Pode pedir de muitos jeitos: 'manda', 'gera', 'quero', 'emite', 'tira', 'baixa'. Preencha cliente, formato e imagens.",
@@ -1700,7 +1713,7 @@ export default {
             linhas.length ? `- linha: uma destas, se a pergunta citar a linha/categoria: ${linhas.join(", ")}.` : "- linha: categoria do produto, se citada.",
             vendedores.length ? `- vendedor: um destes, se a pergunta citar o vendedor: ${vendedores.join(", ")}.` : "- vendedor: nome do vendedor, se citado.",
             "- de / ate: datas AAAA-MM-DD do período. 'outubro' = mês inteiro do ano corrente; 'este mês' = mês de hoje; 'próximo mês' = mês seguinte; 'este ano' = 01/01 até 31/12. Sem período citado, deixe null.",
-            '- agrupar: "cliente", "produto", "produto_cor" ou "mes". "por mês" = mes; "por cliente" = cliente; "quais produtos/modelos" = produto; "por cor" = produto_cor.',
+            '- agrupar: "cliente", "produto", "produto_cor", "mes", "dia", "vendedor" ou "nenhum". "por mês" = mes; "por dia" = dia; "por cliente" = cliente; "quais produtos/modelos" = produto; "por cor" = produto_cor; "por vendedor/preposto" = vendedor. Pergunta de TOTAL ("quanto", "quantos pares", "qual o total") sem pedir lista = nenhum.',
             "- limite: número, quando pedir 'top 10', 'os 5 maiores' etc.",
             '- formato: "xlsx" quando pedir planilha, Excel ou xlsx; "pdf" quando pedir PDF ou relatório para imprimir/enviar. Senão null.',
             "- imagens: true quando pedir com foto/imagem; false quando pedir sem foto/imagem; senão null.",
@@ -1718,8 +1731,15 @@ export default {
             'Pergunta: top 10 clientes em carteira em excel → {"tipo":"carteira","agrupar":"cliente","limite":10,"formato":"xlsx"}',
             'Pergunta: qeum nao comprou → {"tipo":"nao_compraram"}',
             'Pergunta: qeum nao comprou (complemento: o venus 3) → {"tipo":"nao_compraram","produto":"VENUS 3"}',
+            `Pergunta: quantos pares entraram na carteira do jorge ontem → {"tipo":"entradas","vendedor":"JORGE","de":"${ontem}","ate":"${ontem}","agrupar":"nenhum"}`,
+            'Pergunta: quanto tem de carteira pra novembro → {"tipo":"carteira","de":"AAAA-11-01","ate":"AAAA-11-30","agrupar":"nenhum"}',
+            `Pergunta: o que saiu da carteira esta semana por cliente → {"tipo":"saidas","de":"${segunda}","ate":"${hoje}","agrupar":"cliente"}`,
+            'Com a consulta na tela {"tipo":"carteira","cliente":"LUAR"} — Pergunta: e com faturamento? → {"continua":true,"tipo":"pedidos"}',
+            'Com a consulta na tela {"tipo":"carteira","cliente":"LUAR"} — Pergunta: e por mês? → {"continua":true,"agrupar":"mes"}',
+            'Com a consulta na tela {"tipo":"faturado","cliente":"LUAR","de":"AAAA-09-01","ate":"AAAA-09-30"} — Pergunta: e em outubro? → {"continua":true,"de":"AAAA-10-01","ate":"AAAA-10-31"}',
+            'Com a consulta na tela {"tipo":"carteira","cliente":"LUAR","produto":"RUSH"} — Pergunta: agora de todos os produtos → {"continua":true,"limpar":["produto"]}',
             "(troque AAAA pelo ano certo a partir de hoje)"
-          ].join("\n");
+          ].filter(Boolean).join("\n");
 
           const mensagens = [{ role: "system", content: sistema }];
           for (const a of anteriores) {
