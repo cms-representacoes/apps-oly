@@ -1438,6 +1438,8 @@ function roboFim(estado, dados){
 
 // Números que o log do script mostra — e pelos quais dá para desconfiar de uma
 // rodada torta antes de ir olhar a vitrine.
+let _roboSemImagem = [];   // o que ficou de fora por nao ter foto
+
 function roboResumo(listaFinal, prontos, aguardando, descartados){
   const a = (typeof _analise !== 'undefined' && _analise) ? _analise : null;
   return {
@@ -1446,6 +1448,7 @@ function roboResumo(listaFinal, prontos, aguardando, descartados){
     baseAntes: (typeof _jsonAtual !== 'undefined' && _jsonAtual ? _jsonAtual.length : 0),
     baseDepois: listaFinal.length,
     prontos, aguardandoImagem: aguardando, descartados,
+    semImagem: _roboSemImagem,
     buckets: a ? Object.keys(a.buckets).reduce((o,k) => (o[k] = a.buckets[k].length, o), {}) : {}
   };
 }
@@ -4394,6 +4397,7 @@ async function anlExecutarSalvar(itens){
     // Reconstrói lista final: JSON atual SUBSTITUI itens com mesma chave + adiciona novos
     const novosMap = new Map();
     let aguardando = 0, prontos = 0;
+    _roboSemImagem = [];
     for(const r of itens){
       const it = r.item;
       const k = chaveTipo(it);
@@ -4416,6 +4420,17 @@ async function anlExecutarSalvar(itens){
       // Flag de aguardando imagem (vitrine NÃO mostra)
       const aguardandoImg = !imagem;
       if(aguardandoImg) aguardando++; else prontos++;
+
+      // Sem imagem não entra na base do robô. Na mão esses produtos ficam
+      // guardados como \"aguardando imagem\" e são apagados depois — por isso a
+      // base nunca tem nenhum. Como a importação roda todo dia e refaz a base
+      // inteira, nada se perde: no dia em que a foto existir, o produto entra
+      // sozinho. A lista do que ficou de fora vai no resumo da rodada.
+      if(MODO_ROBO && aguardandoImg){
+        _roboSemImagem.push({ artigo:it.artigo, cor:it.cor, marca:it.marca,
+                              descricao:it.descricao, meta: !!it._meta });
+        continue;
+      }
 
       // META PRODUTIVA: se já existe no banco com _meta, MESCLA quinzenas
       let quinzenasFinal = it.quinzenas || undefined;
