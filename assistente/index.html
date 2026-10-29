@@ -317,6 +317,12 @@ function prepAtivo() {
 function casar(lista, termo) {
   const t = norm(termo);
   if (!t) return null;
+  // CNPJ ou CPF (com ou sem pontuação); só a raiz de 8 dígitos traz todas as filiais.
+  if (/^[\d.\/\-\s]+$/.test(String(termo))) {
+    const d = String(termo).replace(/\D/g, '');
+    if (d.length === 14 || d.length === 11) { const r = lista.filter(x => x.doc === d); if (r.length) return r.map(x => x.i); }
+    if (d.length === 8) { const r = lista.filter(x => x.doc && x.doc.startsWith(d)); if (r.length) return r.map(x => x.i); }
+  }
   const exato = lista.filter(x => x.cod === t);
   if (exato.length) return exato.map(x => x.i);
   const frase = lista.filter(x => x.txt.includes(t));
@@ -364,8 +370,9 @@ function parecidos(lista, termo) {
     if (!palavras.length) continue;
     const nota = tokens.reduce((s, k) => s + Math.max(...palavras.map(p => parecenca(k, p))), 0) / tokens.length;
     if (nota < 0.75) continue;
-    const g = porNome.get(x.txt) || { nome: x.txt, idx: [], nota };
-    g.idx.push(x.i); porNome.set(x.txt, g);
+    const nome = x.nome || x.txt;
+    const g = porNome.get(nome) || { nome, idx: [], nota };
+    g.idx.push(x.i); porNome.set(nome, g);
   }
   return [...porNome.values()].sort((a, b) => b.nota - a.nota);
 }
@@ -411,6 +418,52 @@ async function carregarCatalogo() {
   APP.fichas = fichas && typeof fichas === 'object' ? fichas : {};
   APP.fantasia = fant && fant.clientes ? fant.clientes : {};
   indices().prod = APP.prods.map((p, i) => ({ i, cod: norm(p.ref), txt: norm(p.desc || p.nome) }));
+  APP.cad = await carregarCadastro();
+  indexarClientes();
+}
+
+/* Cadastro de clientes do portal (o mesmo do botão Clientes): razão social,
+   CNPJ, cidade, telefone e e-mails por código. Quem vê tudo carrega todos os
+   vendedores; o vendedor, só o dele. Cobre ~95% dos clientes. */
+async function carregarCadastro() {
+  const pede = extra => chamarWorker('getClientes', extra, 20000).then(j => Array.isArray(j?.clientes) ? j.clientes : []).catch(() => []);
+  let listas;
+  if (APP.veTudo) {
+    const l = await chamarWorker('listClientesVendedores', {}, 20000).catch(() => null);
+    listas = await Promise.all((l?.vendedores || []).map(v => pede({ vendedor: v.codigo })));
+  } else listas = [await pede({ vendedor: APP.sessao.codigo })];
+  // Nome às vezes vem com o CNPJ na frente ("23.961.354 MARISETE"), como na tela Clientes.
+  const limpa = s => String(s || '').trim().replace(/^\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\s+/, '').replace(/^\d{3}\.?\d{3}\.?\d{3}-?\d{2}\s+/, '')
+    .replace(/^(\d{2,3}[\s.]\d{3}[\s.]\d{3}(?:[\s.]\d{1,4})?)\s+/, '').replace(/^\d{8,14}\s+/, '').replace(/ï¿½|�/g, 'ã');
+  const cad = new Map();
+  for (const c of listas.flat()) {
+    const cod = String(c.codigo || '').trim();
+    if (!cod || cad.has(cod)) continue;
+    cad.set(cod, { razao: limpa(c.nome || c.razaoSocial), doc: String(c.cnpj || c.documento || '').replace(/\D/g, ''),
+      cidade: c.cidade || c.CIDADE || '', uf: c.estado || c.ESTADO || '', tel: c.telefone || c.TELEFONE || '',
+      emailNfe: c.emailNfe || c.EMAIL_NFE || '', emailBanc: c.emailBancario || c.EMAIL_BANCARIO || '', avista: limpa(c.avista || c.AVISTA || '') });
+  }
+  return cad;
+}
+
+// O cliente passa a ser achado por qualquer nome que tenha: o da Detalhada,
+// o fantasia e a razão social do cadastro, além do código e do CNPJ.
+function indexarClientes() {
+  const D = APP.dic;
+  indices().cli = D.cli.map(([cod, nome], i) => {
+    const k = String(cod), c = APP.cad?.get(k) || {};
+    const nomes = [...new Set([nome, APP.fantasia?.[k], c.razao].filter(Boolean).map(norm))];
+    return { i, cod: norm(cod), txt: nomes.join(' | '), nome: norm(nome), doc: c.doc || '' };
+  });
+}
+
+const fmtDoc = d => d.length === 14 ? `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`
+  : d.length === 11 ? `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}` : d;
+// "IDEAL CENTRO · 21511 · FORTALEZA/CE": como cada loja aparece numa escolha.
+function rotuloLoja(i) {
+  const [cod, nome] = APP.dic.cli[i], k = String(cod), c = APP.cad?.get(k) || {};
+  const fant = APP.fantasia?.[k] && norm(APP.fantasia[k]) !== norm(nome) ? APP.fantasia[k] : nome;
+  return [fant, k, c.cidade ? `${c.cidade}${c.uf ? '/' + c.uf : ''}` : ''].filter(Boolean).join(' · ');
 }
 
 const reais = v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -470,8 +523,14 @@ function fichaCliente(sCli, linhas) {
     const dfat = rs.filter(r => r[C.FAT] > 0 && r[C.DFAT] >= 0).map(r => r[C.DFAT]);
     const fant = [...new Set(cods.map(c => APP.fantasia[String(D.cli[c][0])]).filter(f => f && norm(f) !== norm(nome)))];
     const marcas = [...new Set(rs.map(r => ehUA(D.marca[r[C.MARCA]]) ? 'Under Armour' : 'Olympikus'))];
+    // Do cadastro do portal; com várias filiais, cada valor diferente aparece uma vez.
+    const cad = cods.map(c => APP.cad?.get(String(D.cli[c][0]))).filter(Boolean);
+    const doCad = (f, fmtar = v => v) => [...new Set(cad.map(c => c[f]).filter(Boolean).map(fmtar))].join(', ');
     const campos = [
       ['Código', cods.map(c => D.cli[c][0]).join(', ')], ['Nome fantasia', fant.join(', ')],
+      ['Razão social', doCad('razao')], ['CNPJ', doCad('doc', fmtDoc)],
+      ['Cidade', [...new Set(cad.filter(c => c.cidade).map(c => `${c.cidade}${c.uf ? '/' + c.uf : ''}`))].join(', ')],
+      ['Telefone', doCad('tel')], ['E-mail NF-e', doCad('emailNfe')], ['E-mail bancário', doCad('emailBanc')], ['À vista', doCad('avista')],
       ['Vendedor', [...new Set(rs.map(r => D.prep[r[C.PREP]]))].join(', ')], ['Marcas', marcas.join(', ')],
       ['Carteira', `${fmt(cart)} pares a faturar`], ['Faturado', `${fmt(fat)} pares`],
       ['Produtos', `${fmt(new Set(rs.map(r => r[C.REF])).size)} referências pedidas`],
@@ -1153,10 +1212,12 @@ function agSistema(ctx) {
     '- consultar: soma pares da carteira e do faturado com filtros e agrupamento livres. args: {"filtros":{"cliente","produto","cor","linha","marca":"OLY|UA","vendedor","oc","nf","gci","fabrica","filial"}, "situacao":"carteira|faturado|tudo", "de":"AAAA-MM-DD", "ate":"AAAA-MM-DD", "agrupar":[...], "limite":25, "ordenar":"carteira|faturado|total|nome|data"}. Todos opcionais. Período: a carteira conta pela data de previsão e o faturado pela data da nota. agrupar aceita uma ou mais destas: cliente, produto, cor, produto_cor, linha, marca, vendedor, oc, nf, gci, fabrica, filial, mes, dia, previsao. Sem agrupar = só o total. Nomes podem vir como o vendedor escreveu: a ferramenta tolera erro de digitação e diz com o que casou. Cada filtro aceita também uma lista (["DEGRAUS","TALENTUS"]) para somar vários de uma vez.',
     '- clientes_sem_pedido: clientes (do vendedor) que NÃO têm pedido de um produto/cor/linha/marca, os maiores primeiro. args: {"produto","cor","linha","marca","de","ate","vendedor","limite","clientes":[...]}. Use "clientes" para olhar só alguns (por exemplo, os maiores que você acabou de listar).',
     '- movimento: o que ENTROU na carteira (pedidos novos) ou SAIU (faturou, transferiu, cancelou) em um dia ou período do mês atual. args: {"tipo":"entradas|saidas","de","ate","agrupar":"cliente|produto|produto_cor|dia|vendedor|nenhum","cliente","produto","cor","vendedor"}.',
-    '- ficha: cadastro de um produto (referência, descrição, preço sugerido, cores, linha, gênero, composição, tecnologias) ou de um cliente (códigos, nome fantasia, vendedor, carteira, faturado, próxima previsão, último faturamento). args: {"produto"} ou {"cliente"}.',
+    '- ficha: cadastro de um produto (referência, descrição, preço sugerido, cores, linha, gênero, composição, tecnologias) ou de um cliente (códigos, nome fantasia, razão social, CNPJ, cidade, telefone, e-mail de NF-e, e-mail bancário, se compra à vista, vendedor, carteira, faturado, próxima previsão, último faturamento). args: {"produto"} ou {"cliente"}.',
+    '- clientes: lista do cadastro, uma linha por loja: código, nome fantasia, razão social, CNPJ, cidade, telefone, e-mails. Para "CNPJs do grupo X", "e-mails das lojas X", "meus clientes de tal cidade", "quem é o código N", "qual o código da X". args: {"nome","codigo","cnpj","cidade","uf"} (pelo menos um).',
+    'Cliente pode ser dito pelo nome que o vendedor usa, pelo nome fantasia, pela razão social, pelo código ou pelo CNPJ: passe do jeito que ele escreveu, as ferramentas acham.',
     '- catalogo: mostra ao vendedor os botões para gerar o catálogo (pedidos do cliente com foto) em PDF ou Excel, igual ao da Detalhada. args: {"cliente","formato":"pdf|xlsx","imagens":true|false}.',
     '- baixar: baixa em Excel ou PDF a última tabela de consultar, clientes_sem_pedido ou movimento. args: {"formato":"xlsx|pdf"}.',
-    '- boleto: 2ª via dos boletos de um cliente, buscada no EBM da Vulcabras: parcelas em dia, vencidas e as que o sistema não emite (com o motivo), e o PDF para baixar. args: {"cliente","de":"AAAA-MM-DD","ate":"AAAA-MM-DD"}. O período é o do VENCIMENTO e pode ter vários meses ("de outubro a dezembro" = de 01/10 a 31/12); sem período citado, deixe de fora (vale o mês atual). Na resposta, diga SEMPRE o período de vencimento que olhou e ofereça outro (os vencidos de meses anteriores ou os próximos meses). Demora até 1 minuto por cliente.',
+    '- boleto: 2ª via dos boletos de um cliente, buscada no EBM da Vulcabras: parcelas em dia, vencidas e as que o sistema não emite (com o motivo), e o PDF para baixar. args: {"cliente","de":"AAAA-MM-DD","ate":"AAAA-MM-DD","todas":true|false}. Se o nome tiver várias lojas, a ferramenta mostra a lista para o vendedor escolher; "todas":true só quando ele pedir todas. O período é o do VENCIMENTO e pode ter vários meses ("de outubro a dezembro" = de 01/10 a 31/12); sem período citado, deixe de fora (vale o mês atual). Na resposta, diga SEMPRE o período de vencimento que olhou e ofereça outro (os vencidos de meses anteriores ou os próximos meses). Demora até 1 minuto por cliente.',
     '',
     'REGRAS:',
     '- Todo número que você disser tem que ter vindo de uma ferramenta nesta conversa. Nunca invente nem estime; se precisar de outro total, consulte de novo. Diferença e porcentagem entre dois números que vieram das ferramentas você pode calcular.',
@@ -1372,6 +1433,7 @@ const FERRAMENTAS = {
     return out.res ? { catalogo: out.res, texto: 'Os botões do catálogo apareceram para o vendedor; ele toca para gerar.' } : out;
   },
   boleto: a => agBoleto(a),
+  clientes: a => agClientes(a),
   baixar: a => {
     if (!AG.ultimaTabela) return { erro: 'Ainda não há tabela nesta conversa para baixar.' };
     const formato = a.formato === 'pdf' ? 'pdf' : 'xlsx';
@@ -1380,7 +1442,49 @@ const FERRAMENTAS = {
   },
 };
 const ROTULO_FERRAMENTA = { consultar: 'Consultando a carteira', clientes_sem_pedido: 'Procurando quem não comprou', movimento: 'Olhando entradas e saídas',
-  ficha: 'Abrindo a ficha', catalogo: 'Preparando o catálogo', baixar: 'Gerando o arquivo', boleto: 'Buscando os boletos no EBM (pode levar 1 minuto)' };
+  ficha: 'Abrindo a ficha', clientes: 'Procurando no cadastro', catalogo: 'Preparando o catálogo', baixar: 'Gerando o arquivo', boleto: 'Buscando os boletos no EBM (pode levar 1 minuto)' };
+
+/* clientes: o cadastro em lista, uma linha por loja ("CNPJs da Ideal",
+   "meus clientes de Caxias", "quem é o 21511"). Junta o cadastro do portal
+   com os clientes da Detalhada que não estão nele (esses vêm sem CNPJ).
+   Trava: o vendedor só carregou o cadastro dele; quem vê tudo, ao escolher
+   um vendedor, fica só com os clientes dele na Detalhada. */
+function agClientes(a) {
+  const D = APP.dic, p = prepAtivo();
+  if (!APP.cadLista) {
+    const det = new Map(D.cli.map(([cod, nome]) => [String(cod), nome]));
+    const cods = new Set([...(APP.cad ? APP.cad.keys() : []), ...det.keys()]);
+    APP.cadLista = [...cods].map((cod, i) => {
+      const c = APP.cad?.get(cod) || {}, fant = APP.fantasia?.[cod] || det.get(cod) || '';
+      return { i, cod, fant, razao: c.razao || '', doc: c.doc || '', cidade: c.cidade || '', uf: c.uf || '', tel: c.tel || '',
+        emailNfe: c.emailNfe || '', emailBanc: c.emailBanc || '',
+        busca: { i, cod: norm(cod), txt: [...new Set([fant, det.get(cod), c.razao].filter(Boolean).map(norm))].join(' | '), nome: norm(fant || c.razao), doc: c.doc || '' } };
+    });
+  }
+  let lista = APP.cadLista;
+  // O vendedor vê os clientes dele na Detalhada mais o cadastro dele; quem vê tudo, ao escolher um vendedor, só os da Detalhada.
+  if (p >= 0) { const meus = new Set(APP.L.filter(r => r[C.PREP] === p).map(r => String(D.cli[r[C.CLI]][0]))); lista = lista.filter(x => meus.has(x.cod) || (!APP.veTudo && APP.cad?.has(x.cod))); }
+  const aplicados = [];
+  if (a.nome || a.cnpj || a.codigo) {
+    const termo = String(a.cnpj || a.codigo || a.nome);
+    const r = agFiltro(lista.map(x => x.busca), termo, 'cliente', i => APP.cadLista[i].fant || APP.cadLista[i].razao);
+    if (r.erro) return { erro: r.erro };
+    // Aqui não há número somado: o aviso de "SOMAM" do filtro não vale.
+    lista = lista.filter(x => r.set.has(x.i)); aplicados.push(r.texto.replace(/\s*\[ATENÇÃO:[^\]]*\]/, ''));
+  }
+  if (a.cidade) { const c = norm(a.cidade); lista = lista.filter(x => norm(x.cidade).includes(c)); aplicados.push('cidade: ' + a.cidade); }
+  if (a.uf) { const u = norm(a.uf); lista = lista.filter(x => norm(x.uf) === u); aplicados.push('UF: ' + a.uf); }
+  if (!aplicados.length) return { erro: 'Diga um nome, código, CNPJ, cidade ou UF para filtrar a lista de clientes.' };
+  lista = [...lista].sort((x, y) => (x.fant || x.razao).localeCompare(y.fant || y.razao) || x.cidade.localeCompare(y.cidade));
+  const res = { entendi: ['<b>Cadastro de clientes</b>', ...aplicados.map(esc)],
+    cols: ['Código', 'Nome fantasia', 'Razão social', 'CNPJ/CPF', 'Cidade', 'Telefone', 'E-mail NF-e', 'E-mail bancário'], num: [], data: [],
+    rows: lista.map(x => [x.cod, x.fant, x.razao, fmtDoc(x.doc), x.cidade ? `${x.cidade}${x.uf ? '/' + x.uf : ''}` : '', x.tel, x.emailNfe, x.emailBanc]), totais: null, resumo: '' };
+  const semCad = lista.filter(x => !x.doc).length;
+  return { res, texto: `${lista.length} cliente(s) encontrados (${aplicados.join('; ')}):\n` +
+    lista.slice(0, LINHAS_IA).map(x => [x.cod, x.fant, x.razao, fmtDoc(x.doc), x.cidade && `${x.cidade}/${x.uf}`, x.tel, x.emailNfe && 'NF-e ' + x.emailNfe, x.emailBanc && 'bancário ' + x.emailBanc].filter(Boolean).join(' · ')).join('\n') +
+    (lista.length > LINHAS_IA ? `\nATENÇÃO: a lista tem ${lista.length} e só as ${LINHAS_IA} primeiras aparecem acima; a tabela completa está embaixo da resposta.` : '') +
+    (semCad ? `\n${semCad} deles não estão no cadastro do portal (sem CNPJ, cidade e contato).` : '') };
+}
 
 /* boleto → TESTE: 2ª via pelo robô do CMS Boletos rodando NESTE computador
    (C:\SCRIPTS AUTONOMOS\boletos_local.py). Fora daqui o serviço não existe e
@@ -1393,9 +1497,17 @@ async function agBoleto(a) {
   if (!a.cliente) return { erro: 'De qual cliente? Pergunte ao vendedor.' };
   const r = agFiltro(meus ? X.cli.filter(x => meus.has(x.i)) : X.cli, String(a.cliente), 'cliente', i => D.cli[i][1]);
   if (r.erro) return { erro: r.erro };
-  const nomes = [...new Set([...r.set].map(i => D.cli[i][1]))];
-  if (nomes.length > 1) return { erro: `"${a.cliente}" casou com ${nomes.length} clientes: ${nomes.slice(0, 8).join(', ')}. Pergunte qual é antes de buscar boleto.` };
-  const codigos = [...new Set([...r.set].map(i => String(D.cli[i][0])))];
+  // Mais de uma loja (filiais com o mesmo nome, ou nomes parecidos): mostra
+  // a lista com fantasia, código e cidade para ele escolher, ou "todas".
+  const lojas = [...r.set].sort((x, y) => rotuloLoja(x).localeCompare(rotuloLoja(y)));
+  if (lojas.length > 1 && !a.todas) {
+    const lista = lojas.slice(0, 12).map(rotuloLoja);
+    return { erro: `"${a.cliente}" tem ${lojas.length} lojas: ${lista.join('; ')}${lojas.length > 12 ? ' e mais' : ''}. Os botões de escolha já apareceram para o vendedor: diga só que achou ${lojas.length} lojas e pergunte de qual ele quer o boleto (ou se quer de todas). Se ele escolher uma, chame boleto com o código dela; se disser todas, chame com "todas":true.`,
+      opcoes: [...lojas.slice(0, 12).map(i => ({ rotulo: rotuloLoja(i), valor: `boleto do código ${D.cli[i][0]}` })),
+        ...(lojas.length <= 6 ? [{ rotulo: `Todas as ${lojas.length}`, valor: 'de todas' }] : [])] };
+  }
+  if (lojas.length > 6) return { erro: `São ${lojas.length} lojas; de uma vez o robô busca no máximo 6. Peça para ele escolher as lojas.` };
+  const codigos = [...new Set(lojas.map(i => String(D.cli[i][0])))];
   let resp;
   try {
     const corta = new AbortController();
@@ -1518,10 +1630,13 @@ async function agRodar(texto, aoPasso) {
       else if (!fn) out = { erro: `Ferramenta "${r.nome}" não existe. Use: ${Object.keys(FERRAMENTAS).join(', ')}.` };
       else {
         if (aoPasso) aoPasso(r.nome, passo);
-        if (r.nome === 'ficha') await APP.catPronto;
+        await APP.catPronto;   // cadastro e nomes fantasia: qualquer ferramenta acha o cliente por eles
         try { out = await fn(r.args || {}); } catch (e) { out = { erro: 'A ferramenta falhou: ' + (e.message || e) }; }
       }
       if (out.res && out.res.rows) { tabelas.push(out.res); AG.ultimaTabela = out.res; }
+      if (out.opcoes && out.opcoes.length) {
+        extras.push(`<div class="acoes">${out.opcoes.map(o => `<button class="sug" data-opcao="${esc(o.valor)}">${esc(o.rotulo)}</button>`).join('')}</div>`);
+      }
       if (out.links && out.links.length) {
         extras.push(`<div class="acoes">${out.links.map(l => `<a class="sug" href="${esc(l.url)}" download="${esc(l.nome)}">Baixar ${esc(l.nome)}</a>`).join('')}</div>`);
       }
@@ -1552,6 +1667,8 @@ async function perguntarAgente(texto) {
     });
     bolha.innerHTML = `<div class="ag-texto">${mdSimples(resp)}</div>` + extras.join('') + tabelas.map(agTabelaHtml).join('');
     bolha.addEventListener('click', ev => {
+      const op = ev.target.closest('[data-opcao]');
+      if (op) { if (!$('enviar').disabled) perguntarAgente(op.dataset.opcao); return; }
       const b = ev.target.closest('[data-ag]');
       if (!b) return;
       const res = tabelas[Number(b.dataset.i)];
