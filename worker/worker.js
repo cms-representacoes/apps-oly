@@ -1653,6 +1653,34 @@ export default {
         // pela tela de admin — nenhum dos dois passa por commit manual, e por
         // isso não esperam o GitHub Pages reconstruir o site inteiro.
 
+        // Modelos do assistente, em ordem: o gpt-oss-120b (aberto, da OpenAI,
+        // no catálogo grátis da Cloudflare) entende e conversa melhor; os
+        // Llama ficam de reserva. O gpt-oss pensa antes de responder, e o
+        // pensamento conta no max_tokens: por isso a folga maior e o esforço
+        // baixo. A segunda linha dele é para o caso de o "reasoning" ser recusado.
+        const MODELOS_CHAT = [
+          { modelo: "@cf/openai/gpt-oss-120b", extra: n => ({ max_tokens: n + 1500, reasoning: { effort: "low" } }) },
+          { modelo: "@cf/openai/gpt-oss-120b", extra: n => ({ max_tokens: n + 1500 }) },
+          { modelo: "@cf/meta/llama-3.3-70b-instruct-fp8-fast", extra: n => ({ max_tokens: n }) },
+          { modelo: "@cf/meta/llama-3.1-8b-instruct-fast", extra: n => ({ max_tokens: n }) }
+        ];
+        // Cada família de modelo devolve o texto num lugar: Llama em
+        // `response`, o formato OpenAI em `choices`, o formato Responses em
+        // `output` (onde o pensamento vem separado e fica de fora).
+        const textoDaIA = r => {
+          if (!r) return "";
+          if (r.response != null) return typeof r.response === "object" ? JSON.stringify(r.response) : String(r.response);
+          const ch = r.choices?.[0]?.message?.content;
+          if (ch) return String(ch);
+          if (typeof r.output_text === "string") return r.output_text;
+          if (Array.isArray(r.output)) {
+            return r.output.filter(o => o?.type === "message")
+              .flatMap(o => Array.isArray(o.content) ? o.content : [])
+              .map(c => c?.text || "").join("");
+          }
+          return "";
+        };
+
         // chatDetalhada → TESTE do assistente da Detalhada (apps-oly/assistente).
         // A IA da Cloudflare (binding AI) só traduz a pergunta do vendedor numa
         // consulta em JSON; quem filtra e soma os pares é a página, em cima da
@@ -1673,9 +1701,12 @@ export default {
           const vendedores = Array.isArray(body.vendedores) ? body.vendedores.slice(0, 20).map(String) : [];
           // Histórico curto: deixa o vendedor dizer "e em setembro?" depois
           // de uma pergunta. Só as consultas anteriores, nunca as respostas.
-          const anteriores = (Array.isArray(body.anteriores) ? body.anteriores : []).slice(-3)
-            .map(a => ({ p: String(a?.p || "").slice(0, 300), c: a?.c && typeof a.c === "object" ? a.c : null }))
+          const anteriores = (Array.isArray(body.anteriores) ? body.anteriores : []).slice(-4)
+            .map(a => ({ p: String(a?.p || "").slice(0, 300), c: a?.c && typeof a.c === "object" ? JSON.stringify(a.c).slice(0, 700) : "" }))
             .filter(a => a.p && a.c);
+          // O que a última resposta mostrou (título, totais, primeiras linhas
+          // e o comentário): é com isso que a IA conversa sem refazer conta.
+          const tela = String(body.tela || "").trim().slice(0, 3500);
           // A consulta que está na tela. Pergunta que emenda ("e com
           // faturamento?") volta só com o que muda, e a página junta — a IA
           // remontando tudo do zero perdia o cliente ou o agrupamento.
@@ -1690,8 +1721,9 @@ export default {
             "Você traduz perguntas de vendedores de calçados (Olympikus e Under Armour) em uma consulta JSON sobre a carteira de pedidos.",
             `Hoje é ${hoje}. Ontem (dia útil anterior) é ${ontem}.`,
             "Responda SOMENTE com um objeto JSON, sem texto antes ou depois, neste formato:",
-            '{"tipo":"carteira|faturado|pedidos|entradas|saidas|compraram|nao_compraram|catalogo|nao_entendi","cliente":null,"produto":null,"cor":null,"marca":null,"linha":null,"vendedor":null,"de":null,"ate":null,"agrupar":null,"limite":null,"formato":null,"imagens":null,"duvida":null}',
+            '{"tipo":"carteira|faturado|pedidos|entradas|saidas|compraram|nao_compraram|catalogo|ficha|conversa|nao_entendi","cliente":null,"produto":null,"cor":null,"marca":null,"linha":null,"vendedor":null,"de":null,"ate":null,"agrupar":null,"limite":null,"formato":null,"imagens":null,"duvida":null,"resposta":null}',
             atual ? `CONSULTA NA TELA AGORA: ${atual}` : "Ainda não há consulta na tela.",
+            tela ? `O QUE A TELA MOSTRA AGORA (resposta anterior):\n${tela}\n(fim da tela)` : "",
             atual ? 'Se a mensagem CONTINUA o assunto da consulta na tela ("e…", "com…", "sem…", "agora…", "só…", "por…", "e em setembro?", "e o faturado?", "mostra os produtos"), responda {"continua":true, ...SOMENTE os campos que mudam}. Para tirar um filtro, use "limpar":["campo"]. Se for assunto novo, responda a consulta completa, sem "continua".' : "",
             "Os vendedores escrevem rápido, pelo celular: espere erros de digitação, de gramática e falta de acento. Entenda a intenção. Copie nomes de cliente e produto como vieram, sem corrigir (quem confere o nome é o sistema).",
             "Se a mensagem trouxer '(complemento: ...)', é a resposta do vendedor a uma pergunta sua: junte com a pergunta antes dela.",
@@ -1704,11 +1736,13 @@ export default {
             "- compraram: lista de clientes que compraram um produto.",
             "- nao_compraram: lista de clientes que NÃO compraram um produto (oportunidade de venda).",
             "- catalogo: o vendedor quer o ARQUIVO com os pedidos/carteira de um cliente para mandar ou imprimir (catálogo, relatório, pedidos do cliente em PDF, Excel ou planilha, com ou sem foto). Pode pedir de muitos jeitos: 'manda', 'gera', 'quero', 'emite', 'tira', 'baixa'. Preencha cliente, formato e imagens.",
-            "- nao_entendi: a pergunta não é sobre pedidos, carteira ou faturamento. Explique em 'duvida', em português, numa frase.",
+            "- ficha: o vendedor quer o CADASTRO de um produto ou de um cliente, não uma quantidade por período: referência/código que ele esqueceu, descrição, preço, cores, linha, gênero, composição, tecnologia, coleção; ou código do cliente, nome fantasia, vendedor do cliente, quando faturou por último, 'me fala do cliente X'. Preencha produto e/ou cliente (e cor, se citada).",
+            "- conversa: a mensagem NÃO pede dado novo: cumprimento, agradecimento, dúvida sobre um termo ('o que é carteira?'), pedido de explicação, opinião ou pergunta que se responde LENDO O QUE A TELA MOSTRA ('qual desses é o maior?', 'isso inclui a UA?', 'quem eu devo ligar primeiro?', 'por que deu zero?'). Escreva em 'resposta' o que você diria ao vendedor: português do Brasil, tom de colega de trabalho, no máximo 4 frases curtas, sem markdown. Use SÓ números que estão na tela; nunca invente nem estime. Se a resposta precisar de um número que NÃO está na tela, não é conversa: monte a consulta. Se a pergunta for sobre outro produto ou cliente que não está na tela, não é conversa: é ficha. Se perguntarem de algo que você não enxerga (meta, estoque da loja, comissão, estoque da fábrica), diga com gentileza que você só enxerga pedidos, carteira, faturamento e o cadastro de produtos e clientes.",
+            "- nao_entendi: só quando não der para saber o que ele quer. Explique em 'duvida', em português, numa frase.",
             "Campos (null quando a pergunta não disser):",
             "- cliente: nome ou código do cliente, como o vendedor escreveu.",
             "- produto: nome do modelo ou código de referência (ex.: RUSH, CORRE 3, 43667419).",
-            "- cor: cor do produto, se citada.",
+            "- cor: cor do produto, se citada. Cor costuma vir como código colado depois do modelo (PECDUN, PTODST, MARORG, BCOPTO): separe, o modelo vai em produto e o código em cor.",
             '- marca: "OLY" para Olympikus, "UA" para Under Armour.',
             linhas.length ? `- linha: uma destas, se a pergunta citar a linha/categoria: ${linhas.join(", ")}.` : "- linha: categoria do produto, se citada.",
             vendedores.length ? `- vendedor: um destes, se a pergunta citar o vendedor: ${vendedores.join(", ")}.` : "- vendedor: nome do vendedor, se citado.",
@@ -1729,11 +1763,23 @@ export default {
             'Pergunta: tira o relatorio da toc toc → {"tipo":"catalogo","cliente":"TOC TOC"}',
             'Pergunta: planilha sem imagem da destake → {"tipo":"catalogo","cliente":"DESTAKE","formato":"xlsx","imagens":false}',
             'Pergunta: top 10 clientes em carteira em excel → {"tipo":"carteira","agrupar":"cliente","limite":10,"formato":"xlsx"}',
+            'Pergunta: clientes do jorge que nao tem o swift 6 pecdun → {"tipo":"nao_compraram","vendedor":"JORGE","produto":"SWIFT 6","cor":"PECDUN"}',
             'Pergunta: qeum nao comprou → {"tipo":"nao_compraram"}',
             'Pergunta: qeum nao comprou (complemento: o venus 3) → {"tipo":"nao_compraram","produto":"VENUS 3"}',
             `Pergunta: quantos pares entraram na carteira do jorge ontem → {"tipo":"entradas","vendedor":"JORGE","de":"${ontem}","ate":"${ontem}","agrupar":"nenhum"}`,
             'Pergunta: quanto tem de carteira pra novembro → {"tipo":"carteira","de":"AAAA-11-01","ate":"AAAA-11-30","agrupar":"nenhum"}',
             `Pergunta: o que saiu da carteira esta semana por cliente → {"tipo":"saidas","de":"${segunda}","ate":"${hoje}","agrupar":"cliente"}`,
+            'Pergunta: esqueci a referencia do rush → {"tipo":"ficha","produto":"RUSH"}',
+            'Pergunta: qual o preço do corre 4 → {"tipo":"ficha","produto":"CORRE 4"}',
+            'Pergunta: quais cores tem o venus 3 → {"tipo":"ficha","produto":"VENUS 3"}',
+            'Pergunta: de que é feito o tenis 43667419 → {"tipo":"ficha","produto":"43667419"}',
+            'Pergunta: qual o codigo da luar → {"tipo":"ficha","cliente":"LUAR"}',
+            'Pergunta: me fala do cliente pe quente → {"tipo":"ficha","cliente":"PE QUENTE"}',
+            'Com a tela mostrando a ficha do CORRE 4 — Pergunta: e qual o preço? → {"tipo":"conversa","resposta":"(o preço sugerido, lido da ficha na tela)"}',
+            'Pergunta: bom dia → {"tipo":"conversa","resposta":"Bom dia! Me pergunte da carteira, do faturado, das entradas ou de quem comprou e quem não comprou um produto."}',
+            'Pergunta: o que é carteira? → {"tipo":"conversa","resposta":"Carteira são os pares já pedidos que ainda não faturaram, ou seja, o que ainda vai sair com nota. O que já saiu é o faturado."}',
+            'Com a tela mostrando a carteira por cliente — Pergunta: qual desses é o maior? → {"tipo":"conversa","resposta":"(o nome e os pares do primeiro da tabela, lidos da tela)"}',
+            'Pergunta: valeu → {"tipo":"conversa","resposta":"Por nada! Precisando, é só chamar."}',
             'Com a consulta na tela {"tipo":"carteira","cliente":"LUAR"} — Pergunta: e com faturamento? → {"continua":true,"tipo":"pedidos"}',
             'Com a consulta na tela {"tipo":"carteira","cliente":"LUAR"} — Pergunta: e por mês? → {"continua":true,"agrupar":"mes"}',
             'Com a consulta na tela {"tipo":"faturado","cliente":"LUAR","de":"AAAA-09-01","ate":"AAAA-09-30"} — Pergunta: e em outubro? → {"continua":true,"de":"AAAA-10-01","ate":"AAAA-10-31"}',
@@ -1744,26 +1790,58 @@ export default {
           const mensagens = [{ role: "system", content: sistema }];
           for (const a of anteriores) {
             mensagens.push({ role: "user", content: a.p });
-            mensagens.push({ role: "assistant", content: JSON.stringify(a.c) });
+            mensagens.push({ role: "assistant", content: a.c });
           }
           mensagens.push({ role: "user", content: pergunta });
 
-          // O primeiro é o melhor; o segundo é reserva se o primeiro sair do ar.
-          const MODELOS = ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/meta/llama-3.1-8b-instruct-fast"];
           let ultimoErro = "";
-          for (const modelo of MODELOS) {
+          for (const opc of MODELOS_CHAT) {
             try {
-              const r = await env.AI.run(modelo, { messages: mensagens, max_tokens: 300, temperature: 0 });
-              const bruto = r && typeof r.response === "object" ? JSON.stringify(r.response) : String(r?.response || "");
-              const m = bruto.match(/\{[\s\S]*\}/);
+              const r = await env.AI.run(opc.modelo, { messages: mensagens, temperature: 0, ...opc.extra(600) });
+              const m = textoDaIA(r).match(/\{[\s\S]*\}/);
               if (!m) { ultimoErro = "a IA não devolveu JSON"; continue; }
               const consulta = JSON.parse(m[0]);
-              return new Response(JSON.stringify({ ok: true, consulta, modelo }), { status: 200, headers: corsHeaders });
+              return new Response(JSON.stringify({ ok: true, consulta, modelo: opc.modelo }), { status: 200, headers: corsHeaders });
             } catch (e) {
               ultimoErro = String(e?.message || e);
             }
           }
           return new Response(JSON.stringify({ ok: false, erro: "A IA não respondeu: " + ultimoErro }), { status: 200, headers: corsHeaders });
+        }
+
+        // comentarDetalhada → TESTE: depois que a página monta a resposta, a
+        // IA lê o resumo dela (título, totais e as primeiras linhas) e escreve
+        // um comentário curto. A conta continua sendo da página; a IA só lê o
+        // que já está na tela. Esses números passam pela Cloudflare, que não
+        // usa o que recebe para treinar modelo.
+        if (body.action === "comentarDetalhada") {
+          const pergunta = String(body.pergunta || "").trim().slice(0, 500);
+          const resumo = String(body.resumo || "").trim().slice(0, 3500);
+          if (!pergunta || !resumo || !env.AI) {
+            return new Response(JSON.stringify({ ok: false }), { status: 200, headers: corsHeaders });
+          }
+          const sistema = [
+            "Você é o assistente de vendas da CMS Representações (calçados Olympikus e Under Armour) e conversa com um vendedor pelo celular.",
+            "O sistema já respondeu a pergunta dele com a tabela abaixo. Escreva um comentário curto sobre ela, em português do Brasil, num tom de colega de trabalho.",
+            "Regras:",
+            "- No máximo 3 frases curtas. Sem título, sem lista, sem tabela, sem markdown.",
+            "- Destaque o que chama atenção: quem ou o que concentra mais pares, o mês mais cheio, algo zerado ou muito pequeno, a diferença entre carteira e faturado.",
+            "- Use SÓ números que estão na tabela. Nunca invente, nunca estime, nunca some o que não está somado.",
+            "- Não repita a pergunta, não explique a tabela coluna por coluna e não termine com pergunta.",
+            "- 'Carteira' = pares ainda a faturar; 'Faturado' = pares que já saíram com nota."
+          ].join("\n");
+          const mensagens = [
+            { role: "system", content: sistema },
+            { role: "user", content: `Pergunta do vendedor: ${pergunta}\n\nResposta do sistema:\n${resumo}` }
+          ];
+          for (const opc of MODELOS_CHAT) {
+            try {
+              const r = await env.AI.run(opc.modelo, { messages: mensagens, temperature: 0.3, ...opc.extra(500) });
+              const texto = textoDaIA(r).replace(/[*#`_]/g, "").trim().slice(0, 600);
+              if (texto) return new Response(JSON.stringify({ ok: true, texto, modelo: opc.modelo }), { status: 200, headers: corsHeaders });
+            } catch (e) { /* tenta o próximo */ }
+          }
+          return new Response(JSON.stringify({ ok: false }), { status: 200, headers: corsHeaders });
         }
 
         // getDetalhadaInfo → só o resumo (alguns bytes). O app consulta isto a

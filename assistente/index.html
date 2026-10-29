@@ -104,6 +104,18 @@ a.sug{ text-decoration:none; display:inline-block; }
 .resumo{ font-weight:700; margin:2px 0 8px; }
 .aviso{ color:var(--erro); }
 .digitando{ color:var(--tinta-3); font-style:italic; }
+/* o comentário da IA: entre o resumo e a tabela, com o fio verde de citação */
+.comentario{ margin:-2px 0 10px; padding:2px 0 2px 10px; border-left:3px solid var(--lima-forte);
+  font-size:14px; line-height:1.45; color:var(--tinta); }
+.comentario.digitando{ color:var(--tinta-3); }
+/* ficha de produto ou cliente: rótulo pequeno em cima do valor, sem tabela */
+.ficha{ border:1px solid var(--linha); border-radius:10px; padding:10px 12px; margin-top:6px; font-size:14px; line-height:1.45; }
+.ficha + .ficha{ margin-top:8px; }
+.ficha-tit{ font-weight:800; font-size:15px; margin-bottom:6px; color:var(--oliva-escuro); }
+.ficha-l{ display:grid; grid-template-columns:118px 1fr; gap:10px; padding:2px 0; }
+.ficha-l span{ font-size:12px; font-weight:600; color:var(--tinta-2); padding-top:2px; }
+.ficha-desc{ margin-top:6px; font-size:13px; color:var(--tinta-2); }
+@media (max-width:520px){ .ficha-l{ grid-template-columns:92px 1fr; gap:8px; } .ficha-l span{ font-size:11.5px; } }
 
 .tabela-wrap{ overflow-x:auto; border:1px solid var(--linha); border-radius:10px; }
 table{ border-collapse:collapse; width:100%; font-size:13px; }
@@ -184,7 +196,7 @@ const C = { PREP: 0, CLI: 1, MARCA: 2, FAB: 3, FIL: 4, REF: 5, COR: 6, GCI: 7, N
 const MOSTRAR = 50;
 
 const $ = id => document.getElementById(id);
-const APP = { sessao: null, veTudo: false, base: null, dic: null, L: [], prep: -1, anteriores: [], atual: null };
+const APP = { sessao: null, veTudo: false, base: null, dic: null, L: [], prep: -1, anteriores: [], atual: null, tela: '' };
 
 /* ── utilidades ───────────────────────────────────────── */
 const norm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
@@ -317,7 +329,109 @@ function indices() {
   return APP.idx;
 }
 
+/* ── fichas: o que se sabe de um produto ou de um cliente ──
+   Produto junta a Detalhada (referência, descrição, cores com pedido) com o
+   catálogo (data/produtos.json: preço, segmento, gênero) e as fichas
+   técnicas (data/fichas.json: composição, tecnologias, coleção). Cliente
+   junta a Detalhada com o nome fantasia (data/clientes-fantasia.json).
+   Carrega depois da base, sem segurar a tela. */
+async function carregarCatalogo() {
+  const ler = async url => { try { const r = await fetch(url, { cache: 'no-cache' }); return r.ok ? await r.json() : null; } catch (_) { return null; } };
+  const [prods, fichas, fant] = await Promise.all([ler('../data/produtos.json'), ler('../data/fichas.json'), ler('../data/clientes-fantasia.json')]);
+  const D = APP.dic, porRef = new Map();
+  const pega = ref => {
+    let p = porRef.get(ref);
+    if (!p) { p = { ref, desc: '', nome: '', marca: '', preco: null, segmento: '', genero: '', categoria: '', cores: new Set() }; porRef.set(ref, p); }
+    return p;
+  };
+  D.ref.forEach(([ref, desc]) => { pega(String(ref)).desc = desc; });
+  for (const x of (Array.isArray(prods) ? prods : [])) {
+    const p = pega(String(x.codigo));
+    p.nome = p.nome || x.produto || ''; p.marca = p.marca || x.marca || '';
+    if (x.preco > 0) p.preco = x.preco;
+    p.segmento = p.segmento || x.segmento || ''; p.genero = p.genero || x.genero || ''; p.categoria = p.categoria || x.categoria || '';
+    if (x.cor) p.cores.add(x.cor);
+  }
+  APP.prods = [...porRef.values()];
+  APP.iRef = new Map(D.ref.map(([ref], i) => [String(ref), i]));
+  APP.fichas = fichas && typeof fichas === 'object' ? fichas : {};
+  APP.fantasia = fant && fant.clientes ? fant.clientes : {};
+  indices().prod = APP.prods.map((p, i) => ({ i, cod: norm(p.ref), txt: norm(p.desc || p.nome) }));
+}
+
+const reais = v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+// Devolve o HTML do balão e o mesmo em texto (o texto vai para a IA, que
+// conversa em cima dele: "e qual o preço?", "tem em preto?").
+function fichaProduto(sRef, linhas, termo) {
+  const D = APP.dic, t = norm(termo);
+  // Nome igual ao que ele escreveu vem primeiro ("CORRE 4" antes de
+  // "MEIA CORRE 4"); depois, o que tem mais pares.
+  const igual = p => norm(p.desc) === t || norm(p.nome) === t || norm(p.ref) === t;
+  const itens = [...sRef].map(i => {
+    const p = APP.prods[i], iR = APP.iRef.get(p.ref);
+    const rs = iR == null ? [] : linhas.filter(r => r[C.REF] === iR);
+    const cart = rs.reduce((s, r) => s + (r[C.CART] || 0), 0), fat = rs.reduce((s, r) => s + (r[C.FAT] || 0), 0);
+    return { p, rs, cart, fat };
+  }).sort((a, b) => (igual(b.p) - igual(a.p)) || ((b.cart + b.fat) - (a.cart + a.fat)));
+  const html = [], txt = [];
+  for (const { p, rs, cart, fat } of itens.slice(0, 5)) {
+    const f = APP.fichas[p.ref] || {};
+    const linha = [...new Set(rs.map(r => D.faixa[r[C.FAIXA]]).filter(Boolean))].join(', ');
+    const marca = p.marca || (rs.length ? (ehUA(D.marca[rs[0][C.MARCA]]) ? 'Under Armour' : 'Olympikus') : '');
+    const coresPed = [...new Set(rs.map(r => D.cor[r[C.COR]]).filter(Boolean))];
+    const cores = coresPed.length ? coresPed : [...p.cores];
+    // A ficha técnica traz o preço como texto, ora "129,99", ora "599.99".
+    const ps = String(f.precoSugerido || '').trim();
+    const precoFicha = /,\d{1,2}$/.test(ps) ? Number(ps.replace(/\./g, '').replace(',', '.')) : Number(ps);
+    const preco = precoFicha > 0 ? reais(precoFicha) : p.preco ? reais(p.preco) : '';
+    const clientes = new Set(rs.map(r => r[C.CLI])).size;
+    const campos = [
+      ['Referência', p.ref], ['Marca', marca], ['Linha', linha], ['Segmento', p.segmento], ['Gênero', p.genero || f.genero],
+      ['Preço sugerido', preco], ['Coleção', f.colecao], ['Pisada', f.pisada], ['Composição', f.composicao],
+      ['Tecnologias', (f.tecnologias || []).join(', ')],
+      ['Cores' + (coresPed.length ? ' com pedido' : ''), cores.join(', ')],
+      ['Pedidos', rs.length ? `${fmt(cart)} pares a faturar, ${fmt(fat)} faturados, em ${fmt(clientes)} cliente${clientes === 1 ? '' : 's'}` : 'nenhum pedido na base'],
+    ].filter(([, v]) => v);
+    const nome = p.desc || p.nome || p.ref;
+    html.push(`<div class="ficha"><div class="ficha-tit">${esc(nome)}</div>` +
+      campos.map(([k, v]) => `<div class="ficha-l"><span>${esc(k)}</span><div>${esc(v)}</div></div>`).join('') +
+      (f.descricao ? `<div class="ficha-desc">${esc(String(f.descricao).slice(0, 260))}${String(f.descricao).length > 260 ? '…' : ''}</div>` : '') + '</div>');
+    txt.push(`Produto ${nome}\n` + campos.map(([k, v]) => `${k}: ${v}`).join('\n') + (f.descricao ? `\nDescrição: ${String(f.descricao).slice(0, 400)}` : ''));
+  }
+  const mais = itens.length > 5 ? `<div class="digitando">E mais ${itens.length - 5} produto(s) com esse nome: seja mais específico para ver.</div>` : '';
+  return { ficha: html.join('') + mais, fichaTexto: txt.join('\n\n') };
+}
+
+function fichaCliente(sCli, linhas) {
+  const D = APP.dic;
+  // Códigos diferentes com o mesmo nome (filiais) ficam numa ficha só.
+  const porNome = new Map();
+  for (const c of sCli) { const n = D.cli[c][1]; if (!porNome.has(n)) porNome.set(n, []); porNome.get(n).push(c); }
+  const html = [], txt = [];
+  for (const [nome, cods] of [...porNome].slice(0, 5)) {
+    const set = new Set(cods), rs = linhas.filter(r => set.has(r[C.CLI]));
+    const cart = rs.reduce((s, r) => s + (r[C.CART] || 0), 0), fat = rs.reduce((s, r) => s + (r[C.FAT] || 0), 0);
+    const prev = rs.filter(r => r[C.CART] > 0 && r[C.PREV] >= 0).map(r => r[C.PREV]);
+    const dfat = rs.filter(r => r[C.FAT] > 0 && r[C.DFAT] >= 0).map(r => r[C.DFAT]);
+    const fant = [...new Set(cods.map(c => APP.fantasia[String(D.cli[c][0])]).filter(f => f && norm(f) !== norm(nome)))];
+    const marcas = [...new Set(rs.map(r => ehUA(D.marca[r[C.MARCA]]) ? 'Under Armour' : 'Olympikus'))];
+    const campos = [
+      ['Código', cods.map(c => D.cli[c][0]).join(', ')], ['Nome fantasia', fant.join(', ')],
+      ['Vendedor', [...new Set(rs.map(r => D.prep[r[C.PREP]]))].join(', ')], ['Marcas', marcas.join(', ')],
+      ['Carteira', `${fmt(cart)} pares a faturar`], ['Faturado', `${fmt(fat)} pares`],
+      ['Produtos', `${fmt(new Set(rs.map(r => r[C.REF])).size)} referências pedidas`],
+      ['Próxima previsão', prev.length ? dataDe(Math.min(...prev)) : ''], ['Último faturamento', dfat.length ? dataDe(Math.max(...dfat)) : ''],
+    ].filter(([, v]) => v);
+    html.push(`<div class="ficha"><div class="ficha-tit">${esc(nome)}</div>` + campos.map(([k, v]) => `<div class="ficha-l"><span>${esc(k)}</span><div>${esc(v)}</div></div>`).join('') + '</div>');
+    txt.push(`Cliente ${nome}\n` + campos.map(([k, v]) => `${k}: ${v}`).join('\n'));
+  }
+  const mais = porNome.size > 5 ? `<div class="digitando">E mais ${porNome.size - 5} cliente(s) com esse nome.</div>` : '';
+  return { ficha: html.join('') + mais, fichaTexto: txt.join('\n\n') };
+}
+
 const ROTULO_TIPO = {
+  ficha: 'Ficha',
   carteira: 'Carteira (a faturar)', faturado: 'Faturado', pedidos: 'Pedidos (faturado + carteira)',
   compraram: 'Clientes que compraram', nao_compraram: 'Clientes que não compraram',
   catalogo: 'Catálogo da carteira', entradas: 'Entradas na carteira', saidas: 'Saídas da carteira',
@@ -365,6 +479,21 @@ function executar(q) {
     return new Set(achou);
   };
 
+  // A IA às vezes manda a cor grudada no produto ("SWIFT 6 PECDUN"): se o
+  // nome inteiro não casa, a palavra que é código de cor vira o filtro de cor.
+  if (q.produto && !q.cor && !exato.produto) {
+    const lista = tipo === 'ficha' && X.prod ? X.prod : X.ref;
+    const achou = casar(lista, q.produto);
+    if (!achou || !achou.length) {
+      const cores = new Set(X.cor.map(x => x.cod));
+      const pal = norm(q.produto).split(/\s+/);
+      const ehCor = pal.filter(w => cores.has(w));
+      if (ehCor.length === 1 && pal.length > 1) {
+        q = { ...q, produto: pal.filter(w => w !== ehCor[0]).join(' '), cor: ehCor[0] };
+      }
+    }
+  }
+
   let p = prepAtivo();
   if (q.vendedor && APP.veTudo && p < 0) {
     const s = pegar(X.prep, 'vendedor', 'vendedor', i => D.prep[i]);
@@ -376,7 +505,10 @@ function executar(q) {
   // Cliente com nomes diferentes que casam ("ARMAZEM" → Paraíba e Eldorado)
   // pergunta qual; produto não, porque "CORRE" juntando a família é o esperado.
   const sCli = pegar(meus ? X.cli.filter(x => meus.has(x.i)) : X.cli, 'cliente', 'cliente', i => D.cli[i][1], true);
-  const sRef = pegar(X.ref, 'produto', 'produto', i => `${D.ref[i][1]} (${D.ref[i][0]})`);
+  // Na ficha, o produto vale mesmo sem pedido: procura também no catálogo.
+  const sRef = tipo === 'ficha' && X.prod
+    ? pegar(X.prod, 'produto', 'produto', i => `${APP.prods[i].desc || APP.prods[i].nome} (${APP.prods[i].ref})`)
+    : pegar(X.ref, 'produto', 'produto', i => `${D.ref[i][1]} (${D.ref[i][0]})`);
   const sCor = pegar(X.cor, 'cor', 'cor', i => D.cor[i]);
   const sFx = pegar(X.faixa, 'linha', 'linha', i => D.faixa[i]);
   if (escolha) return { entendi, escolha };
@@ -386,6 +518,19 @@ function executar(q) {
   const ate = /^\d{4}-\d{2}-\d{2}$/.test(q.ate || '') ? diaDe(q.ate) : null;
   if (de != null || ate != null) entendi.push(`período: ${de != null ? dataDe(de) : 'início'} a ${ate != null ? dataDe(ate) : 'fim'}`);
   if (falta.length) return { entendi, pede: true, erro: `Não achei ${falta.join(' nem ')} ${p >= 0 ? 'na carteira deste vendedor' : 'na base'}. Confira o nome e me diga de novo.` };
+
+  /* ficha: o cadastro do produto ou do cliente, com os pares do vendedor */
+  if (tipo === 'ficha') {
+    if (!X.prod) return { entendi, erro: 'O catálogo de produtos ainda está carregando. Tente de novo em instantes.' };
+    if (!(sRef && sRef.size) && !(sCli && sCli.size)) return { entendi, pede: true, erro: 'De qual produto ou cliente? Diga o nome, o modelo ou o código.' };
+    const minhas = APP.L.filter(r => p < 0 || r[C.PREP] === p);
+    const out = { entendi };
+    if (sRef && sRef.size) {
+      const daqui = sCli && sCli.size ? minhas.filter(r => sCli.has(r[C.CLI])) : minhas;
+      Object.assign(out, fichaProduto(sRef, daqui, q._exato?.produto || q.produto));
+    } else Object.assign(out, fichaCliente(sCli, minhas));
+    return out;
+  }
 
   /* catálogo: só precisa do cliente e do formato; o resto (filtros, grade,
      fotos, repasse) é a Detalhada que resolve, igual ao botão de lá. */
@@ -725,6 +870,7 @@ function mostrarResposta(bolha, res, q) {
     return;
   }
   if (res.erro) { bolha.innerHTML = h + `<div>${esc(res.erro)}</div>`; return; }
+  if (res.ficha) { bolha.innerHTML = h + res.ficha; APP.tela = res.fichaTexto; return; }
   h += `<div class="resumo">${esc(res.resumo)}</div>`;
   if (res.aviso) h += `<div class="digitando" style="margin:-4px 0 8px">${esc(res.aviso)}</div>`;
   if (res.rows.length) {
@@ -792,11 +938,54 @@ function ajustes(res) {
   return out;
 }
 
+// Comentário da IA embaixo do resumo: ela lê o que já está na tela (título,
+// totais e as primeiras linhas) e diz o que chama atenção. Chega depois da
+// tabela; se falhar, a resposta fica como estava.
+const respostaComTabela = res => res.rows && res.rows.length && !res.pede && !res.escolha && !res.grande && !res.erro && !res.catalogo;
+
+// A resposta em texto corrido: é o que a IA lê para comentar e, depois,
+// para conversar sobre ela ("qual desses é o maior?").
+function resumoDaTela(res) {
+  const linha = r => r.map((v, j) => res.data.includes(j) ? (v != null && v >= 0 ? dataDe(v) : '') : res.num.includes(j) ? fmt(v) : v).join(' | ');
+  return [
+    textoPlano('Consulta: ' + (res.entendi || []).join(' · ')),
+    res.resumo,
+    res.cols.join(' | '),
+    ...res.rows.slice(0, 15).map(linha),
+    res.rows.length > 15 ? `(mais ${fmt(res.rows.length - 15)} linhas)` : '',
+    res.totais ? 'Total: ' + linha(res.totais).replace(/^Total \| /, '') : '',
+  ].filter(Boolean).join('\n');
+}
+
+async function comentar(bolha, res, pergunta) {
+  if (!respostaComTabela(res)) return;
+  const lugar = bolha.querySelector('.resumo');
+  if (!lugar) return;
+  const div = document.createElement('div');
+  div.className = 'comentario digitando';
+  div.textContent = 'Analisando…';
+  lugar.after(div);
+  const resumo = resumoDaTela(res);
+  APP.tela = resumo;
+  try {
+    const r = await chamarWorker('comentarDetalhada', { pergunta, resumo }, 30000);
+    if (!r || !r.ok || !r.texto) throw 0;
+    div.className = 'comentario';
+    div.textContent = r.texto;
+    // Só vale se ainda for a última resposta: o vendedor pode ter
+    // perguntado outra coisa enquanto o comentário vinha.
+    if (APP.tela === resumo) APP.tela = resumo + '\nComentário que você fez: ' + r.texto;
+  } catch (e) {
+    div.remove();
+  }
+  rolar();
+}
+
 function registrar(texto, q, res) {
   if (res.pede || res.escolha || res.grande || res.erro) return;
   APP.atual = q;
   APP.anteriores.push({ p: texto, c: limpa(q) });
-  APP.anteriores = APP.anteriores.slice(-3);
+  APP.anteriores = APP.anteriores.slice(-4);
 }
 
 // Resposta montada aqui mesmo, sem IA: botão de ajuste, "você quis dizer",
@@ -805,9 +994,11 @@ function responderLocal(rotulo, q) {
   APP.pendente = null;
   addMsg('eu', esc(rotulo));
   const res = executar(q);
-  mostrarResposta(addMsg('ia', ''), res, q);
+  const bolha = addMsg('ia', '');
+  mostrarResposta(bolha, res, q);
   registrar(rotulo, q, res);
   rolar();
+  comentar(bolha, res, rotulo);
 }
 
 async function perguntar(texto) {
@@ -825,15 +1016,25 @@ async function perguntar(texto) {
     const r = await chamarWorker('chatDetalhada', {
       pergunta: enviada, hoje: hojeIso(), linhas: APP.dic.faixa || [],
       vendedores: APP.veTudo && p < 0 ? APP.dic.prep : [], anteriores: APP.anteriores,
-      atual: APP.atual ? limpa(APP.atual) : null,
+      atual: APP.atual ? limpa(APP.atual) : null, tela: APP.tela || '',
     }, 30000);
     if (!r || !r.ok) throw new Error(r?.erro || 'sem resposta');
     const c = r.consulta || {};
+    if (c.tipo === 'conversa' && c.resposta) {
+      // Conversa não mexe na consulta da tela: a próxima pergunta que
+      // emenda ("e em outubro?") continua valendo sobre ela.
+      bolha.innerHTML = esc(String(c.resposta)).replace(/\n/g, '<br>');
+      APP.anteriores.push({ p: enviada, c: { tipo: 'conversa', resposta: String(c.resposta).slice(0, 400) } });
+      APP.anteriores = APP.anteriores.slice(-4);
+      return;
+    }
     const q = c.continua && APP.atual ? emendar(APP.atual, c) : c;
+    if (q.tipo === 'ficha') await APP.catPronto;
     const res = executar(q);
     mostrarResposta(bolha, res, q);
     if (res.pede || res.escolha) APP.pendente = enviada;
     registrar(enviada, q, res);
+    comentar(bolha, res, enviada);
   } catch (e) {
     bolha.innerHTML = `<span class="aviso">Não consegui responder agora (${esc(e.message || e)}). Tente de novo em instantes.</span>`;
   } finally {
@@ -859,12 +1060,13 @@ async function iniciar() {
   const base = await carregarBase();
   if (!base) { $('quem').textContent = 'Não foi possível carregar a base'; return; }
   APP.base = base; APP.dic = base.dic; APP.L = base.l;
+  APP.catPronto = carregarCatalogo().catch(() => {});
 
   if (APP.veTudo) {
     $('verComo').innerHTML = '<option value="">Todos os vendedores</option>' +
       APP.dic.prep.map((p, i) => `<option value="${i}">${esc(p)}</option>`).join('');
     $('verComoWrap').hidden = false;
-    $('verComo').addEventListener('change', () => { APP.anteriores = []; APP.atual = null; });
+    $('verComo').addEventListener('change', () => { APP.anteriores = []; APP.atual = null; APP.tela = ''; });
   } else {
     APP.prep = acharPreposto(APP.sessao.nome);
     if (APP.prep < 0) { $('quem').textContent = `Nenhuma linha de ${APP.sessao.nome} na base`; return; }
