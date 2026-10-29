@@ -167,6 +167,13 @@ textarea:focus{ outline:2px solid var(--lima-forte); outline-offset:0; }
   background:linear-gradient(135deg,#C4FA28 0%,#A3E400 60%,#5E8F00 100%); color:var(--sobre-lima);
   display:inline-flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(46,74,0,.3); }
 .enviar:disabled{ opacity:.45; cursor:default; }
+/* microfone no lugar do enviar enquanto o campo está vazio */
+.mic[hidden], form.vazio #enviar, form:not(.vazio) .mic{ display:none; }
+.mic.ouvindo{ background:#dc2626; color:#fff; animation:ouvindo 1.2s infinite ease-in-out; }
+@keyframes ouvindo{ 0%,100%{ box-shadow:0 0 0 0 rgba(220,38,38,.45); } 50%{ box-shadow:0 0 0 9px rgba(220,38,38,0); } }
+@media (prefers-reduced-motion: reduce){ .mic.ouvindo{ animation:none; } }
+/* computador: robô e nome à esquerda, Portal no canto direito */
+@media (min-width:1025px){ header .portal-btn{ order:3; margin-left:auto; } }
 
 .bloqueio{ max-width:420px; margin:60px auto; text-align:center; color:var(--tinta-2);
   background:#fff; border-radius:12px; padding:18px; box-shadow:0 1px .5px rgba(11,20,26,.13); }
@@ -222,6 +229,9 @@ textarea:focus{ outline:2px solid var(--lima-forte); outline-offset:0; }
 <footer>
   <form id="form" autocomplete="off">
     <textarea id="pergunta" rows="1" aria-label="Mensagem" disabled></textarea>
+    <button class="enviar mic" id="mic" type="button" aria-label="Falar" title="Falar" hidden>
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21"/></svg>
+    </button>
     <button class="enviar" id="enviar" type="submit" disabled aria-label="Enviar">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 14-7-5 14-2-6-7-1z"/></svg>
     </button>
@@ -1740,9 +1750,40 @@ async function iniciar() {
   if (BATERIA && APP.veTudo) montarBateria();
 }
 
-$('form').addEventListener('submit', e => { e.preventDefault(); const t = $('pergunta'); const v = t.value; t.value = ''; t.style.height = ''; (AGENTE ? perguntarAgente : perguntar)(v); });
+// Campo vazio mostra o microfone no lugar do enviar, como no WhatsApp.
+const ajustaBotoes = () => $('form').classList.toggle('vazio', !!VOZ && !$('pergunta').value.trim());
+$('form').addEventListener('submit', e => { e.preventDefault(); const t = $('pergunta'); const v = t.value; t.value = ''; t.style.height = ''; ajustaBotoes(); (AGENTE ? perguntarAgente : perguntar)(v); });
 $('pergunta').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('form').requestSubmit(); } });
-$('pergunta').addEventListener('input', e => { const t = e.target; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 120) + 'px'; });
+$('pergunta').addEventListener('input', e => { const t = e.target; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 120) + 'px'; ajustaBotoes(); });
+
+/* Falar em vez de digitar: reconhecimento de fala do próprio navegador
+   (Chrome e Safari; o Firefox não tem). O texto cai no campo e quem
+   envia é a pessoa, depois de conferir: nome de cliente às vezes sai torto. */
+const VOZ = window.SpeechRecognition || window.webkitSpeechRecognition;
+let ouvindo = null;
+if (VOZ) {
+  $('mic').hidden = false;
+  $('mic').addEventListener('click', () => {
+    if (ouvindo) { ouvindo.stop(); return; }
+    const t = $('pergunta'), antes = t.value.trim();
+    const rec = new VOZ();
+    rec.lang = 'pt-BR'; rec.interimResults = true; rec.continuous = false;
+    rec.onresult = ev => {
+      const falado = [...ev.results].map(r => r[0].transcript).join('');
+      t.value = (antes ? antes + ' ' : '') + falado;
+      t.dispatchEvent(new Event('input'));
+    };
+    rec.onerror = ev => {
+      if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') addMsg('ia', '<span class="aviso">Libere o microfone para esta página (no cadeado ao lado do endereço) e toque de novo.</span>');
+      else if (ev.error !== 'no-speech' && ev.error !== 'aborted') addMsg('ia', `<span class="aviso">Não consegui ouvir (${esc(ev.error)}). Tente de novo.</span>`);
+    };
+    rec.onend = () => { ouvindo = null; $('mic').classList.remove('ouvindo'); ajustaBotoes(); if (t.value.trim()) t.focus(); };
+    ouvindo = rec;
+    $('mic').classList.add('ouvindo');
+    rec.start();
+  });
+}
+ajustaBotoes();
 iniciar();
 </script>
 </body>
