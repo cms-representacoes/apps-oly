@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fotos e vídeos dos produtos</title>
+<meta name="description" content="As fotos e os vídeos dos produtos da sua carteira, para baixar e usar na sua loja.">
+<link rel="icon" href="../icon-192.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fundo:#f4f6fb; --papel:#ffffff; --tinta:#0f172a; --fraco:#64748b;
+  --linha:#e5e9f2; --marca:#1d4cd8; --marca-clara:#eef2ff;
+  --ok:#15803d; --sombra:0 1px 2px rgba(15,23,42,.04), 0 12px 32px -18px rgba(15,23,42,.28);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --fundo:#0e131d; --papel:#161b26; --tinta:#e8ebf1; --fraco:#8e99ad;
+    --linha:#2a3242; --marca:#6b86f5; --marca-clara:rgba(107,134,245,.14);
+    --ok:#4ade80; --sombra:0 1px 2px rgba(0,0,0,.3), 0 12px 32px -18px rgba(0,0,0,.7);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --fundo:#0e131d; --papel:#161b26; --tinta:#e8ebf1; --fraco:#8e99ad;
+  --linha:#2a3242; --marca:#6b86f5; --marca-clara:rgba(107,134,245,.14);
+  --ok:#4ade80; --sombra:0 1px 2px rgba(0,0,0,.3), 0 12px 32px -18px rgba(0,0,0,.7);
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;
+  background:var(--fundo); color:var(--tinta);
+  line-height:1.5; -webkit-font-smoothing:antialiased;
+  padding:0 16px calc(48px + env(safe-area-inset-bottom));
+}
+.folha{max-width:1100px;margin:0 auto}
+:focus-visible{outline:2px solid var(--marca);outline-offset:2px;border-radius:6px}
+
+/* ── cabeçalho ───────────────────────────────────────────────────── */
+header{padding:28px 0 20px;display:flex;flex-direction:column;gap:14px}
+.marca{display:flex;align-items:center;gap:10px;color:var(--fraco);font-size:12.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.marca img{height:28px;width:auto;opacity:.9}
+h1{font-size:clamp(24px,5.5vw,34px);font-weight:800;letter-spacing:-.02em;text-wrap:balance}
+.quem{font-size:15px;color:var(--fraco);font-weight:500}
+.quem b{color:var(--tinta);font-weight:700}
+
+.barra{
+  display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+  padding:14px 0 18px;border-top:1px solid var(--linha);margin-top:4px;
+}
+.busca{
+  flex:1 1 220px;min-width:0;height:44px;padding:0 16px;
+  border:1px solid var(--linha);border-radius:999px;
+  background:var(--papel);color:var(--tinta);
+  font-family:inherit;font-size:15px;
+}
+.busca::placeholder{color:var(--fraco)}
+.conta{font-size:13.5px;color:var(--fraco);font-weight:600;white-space:nowrap}
+
+/* ── grade de produtos ───────────────────────────────────────────── */
+/* Duas colunas já no celular: com uma só, cada produto tomava a tela
+   inteira e o lojista rolava 22 vezes para ver o que tem. */
+.grade{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media (min-width:700px){ .grade{grid-template-columns:repeat(3,1fr);gap:14px} }
+
+.card{
+  background:var(--papel);border:1px solid var(--linha);border-radius:18px;
+  overflow:hidden;box-shadow:var(--sombra);display:flex;flex-direction:column;
+}
+.capa{
+  position:relative;width:100%;aspect-ratio:1;background:#fff;
+  border:0;padding:0;cursor:pointer;display:block;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .capa{background:#f8fafc} }
+:root[data-theme="dark"] .capa{background:#f8fafc}
+.capa img{width:100%;height:100%;object-fit:contain;display:block}
+.selo{
+  position:absolute;top:10px;left:10px;display:inline-flex;align-items:center;gap:5px;
+  background:rgba(15,23,42,.84);color:#fff;border-radius:999px;
+  padding:5px 10px;font-size:11.5px;font-weight:700;letter-spacing:.01em;
+}
+.selo.campanha{background:rgba(180,83,9,.92)}
+
+.corpo{padding:14px 16px 16px;display:flex;flex-direction:column;gap:12px;flex:1}
+.nome{font-size:16px;font-weight:800;letter-spacing:-.01em;line-height:1.25}
+.cor{font-size:13px;color:var(--fraco);font-weight:600;margin-top:2px}
+.ref{font-size:12px;color:var(--fraco);font-variant-numeric:tabular-nums}
+.acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}
+/* No celular o card é estreito: dois botões lado a lado espremeriam o
+   texto, então cada um fica com a largura toda. */
+@media (max-width:699px){
+  .corpo{padding:12px 12px 14px;gap:10px}
+  .nome{font-size:15px}
+  .acoes .btn{flex:1 1 100%;padding:0 10px}
+}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  height:40px;padding:0 15px;border-radius:999px;border:1px solid var(--linha);
+  background:var(--papel);color:var(--tinta);
+  font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;
+  text-decoration:none;white-space:nowrap;
+  transition:background .15s ease,border-color .15s ease,transform .1s ease;
+}
+.btn:hover{background:var(--marca-clara);border-color:var(--marca)}
+.btn:active{transform:scale(.97)}
+.btn.principal{background:var(--marca);border-color:var(--marca);color:#fff}
+.btn.principal:hover{filter:brightness(1.08)}
+.btn[disabled]{opacity:.55;cursor:default;transform:none}
+
+/* ── galeria ─────────────────────────────────────────────────────── */
+dialog{
+  border:0;padding:0;border-radius:20px;background:var(--papel);color:var(--tinta);
+  width:min(760px,calc(100vw - 24px));max-height:calc(100dvh - 48px);
+  margin:auto;   /* sem isto a janela nasce colada no canto de cima */
+  box-shadow:0 32px 80px -24px rgba(15,23,42,.5);
+}
+dialog::backdrop{background:rgba(15,23,42,.55);backdrop-filter:blur(2px)}
+.topo-gal{
+  display:flex;align-items:flex-start;gap:12px;justify-content:space-between;
+  padding:18px 20px 14px;border-bottom:1px solid var(--linha);
+  position:sticky;top:0;background:var(--papel);border-radius:20px 20px 0 0;
+}
+.fechar{
+  flex:none;width:36px;height:36px;border-radius:999px;border:1px solid var(--linha);
+  background:var(--papel);color:var(--fraco);font-size:18px;font-weight:700;cursor:pointer;line-height:1;
+}
+.fechar:hover{background:var(--marca-clara);color:var(--tinta)}
+.rolo{overflow:auto;padding:16px 20px 20px;max-height:calc(100dvh - 190px)}
+.angulos{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px}
+.angulo{display:flex;flex-direction:column;gap:7px}
+.angulo .quadro{
+  background:#fff;border:1px solid var(--linha);border-radius:12px;
+  aspect-ratio:1;overflow:hidden;
+}
+.angulo img{width:100%;height:100%;object-fit:contain;display:block}
+.angulo .btn{height:34px;font-size:13px;padding:0 10px}
+.rodape-gal{
+  display:flex;gap:8px;flex-wrap:wrap;padding:14px 20px 18px;
+  border-top:1px solid var(--linha);position:sticky;bottom:0;background:var(--papel);
+}
+
+.vazio{padding:48px 0;text-align:center;color:var(--fraco);font-weight:600}
+footer{
+  margin-top:36px;padding-top:20px;border-top:1px solid var(--linha);
+  font-size:13px;color:var(--fraco);display:flex;flex-direction:column;gap:6px;
+}
+footer b{color:var(--tinta)}
+@media (prefers-reduced-motion:reduce){ *{transition:none !important} }
+</style>
+</head>
+<body>
+<div class="folha">
+
+  <header>
+    <div class="marca">
+      <img src="../logo-olympikus.png" alt="Olympikus">
+      <span>CMS Representações</span>
+    </div>
+    <div>
+      <h1>Fotos e vídeos dos seus produtos</h1>
+      <p class="quem" id="quem">Carregando…</p>
+    </div>
+  </header>
+
+  <div class="barra">
+    <input class="busca" id="busca" type="search" placeholder="Procurar por modelo ou cor" autocomplete="off" aria-label="Procurar produto">
+    <span class="conta" id="conta"></span>
+  </div>
+
+  <main class="grade" id="grade" aria-live="polite"></main>
+
+  <footer>
+    <span>As imagens e os vídeos são material oficial da marca, para você usar na divulgação da sua loja.</span>
+    <span id="rodape"></span>
+  </footer>
+</div>
+
+<dialog id="galeria" aria-label="Fotos do produto">
+  <div class="topo-gal">
+    <div>
+      <div class="nome" id="galNome"></div>
+      <div class="cor" id="galCor"></div>
+    </div>
+    <button class="fechar" id="galFechar" aria-label="Fechar">&times;</button>
+  </div>
+  <div class="rolo"><div class="angulos" id="galAngulos"></div></div>
+  <div class="rodape-gal" id="galRodape"></div>
+</dialog>
+
+<script>
+// O CDN da marca serve os arquivos sem login, mas não manda cabeçalho de
+// anexo: o link direto abriria a foto numa aba em vez de salvar. O Worker
+// repassa o arquivo com o nome certo, e aí o navegador baixa.
+const PONTE = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
+const baixarUrl = (url, nome) =>
+  PONTE + '/?midia=' + encodeURIComponent(url) + '&nome=' + encodeURIComponent(nome);
+
+const $ = id => document.getElementById(id);
+let PRODUTOS = [];
+
+const texto = v => String(v == null ? '' : v);
+const seguro = v => texto(v).replace(/[&<>"']/g, c =>
+  ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+
+function pedacos(p){
+  const n = p.fotos.length;
+  const f = n + (n === 1 ? ' foto' : ' fotos');
+  return p.video ? f + ' · 1 vídeo' : f;
+}
+
+function cartao(p, i){
+  const capa = p.fotos[0];
+  return `
+  <article class="card">
+    <button class="capa" data-abrir="${i}" aria-label="Ver as fotos de ${seguro(p.descricao)} ${seguro(p.cor)}">
+      ${capa ? `<img src="${seguro(capa.mini)}" alt="${seguro(p.descricao)} ${seguro(p.cor)}" loading="lazy">` : ''}
+      ${p.video ? '<span class="selo">▶ Vídeo</span>' : ''}
+      ${p.campanha ? '<span class="selo campanha" style="left:auto;right:10px">Campanha</span>' : ''}
+    </button>
+    <div class="corpo">
+      <div>
+        <div class="nome">${seguro(p.descricao)}</div>
+        <div class="cor">${seguro(p.cor)} · <span class="ref">${seguro(p.artigo)}</span></div>
+      </div>
+      <div class="cor">${pedacos(p)}</div>
+      <div class="acoes">
+        <button class="btn principal" data-fotos="${i}">Baixar as fotos</button>
+        ${p.video ? `<a class="btn" href="${baixarUrl(p.video.url, p.video.nome)}">Vídeo</a>` : ''}
+      </div>
+    </div>
+  </article>`;
+}
+
+function desenhar(){
+  const q = $('busca').value.trim().toLowerCase();
+  const lista = PRODUTOS.map((p, i) => [p, i]).filter(([p]) =>
+    !q || (p.descricao + ' ' + p.cor + ' ' + p.artigo).toLowerCase().includes(q));
+
+  $('grade').innerHTML = lista.length
+    ? lista.map(([p, i]) => cartao(p, i)).join('')
+    : '<p class="vazio">Nada com esse nome por aqui.</p>';
+
+  const fotos = lista.reduce((s, [p]) => s + p.fotos.length, 0);
+  const videos = lista.reduce((s, [p]) => s + (p.video ? 1 : 0), 0);
+  $('conta').textContent = `${lista.length} produto${lista.length === 1 ? '' : 's'} · ${fotos} fotos · ${videos} vídeo${videos === 1 ? '' : 's'}`;
+}
+
+// Um download de cada vez: disparar os oito de uma vez faz o navegador
+// engolir a maioria sem avisar.
+async function baixarTodas(p, botao){
+  const antes = botao.textContent;
+  botao.disabled = true;
+  for (let k = 0; k < p.fotos.length; k++){
+    botao.textContent = `Baixando ${k + 1} de ${p.fotos.length}…`;
+    const a = document.createElement('a');
+    a.href = baixarUrl(p.fotos[k].url, p.fotos[k].nome);
+    a.download = p.fotos[k].nome;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    await new Promise(r => setTimeout(r, 700));
+  }
+  botao.textContent = 'Pronto';
+  setTimeout(() => { botao.textContent = antes; botao.disabled = false; }, 1600);
+}
+
+function abrirGaleria(p){
+  $('galNome').textContent = p.descricao;
+  $('galCor').textContent = `${p.cor} · ${p.artigo} · ${pedacos(p)}`;
+  $('galAngulos').innerHTML = p.fotos.map(f => `
+    <div class="angulo">
+      <div class="quadro"><img src="${seguro(f.mini)}" alt="${seguro(f.nome)}" loading="lazy"></div>
+      <a class="btn" href="${baixarUrl(f.url, f.nome)}">Baixar</a>
+    </div>`).join('');
+
+  $('galRodape').innerHTML =
+    `<button class="btn principal" data-fotos-gal="1">Baixar as ${p.fotos.length} fotos</button>` +
+    (p.video ? `<a class="btn" href="${baixarUrl(p.video.url, p.video.nome)}">Baixar o vídeo (${p.video.mb} MB)</a>` : '');
+
+  const b = $('galRodape').querySelector('[data-fotos-gal]');
+  if (b) b.addEventListener('click', () => baixarTodas(p, b));
+  $('galeria').showModal();
+}
+
+document.addEventListener('click', e => {
+  const abrir = e.target.closest('[data-abrir]');
+  if (abrir) return abrirGaleria(PRODUTOS[+abrir.dataset.abrir]);
+  const fotos = e.target.closest('[data-fotos]');
+  if (fotos) return baixarTodas(PRODUTOS[+fotos.dataset.fotos], fotos);
+});
+$('galFechar').addEventListener('click', () => $('galeria').close());
+$('busca').addEventListener('input', desenhar);
+
+(async function inicio(){
+  const quem = new URLSearchParams(location.search).get('c');
+  if (!quem){
+    $('quem').textContent = 'Link incompleto — peça o endereço completo ao seu representante.';
+    return;
+  }
+  try{
+    const r = await fetch(quem.replace(/[^a-z0-9-]/gi, '') + '.json', { cache: 'no-cache' });
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    PRODUTOS = d.produtos || [];
+    document.title = `Fotos e vídeos · ${d.cliente}`;
+    $('quem').innerHTML = `Material dos produtos da carteira de <b>${seguro(d.cliente)}</b>.`;
+    const dia = (d.geradoEm || '').split('-').reverse().join('/');
+    $('rodape').textContent = dia ? `Lista montada em ${dia}.` : '';
+    desenhar();
+  }catch(_){
+    $('quem').textContent = 'Não encontrei essa lista. Confira o link com o seu representante.';
+  }
+})();
+</script>
+</body>
+</html>
