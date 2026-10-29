@@ -1068,7 +1068,10 @@ async function perguntar(texto) {
     registrar(enviada, q, res);
     comentar(bolha, res, enviada);
   } catch (e) {
-    bolha.innerHTML = `<span class="aviso">Não consegui responder agora (${esc(e.message || e)}). Tente de novo em instantes.</span>`;
+    // Cota grátis diária da Cloudflare (10 mil "neurons"): zera às 0h UTC = 21h de Brasília.
+    bolha.innerHTML = /4006|daily free allocation/i.test(e.message || '')
+      ? '<span class="aviso">A cota grátis de IA de hoje acabou. Ela volta às 21h (horário de Brasília).</span>'
+      : `<span class="aviso">Não consegui responder agora (${esc(e.message || e)}). Tente de novo em instantes.</span>`;
   } finally {
     $('enviar').disabled = false;
     rolar();
@@ -1477,7 +1480,10 @@ async function perguntarAgente(texto) {
       else baixar(b, res, b.dataset.ag);
     });
   } catch (e) {
-    bolha.innerHTML = `<span class="aviso">Não consegui responder agora (${esc(e.message || e)}). Tente de novo em instantes.</span>`;
+    // Cota grátis diária da Cloudflare (10 mil "neurons"): zera às 0h UTC = 21h de Brasília.
+    bolha.innerHTML = /4006|daily free allocation/i.test(e.message || '')
+      ? '<span class="aviso">A cota grátis de IA de hoje acabou. Ela volta às 21h (horário de Brasília).</span>'
+      : `<span class="aviso">Não consegui responder agora (${esc(e.message || e)}). Tente de novo em instantes.</span>`;
   } finally {
     $('enviar').disabled = false;
     rolar();
