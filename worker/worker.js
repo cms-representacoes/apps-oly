@@ -1897,9 +1897,14 @@ export default {
             "- Cumprimento, agradecimento ou dúvida sobre um termo: responda direto, sem ferramenta.",
             "- Você só enxerga pedidos, carteira, faturamento, entradas e saídas do mês e o cadastro de produtos e clientes. Meta, estoque de loja, comissão e preço de custo você não enxerga: diga isso com gentileza."
           ].filter(s => s !== "").join("\n");
-          const mensagens = [{ role: "system", content: sistema }, ...conversa];
+          // O roteiro vem pronto da página (agSistema): assim um ajuste no texto
+          // sai sem publicar o worker. O de cima fica de reserva.
+          const daPagina = typeof body.sistema === "string" && body.sistema.trim().length > 200 ? body.sistema.slice(0, 20000) : "";
+          const mensagens = [{ role: "system", content: daPagina || sistema }, ...conversa];
+          // Modelo escolhido (bateria de testes): só ele, sem cair para os outros.
+          const escolhido = MODELOS_CHAT.filter(m => m.modelo === body.modelo);
           let ultimoErro = "";
-          for (const opc of MODELOS_CHAT) {
+          for (const opc of (escolhido.length ? escolhido : MODELOS_CHAT)) {
             try {
               const r = await env.AI.run(opc.modelo, { messages: mensagens, temperature: 0.2, ...opc.extra(1200) });
               let txt = textoDaIA(r).trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");

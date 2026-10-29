@@ -118,6 +118,10 @@ a.sug{ text-decoration:none; display:inline-block; }
 .ag-tab summary{ cursor:pointer; padding:9px 0; font-size:13px; font-weight:600; color:var(--oliva-escuro); }
 .ag-tab summary span{ font-weight:500; color:var(--tinta-3); }
 .ag-tab[open]{ padding-bottom:10px; }
+#batModelo{ font:inherit; font-size:13px; padding:7px 8px; border:1px solid var(--linha); border-radius:8px; background:#fff; max-width:100%; }
+#batSaida td{ vertical-align:top; max-width:320px; white-space:normal; }
+#batSaida .bat-errado td{ background:#fdecea; }
+#batSaida .bat-falhou td{ background:#fff4d6; }
 /* ficha de produto ou cliente: rótulo pequeno em cima do valor, sem tabela */
 .ficha{ border:1px solid var(--linha); border-radius:10px; padding:10px 12px; margin-top:6px; font-size:14px; line-height:1.45; }
 .ficha + .ficha{ margin-top:8px; }
@@ -1075,6 +1079,49 @@ function agPeriodo() {
   return (AG.periodo = { faturado: fx(fDe, fAte), carteira: fx(pDe, pAte) });
 }
 
+// O roteiro da IA mora aqui, não no worker: ajuste no texto sai junto com a
+// página, sem colar o worker na Cloudflare (ele só guarda uma cópia de reserva).
+function agSistema(ctx) {
+  const lista = (v, n) => (v || []).slice(0, n).join(', ');
+  const per = ctx.periodo || {};
+  const cobre = [per.faturado && `faturado de ${per.faturado.de} a ${per.faturado.ate}`, per.carteira && `carteira com previsão de ${per.carteira.de} a ${per.carteira.ate}`].filter(Boolean);
+  return [
+    'Você é o assistente da Detalhada, a carteira de pedidos da CMS Representações (calçados, roupas e acessórios Olympikus e Under Armour). Conversa com vendedores pelo celular, em português do Brasil, como um colega experiente e direto.',
+    `Hoje é ${hojeIso()}.`,
+    ctx.vendedor ? `Quem fala com você: ${ctx.vendedor}. Ele só enxerga os próprios clientes; as ferramentas já aplicam essa trava sozinhas.` : 'Quem fala com você vê a base inteira (todos os vendedores).',
+    ctx.vendedores && ctx.vendedores.length ? `Vendedores na base: ${lista(ctx.vendedores, 30)}.` : '',
+    ctx.linhas && ctx.linhas.length ? `Linhas (categorias): ${lista(ctx.linhas, 30)}.` : '',
+    cobre.length ? `A base tem ${cobre.join(' e ')}. Antes disso não há dado.` : '',
+    ctx.movMes ? `Só a ferramenta movimento (entradas e saídas) fica restrita ao mês ${String(ctx.movMes).slice(0, 7)}; consultar enxerga a base inteira.` : '',
+    '',
+    'GLOSSÁRIO: carteira = pares pedidos que ainda não faturaram (a faturar). Faturado = pares que já saíram com nota. Previsão = data prevista de faturamento de um pedido. OC = ordem de compra do cliente. NF = número da nota fiscal. GCI = número do pedido na fábrica. Linha = categoria do produto. Pares = quantidade (vale também para peças de roupa e acessórios). 1º semestre = janeiro a junho; 2º semestre = julho a dezembro. Para comparar períodos, consulte cada um (ou agrupe por mes) e calcule a diferença a partir dos resultados.',
+    '',
+    'COMO RESPONDER: a cada mensagem sua, devolva UM único objeto JSON, sem nada antes ou depois, de um destes dois jeitos:',
+    '1) Para usar uma ferramenta: {"ferramenta":"nome","args":{...}}',
+    '2) Para falar com o vendedor: {"resposta":"texto"}',
+    `Depois de pedir uma ferramenta, PARE e espere: o resultado chega na próxima mensagem, começando com [resultado de ...]. Nunca escreva [resultado de ...] você mesmo, nunca peça duas ferramentas na mesma mensagem e nunca imagine o que a ferramenta vai devolver. Use quantas ferramentas precisar (até ${PASSOS_MAX} por pergunta), uma por vez, e só então responda.`,
+    '',
+    'FERRAMENTAS:',
+    '- consultar: soma pares da carteira e do faturado com filtros e agrupamento livres. args: {"filtros":{"cliente","produto","cor","linha","marca":"OLY|UA","vendedor","oc","nf","gci","fabrica","filial"}, "situacao":"carteira|faturado|tudo", "de":"AAAA-MM-DD", "ate":"AAAA-MM-DD", "agrupar":[...], "limite":25, "ordenar":"carteira|faturado|total|nome|data"}. Todos opcionais. Período: a carteira conta pela data de previsão e o faturado pela data da nota. agrupar aceita uma ou mais destas: cliente, produto, cor, produto_cor, linha, marca, vendedor, oc, nf, gci, fabrica, filial, mes, dia, previsao. Sem agrupar = só o total. Nomes podem vir como o vendedor escreveu: a ferramenta tolera erro de digitação e diz com o que casou. Cada filtro aceita também uma lista (["DEGRAUS","TALENTUS"]) para somar vários de uma vez.',
+    '- clientes_sem_pedido: clientes (do vendedor) que NÃO têm pedido de um produto/cor/linha/marca, os maiores primeiro. args: {"produto","cor","linha","marca","de","ate","vendedor","limite","clientes":[...]}. Use "clientes" para olhar só alguns (por exemplo, os maiores que você acabou de listar).',
+    '- movimento: o que ENTROU na carteira (pedidos novos) ou SAIU (faturou, transferiu, cancelou) em um dia ou período do mês atual. args: {"tipo":"entradas|saidas","de","ate","agrupar":"cliente|produto|produto_cor|dia|vendedor|nenhum","cliente","produto","cor","vendedor"}.',
+    '- ficha: cadastro de um produto (referência, descrição, preço sugerido, cores, linha, gênero, composição, tecnologias) ou de um cliente (códigos, nome fantasia, vendedor, carteira, faturado, próxima previsão, último faturamento). args: {"produto"} ou {"cliente"}.',
+    '- catalogo: mostra ao vendedor os botões para gerar o catálogo (pedidos do cliente com foto) em PDF ou Excel, igual ao da Detalhada. args: {"cliente","formato":"pdf|xlsx","imagens":true|false}.',
+    '- baixar: baixa em Excel ou PDF a última tabela de consultar, clientes_sem_pedido ou movimento. args: {"formato":"xlsx|pdf"}.',
+    '',
+    'REGRAS:',
+    '- Todo número que você disser tem que ter vindo de uma ferramenta nesta conversa. Nunca invente nem estime; se precisar de outro total, consulte de novo. Diferença e porcentagem entre dois números que vieram das ferramentas você pode calcular.',
+    '- Nunca diga que não tem dado de um período sem antes consultar: a base cobre as datas informadas acima.',
+    '- Se a ferramenta disser que um nome é ambíguo ou não existe, pergunte ao vendedor qual é (mostre as opções) em vez de chutar.',
+    '- Se o resultado avisar que a lista foi cortada, não conclua nada sobre quem ficou de fora: consulte de novo com filtro pelos nomes que interessam. Para "desses, quem não pediu X", use clientes_sem_pedido com a lista em "clientes".',
+    '- Se a pergunta for vaga demais para consultar, pergunte o que falta numa frase.',
+    '- As tabelas das ferramentas aparecem para o vendedor logo abaixo da sua resposta. Não copie tabelas no texto: destaque o essencial (totais, os maiores, o que chama atenção) em poucas frases ou numa lista curta, com **negrito** nos números importantes.',
+    '- Datas no texto em DD/MM/AAAA. Números com ponto de milhar (1.234).',
+    '- Cumprimento, agradecimento ou dúvida sobre um termo: responda direto, sem ferramenta.',
+    '- Você só enxerga pedidos, carteira, faturamento, entradas e saídas do mês e o cadastro de produtos e clientes. Meta, estoque de loja, comissão e preço de custo você não enxerga: diga isso com gentileza.',
+  ].filter(s => s !== '').join('\n');
+}
+
 // Filtro por nome com a mesma tolerância do assistente: exato, frase,
 // palavras; senão o mais parecido, se ficar claro. Diz com o que casou.
 function agFiltro(lista, termo, rotulo, mostra) {
@@ -1118,7 +1165,13 @@ function agConsultar(a) {
     const set = new Set();
     for (const t of termos) {
       const r = agFiltro(lista, t, rotulo, mostra);
-      if (r.erro) return r.erro;
+      if (r.erro) {
+        // A IA às vezes manda cliente como produto ("degras", "Talentus"):
+        // diz em que campo o nome existe, para ela refazer sozinha.
+        const outro = rotulo === 'produto' ? ['cliente', meus ? X.cli.filter(x => meus.has(x.i)) : X.cli] : rotulo === 'cliente' ? ['produto', X.ref] : null;
+        if (outro && agFiltro(outro[1], t, outro[0], () => '').set) return `${r.erro} Mas "${t}" existe como ${outro[0]}: refaça a consulta com filtros.${outro[0]}.`;
+        return r.erro;
+      }
       aplicados.push(r.texto); r.set.forEach(i => set.add(i));
     }
     conds.push(x => set.has(x[col]));
@@ -1272,7 +1325,7 @@ const FERRAMENTAS = {
   baixar: a => {
     if (!AG.ultimaTabela) return { erro: 'Ainda não há tabela nesta conversa para baixar.' };
     const formato = a.formato === 'pdf' ? 'pdf' : 'xlsx';
-    baixar(null, AG.ultimaTabela, formato);
+    if (!AG.testando) baixar(null, AG.ultimaTabela, formato);
     return { texto: `O ${formato === 'pdf' ? 'PDF' : 'Excel'} da última tabela foi baixado no aparelho do vendedor.` };
   },
 };
@@ -1331,44 +1384,42 @@ function agHistorico() {
   return AG.msgs.map((m, i) => idxRes.includes(i) && !recentes.has(i) ? { role: m.role, content: m.content.slice(0, 400) + '\n(…resumido)' } : m);
 }
 
-async function perguntarAgente(texto) {
-  texto = texto.trim();
-  if (!texto) return;
-  addMsg('eu', esc(texto));
-  const bolha = addMsg('ia', '<span class="digitando">Pensando…</span>');
-  $('enviar').disabled = true;
+// Uma pergunta inteira: pede à IA, roda as ferramentas que ela pedir e
+// devolve a resposta. Não mexe na tela (a bateria de testes usa o mesmo).
+async function agRodar(texto, aoPasso) {
   const inicio = AG.msgs.length;
   AG.msgs.push({ role: 'user', content: texto });
-  const tabelas = [], extras = [];
+  const tabelas = [], extras = [], usadas = [];
   const p = prepAtivo();
   const contexto = {
     vendedor: p >= 0 ? APP.dic.prep[p] : '', vendedores: APP.veTudo && p < 0 ? APP.dic.prep : [],
     linhas: APP.dic.faixa || [], movMes: APP.base.mov && APP.base.mov.mes, periodo: agPeriodo(),
   };
+  const sistema = agSistema(contexto);
   try {
     for (let passo = 1; ; passo++) {
-      const r = await chamarWorker('agenteDetalhada', { hoje: hojeIso(), contexto, mensagens: agHistorico() }, 60000);
+      // O gpt-oss às vezes trava e devolve "!!!!!!…": pede de novo e, na
+      // terceira, vai de Llama (só na bateria com modelo fixo é que não troca).
+      let r;
+      for (let tenta = 0; tenta < 3; tenta++) {
+        const modelo = AG.modelo || (tenta === 2 ? '@cf/meta/llama-3.3-70b-instruct-fp8-fast' : undefined);
+        r = await chamarWorker('agenteDetalhada', { hoje: hojeIso(), contexto, sistema, modelo, mensagens: agHistorico() }, 60000);
+        if (!r || !r.ok || r.acao === 'ferramenta' || !/(.)\1{15,}/.test(r.texto || '')) break;
+      }
       if (!r || !r.ok) throw new Error(r?.erro || 'sem resposta');
+      if (r.acao !== 'ferramenta' && /(.)\1{15,}/.test(r.texto || '')) throw new Error('a IA devolveu texto embaralhado');
       if (r.acao !== 'ferramenta') {
         AG.msgs.push({ role: 'assistant', content: JSON.stringify({ resposta: r.texto }) });
-        bolha.innerHTML = `<div class="ag-texto">${mdSimples(r.texto)}</div>` + extras.join('') + tabelas.map(agTabelaHtml).join('');
-        bolha.addEventListener('click', ev => {
-          const b = ev.target.closest('[data-ag]');
-          if (!b) return;
-          const res = tabelas[Number(b.dataset.i)];
-          if (b.dataset.ag === 'todas') { b.closest('details').querySelector('.tabela-wrap').outerHTML = tabelaHtml(res, Infinity); b.remove(); }
-          else baixar(b, res, b.dataset.ag);
-        });
-        break;
+        return { texto: r.texto, tabelas, extras, usadas, modelo: r.modelo };
       }
       AG.msgs.push({ role: 'assistant', content: JSON.stringify({ ferramenta: r.nome, args: r.args }) });
+      usadas.push({ nome: r.nome, args: r.args });
       const fn = FERRAMENTAS[r.nome];
       let out;
       if (passo > PASSOS_MAX) out = { erro: 'Limite de consultas desta pergunta atingido. Responda com o que já tem.' };
       else if (!fn) out = { erro: `Ferramenta "${r.nome}" não existe. Use: ${Object.keys(FERRAMENTAS).join(', ')}.` };
       else {
-        bolha.innerHTML = `<span class="digitando">${esc(ROTULO_FERRAMENTA[r.nome] || 'Consultando')}… (${passo})</span>`;
-        rolar();
+        if (aoPasso) aoPasso(r.nome, passo);
         if (r.nome === 'ficha') await APP.catPronto;
         try { out = fn(r.args || {}); } catch (e) { out = { erro: 'A ferramenta falhou: ' + (e.message || e) }; }
       }
@@ -1383,11 +1434,177 @@ async function perguntarAgente(texto) {
     }
   } catch (e) {
     AG.msgs.length = inicio;
+    throw e;
+  }
+}
+
+async function perguntarAgente(texto) {
+  texto = texto.trim();
+  if (!texto) return;
+  addMsg('eu', esc(texto));
+  const bolha = addMsg('ia', '<span class="digitando">Pensando…</span>');
+  $('enviar').disabled = true;
+  try {
+    const { texto: resp, tabelas, extras } = await agRodar(texto, (nome, passo) => {
+      bolha.innerHTML = `<span class="digitando">${esc(ROTULO_FERRAMENTA[nome] || 'Consultando')}… (${passo})</span>`;
+      rolar();
+    });
+    bolha.innerHTML = `<div class="ag-texto">${mdSimples(resp)}</div>` + extras.join('') + tabelas.map(agTabelaHtml).join('');
+    bolha.addEventListener('click', ev => {
+      const b = ev.target.closest('[data-ag]');
+      if (!b) return;
+      const res = tabelas[Number(b.dataset.i)];
+      if (b.dataset.ag === 'todas') { b.closest('details').querySelector('.tabela-wrap').outerHTML = tabelaHtml(res, Infinity); b.remove(); }
+      else baixar(b, res, b.dataset.ag);
+    });
+  } catch (e) {
     bolha.innerHTML = `<span class="aviso">Não consegui responder agora (${esc(e.message || e)}). Tente de novo em instantes.</span>`;
   } finally {
     $('enviar').disabled = false;
     rolar();
   }
+}
+
+/* ── bateria de testes do agente (?agente=1&bateria=1, só DEV) ──────────
+   Perguntas fixas de vendedor; o gabarito sai das próprias ferramentas na
+   hora do teste, então continua valendo quando a carteira muda. A conferência
+   procura na resposta o número (ou nome, data, código) que a base dá. */
+const BATERIA = AGENTE && new URLSearchParams(location.search).has('bateria');
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const isoDe = d => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+// Mês relativo ao de hoje: 0 = este, -1 = passado, 1 = próximo.
+function batMes(off) {
+  const h = new Date(hojeIso() + 'T00:00:00Z');
+  const ini = new Date(Date.UTC(h.getUTCFullYear(), h.getUTCMonth() + off, 1));
+  const fim = new Date(Date.UTC(h.getUTCFullYear(), h.getUTCMonth() + off + 1, 0));
+  return { de: isoDe(ini), ate: isoDe(fim), nome: MESES[ini.getUTCMonth()] };
+}
+const batAno = () => hojeIso().slice(0, 4);
+const batSem = n => ({ de: `${batAno()}-${n === 1 ? '01-01' : '07-01'}`, ate: `${batAno()}-${n === 1 ? '06-30' : '12-31'}` });
+const batDia = off => { const d = new Date(hojeIso() + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + off); return isoDe(d); };
+// Valor de uma coluna: total (sem linha), linha pelo número ou pelo nome.
+function batValor(res, medida, linha) {
+  const j = medida ? res.cols.indexOf(medida) : res.num[res.num.length - 1];
+  if (j < 0) return null;
+  if (linha == null) return res.rows.reduce((s, r) => s + (Number(r[j]) || 0), 0);
+  const row = typeof linha === 'number' ? res.rows[linha] : res.rows.find(r => norm(String(r[0])).includes(norm(linha)));
+  return row ? Number(row[j]) || 0 : null;
+}
+const batCons = a => { const o = agConsultar(a); if (o.erro) throw new Error(o.erro); return o.res; };
+const batNums = t => (String(t).match(/\d{1,3}(?:\.\d{3})+|\d+/g) || []).map(s => Number(s.replace(/\./g, '')));
+const batTem = (t, v) => v != null && batNums(t).includes(Math.round(v));
+const batNome = (t, nome) => norm(t).includes(norm(String(nome).split(/\s+/)[0]));
+const batUsou = (r, nome) => r.usadas.some(u => u.nome === nome);
+const NAO_VE = /(n[aã]o|nem) (enxergo|tenho|consigo|vejo|possuo|acesso)/i;
+// Movimento sem agrupar só traz o total no resumo ("3.480 pares entraram…").
+function batMov(r, a) {
+  const o = FERRAMENTAS.movimento(a);
+  if (!o.res) return { ok: /n[aã]o/i.test(r.texto), esp: 'sem registro do período' };
+  const v = /^Nenhum/.test(o.res.resumo) ? 0 : batNums(o.res.resumo)[0];
+  return { ok: v ? batTem(r.texto, v) : /nenhum|n[aã]o|\b0\b/i.test(r.texto), esp: `${fmt(v)} (de ${dataDe(diaDe(a.de))} a ${dataDe(diaDe(a.ate))})` };
+}
+
+const TESTES = [
+  { v: 'JORGE', q: ['bom dia'], ok: r => ({ ok: !r.usadas.length, esp: 'cumprimentar sem consultar' }) },
+  { v: 'JORGE', q: ['quanto o Degraus tem em carteira?'], ok: r => { const v = batValor(batCons({ filtros: { cliente: 'DEGRAUS' }, situacao: 'carteira' }), 'Carteira'); return { ok: batTem(r.texto, v), esp: fmt(v) }; } },
+  { v: 'JORGE', q: ['quanto o degras tem em carterira?'], ok: r => { const v = batValor(batCons({ filtros: { cliente: 'DEGRAUS' }, situacao: 'carteira' }), 'Carteira'); return { ok: batTem(r.texto, v), esp: fmt(v) + ' (com erro de digitação)' }; } },
+  { v: 'JORGE', q: ['quanto o Degraus faturou no mês passado?'], ok: r => { const m = batMes(-1), v = batValor(batCons({ filtros: { cliente: 'DEGRAUS' }, situacao: 'faturado', de: m.de, ate: m.ate }), 'Faturado'); return { ok: batTem(r.texto, v), esp: `${fmt(v)} (${m.nome})` }; } },
+  { v: 'JORGE', q: ['qual o crescimento em pares do Degraus do 1º para o 2º semestre?'], ok: r => {
+    const [a, b] = [1, 2].map(n => batCons({ filtros: { cliente: 'DEGRAUS' }, ...batSem(n) }));
+    const ok = (batTem(r.texto, batValor(a, 'Faturado')) || batTem(r.texto, batValor(a, 'Total'))) && (batTem(r.texto, batValor(b, 'Faturado')) || batTem(r.texto, batValor(b, 'Total')));
+    return { ok, esp: `1º sem ${fmt(batValor(a, 'Total'))} · 2º sem ${fmt(batValor(b, 'Total'))} (total; ou só o faturado)` };
+  } },
+  { v: 'JORGE', q: ['quanto o Degraus faturou no 1º semestre?', 'e no segundo?'], ok: r => { const b = batCons({ filtros: { cliente: 'DEGRAUS' }, ...batSem(2) }); return { ok: batTem(r.texto, batValor(b, 'Faturado')) || batTem(r.texto, batValor(b, 'Total')), esp: `2º sem: faturado ${fmt(batValor(b, 'Faturado'))} ou total ${fmt(batValor(b, 'Total'))}` }; } },
+  { v: 'JORGE', q: ['quais são meus 5 maiores clientes em carteira?'], ok: r => { const t = batCons({ agrupar: ['cliente'], situacao: 'carteira', ordenar: 'carteira', limite: 5 }); return { ok: batTem(r.texto, t.rows[0][2]) && batNome(r.texto, t.rows[0][0]), esp: `1º: ${t.rows[0][0]} ${fmt(t.rows[0][2])}` }; } },
+  { v: 'JORGE', q: ['quais são meus 5 maiores clientes em carteira?', 'desses, quem não pediu o swift 6?'], ok: r => {
+    const t = batCons({ agrupar: ['cliente'], situacao: 'carteira', ordenar: 'carteira', limite: 5 });
+    const out = FERRAMENTAS.clientes_sem_pedido({ produto: 'SWIFT 6', clientes: [...new Set(t.rows.map(x => x[0]))] });
+    const faltam = (out.res ? out.res.resumo.split('\n') : []).filter(l => /NÃO PEDIU/.test(l) && !/JÁ PEDIU/.test(l)).map(l => l.split(' (')[0]);
+    return faltam.length ? { ok: faltam.every(n => batNome(r.texto, n)), esp: 'não pediram: ' + faltam.join(', ') } : { ok: /todos|nenhum/i.test(r.texto), esp: 'todos já pediram' };
+  } },
+  { v: 'JORGE', q: ['quanto tenho de carteira para o próximo mês?'], ok: r => { const m = batMes(1), v = batValor(batCons({ situacao: 'carteira', de: m.de, ate: m.ate }), 'Carteira'); return { ok: batTem(r.texto, v), esp: `${fmt(v)} (${m.nome})` }; } },
+  { v: 'JORGE', q: [`compara o meu faturado de ${batMes(-2).nome} com ${batMes(-1).nome}`], ok: r => { const [a, b] = [-2, -1].map(o => { const m = batMes(o); return batValor(batCons({ situacao: 'faturado', de: m.de, ate: m.ate }), 'Faturado'); }); return { ok: batTem(r.texto, a) && batTem(r.texto, b), esp: `${fmt(a)} e ${fmt(b)}` }; } },
+  { v: 'JORGE', q: ['qual linha eu mais faturei este ano?'], ok: r => { const t = batCons({ situacao: 'faturado', agrupar: ['linha'], ordenar: 'faturado', de: batAno() + '-01-01', ate: hojeIso() }); return { ok: norm(r.texto).includes(norm(t.rows[0][0])), esp: `${t.rows[0][0]} (${fmt(t.rows[0][1])})` }; } },
+  { v: 'JORGE', q: ['quais clientes compraram swift 6?'], ok: r => { const t = batCons({ filtros: { produto: 'SWIFT 6' }, agrupar: ['cliente'], ordenar: 'total' }); return { ok: batNome(r.texto, t.rows[0][0]), esp: `o maior: ${t.rows[0][0]} · ${fmt(t.rows.length)} cliente(s)` }; } },
+  { v: 'JORGE', q: ['quantos pares de Under Armour eu tenho na carteira?'], ok: r => { const v = batValor(batCons({ filtros: { marca: 'UA' }, situacao: 'carteira' }), 'Carteira'); return { ok: batTem(r.texto, v), esp: fmt(v) }; } },
+  { v: 'JORGE', q: ['quando é a próxima previsão de faturamento do Degraus?'], ok: r => {
+    const t = batCons({ filtros: { cliente: 'DEGRAUS' }, situacao: 'carteira', agrupar: ['previsao'], ordenar: 'data' });
+    const hoje = diaDe(hojeIso()), prox = t.rows.find(x => x[0] >= hoje) || t.rows[0];
+    return prox ? { ok: r.texto.includes(dataDe(prox[0])), esp: dataDe(prox[0]) } : { ok: true, esp: 'sem carteira' };
+  } },
+  { v: 'JORGE', q: ['me fala do cliente sapequara'], ok: r => { const cods = APP.dic.cli.filter(c => norm(c[1]).includes('SAPEQUARA')).map(c => String(c[0])); return { ok: cods.some(c => r.texto.includes(c)), esp: 'código ' + cods.join(' ou ') }; } },
+  { v: 'JORGE', q: ['qual a referência do venus 3?'], ok: r => { const f = (FERRAMENTAS.ficha({ produto: 'VENUS 3' }).texto || '').match(/\b\d{8}\b/); return { ok: !!f && r.texto.includes(f[0]), esp: f ? f[0] : '?' }; } },
+  { v: 'JORGE', q: ['quanto custa o corre 4?'], ok: r => { const f = (FERRAMENTAS.ficha({ produto: 'CORRE 4' }).texto || '').match(/R\$\s*([\d.]+)/); return { ok: !!f && batTem(r.texto, Number(f[1].replace(/\./g, ''))), esp: f ? 'R$ ' + f[1] + ' (preço sugerido)' : '?' }; } },
+  { v: 'JORGE', q: ['quanto o talentus tem de carteira?'], ok: r => ({ ok: /\?/.test(r.texto) || norm(r.texto).includes('SEMPRE NA MODA'), esp: 'perguntar qual Talentus, ou separar os dois' }) },
+  { v: 'JORGE', q: ['qual a minha meta deste mês?'], ok: r => ({ ok: NAO_VE.test(r.texto), esp: 'dizer que não enxerga meta' }) },
+  { v: 'JORGE', q: ['quanto entrou de pedido ontem?'], ok: r => batMov(r, { tipo: 'entradas', de: batDia(-1), ate: batDia(-1) }) },
+  { v: 'JORGE', q: ['quanto saiu da minha carteira essa semana?'], ok: r => { const dow = (new Date(hojeIso() + 'T00:00:00Z').getUTCDay() + 6) % 7; return batMov(r, { tipo: 'saidas', de: batDia(-dow), ate: hojeIso() }); } },
+  { v: 'JORGE', q: ['o que o Degraus tem para faturar no próximo mês, por produto?', 'baixa essa tabela em excel'], ok: r => ({ ok: batUsou(r, 'baixar'), esp: 'usar a ferramenta baixar' }) },
+  { v: 'JORGE', q: ['manda o catálogo do degraus em pdf'], ok: r => ({ ok: batUsou(r, 'catalogo'), esp: 'usar a ferramenta catalogo' }) },
+  { v: 'JORGE', q: ['quanto de corre 4 eu tenho em carteira, por cor?'], ok: r => { const t = batCons({ filtros: { produto: 'CORRE 4' }, situacao: 'carteira', agrupar: ['cor'], ordenar: 'carteira' }); return t.rows.length ? { ok: batTem(r.texto, t.rows[0][1]), esp: `maior cor: ${t.rows[0][0]} ${fmt(t.rows[0][1])}` } : { ok: /n[aã]o|nenhum|zero|\b0\b/i.test(r.texto), esp: 'sem carteira' }; } },
+  { v: 'JORGE', q: ['quantas notas o Degraus recebeu no mês passado?'], ok: r => { const m = batMes(-1), t = batCons({ filtros: { cliente: 'DEGRAUS' }, situacao: 'faturado', de: m.de, ate: m.ate, agrupar: ['nf'] }); return { ok: batTem(r.texto, t.rows.length), esp: `${t.rows.length} nota(s)` }; } },
+  { v: 'JORGE', q: ['obrigado!'], ok: r => ({ ok: !r.usadas.length, esp: 'agradecer sem consultar' }) },
+  { v: '', q: ['qual vendedor tem mais carteira?'], ok: r => { const t = batCons({ situacao: 'carteira', agrupar: ['vendedor'], ordenar: 'carteira' }); return { ok: batNome(r.texto, t.rows[0][0]), esp: `${t.rows[0][0]} (${fmt(t.rows[0][1])})` }; } },
+  { v: '', q: ['quanto o Jorge faturou este ano?'], ok: r => { const v = batValor(batCons({ filtros: { vendedor: 'JORGE' }, situacao: 'faturado', de: batAno() + '-01-01', ate: hojeIso() }), 'Faturado'); return { ok: batTem(r.texto, v), esp: fmt(v) }; } },
+  { v: '', q: ['qual o crescimento em numero de pares entre o primeiro e segundo semestre, do cliente degraus?'], ok: r => {
+    if (/\?/.test(r.texto) && !batNums(r.texto).some(n => n > 999)) return { ok: true, esp: 'perguntou qual Degraus (vale)' };
+    const [a, b] = [1, 2].map(n => batValor(batCons({ filtros: { cliente: 'DEGRAUS' }, ...batSem(n) }), 'Total'));
+    return { ok: batTem(r.texto, a) && batTem(r.texto, b), esp: `1º sem ${fmt(a)} · 2º sem ${fmt(b)}, ou perguntar qual Degraus` };
+  } },
+  { v: '', q: ['qual produto mais faturou no mês passado?'], ok: r => { const m = batMes(-1), t = batCons({ situacao: 'faturado', agrupar: ['produto'], ordenar: 'faturado', de: m.de, ate: m.ate }); return { ok: norm(r.texto).includes(norm(t.rows[0][0])) || r.texto.includes(t.rows[0][1]), esp: `${t.rows[0][0]} (${fmt(t.rows[0][2])})` }; } },
+];
+
+function montarBateria() {
+  const box = addMsg('ia', `<div class="ag-texto"><p><b>Bateria de testes</b> · ${TESTES.length} perguntas. O gabarito sai da base agora; cada pergunta roda numa conversa nova.</p></div>
+    <div class="acoes"><select id="batModelo"><option value="">Automático (gpt-oss, com reserva)</option><option value="@cf/openai/gpt-oss-120b">Só gpt-oss-120b</option><option value="@cf/meta/llama-3.3-70b-instruct-fp8-fast">Só Llama 3.3 70B</option></select>
+    <button class="btn-sec" id="batRodar">Rodar bateria</button></div><div id="batSaida"></div>`);
+  box.querySelector('#batRodar').addEventListener('click', ev => rodarBateria(ev.target, box.querySelector('#batModelo').value));
+}
+
+async function rodarBateria(botao, modelo) {
+  const saida = $('batSaida'), sel = $('verComo');
+  const antes = { msgs: AG.msgs, tab: AG.ultimaTabela, modelo: AG.modelo, ver: sel.value };
+  botao.disabled = true; AG.modelo = modelo; AG.testando = true;
+  const linhas = [], t0 = Date.now();
+  const desenha = fim => {
+    const certos = linhas.filter(l => l[3] === 'certo').length;
+    saida.innerHTML = `<p class="ag-texto"><b>${certos} de ${linhas.length}</b> certas${fim ? '' : ` · rodando ${linhas.length + 1} de ${TESTES.length}…`} · ${Math.round((Date.now() - t0) / 1000)} s</p>` +
+      `<div class="tabela-wrap"><table><thead><tr><th>#</th><th>Pergunta</th><th>Resultado</th><th>Esperado</th><th>Resposta</th><th>Ferramentas</th><th>s</th></tr></thead><tbody>` +
+      linhas.map(l => `<tr class="bat-${l[3]}"><td>${l[0]}</td><td>${esc(l[1])}</td><td>${l[3] === 'certo' ? '✔' : l[3] === 'errado' ? '✘' : '⚠'}</td><td>${esc(l[4])}</td><td>${esc(l[5])}</td><td>${esc(l[6])}</td><td>${l[7]}</td></tr>`).join('') +
+      `</tbody></table></div>` + (fim ? `<div class="acoes"><button class="btn-sec" id="batXlsx">Baixar Excel</button></div>` : '');
+    rolar();
+  };
+  try {
+    for (let i = 0; i < TESTES.length; i++) {
+      const t = TESTES[i];
+      desenha(false);
+      AG.msgs = []; AG.ultimaTabela = null;
+      const iv = t.v ? APP.dic.prep.findIndex(p => norm(p).includes(t.v)) : -1;
+      sel.value = iv >= 0 ? String(iv) : '';
+      const ti = Date.now();
+      let r = { texto: '', usadas: [] }, situacao, esp = '', modeloUsado = '';
+      try {
+        for (const q of t.q) {
+          const x = await agRodar(q);
+          r = { texto: x.texto, usadas: [...r.usadas, ...x.usadas] };
+          modeloUsado = x.modelo || '';
+        }
+        const c = t.ok(r);
+        situacao = c.ok ? 'certo' : 'errado'; esp = c.esp;
+      } catch (e) { situacao = 'falhou'; esp = 'erro: ' + (e.message || e); }
+      linhas.push([i + 1, (t.v ? `[${t.v}] ` : '[todos] ') + t.q.join(' → '), modeloUsado.split('/').pop(), situacao, esp, r.texto,
+        r.usadas.map(u => u.nome + ' ' + JSON.stringify(u.args)).join(' | '), Math.round((Date.now() - ti) / 1000)]);
+    }
+  } finally {
+    Object.assign(AG, { msgs: antes.msgs, ultimaTabela: antes.tab, modelo: antes.modelo, testando: false });
+    sel.value = antes.ver; botao.disabled = false;
+  }
+  desenha(true);
+  const certos = linhas.filter(l => l[3] === 'certo').length;
+  $('batXlsx').addEventListener('click', ev => baixar(ev.target, {
+    entendi: [`<b>Bateria do agente</b>`, esc(`${certos} de ${linhas.length} certas · ${modelo || 'automático'} · ${Math.round((Date.now() - t0) / 1000)} s`)],
+    cols: ['#', 'Pergunta', 'Modelo', 'Resultado', 'Esperado', 'Resposta', 'Ferramentas', 'Segundos'], num: [7], data: [], rows: linhas, totais: null,
+  }, 'xlsx'));
 }
 
 async function iniciar() {
@@ -1427,6 +1644,7 @@ async function iniciar() {
   $('baseInfo').textContent = `Base da Detalhada de ${new Date(base.gerado || base.publicadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} · as respostas podem errar: confira o “Entendi”.`;
   $('pergunta').disabled = false; $('enviar').disabled = false;
   $('pergunta').focus();
+  if (BATERIA && APP.veTudo) montarBateria();
 }
 
 $('form').addEventListener('submit', e => { e.preventDefault(); const t = $('pergunta'); const v = t.value; t.value = ''; t.style.height = ''; (AGENTE ? perguntarAgente : perguntar)(v); });
