@@ -1681,6 +1681,23 @@ export default {
           return "";
         };
 
+        // Primeiro objeto JSON completo dentro do texto (contando chaves fora de aspas).
+        const primeiroJson = txt => {
+          for (let ini = txt.indexOf("{"); ini >= 0; ini = txt.indexOf("{", ini + 1)) {
+            let nivel = 0, aspas = false, escape = false;
+            for (let i = ini; i < txt.length; i++) {
+              const ch = txt[i];
+              if (aspas) { if (escape) escape = false; else if (ch === "\\") escape = true; else if (ch === '"') aspas = false; continue; }
+              if (ch === '"') aspas = true;
+              else if (ch === "{") nivel++;
+              else if (ch === "}" && --nivel === 0) {
+                try { return JSON.parse(txt.slice(ini, i + 1)); } catch (_) { break; }
+              }
+            }
+          }
+          return null;
+        };
+
         // chatDetalhada → TESTE do assistente da Detalhada (apps-oly/assistente).
         // A IA da Cloudflare (binding AI) só traduz a pergunta do vendedor numa
         // consulta em JSON; quem filtra e soma os pares é a página, em cima da
@@ -1849,11 +1866,11 @@ export default {
             "COMO RESPONDER: a cada mensagem sua, devolva UM único objeto JSON, sem nada antes ou depois, de um destes dois jeitos:",
             '1) Para usar uma ferramenta: {"ferramenta":"nome","args":{...}}',
             '2) Para falar com o vendedor: {"resposta":"texto"}',
-            "Depois de pedir uma ferramenta, o resultado chega como mensagem começando com [resultado de ...]. Use quantas ferramentas precisar (até 6 por pergunta), uma por vez, e só então responda.",
+            "Depois de pedir uma ferramenta, PARE e espere: o resultado chega na próxima mensagem, começando com [resultado de ...]. Nunca escreva [resultado de ...] você mesmo, nunca peça duas ferramentas na mesma mensagem e nunca imagine o que a ferramenta vai devolver. Use quantas ferramentas precisar (até 6 por pergunta), uma por vez, e só então responda.",
             "",
             "FERRAMENTAS:",
-            '- consultar: soma pares da carteira e do faturado com filtros e agrupamento livres. args: {"filtros":{"cliente","produto","cor","linha","marca":"OLY|UA","vendedor","oc","nf","gci","fabrica","filial"}, "situacao":"carteira|faturado|tudo", "de":"AAAA-MM-DD", "ate":"AAAA-MM-DD", "agrupar":[...], "limite":25, "ordenar":"carteira|faturado|total|nome|data"}. Todos opcionais. Período: a carteira conta pela data de previsão e o faturado pela data da nota. agrupar aceita uma ou mais destas: cliente, produto, cor, produto_cor, linha, marca, vendedor, oc, nf, gci, fabrica, filial, mes, dia, previsao. Sem agrupar = só o total. Nomes podem vir como o vendedor escreveu: a ferramenta tolera erro de digitação e diz com o que casou.',
-            '- clientes_sem_pedido: clientes (do vendedor) que NÃO têm pedido de um produto/cor/linha/marca, os maiores primeiro. args: {"produto","cor","linha","marca","de","ate","vendedor","limite"}.',
+            '- consultar: soma pares da carteira e do faturado com filtros e agrupamento livres. args: {"filtros":{"cliente","produto","cor","linha","marca":"OLY|UA","vendedor","oc","nf","gci","fabrica","filial"}, "situacao":"carteira|faturado|tudo", "de":"AAAA-MM-DD", "ate":"AAAA-MM-DD", "agrupar":[...], "limite":25, "ordenar":"carteira|faturado|total|nome|data"}. Todos opcionais. Período: a carteira conta pela data de previsão e o faturado pela data da nota. agrupar aceita uma ou mais destas: cliente, produto, cor, produto_cor, linha, marca, vendedor, oc, nf, gci, fabrica, filial, mes, dia, previsao. Sem agrupar = só o total. Nomes podem vir como o vendedor escreveu: a ferramenta tolera erro de digitação e diz com o que casou. Cada filtro aceita também uma lista (["DEGRAUS","TALENTUS"]) para somar vários de uma vez.',
+            '- clientes_sem_pedido: clientes (do vendedor) que NÃO têm pedido de um produto/cor/linha/marca, os maiores primeiro. args: {"produto","cor","linha","marca","de","ate","vendedor","limite","clientes":[...]}. Use "clientes" para olhar só alguns (por exemplo, os maiores que você acabou de listar).',
             '- movimento: o que ENTROU na carteira (pedidos novos) ou SAIU (faturou, transferiu, cancelou) em um dia ou período do mês atual. args: {"tipo":"entradas|saidas","de","ate","agrupar":"cliente|produto|produto_cor|dia|vendedor|nenhum","cliente","produto","cor","vendedor"}.',
             '- ficha: cadastro de um produto (referência, descrição, preço sugerido, cores, linha, gênero, composição, tecnologias) ou de um cliente (códigos, nome fantasia, vendedor, carteira, faturado, próxima previsão, último faturamento). args: {"produto"} ou {"cliente"}.',
             '- catalogo: mostra ao vendedor os botões para gerar o catálogo (pedidos do cliente com foto) em PDF ou Excel, igual ao da Detalhada. args: {"cliente","formato":"pdf|xlsx","imagens":true|false}.',
@@ -1862,6 +1879,7 @@ export default {
             "REGRAS:",
             "- Todo número que você disser tem que ter vindo de uma ferramenta nesta conversa. Nunca invente, estime ou some de cabeça; se precisar de outro total, consulte de novo.",
             "- Se a ferramenta disser que um nome é ambíguo ou não existe, pergunte ao vendedor qual é (mostre as opções) em vez de chutar.",
+            "- Se o resultado avisar que a lista foi cortada, não conclua nada sobre quem ficou de fora: consulte de novo com filtro pelos nomes que interessam. Para \"desses, quem não pediu X\", use clientes_sem_pedido com a lista em \"clientes\".",
             "- Se a pergunta for vaga demais para consultar, pergunte o que falta numa frase.",
             "- As tabelas das ferramentas aparecem para o vendedor logo abaixo da sua resposta. Não copie tabelas no texto: destaque o essencial (totais, os maiores, o que chama atenção) em poucas frases ou numa lista curta, com **negrito** nos números importantes.",
             "- Datas no texto em DD/MM/AAAA. Números com ponto de milhar (1.234).",
@@ -1875,11 +1893,10 @@ export default {
               const r = await env.AI.run(opc.modelo, { messages: mensagens, temperature: 0.2, ...opc.extra(1200) });
               let txt = textoDaIA(r).trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
               if (!txt) { ultimoErro = "a IA respondeu vazio"; continue; }
+              // O gpt-oss às vezes devolve vários JSON seguidos, ou até inventa
+              // o "[resultado de ...]" depois do pedido: vale só o primeiro objeto.
               let obj = null;
-              try { obj = JSON.parse(txt); } catch (_) {
-                const m = txt.match(/\{[\s\S]*\}/);
-                if (m) { try { obj = JSON.parse(m[0]); } catch (_) { /* fica como texto */ } }
-              }
+              try { obj = JSON.parse(txt); } catch (_) { obj = primeiroJson(txt); }
               const saida = obj && typeof obj.ferramenta === "string"
                 ? { ok: true, acao: "ferramenta", nome: obj.ferramenta, args: obj.args && typeof obj.args === "object" ? obj.args : {}, modelo: opc.modelo }
                 : { ok: true, acao: "resposta", texto: String(obj && obj.resposta != null ? obj.resposta : txt).slice(0, 4000), modelo: opc.modelo };

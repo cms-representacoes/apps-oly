@@ -1089,19 +1089,26 @@ function agConsultar(a) {
   const f = a.filtros && typeof a.filtros === 'object' ? a.filtros : {};
   const aplicados = [];
   let p = prepAtivo();
+  if (Array.isArray(f.vendedor)) f.vendedor = f.vendedor[0];
   if (f.vendedor && APP.veTudo && p < 0) {
-    const r = agFiltro(X.prep, f.vendedor, 'vendedor', i => D.prep[i]);
+    const r = agFiltro(X.prep, String(f.vendedor), 'vendedor', i => D.prep[i]);
     if (r.erro) return { erro: r.erro };
     p = [...r.set][0]; aplicados.push(r.texto);
   }
   const base = APP.L.filter(r => p < 0 || r[C.PREP] === p);
   const meus = p < 0 ? null : new Set(base.map(r => r[C.CLI]));
   const conds = [];
+  // Cada filtro aceita um nome ou uma lista deles (soma todos).
   const porNome = (campo, lista, rotulo, mostra, col) => {
-    if (!f[campo]) return null;
-    const r = agFiltro(lista, String(f[campo]), rotulo, mostra);
-    if (r.erro) return r.erro;
-    aplicados.push(r.texto); conds.push(x => r.set.has(x[col]));
+    const termos = (Array.isArray(f[campo]) ? f[campo] : [f[campo]]).filter(t => t != null && String(t).trim()).map(String);
+    if (!termos.length) return null;
+    const set = new Set();
+    for (const t of termos) {
+      const r = agFiltro(lista, t, rotulo, mostra);
+      if (r.erro) return r.erro;
+      aplicados.push(r.texto); r.set.forEach(i => set.add(i));
+    }
+    conds.push(x => set.has(x[col]));
     return null;
   };
   const erro =
@@ -1169,12 +1176,18 @@ function agConsultar(a) {
   }
   const valor = gr => sit === 'carteira' ? [gr.c] : sit === 'faturado' ? [gr.f] : [gr.c, gr.f, gr.c + gr.f];
   let lista = [...grupos.values()];
-  const ord = a.ordenar;
-  const temData = agrupar.some(g => g === 'mes' || g === 'dia' || g === 'previsao');
+  // Ordem: por data quando pedir (ou quando só agrupar por data), por nome,
+  // ou pelos pares. A coluna de data é a da primeira dimensão de data.
+  const ord = ['mes', 'dia', 'previsao'].includes(a.ordenar) ? 'data' : a.ordenar;
+  let posData = -1, gData = null, pos = 0;
+  for (const g of agrupar) {
+    if (posData < 0 && (g === 'mes' || g === 'dia' || g === 'previsao')) { posData = pos; gData = g; }
+    pos += g === 'mes' || g === 'dia' ? 1 : DIMS[g][0].length;
+  }
   if (ord === 'nome') lista.sort((x, y) => String(x.chave[0]).localeCompare(String(y.chave[0])));
-  else if (ord === 'data' || (!ord && temData && agrupar.length === 1)) {
-    const chaveData = gr => agrupar[0] === 'mes' ? gr.chave[0].split('/').reverse().join('') : gr.chave[0];
-    lista.sort((x, y) => chaveData(x) > chaveData(y) ? 1 : -1);
+  else if (posData >= 0 && (ord === 'data' || (!ord && agrupar.length === 1))) {
+    const chaveData = gr => gData === 'mes' ? gr.chave[posData].split('/').reverse().join('') : String(gr.chave[posData]).padStart(8, '0');
+    lista.sort((x, y) => chaveData(x) > chaveData(y) ? 1 : chaveData(x) < chaveData(y) ? -1 : 0);
   } else {
     const m = ord === 'faturado' ? gr => gr.f : ord === 'carteira' ? gr => gr.c : gr => gr.c + gr.f;
     lista.sort((x, y) => m(y) - m(x));
@@ -1203,7 +1216,20 @@ function agPeloAssistente(q) {
 
 const FERRAMENTAS = {
   consultar: a => agConsultar(a),
-  clientes_sem_pedido: a => agPeloAssistente({ tipo: 'nao_compraram', produto: a.produto, cor: a.cor, linha: a.linha, marca: a.marca, vendedor: a.vendedor, de: a.de, ate: a.ate, limite: a.limite }),
+  clientes_sem_pedido: a => {
+    const out = agPeloAssistente({ tipo: 'nao_compraram', produto: a.produto, cor: a.cor, linha: a.linha, marca: a.marca, vendedor: a.vendedor, de: a.de, ate: a.ate, limite: Array.isArray(a.clientes) ? 0 : a.limite });
+    if (!out.res || !Array.isArray(a.clientes) || !a.clientes.length) return out;
+    // Só entre os clientes pedidos ("desses, quem não pediu?")
+    const X = indices(), cods = new Set();
+    for (const t of a.clientes) {
+      const r = agFiltro(X.cli, String(t), 'cliente', i => APP.dic.cli[i][1]);
+      if (r.set) r.set.forEach(i => cods.add(String(APP.dic.cli[i][0])));
+    }
+    const res = { ...out.res, rows: out.res.rows.filter(r => cods.has(String(r[1]))) };
+    res.entendi = [...res.entendi, esc(`só entre: ${a.clientes.join(', ')}`)];
+    res.resumo = `${fmt(res.rows.length)} desses clientes sem pedido`;
+    return { res };
+  },
   movimento: a => agPeloAssistente({ tipo: a.tipo === 'saidas' ? 'saidas' : 'entradas', de: a.de, ate: a.ate, agrupar: a.agrupar || 'nenhum', cliente: a.cliente, produto: a.produto, cor: a.cor, vendedor: a.vendedor }),
   ficha: a => {
     const out = agPeloAssistente({ tipo: 'ficha', produto: a.produto, cliente: a.cliente });
@@ -1253,8 +1279,11 @@ function mdSimples(t) {
   return out.join('');
 }
 
-// Resultado para a IA: o texto da tabela com até 40 linhas.
-const paraIA = (nome, out) => `[resultado de ${nome}]\n` + (out.erro ? 'ERRO: ' + out.erro : out.res ? resumoDaTela(out.res, 40) : out.texto || 'feito');
+// Lista cortada vem com aviso gritado: a IA, vendo só o começo, concluía
+// que quem ficou de fora "não tinha pedido".
+const LINHAS_IA = 60;
+const paraIA = (nome, out) => `[resultado de ${nome}]\n` + (out.erro ? 'ERRO: ' + out.erro : out.res ? resumoDaTela(out.res, LINHAS_IA) +
+  (out.res.rows.length > LINHAS_IA ? `\nATENÇÃO: esta lista tem ${out.res.rows.length} linhas e só as ${LINHAS_IA} primeiras aparecem acima. NÃO conclua que um nome está ausente: para saber de nomes específicos, consulte de novo filtrando por eles.` : '') : out.texto || 'feito');
 
 // Tabelas que a IA usou ficam embaixo da resposta, fechadas, com Excel e PDF.
 function agTabelaHtml(res, i) {
