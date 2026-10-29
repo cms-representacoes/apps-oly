@@ -108,6 +108,16 @@ a.sug{ text-decoration:none; display:inline-block; }
 .comentario{ margin:-2px 0 10px; padding:2px 0 2px 10px; border-left:3px solid var(--lima-forte);
   font-size:14px; line-height:1.45; color:var(--tinta); }
 .comentario.digitando{ color:var(--tinta-3); }
+/* agente: texto corrido da IA e as tabelas que ela usou, fechadas embaixo */
+.ag-texto p{ margin:0 0 6px; }
+.ag-texto p:last-child{ margin-bottom:0; }
+.ag-texto ul, .ag-texto ol{ margin:2px 0 8px; padding-left:20px; }
+.ag-texto li{ margin:2px 0; }
+.ag-texto .tabela-wrap{ margin:6px 0 8px; }
+.ag-tab{ margin-top:10px; border:1px solid var(--linha); border-radius:10px; padding:0 10px; }
+.ag-tab summary{ cursor:pointer; padding:9px 0; font-size:13px; font-weight:600; color:var(--oliva-escuro); }
+.ag-tab summary span{ font-weight:500; color:var(--tinta-3); }
+.ag-tab[open]{ padding-bottom:10px; }
 /* ficha de produto ou cliente: rótulo pequeno em cima do valor, sem tabela */
 .ficha{ border:1px solid var(--linha); border-radius:10px; padding:10px 12px; margin-top:6px; font-size:14px; line-height:1.45; }
 .ficha + .ficha{ margin-top:8px; }
@@ -945,14 +955,14 @@ const respostaComTabela = res => res.rows && res.rows.length && !res.pede && !re
 
 // A resposta em texto corrido: é o que a IA lê para comentar e, depois,
 // para conversar sobre ela ("qual desses é o maior?").
-function resumoDaTela(res) {
-  const linha = r => r.map((v, j) => res.data.includes(j) ? (v != null && v >= 0 ? dataDe(v) : '') : res.num.includes(j) ? fmt(v) : v).join(' | ');
+function resumoDaTela(res, n = 15) {
+  const linha = r => r.map((v, j) => res.data.includes(j) ? (v != null && v >= 0 ? dataDe(v) : '') : res.num.includes(j) && v !== '' ? fmt(v) : v).join(' | ');
   return [
     textoPlano('Consulta: ' + (res.entendi || []).join(' · ')),
     res.resumo,
     res.cols.join(' | '),
-    ...res.rows.slice(0, 15).map(linha),
-    res.rows.length > 15 ? `(mais ${fmt(res.rows.length - 15)} linhas)` : '',
+    ...res.rows.slice(0, n).map(linha),
+    res.rows.length > n ? `(mais ${fmt(res.rows.length - n)} linhas)` : '',
     res.totais ? 'Total: ' + linha(res.totais).replace(/^Total \| /, '') : '',
   ].filter(Boolean).join('\n');
 }
@@ -1043,7 +1053,290 @@ async function perguntar(texto) {
   }
 }
 
+/* ══ AGENTE (protótipo, ?agente=1) ═════════════════════════
+   Conversa livre: a IA (worker, action agenteDetalhada) responde em texto
+   ou pede uma ferramenta; a página roda a ferramenta sobre a base e devolve
+   o resultado na conversa, até a IA ter o que responder. A trava por
+   vendedor mora nas ferramentas: a IA não tem como enxergar além. */
+const AGENTE = new URLSearchParams(location.search).has('agente');
+const PASSOS_MAX = 6;
+const AG = { msgs: [], ultimaTabela: null };
+
+// Filtro por nome com a mesma tolerância do assistente: exato, frase,
+// palavras; senão o mais parecido, se ficar claro. Diz com o que casou.
+function agFiltro(lista, termo, rotulo, mostra) {
+  let achou = casar(lista, termo);
+  let nota = '';
+  if (!achou || !achou.length) {
+    const cand = parecidos(lista, termo);
+    const [a, b] = cand;
+    if (a && ((a.nota >= 0.85 && (!b || b.nota <= a.nota - 0.1)) || (!b && a.nota >= 0.8))) {
+      achou = a.idx; nota = ` (escrito "${termo}")`;
+    } else if (cand.length) {
+      return { erro: `${rotulo} "${termo}" não existe; os mais parecidos: ${cand.slice(0, 5).map(c => c.nome).join(', ')}. Pergunte qual é.` };
+    } else return { erro: `${rotulo} "${termo}" não existe na base${rotulo === 'cliente' ? ' deste vendedor' : ''}.` };
+  }
+  const nomes = [...new Set(achou.map(mostra))];
+  // Vários nomes no mesmo termo ("LUAR" → LUAR SPORT e BALUARTE): soma
+  // todos, mas avisa a IA para conferir com o vendedor.
+  const varios = rotulo === 'cliente' && nomes.length > 1 ? ` [ATENÇÃO: "${termo}" casou com ${nomes.length} clientes diferentes; se ele quis um só, pergunte qual]` : '';
+  return { set: new Set(achou), texto: `${rotulo}: ${nomes.slice(0, 8).join(', ')}${nomes.length > 8 ? ` e mais ${nomes.length - 8}` : ''}${nota}${varios}` };
+}
+
+// consultar: carteira e faturado com qualquer filtro e agrupamento.
+function agConsultar(a) {
+  const D = APP.dic, X = indices();
+  const f = a.filtros && typeof a.filtros === 'object' ? a.filtros : {};
+  const aplicados = [];
+  let p = prepAtivo();
+  if (f.vendedor && APP.veTudo && p < 0) {
+    const r = agFiltro(X.prep, f.vendedor, 'vendedor', i => D.prep[i]);
+    if (r.erro) return { erro: r.erro };
+    p = [...r.set][0]; aplicados.push(r.texto);
+  }
+  const base = APP.L.filter(r => p < 0 || r[C.PREP] === p);
+  const meus = p < 0 ? null : new Set(base.map(r => r[C.CLI]));
+  const conds = [];
+  const porNome = (campo, lista, rotulo, mostra, col) => {
+    if (!f[campo]) return null;
+    const r = agFiltro(lista, String(f[campo]), rotulo, mostra);
+    if (r.erro) return r.erro;
+    aplicados.push(r.texto); conds.push(x => r.set.has(x[col]));
+    return null;
+  };
+  const erro =
+    porNome('cliente', meus ? X.cli.filter(x => meus.has(x.i)) : X.cli, 'cliente', i => D.cli[i][1], C.CLI) ||
+    porNome('produto', X.ref, 'produto', i => `${D.ref[i][1]} (${D.ref[i][0]})`, C.REF) ||
+    porNome('cor', X.cor, 'cor', i => D.cor[i], C.COR) ||
+    porNome('linha', X.faixa, 'linha', i => D.faixa[i], C.FAIXA);
+  if (erro) return { erro };
+  if (f.marca === 'UA' || f.marca === 'OLY') { conds.push(r => (f.marca === 'UA') === ehUA(D.marca[r[C.MARCA]])); aplicados.push('marca: ' + f.marca); }
+  const igualA = (campo, col, dic) => {
+    if (f[campo] == null || f[campo] === '') return;
+    const v = norm(f[campo]);
+    conds.push(r => norm(dic ? dic[r[col]] : r[col]) === v);
+    aplicados.push(`${campo}: ${f[campo]}`);
+  };
+  igualA('oc', C.OC, D.oc); igualA('nf', C.NF); igualA('gci', C.GCI); igualA('fabrica', C.FAB, D.fab); igualA('filial', C.FIL, D.fil);
+
+  const sit = ['carteira', 'faturado'].includes(a.situacao) ? a.situacao : 'tudo';
+  const de = /^\d{4}-\d{2}-\d{2}$/.test(a.de || '') ? diaDe(a.de) : null;
+  const ate = /^\d{4}-\d{2}-\d{2}$/.test(a.ate || '') ? diaDe(a.ate) : null;
+  if (de != null || ate != null) aplicados.push(`período: ${de != null ? dataDe(de) : 'início'} a ${ate != null ? dataDe(ate) : 'fim'}`);
+  const noPer = d => (de == null && ate == null) || (d >= 0 && (de == null || d >= de) && (ate == null || d <= ate));
+
+  // Cada dimensão: como sai na tabela e como ordena
+  const DIMS = {
+    cliente: [['Cliente', 'Código'], r => [D.cli[r[C.CLI]][1], D.cli[r[C.CLI]][0]]],
+    produto: [['Produto', 'Referência'], r => [D.ref[r[C.REF]][1], D.ref[r[C.REF]][0]]],
+    cor: [['Cor'], r => [D.cor[r[C.COR]]]],
+    produto_cor: [['Produto', 'Referência', 'Cor'], r => [D.ref[r[C.REF]][1], D.ref[r[C.REF]][0], D.cor[r[C.COR]]]],
+    linha: [['Linha'], r => [D.faixa[r[C.FAIXA]]]],
+    marca: [['Marca'], r => [ehUA(D.marca[r[C.MARCA]]) ? 'Under Armour' : 'Olympikus']],
+    vendedor: [['Vendedor'], r => [D.prep[r[C.PREP]]]],
+    oc: [['OC'], r => [D.oc[r[C.OC]] ?? '']],
+    nf: [['NF'], r => [r[C.NF] || '']],
+    gci: [['GCI'], r => [r[C.GCI] || '']],
+    fabrica: [['Fábrica'], r => [D.fab[r[C.FAB]]]],
+    filial: [['Filial'], r => [D.fil[r[C.FIL]]]],
+    previsao: [['Previsão'], r => [r[C.PREV]]],
+  };
+  const agrupar = (Array.isArray(a.agrupar) ? a.agrupar : a.agrupar ? [a.agrupar] : [])
+    .map(String).filter(g => DIMS[g] || g === 'mes' || g === 'dia').slice(0, 4);
+  const cols = [], data = [];
+  for (const g of agrupar) {
+    if (g === 'mes') cols.push('Mês');
+    else if (g === 'dia') { data.push(cols.length); cols.push('Dia'); }
+    else { if (g === 'previsao') data.push(cols.length); cols.push(...DIMS[g][0]); }
+  }
+  const medidas = sit === 'carteira' ? ['Carteira'] : sit === 'faturado' ? ['Faturado'] : ['Carteira', 'Faturado', 'Total'];
+  const grupos = new Map();
+  let totC = 0, totF = 0;
+  for (const r of base) {
+    if (!conds.every(c => c(r))) continue;
+    const partes = [];
+    if (sit !== 'faturado' && r[C.CART] > 0 && noPer(r[C.PREV])) partes.push(['c', r[C.CART], r[C.PREV]]);
+    if (sit !== 'carteira' && r[C.FAT] > 0) { const d = r[C.DFAT] >= 0 ? r[C.DFAT] : r[C.PREV]; if (noPer(d)) partes.push(['f', r[C.FAT], d]); }
+    for (const [tipo, qt, dia] of partes) {
+      const chave = [];
+      for (const g of agrupar) chave.push(...(g === 'mes' ? [mesDe(dia)] : g === 'dia' ? [dia] : DIMS[g][1](r)));
+      const k = JSON.stringify(chave);
+      let gr = grupos.get(k);
+      if (!gr) { gr = { chave, c: 0, f: 0, ult: -1 }; grupos.set(k, gr); }
+      if (tipo === 'c') { gr.c += qt; totC += qt; } else { gr.f += qt; totF += qt; }
+      if (dia > gr.ult) gr.ult = dia;
+    }
+  }
+  const valor = gr => sit === 'carteira' ? [gr.c] : sit === 'faturado' ? [gr.f] : [gr.c, gr.f, gr.c + gr.f];
+  let lista = [...grupos.values()];
+  const ord = a.ordenar;
+  const temData = agrupar.some(g => g === 'mes' || g === 'dia' || g === 'previsao');
+  if (ord === 'nome') lista.sort((x, y) => String(x.chave[0]).localeCompare(String(y.chave[0])));
+  else if (ord === 'data' || (!ord && temData && agrupar.length === 1)) {
+    const chaveData = gr => agrupar[0] === 'mes' ? gr.chave[0].split('/').reverse().join('') : gr.chave[0];
+    lista.sort((x, y) => chaveData(x) > chaveData(y) ? 1 : -1);
+  } else {
+    const m = ord === 'faturado' ? gr => gr.f : ord === 'carteira' ? gr => gr.c : gr => gr.c + gr.f;
+    lista.sort((x, y) => m(y) - m(x));
+  }
+  const limite = Number(a.limite) > 0 ? Math.min(Math.floor(Number(a.limite)), 500) : 0;
+  if (limite) lista = lista.slice(0, limite);
+  const num = medidas.map((_, i) => cols.length + i);
+  const totais = sit === 'carteira' ? [totC] : sit === 'faturado' ? [totF] : [totC, totF, totC + totF];
+  const titulo = sit === 'carteira' ? 'Carteira (a faturar)' : sit === 'faturado' ? 'Faturado' : 'Carteira e faturado';
+  const res = {
+    entendi: [`<b>${titulo}</b>`, ...aplicados.map(esc)], cols: [...cols, ...medidas], num, data,
+    rows: lista.map(gr => [...gr.chave, ...valor(gr)]),
+    totais: agrupar.length && !limite ? [...cols.map((_, j) => j === 0 ? 'Total' : ''), ...totais] : null,
+    resumo: `${medidas.map((m, i) => `${m}: ${fmt(totais[i])} pares`).join(' · ')}${agrupar.length ? ` · ${fmt(grupos.size)} linha(s)${limite && grupos.size > limite ? `, mostrando ${fmt(limite)}` : ''}` : ''}`,
+  };
+  return { res };
+}
+
+// As ferramentas que já existiam no assistente, chamadas com a consulta pronta.
+function agPeloAssistente(q) {
+  const res = executar(q);
+  if (res.escolha) return { erro: `${res.escolha.rotulo} "${res.escolha.termo}" é ambíguo; pode ser: ${res.escolha.opcoes.join(', ')}. Pergunte qual é.` };
+  if (res.erro) return { erro: res.erro };
+  return { res };
+}
+
+const FERRAMENTAS = {
+  consultar: a => agConsultar(a),
+  clientes_sem_pedido: a => agPeloAssistente({ tipo: 'nao_compraram', produto: a.produto, cor: a.cor, linha: a.linha, marca: a.marca, vendedor: a.vendedor, de: a.de, ate: a.ate, limite: a.limite }),
+  movimento: a => agPeloAssistente({ tipo: a.tipo === 'saidas' ? 'saidas' : 'entradas', de: a.de, ate: a.ate, agrupar: a.agrupar || 'nenhum', cliente: a.cliente, produto: a.produto, cor: a.cor, vendedor: a.vendedor }),
+  ficha: a => {
+    const out = agPeloAssistente({ tipo: 'ficha', produto: a.produto, cliente: a.cliente });
+    return out.res ? { texto: out.res.fichaTexto } : out;
+  },
+  catalogo: a => {
+    const out = agPeloAssistente({ tipo: 'catalogo', cliente: a.cliente, formato: a.formato, imagens: a.imagens });
+    return out.res ? { catalogo: out.res, texto: 'Os botões do catálogo apareceram para o vendedor; ele toca para gerar.' } : out;
+  },
+  baixar: a => {
+    if (!AG.ultimaTabela) return { erro: 'Ainda não há tabela nesta conversa para baixar.' };
+    const formato = a.formato === 'pdf' ? 'pdf' : 'xlsx';
+    baixar(null, AG.ultimaTabela, formato);
+    return { texto: `O ${formato === 'pdf' ? 'PDF' : 'Excel'} da última tabela foi baixado no aparelho do vendedor.` };
+  },
+};
+const ROTULO_FERRAMENTA = { consultar: 'Consultando a carteira', clientes_sem_pedido: 'Procurando quem não comprou', movimento: 'Olhando entradas e saídas',
+  ficha: 'Abrindo a ficha', catalogo: 'Preparando o catálogo', baixar: 'Gerando o arquivo' };
+
+// Texto da IA com o básico de markdown: negrito, listas, quebras e tabelas.
+function mdSimples(t) {
+  const linhas = String(t).split('\n');
+  const out = [];
+  let lista = null, tabela = null;
+  const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*]+)\*/g, '$1<i>$2</i>');
+  const fecha = () => {
+    if (lista) { out.push(`<${lista.tag}>${lista.itens.map(i => `<li>${i}</li>`).join('')}</${lista.tag}>`); lista = null; }
+    if (tabela) {
+      const [cab, ...corpo] = tabela.filter(l => !/^\s*\|?\s*:?-{2,}/.test(l)).map(l => l.replace(/^\s*\||\|\s*$/g, '').split('|').map(c => inline(c.trim())));
+      out.push(`<div class="tabela-wrap"><table><thead><tr>${(cab || []).map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${corpo.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
+      tabela = null;
+    }
+  };
+  for (const l of linhas) {
+    if (/^\s*\|.*\|\s*$/.test(l)) { if (lista) fecha(); (tabela = tabela || []).push(l); continue; }
+    const ul = l.match(/^\s*[-•*]\s+(.*)$/), ol = l.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (ul || ol) {
+      const tag = ul ? 'ul' : 'ol';
+      if (tabela || (lista && lista.tag !== tag)) fecha();
+      (lista = lista || { tag, itens: [] }).itens.push(inline((ul || ol)[1]));
+      continue;
+    }
+    fecha();
+    out.push(l.trim() ? `<p>${inline(l)}</p>` : '');
+  }
+  fecha();
+  return out.join('');
+}
+
+// Resultado para a IA: o texto da tabela com até 40 linhas.
+const paraIA = (nome, out) => `[resultado de ${nome}]\n` + (out.erro ? 'ERRO: ' + out.erro : out.res ? resumoDaTela(out.res, 40) : out.texto || 'feito');
+
+// Tabelas que a IA usou ficam embaixo da resposta, fechadas, com Excel e PDF.
+function agTabelaHtml(res, i) {
+  return `<details class="ag-tab"><summary>${esc(textoPlano(res.entendi.join(' · ')))} <span>· ${fmt(res.rows.length)} linha(s)</span></summary>` +
+    `${res.rows.length ? tabelaHtml(res, MOSTRAR) : '<div class="digitando">Nenhuma linha.</div>'}` +
+    `<div class="acoes">${res.rows.length > MOSTRAR ? `<button class="btn-sec" data-ag="todas" data-i="${i}">Ver todas (${fmt(res.rows.length)})</button>` : ''}` +
+    `<button class="btn-sec" data-ag="xlsx" data-i="${i}">Baixar Excel</button><button class="btn-sec" data-ag="pdf" data-i="${i}">Baixar PDF</button></div></details>`;
+}
+
+// O histórico vai inteiro, mas resultado antigo de ferramenta vai resumido:
+// a IA precisa do que respondeu, não de cada linha de três perguntas atrás.
+function agHistorico() {
+  const idxRes = AG.msgs.map((m, i) => m.role === 'user' && m.content.startsWith('[resultado de') ? i : -1).filter(i => i >= 0);
+  const recentes = new Set(idxRes.slice(-4));
+  return AG.msgs.map((m, i) => idxRes.includes(i) && !recentes.has(i) ? { role: m.role, content: m.content.slice(0, 400) + '\n(…resumido)' } : m);
+}
+
+async function perguntarAgente(texto) {
+  texto = texto.trim();
+  if (!texto) return;
+  addMsg('eu', esc(texto));
+  const bolha = addMsg('ia', '<span class="digitando">Pensando…</span>');
+  $('enviar').disabled = true;
+  const inicio = AG.msgs.length;
+  AG.msgs.push({ role: 'user', content: texto });
+  const tabelas = [], extras = [];
+  const p = prepAtivo();
+  const contexto = {
+    vendedor: p >= 0 ? APP.dic.prep[p] : '', vendedores: APP.veTudo && p < 0 ? APP.dic.prep : [],
+    linhas: APP.dic.faixa || [], movMes: APP.base.mov && APP.base.mov.mes,
+  };
+  try {
+    for (let passo = 1; ; passo++) {
+      const r = await chamarWorker('agenteDetalhada', { hoje: hojeIso(), contexto, mensagens: agHistorico() }, 60000);
+      if (!r || !r.ok) throw new Error(r?.erro || 'sem resposta');
+      if (r.acao !== 'ferramenta') {
+        AG.msgs.push({ role: 'assistant', content: JSON.stringify({ resposta: r.texto }) });
+        bolha.innerHTML = `<div class="ag-texto">${mdSimples(r.texto)}</div>` + extras.join('') + tabelas.map(agTabelaHtml).join('');
+        bolha.addEventListener('click', ev => {
+          const b = ev.target.closest('[data-ag]');
+          if (!b) return;
+          const res = tabelas[Number(b.dataset.i)];
+          if (b.dataset.ag === 'todas') { b.closest('details').querySelector('.tabela-wrap').outerHTML = tabelaHtml(res, Infinity); b.remove(); }
+          else baixar(b, res, b.dataset.ag);
+        });
+        break;
+      }
+      AG.msgs.push({ role: 'assistant', content: JSON.stringify({ ferramenta: r.nome, args: r.args }) });
+      const fn = FERRAMENTAS[r.nome];
+      let out;
+      if (passo > PASSOS_MAX) out = { erro: 'Limite de consultas desta pergunta atingido. Responda com o que já tem.' };
+      else if (!fn) out = { erro: `Ferramenta "${r.nome}" não existe. Use: ${Object.keys(FERRAMENTAS).join(', ')}.` };
+      else {
+        bolha.innerHTML = `<span class="digitando">${esc(ROTULO_FERRAMENTA[r.nome] || 'Consultando')}… (${passo})</span>`;
+        rolar();
+        if (r.nome === 'ficha') await APP.catPronto;
+        try { out = fn(r.args || {}); } catch (e) { out = { erro: 'A ferramenta falhou: ' + (e.message || e) }; }
+      }
+      if (out.res && out.res.rows) { tabelas.push(out.res); AG.ultimaTabela = out.res; }
+      if (out.catalogo) {
+        const c = out.catalogo.catalogo;
+        const link = (gerar, fotos) => DETALHADA_URL + '?' + new URLSearchParams({ cliente: c.cods.join(','), gerar, ...(fotos == null ? {} : { fotos: fotos ? '1' : '0' }) });
+        const btn = (gerar, fotos, rot) => `<a class="sug" target="_blank" rel="noopener" href="${esc(link(gerar, fotos))}">${rot}</a>`;
+        extras.push(`<div class="acoes">${c.formato !== 'xlsx' ? btn('pdf', null, 'Catálogo em PDF') : ''}${c.formato !== 'pdf' ? btn('xlsx', c.imagens !== false, `Catálogo em Excel${c.imagens === false ? ' sem imagens' : ' com imagens'}`) : ''}</div>`);
+      }
+      AG.msgs.push({ role: 'user', content: paraIA(r.nome, out) });
+    }
+  } catch (e) {
+    AG.msgs.length = inicio;
+    bolha.innerHTML = `<span class="aviso">Não consegui responder agora (${esc(e.message || e)}). Tente de novo em instantes.</span>`;
+  } finally {
+    $('enviar').disabled = false;
+    rolar();
+  }
+}
+
 async function iniciar() {
+  if (AGENTE) {
+    document.title = 'Agente da Detalhada';
+    document.querySelector('header h1').innerHTML = 'Agente da Detalhada <span class="teste">PROTÓTIPO</span>';
+    $('pergunta').placeholder = 'Converse sobre a Detalhada…';
+  }
   APP.sessao = lerSessao();
   if (!APP.sessao) {
     $('conversa').innerHTML = '<div class="bloqueio"><h2>Entre pelo Portal</h2><p>O assistente usa o login do Portal do Vendedor.</p></div>';
@@ -1066,7 +1359,7 @@ async function iniciar() {
     $('verComo').innerHTML = '<option value="">Todos os vendedores</option>' +
       APP.dic.prep.map((p, i) => `<option value="${i}">${esc(p)}</option>`).join('');
     $('verComoWrap').hidden = false;
-    $('verComo').addEventListener('change', () => { APP.anteriores = []; APP.atual = null; APP.tela = ''; });
+    $('verComo').addEventListener('change', () => { APP.anteriores = []; APP.atual = null; APP.tela = ''; AG.msgs = []; AG.ultimaTabela = null; });
   } else {
     APP.prep = acharPreposto(APP.sessao.nome);
     if (APP.prep < 0) { $('quem').textContent = `Nenhuma linha de ${APP.sessao.nome} na base`; return; }
@@ -1077,7 +1370,7 @@ async function iniciar() {
   $('pergunta').focus();
 }
 
-$('form').addEventListener('submit', e => { e.preventDefault(); const t = $('pergunta'); const v = t.value; t.value = ''; t.style.height = ''; perguntar(v); });
+$('form').addEventListener('submit', e => { e.preventDefault(); const t = $('pergunta'); const v = t.value; t.value = ''; t.style.height = ''; (AGENTE ? perguntarAgente : perguntar)(v); });
 $('pergunta').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('form').requestSubmit(); } });
 $('pergunta').addEventListener('input', e => { const t = e.target; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 120) + 'px'; });
 iniciar();

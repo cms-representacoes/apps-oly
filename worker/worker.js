@@ -1809,6 +1809,88 @@ export default {
           return new Response(JSON.stringify({ ok: false, erro: "A IA não respondeu: " + ultimoErro }), { status: 200, headers: corsHeaders });
         }
 
+        // agenteDetalhada → PROTÓTIPO do agente de conversa livre (assistente/?agente=1).
+        // A cada chamada a IA devolve UMA coisa: a resposta em texto, ou o
+        // pedido de uma ferramenta. Quem roda a ferramenta é a página, sobre a
+        // base que ela já baixou, e manda o resultado de volta na conversa;
+        // o worker não guarda nada entre uma chamada e outra. A trava por
+        // vendedor está nas ferramentas da página, não aqui.
+        if (body.action === "agenteDetalhada") {
+          if (!env.AI) {
+            return new Response(JSON.stringify({ ok: false, erro: "Falta ligar a IA no worker (binding AI)." }), { status: 200, headers: corsHeaders });
+          }
+          const hoje = /^\d{4}-\d{2}-\d{2}$/.test(String(body.hoje || "")) ? body.hoje : new Date().toISOString().slice(0, 10);
+          const ctx = body.contexto && typeof body.contexto === "object" ? body.contexto : {};
+          const lista = (v, n) => (Array.isArray(v) ? v.slice(0, n).map(String) : []).join(", ");
+          // Conversa curta o bastante para caber: as mais recentes, com teto de tamanho.
+          const conversa = [];
+          let soma = 0;
+          for (const m of (Array.isArray(body.mensagens) ? body.mensagens : []).slice(-40).reverse()) {
+            const role = m?.role === "assistant" ? "assistant" : "user";
+            const content = String(m?.content || "").slice(0, 6000);
+            if (!content) continue;
+            soma += content.length;
+            if (soma > 30000) break;
+            conversa.unshift({ role, content });
+          }
+          if (!conversa.length || conversa[conversa.length - 1].role !== "user") {
+            return new Response(JSON.stringify({ ok: false, erro: "Conversa vazia." }), { status: 400, headers: corsHeaders });
+          }
+          const sistema = [
+            "Você é o assistente da Detalhada, a carteira de pedidos da CMS Representações (calçados, roupas e acessórios Olympikus e Under Armour). Conversa com vendedores pelo celular, em português do Brasil, como um colega experiente e direto.",
+            `Hoje é ${hoje}.`,
+            ctx.vendedor ? `Quem fala com você: ${String(ctx.vendedor).slice(0, 60)}. Ele só enxerga os próprios clientes; as ferramentas já aplicam essa trava sozinhas.` : "Quem fala com você vê a base inteira (todos os vendedores).",
+            ctx.vendedores ? `Vendedores na base: ${lista(ctx.vendedores, 30)}.` : "",
+            ctx.linhas ? `Linhas (categorias): ${lista(ctx.linhas, 30)}.` : "",
+            ctx.movMes ? `O registro de entradas e saídas só cobre o mês ${String(ctx.movMes).slice(0, 7)}.` : "",
+            "",
+            "GLOSSÁRIO: carteira = pares pedidos que ainda não faturaram (a faturar). Faturado = pares que já saíram com nota. Previsão = data prevista de faturamento de um pedido. OC = ordem de compra do cliente. NF = número da nota fiscal. GCI = número do pedido na fábrica. Linha = categoria do produto. Pares = quantidade (vale também para peças de roupa e acessórios).",
+            "",
+            "COMO RESPONDER: a cada mensagem sua, devolva UM único objeto JSON, sem nada antes ou depois, de um destes dois jeitos:",
+            '1) Para usar uma ferramenta: {"ferramenta":"nome","args":{...}}',
+            '2) Para falar com o vendedor: {"resposta":"texto"}',
+            "Depois de pedir uma ferramenta, o resultado chega como mensagem começando com [resultado de ...]. Use quantas ferramentas precisar (até 6 por pergunta), uma por vez, e só então responda.",
+            "",
+            "FERRAMENTAS:",
+            '- consultar: soma pares da carteira e do faturado com filtros e agrupamento livres. args: {"filtros":{"cliente","produto","cor","linha","marca":"OLY|UA","vendedor","oc","nf","gci","fabrica","filial"}, "situacao":"carteira|faturado|tudo", "de":"AAAA-MM-DD", "ate":"AAAA-MM-DD", "agrupar":[...], "limite":25, "ordenar":"carteira|faturado|total|nome|data"}. Todos opcionais. Período: a carteira conta pela data de previsão e o faturado pela data da nota. agrupar aceita uma ou mais destas: cliente, produto, cor, produto_cor, linha, marca, vendedor, oc, nf, gci, fabrica, filial, mes, dia, previsao. Sem agrupar = só o total. Nomes podem vir como o vendedor escreveu: a ferramenta tolera erro de digitação e diz com o que casou.',
+            '- clientes_sem_pedido: clientes (do vendedor) que NÃO têm pedido de um produto/cor/linha/marca, os maiores primeiro. args: {"produto","cor","linha","marca","de","ate","vendedor","limite"}.',
+            '- movimento: o que ENTROU na carteira (pedidos novos) ou SAIU (faturou, transferiu, cancelou) em um dia ou período do mês atual. args: {"tipo":"entradas|saidas","de","ate","agrupar":"cliente|produto|produto_cor|dia|vendedor|nenhum","cliente","produto","cor","vendedor"}.',
+            '- ficha: cadastro de um produto (referência, descrição, preço sugerido, cores, linha, gênero, composição, tecnologias) ou de um cliente (códigos, nome fantasia, vendedor, carteira, faturado, próxima previsão, último faturamento). args: {"produto"} ou {"cliente"}.',
+            '- catalogo: mostra ao vendedor os botões para gerar o catálogo (pedidos do cliente com foto) em PDF ou Excel, igual ao da Detalhada. args: {"cliente","formato":"pdf|xlsx","imagens":true|false}.',
+            '- baixar: baixa em Excel ou PDF a última tabela de consultar, clientes_sem_pedido ou movimento. args: {"formato":"xlsx|pdf"}.',
+            "",
+            "REGRAS:",
+            "- Todo número que você disser tem que ter vindo de uma ferramenta nesta conversa. Nunca invente, estime ou some de cabeça; se precisar de outro total, consulte de novo.",
+            "- Se a ferramenta disser que um nome é ambíguo ou não existe, pergunte ao vendedor qual é (mostre as opções) em vez de chutar.",
+            "- Se a pergunta for vaga demais para consultar, pergunte o que falta numa frase.",
+            "- As tabelas das ferramentas aparecem para o vendedor logo abaixo da sua resposta. Não copie tabelas no texto: destaque o essencial (totais, os maiores, o que chama atenção) em poucas frases ou numa lista curta, com **negrito** nos números importantes.",
+            "- Datas no texto em DD/MM/AAAA. Números com ponto de milhar (1.234).",
+            "- Cumprimento, agradecimento ou dúvida sobre um termo: responda direto, sem ferramenta.",
+            "- Você só enxerga pedidos, carteira, faturamento, entradas e saídas do mês e o cadastro de produtos e clientes. Meta, estoque de loja, comissão e preço de custo você não enxerga: diga isso com gentileza."
+          ].filter(s => s !== "").join("\n");
+          const mensagens = [{ role: "system", content: sistema }, ...conversa];
+          let ultimoErro = "";
+          for (const opc of MODELOS_CHAT) {
+            try {
+              const r = await env.AI.run(opc.modelo, { messages: mensagens, temperature: 0.2, ...opc.extra(1200) });
+              let txt = textoDaIA(r).trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+              if (!txt) { ultimoErro = "a IA respondeu vazio"; continue; }
+              let obj = null;
+              try { obj = JSON.parse(txt); } catch (_) {
+                const m = txt.match(/\{[\s\S]*\}/);
+                if (m) { try { obj = JSON.parse(m[0]); } catch (_) { /* fica como texto */ } }
+              }
+              const saida = obj && typeof obj.ferramenta === "string"
+                ? { ok: true, acao: "ferramenta", nome: obj.ferramenta, args: obj.args && typeof obj.args === "object" ? obj.args : {}, modelo: opc.modelo }
+                : { ok: true, acao: "resposta", texto: String(obj && obj.resposta != null ? obj.resposta : txt).slice(0, 4000), modelo: opc.modelo };
+              return new Response(JSON.stringify(saida), { status: 200, headers: corsHeaders });
+            } catch (e) {
+              ultimoErro = String(e?.message || e);
+            }
+          }
+          return new Response(JSON.stringify({ ok: false, erro: "A IA não respondeu: " + ultimoErro }), { status: 200, headers: corsHeaders });
+        }
+
         // comentarDetalhada → TESTE: depois que a página monta a resposta, a
         // IA lê o resumo dela (título, totais e as primeiras linhas) e escreve
         // um comentário curto. A conta continua sendo da página; a IA só lê o
