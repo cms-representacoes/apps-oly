@@ -1129,6 +1129,7 @@ function agSistema(ctx) {
     '- ficha: cadastro de um produto (referência, descrição, preço sugerido, cores, linha, gênero, composição, tecnologias) ou de um cliente (códigos, nome fantasia, vendedor, carteira, faturado, próxima previsão, último faturamento). args: {"produto"} ou {"cliente"}.',
     '- catalogo: mostra ao vendedor os botões para gerar o catálogo (pedidos do cliente com foto) em PDF ou Excel, igual ao da Detalhada. args: {"cliente","formato":"pdf|xlsx","imagens":true|false}.',
     '- baixar: baixa em Excel ou PDF a última tabela de consultar, clientes_sem_pedido ou movimento. args: {"formato":"xlsx|pdf"}.',
+    '- boleto: 2ª via dos boletos de um cliente, buscada no EBM da Vulcabras: parcelas em dia, vencidas e as que o sistema não emite (com o motivo), e o PDF para baixar. args: {"cliente","de":"AAAA-MM-DD","ate":"AAAA-MM-DD"}. O período é o do VENCIMENTO; sem período citado, deixe de fora (vale o mês atual). Demora até 1 minuto por cliente.',
     '',
     'REGRAS:',
     '- Todo número que você disser tem que ter vindo de uma ferramenta nesta conversa. Nunca invente nem estime; se precisar de outro total, consulte de novo. Diferença e porcentagem entre dois números que vieram das ferramentas você pode calcular.',
@@ -1139,7 +1140,7 @@ function agSistema(ctx) {
     '- As tabelas das ferramentas aparecem para o vendedor logo abaixo da sua resposta. Não copie tabelas no texto: destaque o essencial (totais, os maiores, o que chama atenção) em poucas frases ou numa lista curta, com **negrito** nos números importantes.',
     '- Datas no texto em DD/MM/AAAA. Números com ponto de milhar (1.234).',
     '- Cumprimento, agradecimento ou dúvida sobre um termo: responda direto, sem ferramenta.',
-    '- Você só enxerga pedidos, carteira, faturamento, entradas e saídas do mês e o cadastro de produtos e clientes. Meta, estoque de loja, comissão e preço de custo você não enxerga: diga isso com gentileza.',
+    '- Você só enxerga pedidos, carteira, faturamento, entradas e saídas do mês, o cadastro de produtos e clientes e os boletos do EBM. Meta, estoque de loja, comissão e preço de custo você não enxerga: diga isso com gentileza.',
   ].filter(s => s !== '').join('\n');
 }
 
@@ -1343,6 +1344,7 @@ const FERRAMENTAS = {
     const out = agPeloAssistente({ tipo: 'catalogo', cliente: a.cliente, formato: a.formato, imagens: a.imagens });
     return out.res ? { catalogo: out.res, texto: 'Os botões do catálogo apareceram para o vendedor; ele toca para gerar.' } : out;
   },
+  boleto: a => agBoleto(a),
   baixar: a => {
     if (!AG.ultimaTabela) return { erro: 'Ainda não há tabela nesta conversa para baixar.' };
     const formato = a.formato === 'pdf' ? 'pdf' : 'xlsx';
@@ -1351,7 +1353,54 @@ const FERRAMENTAS = {
   },
 };
 const ROTULO_FERRAMENTA = { consultar: 'Consultando a carteira', clientes_sem_pedido: 'Procurando quem não comprou', movimento: 'Olhando entradas e saídas',
-  ficha: 'Abrindo a ficha', catalogo: 'Preparando o catálogo', baixar: 'Gerando o arquivo' };
+  ficha: 'Abrindo a ficha', catalogo: 'Preparando o catálogo', baixar: 'Gerando o arquivo', boleto: 'Buscando os boletos no EBM (pode levar 1 minuto)' };
+
+/* boleto → TESTE: 2ª via pelo robô do CMS Boletos rodando NESTE computador
+   (C:\SCRIPTS AUTONOMOS\boletos_local.py). Fora daqui o serviço não existe e
+   a ferramenta avisa. A trava por vendedor vale aqui: o código sai da base,
+   só entre os clientes de quem pergunta. Quando houver VPS, só muda o endereço. */
+const BOLETOS_URL = 'http://127.0.0.1:8765';
+async function agBoleto(a) {
+  const D = APP.dic, X = indices(), p = prepAtivo();
+  const meus = p < 0 ? null : new Set(APP.L.filter(r => r[C.PREP] === p).map(r => r[C.CLI]));
+  if (!a.cliente) return { erro: 'De qual cliente? Pergunte ao vendedor.' };
+  const r = agFiltro(meus ? X.cli.filter(x => meus.has(x.i)) : X.cli, String(a.cliente), 'cliente', i => D.cli[i][1]);
+  if (r.erro) return { erro: r.erro };
+  const nomes = [...new Set([...r.set].map(i => D.cli[i][1]))];
+  if (nomes.length > 1) return { erro: `"${a.cliente}" casou com ${nomes.length} clientes: ${nomes.slice(0, 8).join(', ')}. Pergunte qual é antes de buscar boleto.` };
+  const codigos = [...new Set([...r.set].map(i => String(D.cli[i][0])))];
+  let resp;
+  try {
+    const corta = new AbortController();
+    const t = setTimeout(() => corta.abort(), 90000 * codigos.length);
+    const f = await fetch(BOLETOS_URL + '/boletos', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codigos, de: a.de, ate: a.ate }), signal: corta.signal });
+    clearTimeout(t);
+    resp = await f.json();
+  } catch (e) {
+    return { erro: 'A busca de boletos ainda é um teste e só funciona no computador do escritório, com o "Boletos para o agente" ligado. Diga isso ao vendedor.' };
+  }
+  if (!resp.ok) return { erro: resp.erro || 'O robô de boletos falhou.' };
+  const rows = [], linhas = [], links = [];
+  const sit = { atrasadas: 'Vencida', em_dia: 'Em dia', bloqueadas: 'Não emitida', impostos: 'Imposto' };
+  for (const c of resp.clientes) {
+    const partes = [];
+    for (const k of Object.keys(sit)) {
+      for (const it of c[k] || []) {
+        rows.push([c.nome || c.codigo, c.codigo, it.nota || '', it.parcela || '', it.vencimento || '', it.valor || '', sit[k] + (it.motivo ? ` (${it.motivo})` : '')]);
+        partes.push(`${sit[k]}: NF ${it.nota || '?'} parcela ${it.parcela || '?'}, vence ${it.vencimento || '?'}, R$ ${it.valor || '?'}` +
+          (k === 'atrasadas' && it.dias ? `, ${it.dias} dias de atraso` : k === 'em_dia' && it.dias ? `, vence em ${it.dias} dias` : '') + (it.motivo ? `, motivo: ${it.motivo}` : ''));
+      }
+    }
+    for (const nome of c.arquivos || []) links.push({ nome, url: `${BOLETOS_URL}/arquivo?nome=${encodeURIComponent(nome)}` });
+    linhas.push(`${c.nome || ''} (código ${c.codigo}): ${c.status}${c.obs ? ' — ' + c.obs : ''}${(c.arquivos || []).length ? ` · ${c.arquivos.length} PDF pronto para baixar` : ''}` +
+      (partes.length ? '\n  ' + partes.join('\n  ') : ''));
+  }
+  const res = { entendi: ['<b>Boletos no EBM</b>', esc(`vencimento de ${resp.de} a ${resp.ate}`)], cols: ['Cliente', 'Código', 'NF', 'Parcela', 'Vencimento', 'Valor (R$)', 'Situação'],
+    num: [], data: [], rows, totais: null, resumo: '' };
+  return { res, links, texto: `Boletos com vencimento de ${resp.de} a ${resp.ate}:\n${linhas.join('\n')}\n` +
+    (links.length ? 'Os botões para baixar o PDF já apareceram para o vendedor.' : 'Nenhum PDF foi gerado.') + ' "Não emitida" = o sistema não libera a 2ª via (cartório ou banco correspondente): explique o motivo.' };
+}
 
 // Texto da IA com o básico de markdown: negrito, listas, quebras e tabelas.
 function mdSimples(t) {
@@ -1387,7 +1436,7 @@ function mdSimples(t) {
 // Lista cortada vem com aviso gritado: a IA, vendo só o começo, concluía
 // que quem ficou de fora "não tinha pedido".
 const LINHAS_IA = 60;
-const paraIA = (nome, out) => `[resultado de ${nome}]\n` + (out.erro ? 'ERRO: ' + out.erro : out.res ? resumoDaTela(out.res, LINHAS_IA) +
+const paraIA = (nome, out) => `[resultado de ${nome}]\n` + (out.erro ? 'ERRO: ' + out.erro : out.res && !out.texto ? resumoDaTela(out.res, LINHAS_IA) +
   (out.res.rows.length > LINHAS_IA ? `\nATENÇÃO: esta lista tem ${out.res.rows.length} linhas e só as ${LINHAS_IA} primeiras aparecem acima. NÃO conclua que um nome está ausente: para saber de nomes específicos, consulte de novo filtrando por eles.` : '') : out.texto || 'feito');
 
 // Tabelas que a IA usou ficam embaixo da resposta, fechadas, com Excel e PDF.
@@ -1443,9 +1492,12 @@ async function agRodar(texto, aoPasso) {
       else {
         if (aoPasso) aoPasso(r.nome, passo);
         if (r.nome === 'ficha') await APP.catPronto;
-        try { out = fn(r.args || {}); } catch (e) { out = { erro: 'A ferramenta falhou: ' + (e.message || e) }; }
+        try { out = await fn(r.args || {}); } catch (e) { out = { erro: 'A ferramenta falhou: ' + (e.message || e) }; }
       }
       if (out.res && out.res.rows) { tabelas.push(out.res); AG.ultimaTabela = out.res; }
+      if (out.links && out.links.length) {
+        extras.push(`<div class="acoes">${out.links.map(l => `<a class="sug" href="${esc(l.url)}" download="${esc(l.nome)}">Baixar ${esc(l.nome)}</a>`).join('')}</div>`);
+      }
       if (out.catalogo) {
         const c = out.catalogo.catalogo;
         const link = (gerar, fotos) => DETALHADA_URL + '?' + new URLSearchParams({ cliente: c.cods.join(','), gerar, ...(fotos == null ? {} : { fotos: fotos ? '1' : '0' }) });
