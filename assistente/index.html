@@ -89,7 +89,17 @@ main{ flex:1; overflow-y:auto; overflow-x:hidden; padding:14px 16px; }
 .eu .bolha{ background:var(--balao-eu); color:var(--tinta); border-top-right-radius:0; max-width:85%; min-width:64px; }
 .eu .bolha::before{ right:-9px; background:var(--balao-eu); clip-path:polygon(0 0, 100% 0, 0 100%); }
 .eu .bolha::after{ color:#667781; }
-.ia .bolha{ background:var(--branco); border-top-left-radius:0; width:min(100%, 760px); }
+.ia .bolha{ background:var(--branco); border-top-left-radius:0; flex:0 1 760px; }
+.msg.ia{ gap:14px; align-items:flex-start; }
+.av{ flex:none; width:32px; height:32px; }
+.av .robo{ width:32px; height:32px; box-shadow:0 1px 3px rgba(46,74,0,.25); }
+/* digitando: três pontos que pulam, como no WhatsApp */
+.dots{ display:inline-flex; gap:4px; align-items:center; height:18px; padding:2px 2px 0; }
+.dots i{ width:7px; height:7px; border-radius:50%; background:var(--tinta-3); animation:pula 1.2s infinite ease-in-out; }
+.dots i:nth-child(2){ animation-delay:.15s; } .dots i:nth-child(3){ animation-delay:.3s; }
+@keyframes pula{ 0%,60%,100%{ transform:translateY(0); opacity:.45; } 30%{ transform:translateY(-5px); opacity:1; } }
+@media (prefers-reduced-motion: reduce){ .dots i{ animation:none; opacity:.7; } }
+.dots-rot{ display:block; margin-top:4px; font-size:12.5px; font-style:italic; color:var(--tinta-3); }
 .ia .bolha::before{ left:-9px; background:var(--branco); clip-path:polygon(0 0, 100% 0, 100% 100%); }
 
 .sug{ border:1px solid var(--lima-forte); background:var(--lima-fundo); color:var(--oliva-escuro); border-radius:999px;
@@ -174,6 +184,8 @@ textarea:focus{ outline:2px solid var(--lima-forte); outline-offset:0; }
 @media (max-width:520px){
   main{ padding:10px 12px; }
   .eu .bolha{ max-width:88%; }
+  .msg.ia{ gap:12px; }
+  .av, .av .robo{ width:28px; height:28px; }
   th,td{ padding:7px 7px; }
   .btn-sec, .aj, .sug{ min-height:40px; }
 }
@@ -747,11 +759,16 @@ function addMsg(quem, html) {
   // A hora mora num atributo: as respostas trocam o conteúdo do balão
   // (innerHTML) e ela continua lá, desenhada pelo ::after.
   const agora = new Date();
-  d.innerHTML = `<div class="bolha" data-hora="${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}">${html}</div>`;
+  // O robô do cabeçalho vai ao lado de cada balão da IA, como foto de contato.
+  const av = quem === 'ia' ? `<div class="av">${document.querySelector('header .robo').outerHTML}</div>` : '';
+  d.innerHTML = `${av}<div class="bolha" data-hora="${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}">${html}</div>`;
   $('conversa').appendChild(d);
   rolar();
-  return d.firstChild;
+  return d.querySelector('.bolha');
 }
+
+// "Digitando…" do WhatsApp: três pontinhos pulando e, embaixo, o que ele está fazendo.
+const digitando = rot => `<span class="dots" aria-label="digitando"><i></i><i></i><i></i></span>${rot ? `<span class="dots-rot">${esc(rot)}</span>` : ''}`;
 
 function tabelaHtml(res, limite) {
   const cel = (v, j) => {
@@ -1037,7 +1054,7 @@ async function perguntar(texto) {
   texto = texto.trim();
   if (!texto) return;
   addMsg('eu', esc(texto));
-  const bolha = addMsg('ia', '<span class="digitando">Pensando…</span>');
+  const bolha = addMsg('ia', digitando());
   $('enviar').disabled = true;
   // Resposta curta logo depois de uma pergunta do assistente ("De qual
   // produto?") completa a pergunta anterior; frase longa é pergunta nova.
@@ -1107,7 +1124,7 @@ function agSistema(ctx) {
   const per = ctx.periodo || {};
   const cobre = [per.faturado && `faturado de ${per.faturado.de} a ${per.faturado.ate}`, per.carteira && `carteira com previsão de ${per.carteira.de} a ${per.carteira.ate}`].filter(Boolean);
   return [
-    'Você é o assistente da Detalhada, a carteira de pedidos da CMS Representações (calçados, roupas e acessórios Olympikus e Under Armour). Conversa com vendedores pelo celular, em português do Brasil, como um colega experiente e direto.',
+    'Você é o Nexo, o assistente da CMS Representações (calçados, roupas e acessórios Olympikus e Under Armour). Enxerga a Detalhada (a carteira de pedidos) e busca boletos no EBM da Vulcabras. Conversa com vendedores pelo celular, em português do Brasil, como um colega experiente e direto. Se perguntarem quem você é, diga que é o Nexo, assistente da CMS.',
     `Hoje é ${hojeIso()}.`,
     ctx.vendedor ? `Quem fala com você: ${ctx.vendedor}. Ele só enxerga os próprios clientes; as ferramentas já aplicam essa trava sozinhas.` : 'Quem fala com você vê a base inteira (todos os vendedores).',
     ctx.vendedores && ctx.vendedores.length ? `Vendedores na base: ${lista(ctx.vendedores, 30)}.` : '',
@@ -1129,7 +1146,7 @@ function agSistema(ctx) {
     '- ficha: cadastro de um produto (referência, descrição, preço sugerido, cores, linha, gênero, composição, tecnologias) ou de um cliente (códigos, nome fantasia, vendedor, carteira, faturado, próxima previsão, último faturamento). args: {"produto"} ou {"cliente"}.',
     '- catalogo: mostra ao vendedor os botões para gerar o catálogo (pedidos do cliente com foto) em PDF ou Excel, igual ao da Detalhada. args: {"cliente","formato":"pdf|xlsx","imagens":true|false}.',
     '- baixar: baixa em Excel ou PDF a última tabela de consultar, clientes_sem_pedido ou movimento. args: {"formato":"xlsx|pdf"}.',
-    '- boleto: 2ª via dos boletos de um cliente, buscada no EBM da Vulcabras: parcelas em dia, vencidas e as que o sistema não emite (com o motivo), e o PDF para baixar. args: {"cliente","de":"AAAA-MM-DD","ate":"AAAA-MM-DD"}. O período é o do VENCIMENTO; sem período citado, deixe de fora (vale o mês atual). Demora até 1 minuto por cliente.',
+    '- boleto: 2ª via dos boletos de um cliente, buscada no EBM da Vulcabras: parcelas em dia, vencidas e as que o sistema não emite (com o motivo), e o PDF para baixar. args: {"cliente","de":"AAAA-MM-DD","ate":"AAAA-MM-DD"}. O período é o do VENCIMENTO e pode ter vários meses ("de outubro a dezembro" = de 01/10 a 31/12); sem período citado, deixe de fora (vale o mês atual). Na resposta, diga SEMPRE o período de vencimento que olhou e ofereça outro (os vencidos de meses anteriores ou os próximos meses). Demora até 1 minuto por cliente.',
     '',
     'REGRAS:',
     '- Todo número que você disser tem que ter vindo de uma ferramenta nesta conversa. Nunca invente nem estime; se precisar de outro total, consulte de novo. Diferença e porcentagem entre dois números que vieram das ferramentas você pode calcular.',
@@ -1516,11 +1533,11 @@ async function perguntarAgente(texto) {
   texto = texto.trim();
   if (!texto) return;
   addMsg('eu', esc(texto));
-  const bolha = addMsg('ia', '<span class="digitando">Pensando…</span>');
+  const bolha = addMsg('ia', digitando());
   $('enviar').disabled = true;
   try {
     const { texto: resp, tabelas, extras } = await agRodar(texto, (nome, passo) => {
-      bolha.innerHTML = `<span class="digitando">${esc(ROTULO_FERRAMENTA[nome] || 'Consultando')}… (${passo})</span>`;
+      bolha.innerHTML = digitando(`${ROTULO_FERRAMENTA[nome] || 'Consultando'}…`);
       rolar();
     });
     bolha.innerHTML = `<div class="ag-texto">${mdSimples(resp)}</div>` + extras.join('') + tabelas.map(agTabelaHtml).join('');
@@ -1686,8 +1703,8 @@ async function rodarBateria(botao, modelo) {
 
 async function iniciar() {
   if (AGENTE) {
-    document.title = 'Agente da Detalhada';
-    $('titulo').textContent = 'Agente da Detalhada';
+    document.title = 'Nexo · CMS';
+    $('titulo').textContent = 'Nexo';
   }
   APP.sessao = lerSessao();
   if (!APP.sessao) {
@@ -1702,7 +1719,7 @@ async function iniciar() {
   }
   APP.veTudo = MANDA_EM_TUDO.includes(norm(APP.sessao.nome));
   // Sem a linha de status no topo, o carregando e os erros aparecem na conversa.
-  const carregando = addMsg('ia', '<span class="digitando">Carregando a base…</span>');
+  const carregando = addMsg('ia', digitando('Carregando a base…'));
   const base = await carregarBase();
   carregando.closest('.msg').remove();
   if (!base) { addMsg('ia', '<span class="aviso">Não foi possível carregar a base. Tente abrir de novo em instantes.</span>'); return; }
