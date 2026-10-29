@@ -1062,6 +1062,19 @@ const AGENTE = new URLSearchParams(location.search).has('agente');
 const PASSOS_MAX = 6;
 const AG = { msgs: [], ultimaTabela: null };
 
+// Datas que a base cobre: a IA confundia o mês do registro de entradas e
+// saídas com o período da base inteira e se recusava a comparar semestres.
+function agPeriodo() {
+  if (AG.periodo) return AG.periodo;
+  let fDe = Infinity, fAte = -Infinity, pDe = Infinity, pAte = -Infinity;
+  for (const r of APP.L) {
+    if (r[C.FAT] > 0 && r[C.DFAT] >= 0) { if (r[C.DFAT] < fDe) fDe = r[C.DFAT]; if (r[C.DFAT] > fAte) fAte = r[C.DFAT]; }
+    if (r[C.CART] > 0 && r[C.PREV] >= 0) { if (r[C.PREV] < pDe) pDe = r[C.PREV]; if (r[C.PREV] > pAte) pAte = r[C.PREV]; }
+  }
+  const fx = (a, b) => a <= b ? { de: dataDe(a), ate: dataDe(b) } : null;
+  return (AG.periodo = { faturado: fx(fDe, fAte), carteira: fx(pDe, pAte) });
+}
+
 // Filtro por nome com a mesma tolerância do assistente: exato, frase,
 // palavras; senão o mais parecido, se ficar claro. Diz com o que casou.
 function agFiltro(lista, termo, rotulo, mostra) {
@@ -1330,7 +1343,7 @@ async function perguntarAgente(texto) {
   const p = prepAtivo();
   const contexto = {
     vendedor: p >= 0 ? APP.dic.prep[p] : '', vendedores: APP.veTudo && p < 0 ? APP.dic.prep : [],
-    linhas: APP.dic.faixa || [], movMes: APP.base.mov && APP.base.mov.mes,
+    linhas: APP.dic.faixa || [], movMes: APP.base.mov && APP.base.mov.mes, periodo: agPeriodo(),
   };
   try {
     for (let passo = 1; ; passo++) {

@@ -1839,6 +1839,15 @@ export default {
           const hoje = /^\d{4}-\d{2}-\d{2}$/.test(String(body.hoje || "")) ? body.hoje : new Date().toISOString().slice(0, 10);
           const ctx = body.contexto && typeof body.contexto === "object" ? body.contexto : {};
           const lista = (v, n) => (Array.isArray(v) ? v.slice(0, n).map(String) : []).join(", ");
+          // Sem isso a IA achava que a base era só do mês do registro de movimento.
+          const periodoBase = p => {
+            const d = s => /^\d{2}\/\d{2}\/\d{4}$/.test(String(s || "")) ? s : "";
+            const f = p?.faturado, c = p?.carteira;
+            const partes = [];
+            if (f && d(f.de) && d(f.ate)) partes.push(`faturado de ${f.de} a ${f.ate}`);
+            if (c && d(c.de) && d(c.ate)) partes.push(`carteira com previsão de ${c.de} a ${c.ate}`);
+            return partes.length ? `A base tem ${partes.join(" e ")}. Antes disso não há dado.` : "";
+          };
           // Conversa curta o bastante para caber: as mais recentes, com teto de tamanho.
           const conversa = [];
           let soma = 0;
@@ -1859,9 +1868,10 @@ export default {
             ctx.vendedor ? `Quem fala com você: ${String(ctx.vendedor).slice(0, 60)}. Ele só enxerga os próprios clientes; as ferramentas já aplicam essa trava sozinhas.` : "Quem fala com você vê a base inteira (todos os vendedores).",
             ctx.vendedores ? `Vendedores na base: ${lista(ctx.vendedores, 30)}.` : "",
             ctx.linhas ? `Linhas (categorias): ${lista(ctx.linhas, 30)}.` : "",
-            ctx.movMes ? `O registro de entradas e saídas só cobre o mês ${String(ctx.movMes).slice(0, 7)}.` : "",
+            periodoBase(ctx.periodo),
+            ctx.movMes ? `Só a ferramenta movimento (entradas e saídas) fica restrita ao mês ${String(ctx.movMes).slice(0, 7)}; consultar enxerga a base inteira.` : "",
             "",
-            "GLOSSÁRIO: carteira = pares pedidos que ainda não faturaram (a faturar). Faturado = pares que já saíram com nota. Previsão = data prevista de faturamento de um pedido. OC = ordem de compra do cliente. NF = número da nota fiscal. GCI = número do pedido na fábrica. Linha = categoria do produto. Pares = quantidade (vale também para peças de roupa e acessórios).",
+            "GLOSSÁRIO: carteira = pares pedidos que ainda não faturaram (a faturar). Faturado = pares que já saíram com nota. Previsão = data prevista de faturamento de um pedido. OC = ordem de compra do cliente. NF = número da nota fiscal. GCI = número do pedido na fábrica. Linha = categoria do produto. Pares = quantidade (vale também para peças de roupa e acessórios). 1º semestre = janeiro a junho; 2º semestre = julho a dezembro. Para comparar períodos, consulte cada um (ou agrupe por mes) e calcule a diferença a partir dos resultados.",
             "",
             "COMO RESPONDER: a cada mensagem sua, devolva UM único objeto JSON, sem nada antes ou depois, de um destes dois jeitos:",
             '1) Para usar uma ferramenta: {"ferramenta":"nome","args":{...}}',
@@ -1877,7 +1887,8 @@ export default {
             '- baixar: baixa em Excel ou PDF a última tabela de consultar, clientes_sem_pedido ou movimento. args: {"formato":"xlsx|pdf"}.',
             "",
             "REGRAS:",
-            "- Todo número que você disser tem que ter vindo de uma ferramenta nesta conversa. Nunca invente, estime ou some de cabeça; se precisar de outro total, consulte de novo.",
+            "- Todo número que você disser tem que ter vindo de uma ferramenta nesta conversa. Nunca invente nem estime; se precisar de outro total, consulte de novo. Diferença e porcentagem entre dois números que vieram das ferramentas você pode calcular.",
+            "- Nunca diga que não tem dado de um período sem antes consultar: a base cobre as datas informadas acima.",
             "- Se a ferramenta disser que um nome é ambíguo ou não existe, pergunte ao vendedor qual é (mostre as opções) em vez de chutar.",
             "- Se o resultado avisar que a lista foi cortada, não conclua nada sobre quem ficou de fora: consulte de novo com filtro pelos nomes que interessam. Para \"desses, quem não pediu X\", use clientes_sem_pedido com a lista em \"clientes\".",
             "- Se a pergunta for vaga demais para consultar, pergunte o que falta numa frase.",
