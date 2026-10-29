@@ -1079,7 +1079,7 @@ function agFiltro(lista, termo, rotulo, mostra) {
   const nomes = [...new Set(achou.map(mostra))];
   // Vários nomes no mesmo termo ("LUAR" → LUAR SPORT e BALUARTE): soma
   // todos, mas avisa a IA para conferir com o vendedor.
-  const varios = rotulo === 'cliente' && nomes.length > 1 ? ` [ATENÇÃO: "${termo}" casou com ${nomes.length} clientes diferentes; se ele quis um só, pergunte qual]` : '';
+  const varios = rotulo === 'cliente' && nomes.length > 1 ? ` [ATENÇÃO: "${termo}" casou com ${nomes.length} clientes diferentes e os números deste resultado SOMAM todos eles; não atribua o total a um só. Se ele quis um só, pergunte qual antes de dar números]` : '';
   return { set: new Set(achou), texto: `${rotulo}: ${nomes.slice(0, 8).join(', ')}${nomes.length > 8 ? ` e mais ${nomes.length - 8}` : ''}${nota}${varios}` };
 }
 
@@ -1219,15 +1219,32 @@ const FERRAMENTAS = {
   clientes_sem_pedido: a => {
     const out = agPeloAssistente({ tipo: 'nao_compraram', produto: a.produto, cor: a.cor, linha: a.linha, marca: a.marca, vendedor: a.vendedor, de: a.de, ate: a.ate, limite: Array.isArray(a.clientes) ? 0 : a.limite });
     if (!out.res || !Array.isArray(a.clientes) || !a.clientes.length) return out;
-    // Só entre os clientes pedidos ("desses, quem não pediu?")
-    const X = indices(), cods = new Set();
+    // Só entre os clientes pedidos ("desses, quem não pediu?"), por NOME:
+    // a Degraus tem dois códigos e só um pediu; respondendo por código, a IA
+    // dizia que a Degraus não tinha pedido.
+    const D = APP.dic, X = indices(), p = prepAtivo();
+    const naBase = new Set(APP.L.filter(r => p < 0 || r[C.PREP] === p).map(r => r[C.CLI]));
+    const semCod = new Set(out.res.rows.map(r => String(r[1])));
+    const linhas = [], status = [];
     for (const t of a.clientes) {
-      const r = agFiltro(X.cli, String(t), 'cliente', i => APP.dic.cli[i][1]);
-      if (r.set) r.set.forEach(i => cods.add(String(APP.dic.cli[i][0])));
+      const r = agFiltro(X.cli, String(t), 'cliente', i => D.cli[i][1]);
+      if (!r.set) { status.push(`${t}: ${r.erro}`); continue; }
+      const porNome = new Map();
+      for (const i of r.set) if (naBase.has(i)) { const n = D.cli[i][1]; if (!porNome.has(n)) porNome.set(n, []); porNome.get(n).push(String(D.cli[i][0])); }
+      for (const [nome, cods] of porNome) {
+        const pediram = cods.filter(c => !semCod.has(c));
+        // Veio por código: olha também os outros códigos com o mesmo nome.
+        const irmaos = [...naBase].filter(i => D.cli[i][1] === nome).map(i => String(D.cli[i][0])).filter(c => !cods.includes(c) && !semCod.has(c));
+        if (pediram.length) status.push(`${nome}: JÁ PEDIU (código ${pediram.join(', ')})`);
+        else {
+          status.push(`${nome} (código ${cods.join(', ')}): NÃO PEDIU${irmaos.length ? `, mas outro código com o mesmo nome (${irmaos.join(', ')}) JÁ PEDIU` : ''}`);
+          linhas.push(...out.res.rows.filter(x => cods.includes(String(x[1]))));
+        }
+      }
     }
-    const res = { ...out.res, rows: out.res.rows.filter(r => cods.has(String(r[1]))) };
+    const res = { ...out.res, rows: linhas };
     res.entendi = [...res.entendi, esc(`só entre: ${a.clientes.join(', ')}`)];
-    res.resumo = `${fmt(res.rows.length)} desses clientes sem pedido`;
+    res.resumo = `Situação de cada cliente (pelo nome, somando todos os códigos):\n${status.join('\n')}`;
     return { res };
   },
   movimento: a => agPeloAssistente({ tipo: a.tipo === 'saidas' ? 'saidas' : 'entradas', de: a.de, ate: a.ate, agrupar: a.agrupar || 'nenhum', cliente: a.cliente, produto: a.produto, cor: a.cor, vendedor: a.vendedor }),
