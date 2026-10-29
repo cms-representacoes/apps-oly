@@ -1080,59 +1080,6 @@ export default {
 
     try {
 
-      // ── MÍDIA: entrega uma foto ou vídeo da marca como download ────────
-      // O CDN do Trade Squash serve os arquivos sem login, mas não manda
-      // cabeçalho de CORS nem de anexo. Sem isso, o link na página abre a
-      // foto numa aba em vez de salvar, e nenhuma página consegue buscar o
-      // arquivo por conta própria para montar um "baixar todas". Aqui ele só
-      // atravessa, ganhando o nome e a marca de anexo.
-      //
-      // O corpo passa em fluxo, sem ser lido: um vídeo de 60 MB custa ao
-      // Worker praticamente o mesmo que uma foto.
-      if (request.method === "GET" && new URL(request.url).searchParams.has("midia")) {
-        const q = new URL(request.url).searchParams;
-        let alvo;
-        try { alvo = new URL(q.get("midia")); }
-        catch (_) { return new Response("endereço inválido", { status: 400, headers: corsHeaders }); }
-
-        // Sem esta trava o Worker viraria um proxy aberto para a internet
-        // inteira, em nome da conta da Cloudflare.
-        if (alvo.protocol !== "https:" || alvo.hostname !== "static.tradesquash.com") {
-          return new Response("origem não permitida", { status: 403, headers: corsHeaders });
-        }
-
-        const res = await fetch(alvo.href, {
-          headers: {
-            "User-Agent": TS_UA_HEADER,
-            Referer: TS_BASE + "/",
-            ...(request.headers.get("Range") ? { Range: request.headers.get("Range") } : {})
-          }
-        });
-        if (!res.ok && res.status !== 206) {
-          return new Response("arquivo não encontrado", { status: res.status, headers: corsHeaders });
-        }
-
-        // O nome vem de quem pediu, mas aspas e barras fariam o navegador ler
-        // o cabeçalho errado — e barra permitiria escrever fora da pasta.
-        const nome = (q.get("nome") || alvo.pathname.split("/").pop() || "arquivo")
-          .replace(/[\r\n"\\/]+/g, "_").slice(0, 120);
-
-        return new Response(res.body, {
-          status: res.status,
-          headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Content-Type": res.headers.get("Content-Type") || "application/octet-stream",
-            "Content-Disposition": `attachment; filename="${nome}"`,
-            ...(res.headers.get("Content-Length") ? { "Content-Length": res.headers.get("Content-Length") } : {}),
-            ...(res.headers.get("Content-Range") ? { "Content-Range": res.headers.get("Content-Range") } : {}),
-            "Accept-Ranges": "bytes",
-            // O arquivo da marca não muda de endereço; um dia de cache poupa
-            // a ida ao S3 quando o lojista baixa foto por foto.
-            "Cache-Control": "public, max-age=86400"
-          }
-        });
-      }
-
       // GET — retorna pedidos (array, mantém retrocompatibilidade).
       // É de longe a chamada mais frequente: cada vendedor consulta a cada
       // 30s. Por isso vai por repasse direto, sem parsear nada.
