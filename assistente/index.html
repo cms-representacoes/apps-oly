@@ -1258,7 +1258,7 @@ function agSistema(ctx) {
     '- disponivel: o que TEM para vender agora no Showroom: estoque (pronta entrega), lotes de repasse (saldo, data de entrega, grade) e produção (pares e mês de previsão, ainda sem grade). "Dispo" e "disponibilidade" significam esta ferramenta: "tem dispo de X?" é a pergunta padrão. Use também para "tem tal produto?", "qual a grade?", "quando chega?". Sem ele citar uma origem, deixe "origem" de fora: ela olha tudo. Na resposta, comece SEMPRE pelo repasse, depois estoque, depois produção. args: {"produto","cor","origem":"estoque|repasse|producao"}. Diferente de consultar, que é o que o cliente JÁ pediu. Diga que é o saldo de agora, sem reserva. Só o saldo que vier aqui pode ser afirmado; sem saldo, diga que não tem. Mostre estoque, repasse e produção separados e NUNCA some um com o outro.',
     '- repasses_cliente: o que foi REPASSADO para um cliente e está a caminho ou já entrou (prev. fat., pares, situação). Use para "o cliente X tem repasse?", "quais repasses da Degraus?", "tem algo de repasse pro 21511?": quando o nome é de CLIENTE. Se o nome for de PRODUTO ("tem repasse de index?"), a ferramenta é disponivel. Na dúvida entre os dois, pergunte. args: {"cliente","situacao":"a_chegar|todos"} (padrão: a_chegar).',
     '- resumo_repasses: totais e rankings do que foi repassado: "total repassado pelo Jorge nos últimos 7 dias", "quem mais repassou no mês", "produto mais repassado", "saldo de repasse", "lotes sem pedido", "o que foi cancelado", "como está a campanha". args: {"periodo":"hoje|ontem|7d|15d|30d|tudo" (qualquer número de dias, como 10d), "de","ate":"AAAA-MM-DD","vendedor","produto","cliente","ver":"vendedores|produtos|clientes|saldo|prazo|saidas|campanha"}. Sem período citado, deixe de fora e diga que olhou desde o primeiro pedido. "ver" escolhe a tabela. Cite só o que ele perguntou, em poucas frases.',
-    '- pedido: lista os pedidos com a opção de gerar o PDF: por número da nota fiscal (DANFE), do GCI ou da OC, ou por cliente. Use para "me passa o pedido dessa nota", "de quem é a nota 4104040", "PDF do GCI X", "me passa a carteira da Fit Store", "os pedidos da Degraus", "o que falta faturar pra X": aparece cada produto com um botão de PDF e o botão de gerar todos. args: {"nf"} ou {"gci"} ou {"oc"} ou {"cliente","produto","situacao":"carteira|faturado|tudo"} (padrão por cliente: carteira). Use consultar quando ele só quer um número ou um total agrupado ("quanto tem de carteira?").',
+    '- pedido: lista os pedidos com a opção de gerar o PDF: por número da nota fiscal (DANFE), do GCI ou da OC, ou por cliente. Use para "me passa o pedido dessa nota", "de quem é a nota 4104040", "PDF do GCI X", "me passa a carteira da Fit Store", "os pedidos da Degraus", "o que falta faturar pra X": aparece cada produto com um botão de PDF e o botão de gerar todos. args: {"nf"} ou {"gci"} ou {"oc"} ou {"cliente","produto","situacao":"carteira|faturado|tudo"} (padrão por cliente: carteira). Pediu o pedido ou o PDF de uma nota, GCI ou OC: é SEMPRE esta ferramenta, nunca consultar, mesmo que a nota já esteja faturada. Use consultar quando ele só quer um número ou um total agrupado ("quanto tem de carteira?").',
     '- dae: a guia (DAE ou DAR) da nota retida na fiscalização, só de clientes de Ceará e Piauí. Use para "preciso do DAE da nota X", "tem DAE do cliente Y?". args: {"nf"} ou {"cliente"}. Aparece um cartão com o cliente para ele confirmar, e só o toque dele faz a busca: você nunca diz que buscou nem inventa valor.',
     '- catalogo: mostra ao vendedor os botões para gerar o catálogo (pedidos do cliente com foto) em PDF ou Excel, igual ao da Detalhada. args: {"cliente","formato":"pdf|xlsx","imagens":true|false}.',
     '- baixar: baixa em Excel ou PDF a última tabela de consultar, clientes_sem_pedido ou movimento. args: {"formato":"xlsx|pdf"}.',
@@ -2277,6 +2277,15 @@ function agHistorico() {
 // Também vaza o raciocínio interno, com as marcas do modelo: "<|channel|>analysis: need respond with...".
 const iaEmbaralhou = t => { const s = String(t || '').trim(); return !s || /^text$/i.test(s) || /(.)\1{15,}/.test(s) || /<\|[a-z_]+\|>/i.test(s) || /^(analysis|commentary|assistant(analysis|commentary|final)?)\b/i.test(s) || (s.match(/\b(didn|wasn|wouldn|hadn|isn|lastly)\b/gi) || []).length >= 2; };
 
+// Pediu o pedido de uma nota, GCI ou OC e a IA foi de consultar: só o pedido traz o botão de PDF.
+// Em 30/10/2026 "me passa o pedido da nota 3414818" voltou como total de pares, mesmo com a regra no roteiro.
+function trocaPorPedido(texto, r) {
+  if (r.nome !== 'consultar' || !/pedido|pdf|emit|ebm/i.test(texto) || /quant[oa]s?\b|total|soma/i.test(texto)) return r;
+  const f = (r.args && r.args.filtros) || {}, um = v => Array.isArray(v) ? (v.length === 1 ? v[0] : '') : v;
+  const nf = um(f.nf), gci = um(f.gci), oc = um(f.oc);
+  return nf ? { ...r, nome: 'pedido', args: { nf } } : gci ? { ...r, nome: 'pedido', args: { gci } } : oc ? { ...r, nome: 'pedido', args: { oc } } : r;
+}
+
 // Uma pergunta inteira: pede à IA, roda as ferramentas que ela pedir e
 // devolve a resposta. Não mexe na tela (a bateria de testes usa o mesmo).
 async function agRodar(texto, aoPasso) {
@@ -2305,6 +2314,7 @@ async function agRodar(texto, aoPasso) {
         AG.msgs.push({ role: 'assistant', content: JSON.stringify({ resposta: r.texto }) });
         return { texto: r.texto, tabelas, extras, usadas, modelo: r.modelo };
       }
+      r = trocaPorPedido(texto, r);
       AG.msgs.push({ role: 'assistant', content: JSON.stringify({ ferramenta: r.nome, args: r.args }) });
       usadas.push({ nome: r.nome, args: r.args });
       const fn = FERRAMENTAS[r.nome];
