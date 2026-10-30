@@ -454,8 +454,10 @@ async function carregarCatalogo() {
 /* Cadastro de clientes do portal (o mesmo do botão Clientes): razão social,
    CNPJ, cidade, telefone e e-mails por código. Quem vê tudo carrega todos os
    vendedores; o vendedor, só o dele. Cobre ~95% dos clientes. */
+// Os mesmos códigos da tela Clientes: a base de cada vendedor é um arquivo com o código dele.
+const VENDEDOR_DA_BASE = { 114611: 'JORGE', 109839: 'MARIANA', 1333497: 'RAFAEL', 25471: 'WILLAME', 25745: 'LEANDRO', 4322318: 'CHRISTIAN LUCAS' };
 async function carregarCadastro() {
-  const pede = extra => chamarWorker('getClientes', extra, 20000).then(j => Array.isArray(j?.clientes) ? j.clientes : []).catch(() => []);
+  const pede = extra => chamarWorker('getClientes', extra, 20000).then(j => (Array.isArray(j?.clientes) ? j.clientes : []).map(c => ({ ...c, _vend: VENDEDOR_DA_BASE[extra.vendedor] || '' }))).catch(() => []);
   let listas;
   if (APP.veTudo) {
     const l = await chamarWorker('listClientesVendedores', {}, 20000).catch(() => null);
@@ -470,15 +472,19 @@ async function carregarCadastro() {
     if (!cod || cad.has(cod)) continue;
     cad.set(cod, { razao: limpa(c.nome || c.razaoSocial), doc: String(c.cnpj || c.documento || '').replace(/\D/g, ''),
       cidade: c.cidade || c.CIDADE || '', uf: c.estado || c.ESTADO || '', tel: c.telefone || c.TELEFONE || '',
-      emailNfe: c.emailNfe || c.EMAIL_NFE || '', emailBanc: c.emailBancario || c.EMAIL_BANCARIO || '', avista: limpa(c.avista || c.AVISTA || '') });
+      emailNfe: c.emailNfe || c.EMAIL_NFE || '', emailBanc: c.emailBancario || c.EMAIL_BANCARIO || '', avista: limpa(c.avista || c.AVISTA || ''), vendedor: c._vend });
   }
   return cad;
 }
 
 // O cliente passa a ser achado por qualquer nome que tenha: o da Detalhada,
 // o fantasia e a razão social do cadastro, além do código e do CNPJ.
+// Quem só está no cadastro (cerca de metade: sem pedido na Detalhada) entra no fim da lista: as linhas
+// da base não apontam para eles, então os totais não mudam, e ficha e boleto passam a achá-los.
 function indexarClientes() {
-  const D = APP.dic;
+  const D = APP.dic, naBase = new Set(D.cli.map(([cod]) => String(cod).trim()));
+  APP.soCad = new Set();
+  for (const [k, c] of APP.cad || []) if (!naBase.has(k)) { APP.soCad.add(D.cli.length); D.cli.push([k, APP.fantasia?.[k] || c.razao || k]); }
   indices().cli = D.cli.map(([cod, nome], i) => {
     const k = String(cod), c = APP.cad?.get(k) || {};
     const nomes = [...new Set([nome, APP.fantasia?.[k], c.razao].filter(Boolean).map(norm))];
@@ -560,9 +566,9 @@ function fichaCliente(sCli, linhas) {
       ['Razão social', doCad('razao')], ['CNPJ', doCad('doc', fmtDoc)],
       ['Cidade', [...new Set(cad.filter(c => c.cidade).map(c => `${c.cidade}${c.uf ? '/' + c.uf : ''}`))].join(', ')],
       ['Telefone', doCad('tel')], ['E-mail NF-e', doCad('emailNfe')], ['E-mail bancário', doCad('emailBanc')], ['À vista', doCad('avista')],
-      ['Vendedor', [...new Set(rs.map(r => D.prep[r[C.PREP]]))].join(', ')], ['Marcas', marcas.join(', ')],
-      ['Carteira', `${fmt(cart)} pares a faturar`], ['Faturado', `${fmt(fat)} pares`],
-      ['Produtos', `${fmt(new Set(rs.map(r => r[C.REF])).size)} referências pedidas`],
+      ['Vendedor', [...new Set(rs.map(r => D.prep[r[C.PREP]]))].join(', ') || doCad('vendedor')], ['Marcas', marcas.join(', ')],
+      ...(rs.length ? [['Carteira', `${fmt(cart)} pares a faturar`], ['Faturado', `${fmt(fat)} pares`],
+        ['Produtos', `${fmt(new Set(rs.map(r => r[C.REF])).size)} referências pedidas`]] : [['Pedidos', 'nenhum pedido na Detalhada']]),
       ['Próxima previsão', prev.length ? dataDe(Math.min(...prev)) : ''], ['Último faturamento', dfat.length ? dataDe(Math.max(...dfat)) : ''],
     ].filter(([, v]) => v);
     html.push(`<div class="ficha"><div class="ficha-tit">${esc(nome)}</div>` + campos.map(([k, v]) => `<div class="ficha-l"><span>${esc(k)}</span><div>${esc(v)}</div></div>`).join('') + '</div>');
@@ -643,7 +649,7 @@ function executar(q) {
   } else if (p >= 0) entendi.push(`vendedor: ${esc(D.prep[p])}`);
   // Cliente só entre os do vendedor: senão "achava" o cliente de outro e
   // respondia "nenhum par", como se ele não tivesse pedido nada.
-  const meus = p < 0 ? null : new Set(APP.L.filter(r => r[C.PREP] === p).map(r => r[C.CLI]));
+  const meus = p < 0 ? null : new Set([...APP.L.filter(r => r[C.PREP] === p).map(r => r[C.CLI]), ...soCadDele()]);
   // Cliente com nomes diferentes que casam ("ARMAZEM" → Paraíba e Eldorado)
   // pergunta qual; produto não, porque "CORRE" juntando a família é o esperado.
   const sCli = pegar(meus ? X.cli.filter(x => meus.has(x.i)) : X.cli, 'cliente', 'cliente', i => D.cli[i][1], true);
@@ -1252,7 +1258,7 @@ function agSistema(ctx) {
     '- consultar: soma pares da carteira e do faturado com filtros e agrupamento livres. args: {"filtros":{"cliente","produto","cor","linha","marca":"OLY|UA","vendedor","oc","nf","gci","fabrica","filial"}, "situacao":"carteira|faturado|tudo", "de":"AAAA-MM-DD", "ate":"AAAA-MM-DD", "agrupar":[...], "limite":25, "ordenar":"carteira|faturado|total|nome|data"}. Todos opcionais. Período: a carteira conta pela data de previsão e o faturado pela data da nota. agrupar aceita uma ou mais destas: cliente, produto, cor, produto_cor, linha, marca, vendedor, oc, nf, gci, fabrica, filial, mes, dia, previsao. Sem agrupar = só o total. Nomes podem vir como o vendedor escreveu: a ferramenta tolera erro de digitação e diz com o que casou. Cada filtro aceita também uma lista (["DEGRAUS","TALENTUS"]) para somar vários de uma vez.',
     '- clientes_sem_pedido: clientes (do vendedor) que NÃO têm pedido de um produto/cor/linha/marca, os maiores primeiro. args: {"produto","cor","linha","marca","de","ate","vendedor","limite","clientes":[...]}. Use "clientes" para olhar só alguns (por exemplo, os maiores que você acabou de listar).',
     '- movimento: o que ENTROU na carteira (pedidos novos) ou SAIU (faturou, transferiu, cancelou) em um dia ou período do mês atual. args: {"tipo":"entradas|saidas","de","ate","agrupar":"cliente|produto|produto_cor|dia|vendedor|nenhum","cliente","produto","cor","vendedor"}.',
-    '- ficha: cadastro de um produto (referência, descrição, preço sugerido, cores, linha, gênero, composição, tecnologias) ou de um cliente (códigos, nome fantasia, razão social, CNPJ, cidade, telefone, e-mail de NF-e, e-mail bancário, se compra à vista, vendedor, carteira, faturado, próxima previsão, último faturamento). args: {"produto"} ou {"cliente"}.',
+    '- ficha: cadastro de um produto (referência, descrição, preço sugerido, cores, linha, gênero, composição, tecnologias) ou de um cliente (códigos, nome fantasia, razão social, CNPJ, cidade, telefone, e-mail de NF-e, e-mail bancário, se compra à vista, vendedor, carteira, faturado, próxima previsão, último faturamento). args: {"produto"} ou {"cliente"}. Código, CNPJ, nome ou razão: a ferramenta procura no cadastro inteiro e na Detalhada; muitos clientes estão no cadastro sem nenhum pedido, e isso não quer dizer que não existem. Só diga que não achou depois de ela responder.',
     '- clientes: lista do cadastro, uma linha por loja: código, nome fantasia, razão social, CNPJ, cidade, telefone, e-mails. Para "CNPJs do grupo X", "e-mails das lojas X", "meus clientes de tal cidade", "quem é o código N", "qual o código da X". args: {"nome","codigo","cnpj","cidade","uf"} (pelo menos um).',
     'Cliente pode ser dito pelo nome que o vendedor usa, pelo nome fantasia, pela razão social, pelo código ou pelo CNPJ: passe do jeito que ele escreveu, as ferramentas acham.',
     '- disponivel: o que TEM para vender agora no Showroom: estoque (pronta entrega), lotes de repasse (saldo, data de entrega, grade) e produção (pares e mês de previsão, ainda sem grade). "Dispo" e "disponibilidade" significam esta ferramenta: "tem dispo de X?" é a pergunta padrão. Use também para "tem tal produto?", "qual a grade?", "quando chega?". Sem ele citar uma origem, deixe "origem" de fora: ela olha tudo. Na resposta, comece SEMPRE pelo repasse, depois estoque, depois produção. args: {"produto","cor","origem":"estoque|repasse|producao"}. Diferente de consultar, que é o que o cliente JÁ pediu. Diga que é o saldo de agora, sem reserva. Só o saldo que vier aqui pode ser afirmado; sem saldo, diga que não tem. Mostre estoque, repasse e produção separados e NUNCA some um com o outro.',
@@ -1291,7 +1297,7 @@ function agFiltro(lista, termo, rotulo, mostra) {
       achou = a.idx; nota = ` (escrito "${termo}")`;
     } else if (cand.length) {
       return { erro: `${rotulo} "${termo}" não existe; os mais parecidos: ${cand.slice(0, 5).map(c => c.nome).join(', ')}. Pergunte qual é.` };
-    } else return { erro: `${rotulo} "${termo}" não existe na base${rotulo === 'cliente' ? ' deste vendedor' : ''}.` };
+    } else return { erro: `${rotulo} "${termo}" não existe na base${rotulo === 'cliente' && prepAtivo() >= 0 ? ' deste vendedor' : ''}.` };
   }
   const nomes = [...new Set(achou.map(mostra))];
   // Vários nomes no mesmo termo ("LUAR" → LUAR SPORT e BALUARTE): soma
@@ -1299,6 +1305,17 @@ function agFiltro(lista, termo, rotulo, mostra) {
   const varios = rotulo === 'cliente' && nomes.length > 1 ? ` [ATENÇÃO: "${termo}" casou com ${nomes.length} clientes diferentes e os números deste resultado SOMAM todos eles; não atribua o total a um só. Se ele quis um só, pergunte qual antes de dar números]` : '';
   return { set: new Set(achou), texto: `${rotulo}: ${nomes.slice(0, 8).join(', ')}${nomes.length > 8 ? ` e mais ${nomes.length - 8}` : ''}${nota}${varios}` };
 }
+
+// Para os números: se o nome casou com quem tem pedido e também com quem só está no cadastro, valem os
+// primeiros. Sem isso, "Degraus" perguntava de qual loja por causa de uma filial que nunca teve pedido.
+function agFiltroPed(lista, termo, rotulo, mostra) {
+  const r = agFiltro(lista, termo, rotulo, mostra), so = APP.soCad;
+  if (rotulo !== 'cliente' || !so || !r.set) return r;
+  const v = [...r.set];
+  return v.some(i => so.has(i)) && v.some(i => !so.has(i)) ? agFiltro(lista.filter(x => !so.has(x.i)), termo, rotulo, mostra) : r;
+}
+// O vendedor carrega só o cadastro dele: quem está lá é dele, mesmo sem pedido.
+const soCadDele = () => APP.veTudo ? [] : [...(APP.soCad || [])];
 
 // consultar: carteira e faturado com qualquer filtro e agrupamento.
 function agConsultar(a) {
@@ -1313,7 +1330,7 @@ function agConsultar(a) {
     p = [...r.set][0]; aplicados.push(r.texto);
   }
   const base = APP.L.filter(r => p < 0 || r[C.PREP] === p);
-  const meus = p < 0 ? null : new Set(base.map(r => r[C.CLI]));
+  const meus = p < 0 ? null : new Set([...base.map(r => r[C.CLI]), ...soCadDele()]);
   const conds = [];
   // Cada filtro aceita um nome ou uma lista deles (soma todos).
   const porNome = (campo, lista, rotulo, mostra, col) => {
@@ -1321,7 +1338,7 @@ function agConsultar(a) {
     if (!termos.length) return null;
     const set = new Set();
     for (const t of termos) {
-      const r = agFiltro(lista, t, rotulo, mostra);
+      const r = agFiltroPed(lista, t, rotulo, mostra);
       if (r.erro) {
         // A IA às vezes manda cliente como produto ("degras", "Talentus"):
         // diz em que campo o nome existe, para ela refazer sozinha.
@@ -1452,7 +1469,7 @@ const FERRAMENTAS = {
     const semCod = new Set(out.res.rows.map(r => String(r[1])));
     const linhas = [], status = [];
     for (const t of a.clientes) {
-      const r = agFiltro(X.cli, String(t), 'cliente', i => D.cli[i][1]);
+      const r = agFiltroPed(X.cli, String(t), 'cliente', i => D.cli[i][1]);
       if (!r.set) { status.push(`${t}: ${r.erro}`); continue; }
       const porNome = new Map();
       for (const i of r.set) if (naBase.has(i)) { const n = D.cli[i][1]; if (!porNome.has(n)) porNome.set(n, []); porNome.get(n).push(String(D.cli[i][0])); }
@@ -1657,8 +1674,8 @@ async function agRepassesCliente(a) {
   const dono = new Map();
   for (const r of APP.L) if (!dono.has(r[C.CLI])) dono.set(r[C.CLI], r[C.PREP]);
   const meuItem = it => p < 0 || (it.cli != null ? dono.get(it.cli) === p : norm(it.vendedor) === norm(D.prep[p]));
-  const meusCli = p < 0 ? X.cli : X.cli.filter(x => dono.get(x.i) === p);
-  const r = agFiltro(meusCli, termo, 'cliente', i => D.cli[i][1]);
+  const meusCli = p < 0 ? X.cli : X.cli.filter(x => dono.get(x.i) === p || (!APP.veTudo && APP.soCad?.has(x.i)));
+  const r = agFiltroPed(meusCli, termo, 'cliente', i => D.cli[i][1]);
   let doCliente, rotulo;
   if (r.set) { doCliente = itens.filter(it => it.cli != null && r.set.has(it.cli)); rotulo = r.texto.replace(/\s*\[ATENÇÃO:[^\]]*\]/, ''); }
   else {
@@ -1731,7 +1748,7 @@ async function agResumoRepasses(a) {
   const nomeCli = o => { const i = indices().cli.find(x => x.cod === norm(o.clienteCodigo)); return i ? D.cli[i.i][1] : (o.clienteNome || o.clienteCodigo || 'Cliente não informado'); };
   let doItem = () => true, doPedido = () => true;
   if (a.produto) { const n = norm(a.produto); doItem = i => norm(i.produto).includes(n) || norm(i.codigo) === n; filtros.push('produto: ' + a.produto); }
-  if (a.cliente) { const r = agFiltro(indices().cli, String(a.cliente), 'cliente', i => D.cli[i][1]);
+  if (a.cliente) { const r = agFiltroPed(indices().cli, String(a.cliente), 'cliente', i => D.cli[i][1]);
     const cods = r.set ? new Set([...r.set].map(i => String(D.cli[i][0]))) : null; const n = norm(a.cliente);
     doPedido = o => cods ? cods.has(String(o.clienteCodigo)) : norm(o.clienteNome).includes(n); filtros.push(r.set ? r.texto.replace(/\s*\[ATENÇÃO:[^\]]*\]/, '') : 'cliente: ' + a.cliente); }
   const itensDe = o => (o.items || []).map(i => { const [c, nome] = DISPONIVEL.desinverte(i.codigo, i.produto); return { ...i, codigo: c, produto: nome }; }).filter(doItem);
@@ -1828,7 +1845,7 @@ function agPedido(a) {
   } else {
     const dono = new Map();
     for (const r of APP.L) if (!dono.has(r[C.CLI])) dono.set(r[C.CLI], r[C.PREP]);
-    const f = agFiltro(p < 0 ? X.cli : X.cli.filter(x => dono.get(x.i) === p), String(a.cliente), 'cliente', i => D.cli[i][1]);
+    const f = agFiltroPed(p < 0 ? X.cli : X.cli.filter(x => dono.get(x.i) === p || (!APP.veTudo && APP.soCad?.has(x.i))), String(a.cliente), 'cliente', i => D.cli[i][1]);
     if (f.erro) return { erro: f.erro };
     // Nomes diferentes no mesmo termo: pergunta antes, com os botões. Filiais do mesmo nome seguem juntas.
     const nomes = [...new Set([...f.set].map(i => D.cli[i][1]))];
@@ -2028,7 +2045,7 @@ async function agDae(a) {
   } else if (a.cliente) {
     const dono = new Map();
     for (const r of APP.L) if (!dono.has(r[C.CLI])) dono.set(r[C.CLI], r[C.PREP]);
-    const f = agFiltro(p < 0 ? X.cli : X.cli.filter(x => dono.get(x.i) === p), String(a.cliente), 'cliente', i => D.cli[i][1]);
+    const f = agFiltroPed(p < 0 ? X.cli : X.cli.filter(x => dono.get(x.i) === p || (!APP.veTudo && APP.soCad?.has(x.i))), String(a.cliente), 'cliente', i => D.cli[i][1]);
     if (f.erro) return { erro: f.erro };
     if (f.set.size > 1) {
       const lojas = [...f.set].sort((x, y) => rotuloLoja(x).localeCompare(rotuloLoja(y)));
@@ -2125,7 +2142,7 @@ function agClientes(a) {
 const BOLETOS_URL = 'http://127.0.0.1:8765';
 async function agBoleto(a) {
   const D = APP.dic, X = indices(), p = prepAtivo();
-  const meus = p < 0 ? null : new Set(APP.L.filter(r => r[C.PREP] === p).map(r => r[C.CLI]));
+  const meus = p < 0 ? null : new Set([...APP.L.filter(r => r[C.PREP] === p).map(r => r[C.CLI]), ...soCadDele()]);
   if (!a.cliente) return { erro: 'De qual cliente? Pergunte ao vendedor.' };
   const r = agFiltro(meus ? X.cli.filter(x => meus.has(x.i)) : X.cli, String(a.cliente), 'cliente', i => D.cli[i][1]);
   if (r.erro) return { erro: r.erro };
