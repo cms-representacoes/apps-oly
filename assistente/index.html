@@ -1241,7 +1241,7 @@ function agSistema(ctx) {
     cobre.length ? `A base tem ${cobre.join(' e ')}. Antes disso não há dado.` : '',
     ctx.movMes ? `Só a ferramenta movimento (entradas e saídas) fica restrita ao mês ${String(ctx.movMes).slice(0, 7)}; consultar enxerga a base inteira.` : '',
     '',
-    'GLOSSÁRIO: carteira = pares pedidos que ainda não faturaram (a faturar). Faturado = pares que já saíram com nota. Previsão = data prevista de faturamento de um pedido. OC = ordem de compra do cliente. NF = número da nota fiscal. GCI = número do pedido na fábrica. Linha = categoria do produto. Pares = quantidade (vale também para peças de roupa e acessórios). 1º semestre = janeiro a junho; 2º semestre = julho a dezembro. Para comparar períodos, consulte cada um (ou agrupe por mes) e calcule a diferença a partir dos resultados.',
+    'GLOSSÁRIO: pedido = tudo o que o cliente pediu (carteira + faturado). Carteira = pares pedidos que ainda não faturaram (a faturar). Faturado = pares que já saíram com nota. Previsão = data prevista de faturamento de um pedido. OC = ordem de compra do cliente. NF = número da nota fiscal. GCI = número do pedido na fábrica. Linha = categoria do produto. Pares = quantidade (vale também para peças de roupa e acessórios). 1º semestre = janeiro a junho; 2º semestre = julho a dezembro. Para comparar períodos, consulte cada um (ou agrupe por mes) e calcule a diferença a partir dos resultados.',
     '',
     'COMO RESPONDER: a cada mensagem sua, devolva UM único objeto JSON, sem nada antes ou depois, de um destes dois jeitos:',
     '1) Para usar uma ferramenta: {"ferramenta":"nome","args":{...}}',
@@ -1258,7 +1258,7 @@ function agSistema(ctx) {
     '- disponivel: o que TEM para vender agora no Showroom: estoque (pronta entrega), lotes de repasse (saldo, data de entrega, grade) e produção (pares e mês de previsão, ainda sem grade). "Dispo" e "disponibilidade" significam esta ferramenta: "tem dispo de X?" é a pergunta padrão. Use também para "tem tal produto?", "qual a grade?", "quando chega?". Sem ele citar uma origem, deixe "origem" de fora: ela olha tudo. Na resposta, comece SEMPRE pelo repasse, depois estoque, depois produção. args: {"produto","cor","origem":"estoque|repasse|producao"}. Diferente de consultar, que é o que o cliente JÁ pediu. Diga que é o saldo de agora, sem reserva. Só o saldo que vier aqui pode ser afirmado; sem saldo, diga que não tem. Mostre estoque, repasse e produção separados e NUNCA some um com o outro.',
     '- repasses_cliente: o que foi REPASSADO para um cliente e está a caminho ou já entrou (prev. fat., pares, situação). Use para "o cliente X tem repasse?", "quais repasses da Degraus?", "tem algo de repasse pro 21511?": quando o nome é de CLIENTE. Se o nome for de PRODUTO ("tem repasse de index?"), a ferramenta é disponivel. Na dúvida entre os dois, pergunte. args: {"cliente","situacao":"a_chegar|todos"} (padrão: a_chegar).',
     '- resumo_repasses: totais e rankings do que foi repassado: "total repassado pelo Jorge nos últimos 7 dias", "quem mais repassou no mês", "produto mais repassado", "saldo de repasse", "lotes sem pedido", "o que foi cancelado", "como está a campanha". args: {"periodo":"hoje|ontem|7d|15d|30d|tudo" (qualquer número de dias, como 10d), "de","ate":"AAAA-MM-DD","vendedor","produto","cliente","ver":"vendedores|produtos|clientes|saldo|prazo|saidas|campanha"}. Sem período citado, deixe de fora e diga que olhou desde o primeiro pedido. "ver" escolhe a tabela. Cite só o que ele perguntou, em poucas frases.',
-    '- pedido: lista os pedidos com a opção de gerar o PDF: por número da nota fiscal (DANFE), do GCI ou da OC, ou por cliente. Use para "me passa o pedido dessa nota", "de quem é a nota 4104040", "PDF do GCI X", "me passa a carteira da Fit Store", "os pedidos da Degraus", "o que falta faturar pra X": aparece cada produto com um botão de PDF e o botão de gerar todos. args: {"nf"} ou {"gci"} ou {"oc"} ou {"cliente","produto","situacao":"carteira|faturado|tudo"} (padrão por cliente: carteira). Pediu o pedido ou o PDF de uma nota, GCI ou OC: é SEMPRE esta ferramenta, nunca consultar, mesmo que a nota já esteja faturada. Use consultar quando ele só quer um número ou um total agrupado ("quanto tem de carteira?").',
+    '- pedido: mostra os produtos com o botão de PDF do EBM. Use SEMPRE que a pergunta for sobre o pedido, a carteira ou o faturado de UM cliente, nota, GCI ou OC, mesmo com "quanto" ou "quantos": "me passa o pedido dessa nota", "PDF do GCI X", "a carteira da Fit Store", "os pedidos da Degraus", "quanto a Degraus tem de carteira?", "o que falta faturar pra X". args: {"nf"} ou {"gci"} ou {"oc"} ou {"cliente","produto","cor","situacao":"carteira|faturado|tudo","de":"AAAA-MM-DD","ate":"AAAA-MM-DD"}. Pedido é carteira + faturado (deixe "situacao" de fora); carteira ou "o que falta faturar" = "carteira"; faturado = "faturado". Na resposta, diga carteira e faturado separados, nunca somados, e a próxima previsão; não copie a lista. Use consultar para total de vendedor, marca ou linha, ranking ou mais de um cliente.',
     '- dae: a guia (DAE ou DAR) da nota retida na fiscalização, só de clientes de Ceará e Piauí. Use para "preciso do DAE da nota X", "tem DAE do cliente Y?". args: {"nf"} ou {"cliente"}. Aparece um cartão com o cliente para ele confirmar, e só o toque dele faz a busca: você nunca diz que buscou nem inventa valor.',
     '- catalogo: mostra ao vendedor os botões para gerar o catálogo (pedidos do cliente com foto) em PDF ou Excel, igual ao da Detalhada. args: {"cliente","formato":"pdf|xlsx","imagens":true|false}.',
     '- baixar: baixa em Excel ou PDF a última tabela de consultar, clientes_sem_pedido ou movimento. args: {"formato":"xlsx|pdf"}.',
@@ -1835,16 +1835,19 @@ function agPedido(a) {
     if (nomes.length > 1) {
       const lojas = [...f.set].sort((x, y) => rotuloLoja(x).localeCompare(rotuloLoja(y)));
       return { erro: `"${a.cliente}" casou com ${nomes.length} clientes: ${nomes.slice(0, 8).join(', ')}. Os botões de escolha já apareceram: pergunte qual é.`,
-        opcoes: lojas.slice(0, 12).map(i => ({ rotulo: rotuloLoja(i), valor: `carteira do código ${D.cli[i][0]}` })) };
+        opcoes: lojas.slice(0, 12).map(i => ({ rotulo: rotuloLoja(i), valor: `pedidos do código ${D.cli[i][0]}` })) };
     }
     sCli = f.set; pedido = nomes[0];
     filtro = r => sCli.has(r[C.CLI]);
   }
-  // Por cliente, o padrão é a carteira: é o que ainda dá para pedir o PDF e cobrar da fábrica.
-  const sit = a.situacao === 'faturado' || a.situacao === 'tudo' ? a.situacao : (sCli ? 'carteira' : 'tudo');
+  // Pedido é tudo o que o cliente pediu; carteira é só o que falta faturar.
+  const sit = a.situacao === 'faturado' || a.situacao === 'carteira' ? a.situacao : 'tudo';
+  const naCor = a.cor ? (() => { const n = norm(a.cor); return r => norm(D.cor[r[C.COR]]).includes(n); })() : () => true;
+  // Período como no consultar: a carteira conta pela previsão, o faturado pela data da nota.
+  const de = a.de ? diaDe(a.de) : -Infinity, ate = a.ate ? diaDe(a.ate) : Infinity, noPeriodo = d => d >= de && d <= ate;
   const noProduto = a.produto ? (() => { const n = norm(a.produto); return r => norm(D.ref[r[C.REF]][1]).includes(n) || norm(D.ref[r[C.REF]][0]) === n; })() : () => true;
   // A trava é a mesma frase de "não existe": ele não fica sabendo de nota de outro vendedor.
-  const achadas = APP.L.filter(r => (p < 0 || r[C.PREP] === p) && filtro(r) && noProduto(r));
+  const achadas = APP.L.filter(r => (p < 0 || r[C.PREP] === p) && filtro(r) && noProduto(r) && naCor(r));
   if (!achadas.length) return { texto: sCli ? `${pedido}: nada na Detalhada${a.produto ? ' desse produto' : ''}.` : `Não achei a ${pedido} na Detalhada${p >= 0 ? ' entre os clientes dele' : ''}. Pode ser número errado ou nota muito antiga: peça para conferir.` };
   const comExt = geraPdf(), multiCod = new Set(achadas.map(r => r[C.CLI])).size > 1;
   const rows = [], grupos = new Map();
@@ -1855,22 +1858,24 @@ function agPedido(a) {
     const extra = [cli[0], ref[0], r[C.GCI] || '', r[C.NF] || '', ocNum, vend, nomeArq, st];
     const base = [cli[1], ref[1], cor];
     let usou = false;
-    if (r[C.FAT] > 0 && sit !== 'carteira') { rows.push([...base, r[C.FAT], r[C.DFAT] >= 0 ? dataDe(r[C.DFAT]) : '', 'Faturado', ...extra, r[C.DFAT]]); usou = true; }
-    if (r[C.CART] > 0 && sit !== 'faturado') { rows.push([...base, r[C.CART], r[C.PREV] >= 0 ? dataDe(r[C.PREV]) : '', 'Carteira', ...extra, r[C.PREV]]); usou = true; }
+    if (r[C.FAT] > 0 && sit !== 'carteira' && noPeriodo(r[C.DFAT])) { rows.push([...base, r[C.FAT], r[C.DFAT] >= 0 ? dataDe(r[C.DFAT]) : '', 'Faturado', ...extra, r[C.DFAT]]); usou = true; }
+    if (r[C.CART] > 0 && sit !== 'faturado' && noPeriodo(r[C.PREV])) { rows.push([...base, r[C.CART], r[C.PREV] >= 0 ? dataDe(r[C.PREV]) : '', 'Carteira', ...extra, r[C.PREV]]); usou = true; }
     if (!usou || !r[C.GCI]) continue;
     const k = nomeArq + '|' + st;
     if (!grupos.has(k)) grupos.set(k, { nome: nomeArq, status: st, gcis: new Set() });
     grupos.get(k).gcis.add(String(r[C.GCI]));
   }
-  if (!rows.length) return { texto: `${pedido}: nada ${sit === 'carteira' ? 'em carteira' : 'faturado'}${a.produto ? ' desse produto' : ''}.${sit === 'carteira' ? ' Para ver o que já faturou, consulte com "situacao":"faturado".' : ''}` };
-  rows.sort((x, y) => (x[14] - y[14]) || String(x[1]).localeCompare(String(y[1])));
+  if (!rows.length) return { texto: `${pedido}: nada ${sit === 'carteira' ? 'em carteira' : sit === 'faturado' ? 'faturado' : 'nesse filtro'}${a.produto ? ' desse produto' : ''}${a.de || a.ate ? ' no período' : ''}.${sit === 'carteira' ? ' Para ver o que já faturou, consulte com "situacao":"faturado".' : ''}` };
+  // Carteira primeiro, da previsão mais perto; depois o faturado, do mais recente.
+  rows.sort((x, y) => x[5] !== y[5] ? (x[5] === 'Carteira' ? -1 : 1) : (x[5] === 'Carteira' ? x[14] - y[14] : y[14] - x[14]) || String(x[1]).localeCompare(String(y[1])));
   const clientes = [...new Set(rows.map(x => x[0]))], soUmaSit = new Set(rows.map(x => x[5])).size === 1;
-  const totalPares = rows.reduce((s, x) => s + x[3], 0);
+  const soma = s => rows.filter(x => x[5] === s).reduce((n, x) => n + x[3], 0), emCart = soma('Carteira'), faturou = soma('Faturado');
+  const prox = rows.find(x => x[5] === 'Carteira' && x[4]);
   const gs = [...grupos.values()].map(g => ({ nome: g.nome, status: g.status, gcis: [...g.gcis] }));
   const nPedidos = new Set(gs.flatMap(g => g.gcis)).size;
-  const res = { entendi: [sCli ? `<b>${sit === 'carteira' ? 'Carteira' : sit === 'faturado' ? 'Faturado' : 'Pedidos'}</b>` : '<b>Pedido</b>', esc(pedido), ...(a.produto ? [esc('produto: ' + a.produto)] : [])],
+  const res = { entendi: [sCli ? `<b>${sit === 'carteira' ? 'Carteira' : sit === 'faturado' ? 'Faturado' : 'Pedidos'}</b>` : '<b>Pedido</b>', esc(pedido), ...(a.produto ? [esc('produto: ' + a.produto)] : []), ...(a.cor ? [esc('cor: ' + a.cor)] : []), ...(a.de || a.ate ? [esc(`período: ${a.de ? dataIso(a.de) : 'início'} a ${a.ate ? dataIso(a.ate) : 'fim'}`)] : [])],
     cols: ['Cliente', 'Produto', 'Cor', 'Pares', sCli && sit === 'carteira' ? 'Prev. fat.' : 'Data', 'Situação', 'Código', 'Referência', 'GCI', 'NF', 'OC', 'Vendedor'], num: [3], data: [],
-    rows: rows.map(x => x.slice(0, 12)), totais: null, resumo: '',
+    rows: rows.map(x => x.slice(0, 12)), totais: null, resumo: '', rotuloPdf: 'PDF da lista',
     oculta: [...(clientes.length === 1 ? [0] : []), ...(soUmaSit ? [5] : []), 6, 7, 8, 9, 10, 11],
     detalhe: x => [`Ref. ${x[7]}`, `Cód. ${x[6]}`, x[8] && `GCI ${x[8]}`, x[9] && `NF ${x[9]}`, x[10] && `OC ${x[10]}`, `Vendedor ${x[11]}`].filter(Boolean).join(' · ') };
   // Botão em cada linha: só com a extensão, e só quando a lista tem mais de um pedido.
@@ -1881,10 +1886,10 @@ function agPedido(a) {
   const pdf = comExt ? gs : [];
   const quem = sCli ? `${pedido}, ${sit === 'carteira' ? 'em carteira' : sit === 'faturado' ? 'faturado' : 'carteira e faturado'}${multiCod ? ` (${new Set(achadas.map(r => r[C.CLI])).size} lojas: um arquivo por loja no "gerar todos")` : ''}`
     : `${pedido}: ${clientes.length > 1 ? `está em ${clientes.length} clientes (${clientes.join(', ')}): pergunte qual antes de tudo` : `cliente ${clientes[0]}`}`;
-  return { res, pdf, texto: `${quem}. ${fmt(totalPares)} pares em ${fmt(nPedidos)} pedido(s).\n` +
+  return { res, pdf, texto: `${quem}. ${[sit !== 'faturado' ? `${fmt(emCart)} pares em carteira` : '', sit !== 'carteira' ? `${fmt(faturou)} pares faturados` : ''].filter(Boolean).join(', ')}, em ${fmt(nPedidos)} pedido(s).${prox ? ` Próxima previsão: ${prox[4]}.` : ''}\n` +
     rows.slice(0, LINHAS_IA).map(x => `${x[1]} ${x[2]}: ${fmt(x[3])} pares, ${x[5].toLowerCase()}${x[4] ? (x[5] === 'Carteira' ? ', previsão ' : ' em ') + x[4] : ''}, GCI ${x[8] || '?'}${x[10] ? ', OC ' + x[10] : ''}${x[9] ? ', NF ' + x[9] : ''}`).join('\n') +
     (rows.length > LINHAS_IA ? `\nATENÇÃO: só os ${LINHAS_IA} primeiros de ${rows.length} aparecem acima; a tabela completa está embaixo da resposta.` : '') +
-    (pdf.length ? `\nOs botões de PDF já apareceram para o vendedor${nPedidos > 1 ? ': um em cada linha e um para gerar todos' : ''}. Não copie a lista: diga o total e destaque a próxima previsão.`
+    (pdf.length ? `\nOs botões de PDF já apareceram para o vendedor${nPedidos > 1 ? ': um em cada linha e um para gerar todos' : ''}, e os produtos estão na lista fechada embaixo da resposta. Não copie a lista: diga carteira e faturado separados, nunca somados, e a próxima previsão.`
       : '\nO PDF do pedido só sai no computador com a extensão do EBM: diga isso, e que no celular ainda não dá. Os dados acima ele já pode usar.') };
 }
 const pdfHtml = l => {
@@ -2280,19 +2285,31 @@ const iaEmbaralhou = t => { const s = String(t || '').trim(); return !s || /^tex
 // A IA às vezes vai de consultar mesmo com a regra no roteiro. Em 30/10/2026, "me passa o pedido da nota 3414818"
 // voltou como total de pares (só o pedido traz o botão de PDF) e "tem dispo de swift 6?" como "não tenho
 // acesso ao estoque" (quem olha o Showroom é o disponivel). Aqui a página corrige a escolha.
+// Pedido e carteira de UM cliente, nota, GCI ou OC sempre vêm com os produtos e o PDF, até no "quanto".
 function corrigeFerramenta(texto, r, passo) {
-  const querDispo = /\bdispo\b|disponib|dispon[ií]ve|showroom|\btem\b.*\brepasses?\b/i.test(texto), conta = /quant[oa]s?\b|total|soma/i.test(texto);
-  // Respondeu sem olhar nada: o produto sai da própria frase.
+  const querDispo = /\bdispo\b|disponib|dispon[ií]ve|showroom|\btem\b.*\brepasses?\b/i.test(texto);
+  const cart = /carteira|falta faturar|a faturar/i.test(texto), fat = /faturad/i.test(texto);
+  const sitTexto = cart && fat ? 'tudo' : cart ? 'carteira' : fat ? 'faturado' : '';
+  // Respondeu sem olhar nada: o que ele pediu sai da própria frase.
   if (r.acao !== 'ferramenta') {
-    const m = passo === 1 && texto.match(/\bdispo(?:nibilidade)?\s+(?:d[eoa]s?\s+)?(.+?)[\s?.!]*$/i);
-    return m ? { ok: true, acao: 'ferramenta', nome: 'disponivel', args: { produto: m[1] } } : r;
+    if (passo !== 1) return r;
+    const m = texto.match(/\bdispo(?:nibilidade)?\s+(?:d[eoa]s?\s+)?(.+?)[\s?.!]*$/i);
+    if (m) return { ok: true, acao: 'ferramenta', nome: 'disponivel', args: { produto: m[1] } };
+    const n = texto.match(/ped(?:ido|iu).*\b(?:nota|nf)\s*(\d[\d.]{3,})/i);
+    return n ? { ok: true, acao: 'ferramenta', nome: 'pedido', args: { nf: n[1] } } : r;
   }
+  // "Me passa a carteira da X" sem a situação: a frase manda, porque o padrão do pedido é tudo.
+  if (r.nome === 'pedido') return sitTexto ? { ...r, args: { ...r.args, situacao: sitTexto } } : r;
   if (r.nome !== 'consultar') return r;
-  const f = (r.args && r.args.filtros) || {}, um = v => Array.isArray(v) ? (v.length === 1 ? v[0] : '') : v;
+  const a = r.args || {}, f = a.filtros || {}, um = v => Array.isArray(v) ? (v.length === 1 ? v[0] : '') : v;
   if (querDispo && um(f.produto) && !f.cliente) return { ...r, nome: 'disponivel', args: { produto: um(f.produto), ...(um(f.cor) ? { cor: um(f.cor) } : {}) } };
-  if (conta || !/pedido|pdf|emit|ebm/i.test(texto)) return r;
-  const nf = um(f.nf), gci = um(f.gci), oc = um(f.oc);
-  return nf ? { ...r, nome: 'pedido', args: { nf } } : gci ? { ...r, nome: 'pedido', args: { gci } } : oc ? { ...r, nome: 'pedido', args: { oc } } : r;
+  if (!/ped(?:ido|iu|iram)|pdf|emit|ebm|carteira|faturar|faturad/i.test(texto)) return r;
+  const alvo = um(f.nf) ? { nf: um(f.nf) } : um(f.gci) ? { gci: um(f.gci) } : um(f.oc) ? { oc: um(f.oc) } : um(f.cliente) ? { cliente: um(f.cliente) } : null;
+  // Outro filtro (linha, marca, vendedor...) o pedido não tem: a lista viria maior do que ele pediu.
+  if (!alvo || Object.keys(f).some(k => !['nf', 'gci', 'oc', 'cliente', 'produto', 'cor'].includes(k) && um(f[k]))) return r;
+  const args = { ...alvo, situacao: sitTexto || a.situacao, de: a.de, ate: a.ate, produto: um(f.produto) || undefined, cor: um(f.cor) || undefined };
+  // Agrupado ("por mês") a resposta continua sendo do consultar; a lista com o PDF vai junto.
+  return a.agrupar && a.agrupar.length ? { ...r, junto: args } : { ...r, nome: 'pedido', args };
 }
 
 // Uma pergunta inteira: pede à IA, roda as ferramentas que ela pedir e
@@ -2325,6 +2342,7 @@ async function agRodar(texto, aoPasso) {
         return { texto: r.texto, tabelas, extras, usadas, modelo: r.modelo };
       }
       AG.msgs.push({ role: 'assistant', content: JSON.stringify({ ferramenta: r.nome, args: r.args }) });
+      if (r.junto) { await olharRobo(); const j = agPedido(r.junto); if (j.res) { tabelas.push(j.res); extras.push(pdfHtml(j.pdf)); } }
       usadas.push({ nome: r.nome, args: r.args });
       const fn = FERRAMENTAS[r.nome];
       let out;
