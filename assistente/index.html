@@ -1275,7 +1275,7 @@ function agSistema(ctx) {
     '- Nunca cite nomes de ferramentas ou de parâmetros, e nunca invente caminho fora daqui (como mandar abrir outro sistema): diga só o que o resultado disse.',
     '- Datas no texto em DD/MM/AAAA. Números com ponto de milhar (1.234).',
     '- Cumprimento, agradecimento ou dúvida sobre um termo: responda direto, sem ferramenta.',
-    '- Você só enxerga pedidos, carteira, faturamento, entradas e saídas do mês, o cadastro de produtos e clientes, os boletos do EBM e o que tem no Showroom. Meta, estoque de loja, comissão e preço de custo você não enxerga: diga isso com gentileza.',
+    '- Você só enxerga pedidos, carteira, faturamento, entradas e saídas do mês, o cadastro de produtos e clientes, os boletos do EBM e o que tem no Showroom. Meta, estoque na loja do cliente, comissão e preço de custo você não enxerga: diga isso com gentileza.',
   ].filter(s => s !== '').join('\n');
 }
 
@@ -2277,11 +2277,20 @@ function agHistorico() {
 // Também vaza o raciocínio interno, com as marcas do modelo: "<|channel|>analysis: need respond with...".
 const iaEmbaralhou = t => { const s = String(t || '').trim(); return !s || /^text$/i.test(s) || /(.)\1{15,}/.test(s) || /<\|[a-z_]+\|>/i.test(s) || /^(analysis|commentary|assistant(analysis|commentary|final)?)\b/i.test(s) || (s.match(/\b(didn|wasn|wouldn|hadn|isn|lastly)\b/gi) || []).length >= 2; };
 
-// Pediu o pedido de uma nota, GCI ou OC e a IA foi de consultar: só o pedido traz o botão de PDF.
-// Em 30/10/2026 "me passa o pedido da nota 3414818" voltou como total de pares, mesmo com a regra no roteiro.
-function trocaPorPedido(texto, r) {
-  if (r.nome !== 'consultar' || !/pedido|pdf|emit|ebm/i.test(texto) || /quant[oa]s?\b|total|soma/i.test(texto)) return r;
+// A IA às vezes vai de consultar mesmo com a regra no roteiro. Em 30/10/2026, "me passa o pedido da nota 3414818"
+// voltou como total de pares (só o pedido traz o botão de PDF) e "tem dispo de swift 6?" como "não tenho
+// acesso ao estoque" (quem olha o Showroom é o disponivel). Aqui a página corrige a escolha.
+function corrigeFerramenta(texto, r, passo) {
+  const querDispo = /\bdispo\b|disponib|dispon[ií]ve|showroom|\btem\b.*\brepasses?\b/i.test(texto), conta = /quant[oa]s?\b|total|soma/i.test(texto);
+  // Respondeu sem olhar nada: o produto sai da própria frase.
+  if (r.acao !== 'ferramenta') {
+    const m = passo === 1 && texto.match(/\bdispo(?:nibilidade)?\s+(?:d[eoa]s?\s+)?(.+?)[\s?.!]*$/i);
+    return m ? { ok: true, acao: 'ferramenta', nome: 'disponivel', args: { produto: m[1] } } : r;
+  }
+  if (r.nome !== 'consultar') return r;
   const f = (r.args && r.args.filtros) || {}, um = v => Array.isArray(v) ? (v.length === 1 ? v[0] : '') : v;
+  if (querDispo && um(f.produto) && !f.cliente) return { ...r, nome: 'disponivel', args: { produto: um(f.produto), ...(um(f.cor) ? { cor: um(f.cor) } : {}) } };
+  if (conta || !/pedido|pdf|emit|ebm/i.test(texto)) return r;
   const nf = um(f.nf), gci = um(f.gci), oc = um(f.oc);
   return nf ? { ...r, nome: 'pedido', args: { nf } } : gci ? { ...r, nome: 'pedido', args: { gci } } : oc ? { ...r, nome: 'pedido', args: { oc } } : r;
 }
@@ -2310,11 +2319,11 @@ async function agRodar(texto, aoPasso) {
       }
       if (!r || !r.ok) throw new Error(r?.erro || 'sem resposta');
       if (r.acao !== 'ferramenta' && iaEmbaralhou(r.texto)) throw new Error('a IA devolveu texto embaralhado');
+      r = corrigeFerramenta(texto, r, passo);
       if (r.acao !== 'ferramenta') {
         AG.msgs.push({ role: 'assistant', content: JSON.stringify({ resposta: r.texto }) });
         return { texto: r.texto, tabelas, extras, usadas, modelo: r.modelo };
       }
-      r = trocaPorPedido(texto, r);
       AG.msgs.push({ role: 'assistant', content: JSON.stringify({ ferramenta: r.nome, args: r.args }) });
       usadas.push({ nome: r.nome, args: r.args });
       const fn = FERRAMENTAS[r.nome];
