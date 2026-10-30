@@ -557,38 +557,71 @@ function render(){
   document.getElementById('kAprovPares').textContent=fmt(paresTotal);
 
   // Saldo em estoque (todos os pedidos, não só o período — é foto do agora)
-  const { pendMap, aprovMap } = buildDispoMaps();
+  const maps = buildDispoMaps();
   const saldoTotal=STATE.dispoRows.reduce((s,r)=>{
-    const gci=String(r.gci||'').trim();
-    const cod=String(r.codigo||'').trim();
-    const key=gci||cod;
-    const saldo=Number(r.saldo||0);
-    const p=pendMap.get(key)||0, a=aprovMap.get(key)||0;
-    return s+Math.max(0,saldo-p-a);
+    const { p, a } = reservaDoLote(r, maps);
+    return s+Math.max(0,Number(r.saldo||0)-p-a);
   },0);
   document.getElementById('kSaldo').textContent=fmt(saldoTotal);
 
   renderRanking(orders);
   const aprovados = vivos.filter(o=>canonicalStatus(o.status)==='Aprovado');
-  renderProdutosRanking(aprovados, buildSaldoLookup(pendMap, aprovMap));
-  renderDispo(pendMap, aprovMap);
+  renderProdutosRanking(aprovados, buildSaldoLookup(maps));
+  renderDispo(maps);
   renderPrazo();
 }
 
+/* A reserva é por Nº do lote, NUNCA por GCI. O mesmo GCI aparece em vários
+   lotes — hoje são 72 GCIs repartidos em 192 das 322 linhas da DISPO. Com o
+   GCI de chave, o pedido de um lote era descontado também dos irmãos: o INDEX
+   4 do GCI 5534811 tem três lotes somando 1.200 pares e 852 pedidos, e o
+   painel zerava os três em vez de mostrar os 348 que sobram. Eram 2.292 pares
+   a menos que a vitrine, na mesma base e no mesmo instante. */
 function buildDispoMaps(){
-  const pendMap=new Map(), aprovMap=new Map();
+  const pendMap=new Map(), aprovMap=new Map();     // por Nº do lote
+  const pendGci=new Map(), aprovGci=new Map();     // itens antigos, sem Nº
   for(const o of STATE.orders){
     const st=canonicalStatus(o.status);
     if(st==='Cancelado') continue;
     for(const item of (o.items||[])){
+      const u=getItemUnits(item);
+      const num=String(item.num||'').trim();
+      if(num){
+        if(st==='Pendente') pendMap.set(num,(pendMap.get(num)||0)+u);
+        else if(st==='Aprovado') aprovMap.set(num,(aprovMap.get(num)||0)+u);
+        continue;
+      }
       const key=String(item.gci||item.codigo||'').trim();
       if(!key) continue;
-      const u=getItemUnits(item);
-      if(st==='Pendente') pendMap.set(key,(pendMap.get(key)||0)+u);
-      else if(st==='Aprovado') aprovMap.set(key,(aprovMap.get(key)||0)+u);
+      if(st==='Pendente') pendGci.set(key,(pendGci.get(key)||0)+u);
+      else if(st==='Aprovado') aprovGci.set(key,(aprovGci.get(key)||0)+u);
     }
   }
-  return{pendMap,aprovMap};
+  return{pendMap,aprovMap,pendGci,aprovGci};
+}
+/* O Nº da primeira linha (menor) de um GCI: é nele que as reservas antigas,
+   gravadas antes do Nº existir, são descontadas — em um lote só, não em todos.
+   A vitrine de Repasses faz igual. */
+function loteQueCarregaOGci(gci){
+  let melhor=null, menor=Infinity;
+  for(const r of STATE.dispoRows){
+    if(String(r.gci||'').trim()!==gci) continue;
+    const n=Number(r.num);
+    const v=isNaN(n)?Infinity:n;
+    if(v<menor){ menor=v; melhor=String(r.num||'').trim(); }
+  }
+  return melhor;
+}
+/* Pendentes e aprovados que pesam sobre UMA linha da DISPO. */
+function reservaDoLote(r, maps){
+  const num=String(r.num||'').trim();
+  let p=maps.pendMap.get(num)||0, a=maps.aprovMap.get(num)||0;
+  const gci=String(r.gci||'').trim();
+  if(gci && loteQueCarregaOGci(gci)===num){
+    p+=maps.pendGci.get(gci)||0;
+    a+=maps.aprovGci.get(gci)||0;
+  }
+  return{p,a};
 }
 
 /* ── CANCELAMENTOS DA DISPO ─────────────────────────────────────────────
@@ -780,15 +813,11 @@ function renderCampanha(){
 }
 
 // ── RANKING DE VENDEDORES ───────────────────────────────────────────────────
-function buildSaldoLookup(pendMap, aprovMap){
+function buildSaldoLookup(maps){
   const lookup=new Map(); // "produto|cor" normalizado → saldoReal
   for(const r of STATE.dispoRows){
-    const gci=String(r.gci||'').trim();
-    const cod=String(r.codigo||'').trim();
-    const key=gci||cod;
-    const saldo=Number(r.saldo||0);
-    const p=pendMap.get(key)||0, a=aprovMap.get(key)||0;
-    const saldoReal=saldo-p-a;
+    const { p, a } = reservaDoLote(r, maps);
+    const saldoReal=Number(r.saldo||0)-p-a;
     const prodKey=`${String(r.produto||'').trim().toUpperCase()}|${String(r.cor||'').trim().toUpperCase()}`;
     lookup.set(prodKey, (lookup.get(prodKey)||0)+saldoReal);
   }
@@ -951,14 +980,10 @@ let ultimoDispoLista = [];
 let dispoExpandido = false;
 let dispoSortAtual = 'qtd_desc';
 
-function renderDispo(pendMap, aprovMap){
+function renderDispo(maps){
   const porCor=STATE.dispoRows.map(r=>{
-    const gci=String(r.gci||'').trim();
-    const cod=String(r.codigo||'').trim();
-    const key=gci||cod;
-    const saldo=Number(r.saldo||0);
-    const p=pendMap.get(key)||0, a=aprovMap.get(key)||0;
-    const saldoReal=saldo-p-a;
+    const { p, a } = reservaDoLote(r, maps);
+    const saldoReal=Number(r.saldo||0)-p-a;
     return{
       produto:String(r.produto||'').trim(),
       cor:String(r.cor||'').trim(),
