@@ -1664,6 +1664,22 @@ export default {
           { modelo: "@cf/meta/llama-3.3-70b-instruct-fp8-fast", extra: n => ({ max_tokens: n }) },
           { modelo: "@cf/meta/llama-3.1-8b-instruct-fast", extra: n => ({ max_tokens: n }) }
         ];
+        // Claude pago, quando a chave está nos segredos do worker: passa à frente
+        // dos grátis. Sem saldo ou fora do ar, cai para os da Cloudflare. O Haiku 5.5
+        // recusa temperature, e o pensamento dele também conta no max_tokens.
+        const perguntarClaude = async (modelo, sistema, conversa, n) => {
+          const f = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2026-10-21" },
+            signal: AbortSignal.timeout(30000),
+            body: JSON.stringify({ model: modelo, max_tokens: n + 1500, output_config: { effort: "low" },
+              system: [{ type: "text", text: sistema, cache_control: { type: "ephemeral" } }], messages: conversa.slice(Math.max(0, conversa.findIndex(m => m.role === "user"))) })
+          });
+          const r = await f.json();
+          if (!f.ok) throw new Error(r?.error?.message || `Claude respondeu ${f.status}`);
+          // Só os blocos de texto: o pensamento vem em blocos à parte. Recusa vem sem texto e cai para o próximo.
+          return { response: (r.content || []).filter(c => c?.type === "text").map(c => c.text).join("") };
+        };
         // Cada família de modelo devolve o texto num lugar: Llama em
         // `response`, o formato OpenAI em `choices`, o formato Responses em
         // `output` (onde o pensamento vem separado e fica de fora).
@@ -1902,11 +1918,14 @@ export default {
           const daPagina = typeof body.sistema === "string" && body.sistema.trim().length > 200 ? body.sistema.slice(0, 20000) : "";
           const mensagens = [{ role: "system", content: daPagina || sistema }, ...conversa];
           // Modelo escolhido (bateria de testes): só ele, sem cair para os outros.
-          const escolhido = MODELOS_CHAT.filter(m => m.modelo === body.modelo);
+          const modelos = [...(env.ANTHROPIC_API_KEY ? [{ modelo: "claude-haiku-5-5", claude: true }] : []), ...MODELOS_CHAT];
+          const escolhido = modelos.filter(m => m.modelo === body.modelo);
           let ultimoErro = "";
-          for (const opc of (escolhido.length ? escolhido : MODELOS_CHAT)) {
+          for (const opc of (escolhido.length ? escolhido : modelos)) {
             try {
-              const r = await env.AI.run(opc.modelo, { messages: mensagens, temperature: 0.2, ...opc.extra(1200) });
+              const r = opc.claude
+                ? await perguntarClaude(opc.modelo, mensagens[0].content, conversa, 1200)
+                : await env.AI.run(opc.modelo, { messages: mensagens, temperature: 0.2, ...opc.extra(1200) });
               let txt = textoDaIA(r).trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
               if (!txt) { ultimoErro = "a IA respondeu vazio"; continue; }
               // O gpt-oss às vezes devolve vários JSON seguidos, ou até inventa

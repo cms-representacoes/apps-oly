@@ -2562,7 +2562,8 @@ async function iniciar() {
     $('quem').textContent = 'Sem login';
     return;
   }
-  if (SO_DEV && norm(APP.sessao.nome) !== 'MARCOS (DEV)') {
+  // O Nexo já abre também para a CMS; a página antiga do assistente continua só do DEV.
+  if (SO_DEV && norm(APP.sessao.nome) !== 'MARCOS (DEV)' && !(AGENTE && norm(APP.sessao.nome) === 'CMS')) {
     $('conversa').innerHTML = '<div class="bloqueio"><h2>Em desenvolvimento</h2><p>O assistente ainda não foi liberado para a equipe.</p></div>';
     $('quem').textContent = APP.sessao.nome;
     return;
@@ -2589,7 +2590,7 @@ async function iniciar() {
   $('pergunta').focus();
   // Teste no Chrome do Marcos (com a extensão do EBM): só existe no localhost; o arquivo não vai para o site.
   if (AGENTE && location.hostname === 'localhost' && new URLSearchParams(location.search).has('teste')) {
-    const noAr = await chamarWorker('agenteDetalhada', { hoje: hojeIso(), contexto: {}, modelo: '@cf/meta/llama-3.1-8b-instruct-fast', mensagens: [{ role: 'user', content: 'oi' }] }, 30000).then(r => !!(r && r.ok)).catch(() => false);
+    const noAr = await chamarWorker('agenteDetalhada', { hoje: hojeIso(), contexto: {}, modelo: 'claude-haiku-5-5', mensagens: [{ role: 'user', content: 'oi' }] }, 30000).then(r => !!(r && r.ok)).catch(() => false);
     if (!noAr) try { (0, eval)(await (await fetch('_teste_demo.js', { cache: 'no-store' })).text())(); } catch (e) { console.warn('sem demonstração', e); }
   }
   // Abertura do Nexo: fixa, sem IA, e fora do histórico que vai para ela.
