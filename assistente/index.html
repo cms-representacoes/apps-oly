@@ -105,6 +105,15 @@ main{ flex:1; overflow-y:auto; overflow-x:hidden; padding:14px 16px; }
 .sug{ border:1px solid var(--lima-forte); background:var(--lima-fundo); color:var(--oliva-escuro); border-radius:999px;
   padding:8px 13px; font:inherit; font-size:13px; font-weight:600; cursor:pointer; text-align:left; }
 .sug:hover{ background:var(--lima-claro); }
+.sug.forte{ background:var(--lima); color:var(--sobre-lima); border-color:var(--oliva); font-weight:800; font-size:14.5px; padding:11px 18px; box-shadow:0 1px 3px rgba(46,74,0,.25); }
+.sug.forte:hover{ background:var(--lima-forte); }
+.cartao-dae{ border:1px solid var(--lima-forte); background:var(--lima-fundo); border-radius:12px; padding:12px 14px; margin-top:6px; }
+.cd-tit{ font-weight:800; font-size:15.5px; color:var(--oliva-escuro); }
+.cd-l{ font-size:13px; color:var(--tinta-2); margin-top:3px; }
+.cd-p{ font-weight:700; margin-top:9px; }
+.cartao-dae [data-dae-status]{ margin-top:8px; font-style:normal; }
+.cartao-dae button:disabled{ opacity:.55; cursor:default; }
+.dica-pdf{ flex-basis:100%; font-size:12.5px; font-style:italic; color:var(--tinta-3); }
 a.sug{ text-decoration:none; display:inline-block; }
 .entendi{ font-size:12px; color:var(--tinta-2); background:var(--lima-fundo); border:1px dashed var(--lima-forte);
   border-radius:8px; padding:6px 9px; margin-bottom:8px; }
@@ -146,6 +155,15 @@ th{ background:#f8faf3; color:var(--tinta-2); font-size:11px; text-transform:upp
 td.n, th.n{ text-align:right; font-variant-numeric:tabular-nums; }
 td.nome{ white-space:normal; min-width:160px; }
 tr.total td{ font-weight:800; background:var(--lima-fundo); border-bottom:none; }
+.tem-det{ cursor:pointer; }
+.tem-det:hover td{ background:var(--lima-fundo); }
+.tem-det td:last-child:not(.com-pdf)::after{ content:' ▾'; color:var(--tinta-3); font-size:11px; }
+td.com-pdf{ width:1%; white-space:nowrap; text-align:right; }
+.pdf-mini{ border:1px solid var(--lima-forte); background:var(--lima-fundo); color:var(--oliva-escuro); border-radius:7px; padding:5px 9px; font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
+.pdf-mini:hover{ background:var(--lima-claro); }
+.pdf-mini:disabled{ opacity:.5; cursor:default; }
+tr.det td{ white-space:normal; background:var(--lima-fundo); font-size:12.5px; color:var(--tinta-2); }
+.tabela-wrap.compacta td{ white-space:normal; }
 .acoes{ display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
 .btn-sec{ border:1px solid var(--linha); background:#fff; color:var(--tinta-2); border-radius:8px;
   height:32px; padding:0 11px; font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
@@ -183,9 +201,10 @@ textarea:focus{ outline:2px solid var(--lima-forte); outline-offset:0; }
 @media (max-width:1024px){
   header{ padding:8px 12px; padding-top:max(8px, env(safe-area-inset-top)); gap:10px; }
   header h1{ display:none; }
-  header .portal-btn{ width:44px; height:44px; padding:0; border-radius:50%; }
-  header .portal-btn span{ display:none; }
-  header .portal-btn svg{ width:20px; height:20px; }
+  /* voltar no jeito do iPhone: só o sinal de "<", sem círculo; a área de toque continua com 44px */
+  header .portal-btn, header .portal-btn:hover{ width:32px; height:44px; padding:0; margin-left:-6px; border:none; border-radius:0; background:transparent; color:var(--sobre-lima); }
+  header .portal-btn span, header .portal-btn svg path:first-child{ display:none; }
+  header .portal-btn svg{ width:32px; height:32px; stroke-width:2.2; transform:translateX(3px); }
   .robo{ width:40px; height:40px; }
 }
 @media (max-width:520px){
@@ -195,8 +214,18 @@ textarea:focus{ outline:2px solid var(--lima-forte); outline-offset:0; }
   .av, .av .robo{ width:28px; height:28px; }
   th,td{ padding:7px 7px; }
   .btn-sec, .aj, .sug{ min-height:40px; }
+  .tabela-wrap.compacta table{ font-size:12px; }
+  .tabela-wrap.compacta th{ padding:6px 4px; font-size:10px; letter-spacing:0; }
+  .tabela-wrap.compacta td{ padding:7px 4px; }
+  .tabela-wrap.compacta td.nome{ min-width:84px; }
+  .tabela-wrap.compacta td:last-child{ white-space:nowrap; }
+  .tabela-wrap.compacta tr.det td{ white-space:normal; }
+  .tem-det td:last-child::after{ content:''; }
+  .ag-tab{ padding:0 5px; }
 }
 </style>
+<script src="../js/campanhas.js"></script>
+<script src="../js/disponivel.js"></script>
 </head>
 <body>
 <header>
@@ -843,11 +872,21 @@ function tabelaHtml(res, limite) {
   const cel = (v, j) => {
     if (res.data.includes(j)) return `<td>${v != null && v >= 0 ? dataDe(v) : ''}</td>`;
     if (res.num.includes(j)) return `<td class="n">${fmt(v)}</td>`;
-    return `<td class="${j === 0 ? 'nome' : ''}">${esc(v)}</td>`;
+    // Tabela compacta: ano curto na tela; o Excel e o PDF continuam com a data inteira.
+    const txt = res.detalhe ? String(v == null ? '' : v).replace(/^(\d{2}\/\d{2}\/)\d{2}(\d{2})$/, '$1$2') : v;
+    return `<td class="${j === 0 ? 'nome' : ''}">${esc(txt)}</td>`;
   };
-  const corpo = res.rows.slice(0, limite).map(r => `<tr>${r.map(cel).join('')}</tr>`).join('');
+  // res.oculta: colunas que só vão para o Excel/PDF. res.detalhe: o que abre ao tocar na linha.
+  const mostra = res.cols.map((_, j) => j).filter(j => !(res.oculta || []).includes(j));
+  const linha = r => {
+    const g = res.pdfLinha ? res.pdfLinha(r) : null;
+    const bot = res.pdfLinha ? `<td class="com-pdf">${g ? `<button class="pdf-mini" data-pedido-pdf="${esc(JSON.stringify(g))}" title="Gerar o PDF deste pedido">PDF</button>` : ''}</td>` : '';
+    const tds = mostra.map(j => cel(r[j], j)).join('') + bot;
+    return res.detalhe ? `<tr class="tem-det" onclick="if (!event.target.closest('button')) this.nextElementSibling.hidden = !this.nextElementSibling.hidden">${tds}</tr><tr class="det" hidden><td colspan="${mostra.length + (res.pdfLinha ? 1 : 0)}">${esc(res.detalhe(r))}</td></tr>` : `<tr>${tds}</tr>`;
+  };
+  const corpo = res.rows.slice(0, limite).map(linha).join('');
   const tot = res.totais ? `<tr class="total">${res.totais.map((v, j) => j === 0 ? '<td>Total</td>' : v === '' ? '<td></td>' : `<td class="n">${fmt(v)}</td>`).join('')}</tr>` : '';
-  return `<div class="tabela-wrap"><table><thead><tr>${res.cols.map((c, j) => `<th class="${res.num.includes(j) ? 'n' : ''}">${esc(c)}</th>`).join('')}</tr></thead><tbody>${corpo}${limite >= res.rows.length ? tot : ''}</tbody></table></div>`;
+  return `<div class="tabela-wrap${res.detalhe ? ' compacta' : ''}"><table><thead><tr>${mostra.map(j => `<th class="${res.num.includes(j) ? 'n' : ''}">${esc(res.cols[j])}</th>`).join('')}${res.pdfLinha ? '<th></th>' : ''}</tr></thead><tbody>${corpo}${limite >= res.rows.length ? tot : ''}</tbody></table></div>`;
 }
 
 /* ── planilha e PDF ────────────────────────────────────
@@ -1154,9 +1193,10 @@ async function perguntar(texto) {
     registrar(enviada, q, res);
     comentar(bolha, res, enviada);
   } catch (e) {
-    // Cota grátis diária da Cloudflare (10 mil "neurons"): zera às 0h UTC = 21h de Brasília.
+    // Cota grátis diária da Cloudflare (10 mil "neurons"). Sem hora de volta: em 30/10
+    // o painel já mostrava 0 usados às 9h e a IA ainda recusava.
     bolha.innerHTML = /4006|daily free allocation/i.test(e.message || '')
-      ? '<span class="aviso">A cota grátis de IA de hoje acabou. Ela volta às 21h (horário de Brasília).</span>'
+      ? '<span class="aviso">A cota grátis de IA acabou por enquanto. Tente de novo mais tarde.</span>'
       : `<span class="aviso">Não consegui responder agora (${esc(e.message || e)}). Tente de novo em instantes.</span>`;
   } finally {
     $('enviar').disabled = false;
@@ -1215,9 +1255,14 @@ function agSistema(ctx) {
     '- ficha: cadastro de um produto (referência, descrição, preço sugerido, cores, linha, gênero, composição, tecnologias) ou de um cliente (códigos, nome fantasia, razão social, CNPJ, cidade, telefone, e-mail de NF-e, e-mail bancário, se compra à vista, vendedor, carteira, faturado, próxima previsão, último faturamento). args: {"produto"} ou {"cliente"}.',
     '- clientes: lista do cadastro, uma linha por loja: código, nome fantasia, razão social, CNPJ, cidade, telefone, e-mails. Para "CNPJs do grupo X", "e-mails das lojas X", "meus clientes de tal cidade", "quem é o código N", "qual o código da X". args: {"nome","codigo","cnpj","cidade","uf"} (pelo menos um).',
     'Cliente pode ser dito pelo nome que o vendedor usa, pelo nome fantasia, pela razão social, pelo código ou pelo CNPJ: passe do jeito que ele escreveu, as ferramentas acham.',
+    '- disponivel: o que TEM para vender agora no Showroom: estoque (pronta entrega), lotes de repasse (saldo, data de entrega, grade) e produção (pares e mês de previsão, ainda sem grade). "Dispo" e "disponibilidade" significam esta ferramenta: "tem dispo de X?" é a pergunta padrão. Use também para "tem tal produto?", "qual a grade?", "quando chega?". Sem ele citar uma origem, deixe "origem" de fora: ela olha tudo. Na resposta, comece SEMPRE pelo repasse, depois estoque, depois produção. args: {"produto","cor","origem":"estoque|repasse|producao"}. Diferente de consultar, que é o que o cliente JÁ pediu. Diga que é o saldo de agora, sem reserva. Só o saldo que vier aqui pode ser afirmado; sem saldo, diga que não tem. Mostre estoque, repasse e produção separados e NUNCA some um com o outro.',
+    '- repasses_cliente: o que foi REPASSADO para um cliente e está a caminho ou já entrou (prev. fat., pares, situação). Use para "o cliente X tem repasse?", "quais repasses da Degraus?", "tem algo de repasse pro 21511?": quando o nome é de CLIENTE. Se o nome for de PRODUTO ("tem repasse de index?"), a ferramenta é disponivel. Na dúvida entre os dois, pergunte. args: {"cliente","situacao":"a_chegar|todos"} (padrão: a_chegar).',
+    '- resumo_repasses: totais e rankings do que foi repassado: "total repassado pelo Jorge nos últimos 7 dias", "quem mais repassou no mês", "produto mais repassado", "saldo de repasse", "lotes sem pedido", "o que foi cancelado", "como está a campanha". args: {"periodo":"hoje|ontem|7d|15d|30d|tudo" (qualquer número de dias, como 10d), "de","ate":"AAAA-MM-DD","vendedor","produto","cliente","ver":"vendedores|produtos|clientes|saldo|prazo|saidas|campanha"}. Sem período citado, deixe de fora e diga que olhou desde o primeiro pedido. "ver" escolhe a tabela. Cite só o que ele perguntou, em poucas frases.',
+    '- pedido: lista os pedidos com a opção de gerar o PDF: por número da nota fiscal (DANFE), do GCI ou da OC, ou por cliente. Use para "me passa o pedido dessa nota", "de quem é a nota 4104040", "PDF do GCI X", "me passa a carteira da Fit Store", "os pedidos da Degraus", "o que falta faturar pra X": aparece cada produto com um botão de PDF e o botão de gerar todos. args: {"nf"} ou {"gci"} ou {"oc"} ou {"cliente","produto","situacao":"carteira|faturado|tudo"} (padrão por cliente: carteira). Use consultar quando ele só quer um número ou um total agrupado ("quanto tem de carteira?").',
+    '- dae: a guia (DAE ou DAR) da nota retida na fiscalização, só de clientes de Ceará e Piauí. Use para "preciso do DAE da nota X", "tem DAE do cliente Y?". args: {"nf"} ou {"cliente"}. Aparece um cartão com o cliente para ele confirmar, e só o toque dele faz a busca: você nunca diz que buscou nem inventa valor.',
     '- catalogo: mostra ao vendedor os botões para gerar o catálogo (pedidos do cliente com foto) em PDF ou Excel, igual ao da Detalhada. args: {"cliente","formato":"pdf|xlsx","imagens":true|false}.',
     '- baixar: baixa em Excel ou PDF a última tabela de consultar, clientes_sem_pedido ou movimento. args: {"formato":"xlsx|pdf"}.',
-    '- boleto: 2ª via dos boletos de um cliente, buscada no EBM da Vulcabras: parcelas em dia, vencidas e as que o sistema não emite (com o motivo), e o PDF para baixar. args: {"cliente","de":"AAAA-MM-DD","ate":"AAAA-MM-DD","todas":true|false}. Se o nome tiver várias lojas, a ferramenta mostra a lista para o vendedor escolher; "todas":true só quando ele pedir todas. O período é o do VENCIMENTO e pode ter vários meses ("de outubro a dezembro" = de 01/10 a 31/12); sem período citado, deixe de fora (vale o mês atual). Na resposta, diga SEMPRE o período de vencimento que olhou e ofereça outro (os vencidos de meses anteriores ou os próximos meses). Demora até 1 minuto por cliente.',
+    '- boleto: 2ª via dos boletos de um cliente, buscada no EBM da Vulcabras: parcelas em dia, vencidas e as que o sistema não emite (com o motivo), e o PDF para baixar. args: {"cliente","de":"AAAA-MM-DD","ate":"AAAA-MM-DD","todas":true|false}. Primeiro aparece um cartão com o cliente para ele confirmar, e só o toque dele faz a busca: você nunca diz que buscou nem inventa boleto. Se o nome tiver várias lojas, a ferramenta mostra a lista para o vendedor escolher; "todas":true só quando ele pedir todas. O período é o do VENCIMENTO e pode ter vários meses ("de outubro a dezembro" = de 01/10 a 31/12); sem período citado, deixe de fora (vale o mês atual). Quando o resultado chegar, diga SEMPRE o período de vencimento que olhou e ofereça outro (os vencidos de meses anteriores ou os próximos meses). Demora até 1 minuto por cliente.',
     '',
     'REGRAS:',
     '- Todo número que você disser tem que ter vindo de uma ferramenta nesta conversa. Nunca invente nem estime; se precisar de outro total, consulte de novo. Diferença e porcentagem entre dois números que vieram das ferramentas você pode calcular.',
@@ -1226,9 +1271,11 @@ function agSistema(ctx) {
     '- Se o resultado avisar que a lista foi cortada, não conclua nada sobre quem ficou de fora: consulte de novo com filtro pelos nomes que interessam. Para "desses, quem não pediu X", use clientes_sem_pedido com a lista em "clientes".',
     '- Se a pergunta for vaga demais para consultar, pergunte o que falta numa frase.',
     '- As tabelas das ferramentas aparecem para o vendedor logo abaixo da sua resposta. Não copie tabelas no texto: destaque o essencial (totais, os maiores, o que chama atenção) em poucas frases ou numa lista curta, com **negrito** nos números importantes.',
+    '- Se o período ainda não terminou (o 2º semestre, o mês de hoje), avise que ele está em andamento: comparar com um período fechado engana.',
+    '- Nunca cite nomes de ferramentas ou de parâmetros, e nunca invente caminho fora daqui (como mandar abrir outro sistema): diga só o que o resultado disse.',
     '- Datas no texto em DD/MM/AAAA. Números com ponto de milhar (1.234).',
     '- Cumprimento, agradecimento ou dúvida sobre um termo: responda direto, sem ferramenta.',
-    '- Você só enxerga pedidos, carteira, faturamento, entradas e saídas do mês, o cadastro de produtos e clientes e os boletos do EBM. Meta, estoque de loja, comissão e preço de custo você não enxerga: diga isso com gentileza.',
+    '- Você só enxerga pedidos, carteira, faturamento, entradas e saídas do mês, o cadastro de produtos e clientes, os boletos do EBM e o que tem no Showroom. Meta, estoque de loja, comissão e preço de custo você não enxerga: diga isso com gentileza.',
   ].filter(s => s !== '').join('\n');
 }
 
@@ -1296,8 +1343,10 @@ function agConsultar(a) {
   if (f.marca === 'UA' || f.marca === 'OLY') { conds.push(r => (f.marca === 'UA') === ehUA(D.marca[r[C.MARCA]])); aplicados.push('marca: ' + f.marca); }
   const igualA = (campo, col, dic) => {
     if (f[campo] == null || f[campo] === '') return;
-    const v = norm(f[campo]);
-    conds.push(r => norm(dic ? dic[r[col]] : r[col]) === v);
+    // Nota vem como na DANFE ("004.104.040") e a base guarda 4104040.
+    const limpo = x => campo === 'nf' || campo === 'gci' ? soNumero(x) : norm(x);
+    const v = limpo(f[campo]);
+    conds.push(r => limpo(dic ? dic[r[col]] : r[col]) === v);
     aplicados.push(`${campo}: ${f[campo]}`);
   };
   igualA('oc', C.OC, D.oc); igualA('nf', C.NF); igualA('gci', C.GCI); igualA('fabrica', C.FAB, D.fab); igualA('filial', C.FIL, D.fil);
@@ -1434,6 +1483,11 @@ const FERRAMENTAS = {
   },
   boleto: a => agBoleto(a),
   clientes: a => agClientes(a),
+  disponivel: a => agDisponivel(a),
+  repasses_cliente: a => agRepassesCliente(a),
+  resumo_repasses: a => agResumoRepasses(a),
+  pedido: async a => { await olharRobo(); return agPedido(a); },
+  dae: a => agDae(a),
   baixar: a => {
     if (!AG.ultimaTabela) return { erro: 'Ainda não há tabela nesta conversa para baixar.' };
     const formato = a.formato === 'pdf' ? 'pdf' : 'xlsx';
@@ -1442,7 +1496,579 @@ const FERRAMENTAS = {
   },
 };
 const ROTULO_FERRAMENTA = { consultar: 'Consultando a carteira', clientes_sem_pedido: 'Procurando quem não comprou', movimento: 'Olhando entradas e saídas',
-  ficha: 'Abrindo a ficha', clientes: 'Procurando no cadastro', catalogo: 'Preparando o catálogo', baixar: 'Gerando o arquivo', boleto: 'Buscando os boletos no EBM (pode levar 1 minuto)' };
+  ficha: 'Abrindo a ficha', clientes: 'Procurando no cadastro', disponivel: 'Olhando o Showroom', repasses_cliente: 'Olhando os repasses do cliente', resumo_repasses: 'Montando o resumo de repasses', pedido: 'Procurando o pedido', dae: 'Procurando a nota', catalogo: 'Preparando o catálogo', baixar: 'Gerando o arquivo', boleto: 'Buscando os boletos no EBM (pode levar 1 minuto)' };
+
+/* disponivel: "tem tal produto?". Varre o Showroom com a MESMA conta da tela
+   (js/disponivel.js): saldo menos o que já foi pedido, cota do rateio, ocultos,
+   exclusivos e mínimo de pares. Os saldos mudam a cada pedido, então a base dura
+   só um minuto; os arquivos pesam ~4 MB e só descem na primeira pergunta. */
+let _dispBase = null;
+async function baseDisponivel() {
+  if (_dispBase && Date.now() - _dispBase.em < 60000) return _dispBase.lista;
+  const arq = n => fetch('../data/' + n, { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).catch(() => null);
+  const pega = (action, n) => chamarWorker(action, {}, 8000).catch(() => arq(n));
+  const pedidosAgora = async () => { try { const r = await fetch(WORKER_URL); if (r.ok) return await r.json(); } catch (_) {} return (await arq('pedidos.json')) || []; };
+  const [dispo, ocultos, ocultosDisp, exclusivos, rateio, disponib, produtos, pedidos] = await Promise.all([
+    pega('getDispo', 'dispo.json'), pega('getOcultos', 'ocultos.json'), pega('getOcultosDisp', 'ocultos_disponibilidades.json'),
+    pega('getExclusivos', 'exclusivos.json'), pega('getRateio', 'rateio.json'), arq('disponibilidades.json'), arq('produtos.json'), pedidosAgora(),
+  ]);
+  if (!Array.isArray(dispo) || !Array.isArray(disponib)) throw new Error('sem os dados do Showroom');
+  const mapa = DISPONIVEL.montar({ dispo, disponib, produtos, pedidos, oculto: DISPONIVEL.bloqueiosDe({ ocultos, ocultosDisp, exclusivos, rateio }),
+    souCms: MANDA_EM_TUDO.includes(norm(APP.sessao.nome)), meu: String(APP.sessao.codigo || '').trim() });
+  const lista = [...mapa.values()].filter(o => o.pronta || o.repasse || o.meta)
+    .sort((x, y) => x.nome.localeCompare(y.nome, 'pt-BR', { sensitivity: 'base' }));
+  // A pronta entrega fatura na próxima quinzena que ainda não começou, não no mês de hoje: vem pronto na base.
+  lista.prevFat = String((disponib.find(x => x.prevFat) || {}).prevFat || '').trim();
+  _dispBase = { em: Date.now(), lista };
+  return lista;
+}
+// Tamanhos em ordem com a quantidade de cada um: "34:1 35:2 36:3".
+const gradeTexto = g => Object.keys(g || {}).sort((x, y) => DISPONIVEL.posTamanho(x) - DISPONIVEL.posTamanho(y)).map(t => `${t}:${g[t]}`).join(' ');
+async function agDisponivel(a) {
+  if (!a.produto) return { erro: 'De qual produto? Pergunte ao vendedor.' };
+  let lista;
+  try { lista = await baseDisponivel(); } catch (e) { return { erro: 'Não consegui ler o Showroom agora: ' + (e.message || e) }; }
+  const termo = String(a.produto);
+  const r = agFiltro(lista.map((o, i) => ({ i, cod: norm(o.artigo), txt: norm(o.nome), nome: norm(o.nome) })), termo, 'produto', i => `${lista[i].nome} (${lista[i].artigo})`);
+  if (r.erro) {
+    // Existe no catálogo, mas nada no Showroom: é um "não tem", não um nome errado.
+    const noCat = casar(indices().prod || indices().ref, termo);
+    if (noCat && noCat.length) return { texto: `O produto "${termo}" existe no catálogo, mas hoje não há saldo dele no Showroom: nem estoque, nem repasse, nem produção. Diga isso ao vendedor.` };
+    return { erro: r.erro };
+  }
+  let achados = [...r.set].map(i => lista[i]);
+  // Nome exato manda: "CORRE 5" é o tênis, não a bermuda "CORRE FOCO 5". Se o exato existe no
+  // catálogo mas não tem saldo, a resposta é "não tem", e os outros vão como parecidos.
+  const exato = norm(termo);
+  const iguais = achados.filter(o => norm(o.nome) === exato || norm(o.artigo) === exato);
+  if (iguais.length) achados = iguais;
+  else if ((indices().prod || []).some(x => x.txt === exato || x.cod === exato)) {
+    const outros = [...new Set(achados.map(o => o.nome))].slice(0, 6).join(', ');
+    return { texto: `O produto "${termo}" existe no catálogo, mas hoje não tem saldo no Showroom: nem repasse, nem estoque, nem produção. Diga isso ao vendedor. Outros produtos com nome parecido e com saldo (são OUTROS produtos, só cite como alternativa): ${outros}.` };
+  }
+  let avisoCor = '';
+  if (a.cor) {
+    const c = norm(a.cor).replace(/[^A-Z0-9]/g, '');
+    // A cor vem abreviada na base ("LAVAND", "ARENIT"): vale nos dois sentidos, e 4 letras iguais no começo bastam.
+    const comCor = achados.filter(o => { const k = o.cor.replace(/[^A-Z0-9]/g, ''); return k.includes(c) || c.includes(k) || (c.length >= 4 && k.startsWith(c.slice(0, 4))); });
+    if (comCor.length) achados = comCor;
+    else avisoCor = `Não há a cor "${a.cor}" com esse código; abaixo estão as cores que têm saldo (os códigos são abreviados: PTO = preto, BCO = branco). Se uma delas for a que ele quer, responda só sobre ela.\n`;
+  }
+  const quer = ['estoque', 'repasse', 'producao'].includes(a.origem) ? a.origem : '';
+  // Prioridade do repasse: é o que o vendedor quer oferecer primeiro.
+  achados = [...achados].sort((x, y) => (y.repasse ? 1 : 0) - (x.repasse ? 1 : 0));
+  const rows = [], linhas = [];
+  for (const o of achados) {
+    const partes = [];
+    if (o.repasse && (!quer || quer === 'repasse')) for (const l of o.repasse.lotes) {
+      const g = gradeTexto(l.grade);
+      rows.push([o.nome, o.cor, 'Repasse' + (l.rateado ? ` (${l.selo})` : ''), l.saldo, l.data, DISPONIVEL.faixaDeGrade(Object.keys(l.grade)), o.artigo, l.num, g]);
+      partes.push(`Repasse lote ${l.num}: ${fmt(l.saldo)} pares, entrega ${l.data}, grade ${g}` + (l.rateado ? (l.soAcompanhar ? ', lote rateado: total, só para acompanhar' : ', cota do vendedor') : ''));
+    }
+    if (o.pronta && (!quer || quer === 'estoque')) {
+      const g = gradeTexto(o.pronta.grade);
+      const fat = lista.prevFat ? `, faturamento previsto ${lista.prevFat.toLowerCase()}` : '';
+      rows.push([o.nome, o.cor, 'Estoque', o.pronta.total, lista.prevFat ? 'Fatura ' + lista.prevFat.toLowerCase() : 'Pronta entrega', DISPONIVEL.faixaDeGrade(Object.keys(o.pronta.grade)), o.artigo, '', g]);
+      partes.push(`Estoque: ${fmt(o.pronta.total)} pares, pronta entrega${fat}, grade ${g}`);
+    }
+    if (o.meta && (!quer || quer === 'producao')) for (const q of o.meta.quinzenas) {
+      rows.push([o.nome, o.cor, 'Produção', q.v, q.rot, 'sem grade', o.artigo, '', '']);
+      partes.push(`Produção: ${fmt(q.v)} pares, previsão ${q.rot}, ainda sem grade`);
+    }
+    if (partes.length) linhas.push(`${o.nome} (${o.artigo}) cor ${o.cor}${o.pdv ? `, PDV ${reais(o.pdv)}` : ''}${o.campanhas.length ? `, campanha ${o.campanhas.map(c => c.codigoTabela).filter(Boolean).join('/')}` : ''}\n  ` + partes.join('\n  '));
+  }
+  const ordemOrigem = x => x[2].startsWith('Repasse') ? 0 : x[2] === 'Estoque' ? 1 : 2;
+  const diaDoLote = x => x[2].startsWith('Repasse') ? String(x[4]).split('/').reverse().join('') : '';
+  rows.sort((x, y) => ordemOrigem(x) - ordemOrigem(y) || diaDoLote(x).localeCompare(diaDoLote(y)));
+  if (!rows.length) return { texto: `${r.texto}: sem saldo${quer ? ' em ' + quer : ''} agora no Showroom.` + (quer ? ' Pode haver em outra origem: consulte sem "origem".' : '') };
+  const res = { entendi: ['<b>Disponível no Showroom</b>', esc(r.texto.replace(/\s*\[ATENÇÃO:[^\]]*\]/, '')), ...(a.cor ? [esc('cor: ' + a.cor)] : []), ...(quer ? [esc('origem: ' + quer)] : [])],
+    cols: ['Produto', 'Cor', 'Origem', 'Pares', 'Quando', 'Grade', 'Referência', 'Lote', 'Grade completa'], num: [3], data: [], rows, totais: null, resumo: '',
+    // Na tela vai só o que cabe no celular; um produto só dispensa a coluna do nome. O resto abre ao tocar.
+    oculta: [...(new Set(rows.map(x => x[6])).size === 1 ? [0] : []), 6, 7, 8],
+    detalhe: x => [`Ref. ${x[6]}`, x[7] && `Lote ${x[7]}`, x[8] ? `Grade: ${x[8]}` : 'Produção ainda sem grade'].filter(Boolean).join(' · ') };
+  const corte = linhas.length > 25 ? `\nATENÇÃO: são ${linhas.length} produto/cor e só os 25 primeiros aparecem acima; a tabela completa está embaixo da resposta. Peça para ele dizer a cor ou o modelo exato.` : '';
+  return { res, texto: avisoCor + 'Saldo de agora (não é reserva; muda a cada pedido):\n' + linhas.slice(0, 25).join('\n') + corte };
+}
+
+/* repasses_cliente: o que foi repassado para um cliente. A mesma leitura da aba Repasses da
+   Detalhada (apps-oly-v2/detalhada, repAchatar e repMarcarEntrados): mesmos status, mesma
+   trava pelo dono do cliente na base e a mesma inferência de "já entrou", que é só faturado
+   do cliente com data a partir do envio, somando a quantidade e consumindo o que usou.
+   Ninguém marca o repasse como cumprido: é estimativa, com erro para mostrar a mais. */
+const REP_STATUS_VALE = new Set(['Pendente', 'Em análise', 'Aprovado', 'Atendido parcialmente']);
+let _repBase = null;
+async function baseRepasses() {
+  if (_repBase && Date.now() - _repBase.em < 60000) return _repBase.itens;
+  let pedidos = null;
+  try { const r = await fetch(WORKER_URL, { cache: 'no-store' }); if (r.ok) pedidos = await r.json(); } catch (_) {}
+  if (!Array.isArray(pedidos)) { try { const r = await fetch('../data/pedidos.json', { cache: 'no-cache' }); if (r.ok) pedidos = await r.json(); } catch (_) {} }
+  if (!Array.isArray(pedidos)) throw new Error('sem os pedidos do Repasses');
+  const D = APP.dic, n = v => Number(v) || 0, itens = [];
+  const iCli = new Map(D.cli.map(([c], i) => [String(c).trim(), i]));
+  const iRef = new Map(D.ref.map(([c], i) => [String(c).trim(), i]));
+  const iCor = new Map(D.cor.map((c, i) => [String(c).trim(), i]));
+  for (const p of pedidos) {
+    if (!p || p.archived) continue;
+    const status = String(p.status || '').trim();
+    if (!REP_STATUS_VALE.has(status)) continue;
+    const cod = String(p.clienteCodigo || p.cliente || '').trim();
+    if (!cod) continue;
+    for (const it of (Array.isArray(p.items) ? p.items : (Array.isArray(p.itens) ? p.itens : []))) {
+      const ref = String((it && (it.codigo || it.referencia)) || '').trim(), cor = String((it && it.cor) || '').trim();
+      if (!ref || !cor) continue;
+      const qtd = n(it.totalUnits) || (String(it.mode) === 'boxed' ? n(it.amount) * (n(it.packSize) || 1) : n(it.amount));
+      if (!qtd) continue;
+      itens.push({ cliCod: cod, cli: iCli.get(cod), cliNome: String(p.clienteNome || p.nomeCliente || '').trim(), ref, cor, refI: iRef.get(ref), corI: iCor.get(cor),
+        desc: String(it.produto || it.descricao || '').trim(), qtd, status, pedido: String(p.id || ''), enviadoEm: String(p.exportedAt || p.createdAt || ''),
+        prevFat: String(it.prevFaturamento || it.prevFat || '').trim(), vendedor: String((p.preposto && p.preposto.nome) || p.vendedor || '').trim(), jaEntrou: false });
+    }
+  }
+  // já entrou: do envio mais antigo para o mais novo, consumindo o faturado
+  const fat = new Map();
+  for (const r of APP.L) {
+    if (!r[C.FAT]) continue;
+    const k = r[C.CLI] + '|' + r[C.REF] + '|' + r[C.COR];
+    if (!fat.has(k)) fat.set(k, []);
+    fat.get(k).push({ dia: Math.max(r[C.DFAT], r[C.PREV]), pares: r[C.FAT] });
+  }
+  const sobra = new Map();
+  for (const it of itens.filter(x => x.cli != null && x.refI != null && x.corI != null).sort((a, b) => a.enviadoEm.localeCompare(b.enviadoEm))) {
+    const k = it.cli + '|' + it.refI + '|' + it.corI;
+    if (!fat.has(k)) continue;
+    const iso = it.enviadoEm.slice(0, 10), env = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? diaDe(iso) : -1;
+    if (!sobra.has(k)) sobra.set(k, fat.get(k).map(x => ({ ...x })));
+    const pool = sobra.get(k);
+    let tem = 0;
+    for (const l of pool) if (env < 0 || l.dia >= env) tem += l.pares;
+    if (tem < it.qtd) continue;
+    it.jaEntrou = true;
+    let falta = it.qtd;
+    for (const l of pool) { if (falta <= 0) break; if (env >= 0 && l.dia < env) continue; const usa = Math.min(l.pares, falta); l.pares -= usa; falta -= usa; }
+  }
+  _repBase = { em: Date.now(), itens };
+  return itens;
+}
+async function agRepassesCliente(a) {
+  if (!a.cliente) return { erro: 'De qual cliente? Pergunte ao vendedor.' };
+  let itens;
+  try { itens = await baseRepasses(); } catch (e) { return { erro: 'Não consegui ler os repasses agora: ' + (e.message || e) }; }
+  const D = APP.dic, X = indices(), p = prepAtivo(), termo = String(a.cliente).trim();
+  // Dono do cliente na base; quem não está na Detalhada, pelo vendedor do próprio pedido.
+  const dono = new Map();
+  for (const r of APP.L) if (!dono.has(r[C.CLI])) dono.set(r[C.CLI], r[C.PREP]);
+  const meuItem = it => p < 0 || (it.cli != null ? dono.get(it.cli) === p : norm(it.vendedor) === norm(D.prep[p]));
+  const meusCli = p < 0 ? X.cli : X.cli.filter(x => dono.get(x.i) === p);
+  const r = agFiltro(meusCli, termo, 'cliente', i => D.cli[i][1]);
+  let doCliente, rotulo;
+  if (r.set) { doCliente = itens.filter(it => it.cli != null && r.set.has(it.cli)); rotulo = r.texto.replace(/\s*\[ATENÇÃO:[^\]]*\]/, ''); }
+  else {
+    // Cliente que ainda não tem nada na Detalhada: pelo código ou nome que o pedido trouxe.
+    const nt = norm(termo);
+    doCliente = itens.filter(it => it.cli == null && (it.cliCod === termo || norm(it.cliNome).includes(nt)));
+    if (!doCliente.filter(meuItem).length) return { erro: r.erro };
+    rotulo = 'cliente: ' + [...new Set(doCliente.map(it => it.cliNome || it.cliCod))].join(', ');
+  }
+  doCliente = doCliente.filter(meuItem);
+  const nomeDe = it => it.cli != null ? D.cli[it.cli][1] : (it.cliNome || it.cliCod);
+  const clientes = [...new Set(doCliente.map(nomeDe))];
+  if (!doCliente.length) return { texto: `${rotulo}: nenhum repasse registrado para esse cliente.` };
+  const aChegar = doCliente.filter(it => !it.jaEntrou), entrados = doCliente.filter(it => it.jaEntrou);
+  const soma = l => l.reduce((s, x) => s + x.qtd, 0);
+  const quando = x => x.prevFat.split('/').reverse().join('');
+  const lista = (a.situacao === 'todos' ? [...aChegar, ...entrados] : aChegar).slice().sort((x, y) => (x.jaEntrou - y.jaEntrou) || quando(y).localeCompare(quando(x)));
+  const rows = lista.map(it => [nomeDe(it), it.desc || it.ref, it.cor, it.qtd, it.prevFat, it.jaEntrou ? 'Já entrou' : 'A chegar', it.cliCod, it.ref, it.vendedor, it.pedido, it.enviadoEm.slice(0, 10).split('-').reverse().join('/')]);
+  const res = rows.length ? { entendi: ['<b>Repasses do cliente</b>', esc(rotulo)], cols: ['Cliente', 'Produto', 'Cor', 'Pares', 'Prev. fat.', 'Situação', 'Código', 'Referência', 'Vendedor', 'Pedido', 'Enviado em'], num: [3], data: [], rows, totais: null, resumo: '',
+    oculta: [...(clientes.length === 1 ? [0] : []), 6, 7, 8, 9, 10],
+    detalhe: x => [`Ref. ${x[7]}`, `Cód. ${x[6]}`, x[10] && `Enviado em ${x[10]}`, x[8] && `Vendedor ${x[8]}`, `Pedido ${x[9]}`].filter(Boolean).join(' · ') } : null;
+  const linhas = lista.slice(0, LINHAS_IA).map(it => `${clientes.length > 1 ? nomeDe(it) + ': ' : ''}${it.desc || it.ref} ${it.cor}: ${fmt(it.qtd)} pares, prev. fat. ${it.prevFat || 'sem data'}${it.jaEntrou ? ', já entrou' : ', a chegar'}`);
+  return { res, texto: `${rotulo}. A chegar: ${fmt(soma(aChegar))} pares em ${aChegar.length} item(ns). Já entrou: ${fmt(soma(entrados))} pares em ${entrados.length} item(ns).` +
+    (clientes.length > 1 ? ` São ${clientes.length} clientes diferentes: ${clientes.slice(0, 8).join(', ')}; se ele quis um só, pergunte qual.` : '') +
+    ' "Já entrou" é estimativa pelo faturamento, não uma marcação do sistema: se ele questionar, diga isso.' +
+    (linhas.length ? '\n' + linhas.join('\n') : '') + (lista.length > LINHAS_IA ? `\nATENÇÃO: só os ${LINHAS_IA} primeiros de ${lista.length} aparecem acima; a tabela completa está embaixo da resposta.` : '') +
+    (a.situacao !== 'todos' && entrados.length ? '\nOs que já entraram não estão na lista: para ver, chame de novo com "situacao":"todos".' : '') };
+}
+
+/* resumo_repasses: o Resumo operacional do Repasses (admin/dashboard.html) em forma de resposta:
+   pares repassados por período, vendedores, produtos, clientes, saídas e campanha, com as mesmas
+   contas de lá. Exceção de propósito: saldo e "sem pedido" são por LOTE (Nº), como no Showroom. O
+   painel desconta por GCI, e um GCI aparece em vários lotes: em 30/10/2026 ele dizia 2.766 pares
+   e pelo lote eram 5.058. Vendedor vê só os próprios números; o painel inteiro é da CMS. */
+const statusResumo = s => { const n = String(s || '').trim().toLowerCase(); return ['aprovado', 'finalizado', 'faturado'].includes(n) ? 'Aprovado' : ['cancelado', 'cancelada'].includes(n) ? 'Cancelado' : 'Pendente'; };
+const paresItem = i => Number(i && i.totalUnits || 0) || ((i && i.grade) || []).reduce((s, g) => s + Number(g.qty || 0), 0);
+function janelaResumo(a) {
+  const DIA = 864e5, agora = Date.now(), d0 = new Date(); d0.setHours(0, 0, 0, 0);
+  const hoje0 = d0.getTime(), p = String(a.periodo || 'tudo').trim().toLowerCase();
+  const iso = (s, fim) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || '')); return m ? new Date(+m[1], +m[2] - 1, +m[3] + (fim ? 1 : 0)).getTime() : null; };
+  const de = iso(a.de), ate = iso(a.ate, true);
+  if (de != null || ate != null) return { de: de ?? -Infinity, ate: ate ?? Infinity, nome: `de ${a.de ? a.de.split('-').reverse().join('/') : 'o início'} a ${a.ate ? a.ate.split('-').reverse().join('/') : 'hoje'}` };
+  if (p === 'hoje') return { de: hoje0, ate: Infinity, nome: 'hoje' };
+  if (p === 'ontem') return { de: hoje0 - DIA, ate: hoje0, nome: 'ontem' };
+  const n = /^(\d+)\s*d?$/.exec(p);
+  // Janela móvel, como no painel: "7 dias" são as últimas 168 horas.
+  if (n) return { de: agora - Number(n[1]) * DIA, ate: Infinity, nome: `últimos ${n[1]} dias`, dias: Number(n[1]) };
+  return { de: -Infinity, ate: Infinity, nome: 'desde o primeiro pedido', tudo: true };
+}
+async function agResumoRepasses(a) {
+  let pedidos = null, canc = [], camps = [];
+  try { const r = await fetch(WORKER_URL, { cache: 'no-store' }); if (r.ok) pedidos = await r.json(); } catch (_) {}
+  if (!Array.isArray(pedidos)) { try { const r = await fetch('../data/pedidos.json', { cache: 'no-cache' }); if (r.ok) pedidos = await r.json(); } catch (_) {} }
+  if (!Array.isArray(pedidos)) return { erro: 'Não consegui ler os pedidos do Repasses agora.' };
+  const ler = action => chamarWorker(action, {}, 10000).then(x => Array.isArray(x) ? x : []).catch(() => []);
+  [canc, camps] = await Promise.all([ler('getCancelamentosDispo'), ler('getCampanhas')]);
+  const D = APP.dic, p = prepAtivo();
+  const j = janelaResumo(a), noPeriodo = o => { const t = new Date(o.createdAt || o.updatedAt || 0).getTime(); return t >= j.de && t < j.ate; };
+  const filtros = [`período: ${j.nome}`];
+  // Quem vê o quê: vendedor só o que é dele. "Ver como" e o filtro de quem vê tudo funcionam igual.
+  const primeira = s => norm(s).split(/\s+/)[0];
+  let dele = () => true;
+  if (!APP.veTudo) { const c = String(APP.sessao.codigo || '').trim(); dele = o => String(o.preposto && o.preposto.codigo || '').trim() === c; }
+  else if (p >= 0) { const n = primeira(D.prep[p]); dele = o => primeira(o.preposto && o.preposto.nome) === n; }
+  else if (a.vendedor) { const n = primeira(a.vendedor); dele = o => primeira(o.preposto && o.preposto.nome) === n; filtros.push('vendedor: ' + a.vendedor); }
+  const soUm = !APP.veTudo || p >= 0 || !!a.vendedor;
+  // Pediu por outro vendedor sem poder ver: diz de quem são os números, senão a IA atribui a ele.
+  const quemEu = !APP.veTudo ? APP.sessao.nome : p >= 0 ? D.prep[p] : '';
+  if (quemEu) { filtros.push('vendedor: ' + quemEu); if (a.vendedor && primeira(a.vendedor) !== primeira(quemEu)) filtros.push(`ATENÇÃO: ele só pode ver os próprios números, então estes são de ${quemEu}, não de ${a.vendedor}; diga isso`); }
+  const nomeCli = o => { const i = indices().cli.find(x => x.cod === norm(o.clienteCodigo)); return i ? D.cli[i.i][1] : (o.clienteNome || o.clienteCodigo || 'Cliente não informado'); };
+  let doItem = () => true, doPedido = () => true;
+  if (a.produto) { const n = norm(a.produto); doItem = i => norm(i.produto).includes(n) || norm(i.codigo) === n; filtros.push('produto: ' + a.produto); }
+  if (a.cliente) { const r = agFiltro(indices().cli, String(a.cliente), 'cliente', i => D.cli[i][1]);
+    const cods = r.set ? new Set([...r.set].map(i => String(D.cli[i][0]))) : null; const n = norm(a.cliente);
+    doPedido = o => cods ? cods.has(String(o.clienteCodigo)) : norm(o.clienteNome).includes(n); filtros.push(r.set ? r.texto.replace(/\s*\[ATENÇÃO:[^\]]*\]/, '') : 'cliente: ' + a.cliente); }
+  const itensDe = o => (o.items || []).map(i => { const [c, nome] = DISPONIVEL.desinverte(i.codigo, i.produto); return { ...i, codigo: c, produto: nome }; }).filter(doItem);
+  const noRecorte = pedidos.filter(o => o && noPeriodo(o) && dele(o) && doPedido(o) && itensDe(o).length);
+  const vivos = noRecorte.filter(o => statusResumo(o.status) !== 'Cancelado');
+  const paresDe = o => itensDe(o).reduce((s, i) => s + paresItem(i), 0);
+  const total = vivos.reduce((s, o) => s + paresDe(o), 0);
+  const aprov = vivos.filter(o => statusResumo(o.status) === 'Aprovado'), pend = vivos.length - aprov.length;
+  const cancelados = noRecorte.length - vivos.length;
+  const soma = (mapa, k, v) => mapa.set(k, (mapa.get(k) || 0) + v);
+  const vend = new Map(), prods = new Map(), clis = new Map();
+  for (const o of vivos) {
+    const n = (o.preposto && (o.preposto.nome || o.preposto.codigo)) || '—';
+    const e = vend.get(n) || { pares: 0, pedidos: 0 }; e.pares += paresDe(o); e.pedidos++; vend.set(n, e);
+    const c = nomeCli(o), ec = clis.get(c) || { pares: 0, pedidos: 0 }; ec.pares += paresDe(o); ec.pedidos++; clis.set(c, ec);
+  }
+  // Produtos só contam pedido aprovado, como no painel.
+  for (const o of aprov) for (const i of itensDe(o)) { const nome = String(i.produto || '').trim(); if (nome) soma(prods, `${nome}|${String(i.cor || '').trim()}`, paresItem(i)); }
+  const ranking = m => [...m.entries()].sort((x, y) => (y[1].pares ?? y[1]) - (x[1].pares ?? x[1]));
+  // Saídas: seguem o período; janela de dias inclui o dia de hoje, como no painel.
+  const d0 = new Date(); d0.setHours(0, 0, 0, 0);
+  const saidaNoPeriodo = c => { const d = new Date(c.em); if (isNaN(d)) return false; if (j.tudo) return true; if (j.dias) return d >= new Date(d0.getTime() - (j.dias - 1) * 864e5); return d.getTime() >= j.de && d.getTime() < j.ate; };
+  const saidas = soUm ? [] : canc.filter(c => !c.desfeitoEm && saidaNoPeriodo(c));
+  const eVolta = c => (c && c.tipo) === 'volta', qtdS = l => l.reduce((s, c) => s + Number(c.pares || 0), 0);
+  const cancs = saidas.filter(c => !eVolta(c)), voltas = saidas.filter(eVolta);
+  // Saldo e prazo por lote: a mesma base do Showroom (já traz a cota de quem pergunta).
+  let lotes = [], baseOk = true;
+  try { for (const o of await baseDisponivel()) if (o.repasse) for (const l of o.repasse.lotes) lotes.push({ o, l }); } catch (_) { baseOk = false; }
+  const saldo = lotes.reduce((s, x) => s + x.l.saldo, 0);
+  const prevDia = s => { const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(String(s || '')); return m ? new Date(+m[3], +m[2] - 1, +m[1]).getTime() : null; };
+  const comPedido = new Set();
+  for (const o of pedidos) if (statusResumo(o.status) !== 'Cancelado') for (const i of (o.items || [])) comPedido.add(String(i.num || '').trim());
+  const semPedido = lotes.filter(x => !comPedido.has(x.l.num)).map(x => { const d = prevDia(x.l.data), limite = d == null ? null : d - 45 * 864e5;
+    return { ...x, limite, dias: limite == null ? 999 : Math.round((limite - Date.now()) / 864e5) }; }).sort((x, y) => x.dias - y.dias);
+  // Campanha: período próprio. Vendedor enxerga só a própria linha.
+  const camp = typeof INCENTIVO === 'undefined' ? [] : camps.filter(c => INCENTIVO.statusCampanha(c) === 'ativa').map(c => { const ap = INCENTIVO.apurarCampanha(c, pedidos);
+    return { c, ap, vendedores: ap.vendedores.filter(v => !APP.veTudo ? String(v.codigo || v.nome) === String(APP.sessao.codigo) || primeira(v.nome) === primeira(APP.sessao.nome) : (!soUm || primeira(v.nome) === primeira(a.vendedor || (p >= 0 ? D.prep[p] : '')))) }; });
+  const tabelas = {
+    vendedores: { titulo: 'Vendedores', cols: ['Vendedor', 'Pedidos', 'Pares'], num: [1, 2], rows: ranking(vend).map(([n, e]) => [n, e.pedidos, e.pares]) },
+    produtos: { titulo: 'Produtos mais repassados (aprovados)', cols: ['Produto', 'Cor', 'Pares'], num: [2], rows: ranking(prods).map(([k, v]) => [...k.split('|'), v]) },
+    clientes: { titulo: 'Clientes atendidos', cols: ['Cliente', 'Pedidos', 'Pares'], num: [1, 2], rows: ranking(clis).map(([n, e]) => [n, e.pedidos, e.pares]) },
+    saldo: { titulo: 'Saldo atual em repasse', cols: ['Produto', 'Cor', 'Lote', 'Prev. fat.', 'Pares'], num: [4], rows: lotes.slice().sort((x, y) => y.l.saldo - x.l.saldo).map(x => [x.o.nome, x.o.cor, x.l.num, x.l.data, x.l.saldo]) },
+    prazo: { titulo: 'Atenção ao prazo: lotes sem pedido', cols: ['Produto', 'Cor', 'Lote', 'Pares', 'Prev. fat.', 'Limite', 'Faltam (dias)'], num: [3, 6], rows: semPedido.map(x => [x.o.nome, x.o.cor, x.l.num, x.l.saldo, x.l.data, x.limite == null ? '' : new Date(x.limite).toLocaleDateString('pt-BR'), x.dias]) },
+    saidas: { titulo: 'Saídas do repasse', cols: ['Quando', 'Tipo', 'Produto', 'Cor', 'Pares', 'Motivo ou cliente'], num: [4], rows: saidas.slice().sort((x, y) => String(y.em).localeCompare(String(x.em))).map(c => [new Date(c.em).toLocaleDateString('pt-BR'), eVolta(c) ? 'Devolvido' : 'Cancelado', c.produto || '', c.cor || '', Number(c.pares || 0), (eVolta(c) && c.cliente) || c.motivo || '']) },
+    campanha: { titulo: 'Campanhas ativas', cols: ['Campanha', 'Vendedor', 'Pares', 'Prêmio'], num: [2], rows: camp.flatMap(x => x.vendedores.map(v => [x.c.nome || 'Campanha', v.nome, v.pares, INCENTIVO.dinheiro(v.premio)])) },
+  };
+  const ver = tabelas[a.ver] ? a.ver : (soUm ? 'produtos' : 'vendedores');
+  const tb = tabelas[ver];
+  const res = tb.rows.length ? { entendi: [`<b>Resumo de repasses · ${tb.titulo}</b>`, ...filtros.map(esc)], cols: tb.cols, num: tb.num, data: [], rows: tb.rows, totais: null, resumo: '' } : null;
+  const topo = (l, f, n = 8) => l.slice(0, n).map(f).join('; ') || 'nenhum';
+  const linhas = [
+    `Resumo de repasses (${filtros.join('; ')}).`,
+    `Pares repassados: ${fmt(total)} em ${fmt(vivos.length)} pedido(s) (${fmt(aprov.length)} aprovados, ${fmt(pend)} pendentes). Cancelados, fora da conta: ${fmt(cancelados)} pedido(s).`,
+    soUm ? '' : `Vendedores: ${topo(ranking(vend), ([n, e]) => `${n} ${fmt(e.pares)}`, 20)}.`,
+    `Produtos mais repassados (só aprovados): ${topo(ranking(prods), ([k, v]) => `${k.replace('|', ' ')} ${fmt(v)}`)}.`,
+    `Clientes: ${topo(ranking(clis), ([n, e]) => `${n} ${fmt(e.pares)}`)}.`,
+    baseOk ? `Saldo atual em repasse (foto de agora, não depende do período${APP.veTudo ? '' : ', já com a cota dele'}): ${fmt(saldo)} pares em ${fmt(lotes.length)} lote(s).` : '',
+    semPedido.length ? `Lotes sem nenhum pedido: ${fmt(semPedido.length)}; prazo limite é 45 dias antes da previsão. Os mais urgentes: ${topo(semPedido, x => `${x.o.nome} ${x.o.cor} lote ${x.l.num}, ${fmt(x.l.saldo)} pares, faltam ${x.dias} dias`, 5)}.` : '',
+    soUm ? '' : `Saídas do repasse: ${fmt(qtdS(cancs))} pares cancelados pela fábrica (${fmt(cancs.length)} lotes) e ${fmt(qtdS(voltas))} devolvidos à origem (${fmt(voltas.length)} lotes).`,
+    camp.length ? `Campanhas ativas: ${camp.map(x => `${x.c.nome}: ${x.vendedores.length ? topo(x.vendedores, v => `${v.nome} ${fmt(v.pares)} pares, ${INCENTIVO.dinheiro(v.premio)}`) : 'sem pares'}`).join(' | ')}.` : '',
+    tb.rows.length ? `A tabela embaixo da resposta mostra: ${tb.titulo}.` : '',
+  ].filter(Boolean);
+  return { res, texto: linhas.join('\n') };
+}
+
+/* pedido: acha o pedido pelo número da nota, do GCI ou da OC. O botão de PDF usa a mesma extensão
+   do EBM da Detalhada (eventos cms-ebm-pdf e cms-ebm-resposta), então o arquivo sai igual ao de lá.
+   Sem extensão, o robô (pedido_robo.py, no serviço de boletos) faz o mesmo pelo servidor. Sem os dois,
+   não há botão. Hoje o serviço só existe neste computador: quando for para a VPS, muda o BOLETOS_URL. */
+const soNumero = v => String(v == null ? '' : v).replace(/\D/g, '').replace(/^0+/, '');
+const temExtensaoEbm = () => !!document.documentElement.dataset.cmsEbm;
+// No iPhone, "baixar" manda o PDF para os downloads do Safari e parece que nada aconteceu. No celular
+// e no tablet o botão abre o arquivo na tela, de onde ele compartilha com o cliente.
+const noCelular = () => /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+/* No celular o botão abre o PDF, e quem compartilha é o visualizador do próprio aparelho, com o arquivo
+   de verdade e em qualquer endereço. Um botão de compartilhar no chat só anexaria em https. */
+const linkPdf = (url, nome, rotulo) => noCelular()
+  ? `<a class="sug forte" href="${esc(url + (url.includes('?') ? '&' : '?') + 'abrir=1')}" target="_blank" rel="noopener">Abrir e compartilhar ${esc(rotulo || nome)}</a><div class="dica-pdf">Com o PDF aberto, toque no ícone de compartilhar do navegador e escolha o WhatsApp.</div>`
+  : `<a class="sug forte" href="${esc(url)}" download="${esc(nome)}">Baixar ${esc(rotulo || nome)}</a>`;
+const baixarJa = (url, nome) => { if (noCelular()) return; const a = document.createElement('a'); a.href = url; a.download = nome; a.style.display = 'none'; document.body.appendChild(a); a.click(); a.remove(); };
+const geraPdf = () => temExtensaoEbm() || !!APP.roboPdf;
+async function olharRobo() {
+  try { const r = await fetch(BOLETOS_URL + '/ping', { signal: AbortSignal.timeout(1500) }); APP.roboPdf = !!(await r.json()).pedido; }
+  catch (_) { APP.roboPdf = false; }
+}
+function agPedido(a) {
+  const D = APP.dic, X = indices(), p = prepAtivo();
+  const nf = soNumero(a.nf), gci = soNumero(a.gci), oc = norm(a.oc);
+  if (!nf && !gci && !oc && !a.cliente) return { erro: 'De qual cliente, ou qual o número da nota, do GCI ou da OC? Pergunte ao vendedor.' };
+  let filtro, pedido, sCli = null;
+  if (nf || gci || oc) {
+    pedido = nf ? `nota ${a.nf}` : gci ? `GCI ${a.gci}` : `OC ${a.oc}`;
+    filtro = r => nf ? soNumero(r[C.NF]) === nf : gci ? soNumero(r[C.GCI]) === gci : norm(D.oc[r[C.OC]]) === oc;
+  } else {
+    const dono = new Map();
+    for (const r of APP.L) if (!dono.has(r[C.CLI])) dono.set(r[C.CLI], r[C.PREP]);
+    const f = agFiltro(p < 0 ? X.cli : X.cli.filter(x => dono.get(x.i) === p), String(a.cliente), 'cliente', i => D.cli[i][1]);
+    if (f.erro) return { erro: f.erro };
+    // Nomes diferentes no mesmo termo: pergunta antes, com os botões. Filiais do mesmo nome seguem juntas.
+    const nomes = [...new Set([...f.set].map(i => D.cli[i][1]))];
+    if (nomes.length > 1) {
+      const lojas = [...f.set].sort((x, y) => rotuloLoja(x).localeCompare(rotuloLoja(y)));
+      return { erro: `"${a.cliente}" casou com ${nomes.length} clientes: ${nomes.slice(0, 8).join(', ')}. Os botões de escolha já apareceram: pergunte qual é.`,
+        opcoes: lojas.slice(0, 12).map(i => ({ rotulo: rotuloLoja(i), valor: `carteira do código ${D.cli[i][0]}` })) };
+    }
+    sCli = f.set; pedido = nomes[0];
+    filtro = r => sCli.has(r[C.CLI]);
+  }
+  // Por cliente, o padrão é a carteira: é o que ainda dá para pedir o PDF e cobrar da fábrica.
+  const sit = a.situacao === 'faturado' || a.situacao === 'tudo' ? a.situacao : (sCli ? 'carteira' : 'tudo');
+  const noProduto = a.produto ? (() => { const n = norm(a.produto); return r => norm(D.ref[r[C.REF]][1]).includes(n) || norm(D.ref[r[C.REF]][0]) === n; })() : () => true;
+  // A trava é a mesma frase de "não existe": ele não fica sabendo de nota de outro vendedor.
+  const achadas = APP.L.filter(r => (p < 0 || r[C.PREP] === p) && filtro(r) && noProduto(r));
+  if (!achadas.length) return { texto: sCli ? `${pedido}: nada na Detalhada${a.produto ? ' desse produto' : ''}.` : `Não achei a ${pedido} na Detalhada${p >= 0 ? ' entre os clientes dele' : ''}. Pode ser número errado ou nota muito antiga: peça para conferir.` };
+  const comExt = geraPdf(), multiCod = new Set(achadas.map(r => r[C.CLI])).size > 1;
+  const rows = [], grupos = new Map();
+  for (const r of achadas) {
+    const cli = D.cli[r[C.CLI]], ref = D.ref[r[C.REF]], cor = D.cor[r[C.COR]], ocNum = D.oc[r[C.OC]] ?? '', vend = D.prep[r[C.PREP]];
+    // O EBM não mistura aberta com fechada numa consulta, e o arquivo leva o nome do cliente.
+    const st = r[C.CART] > 0 ? 'A' : 'F', nomeArq = multiCod ? `${cli[1]} ${cli[0]}` : cli[1];
+    const extra = [cli[0], ref[0], r[C.GCI] || '', r[C.NF] || '', ocNum, vend, nomeArq, st];
+    const base = [cli[1], ref[1], cor];
+    let usou = false;
+    if (r[C.FAT] > 0 && sit !== 'carteira') { rows.push([...base, r[C.FAT], r[C.DFAT] >= 0 ? dataDe(r[C.DFAT]) : '', 'Faturado', ...extra, r[C.DFAT]]); usou = true; }
+    if (r[C.CART] > 0 && sit !== 'faturado') { rows.push([...base, r[C.CART], r[C.PREV] >= 0 ? dataDe(r[C.PREV]) : '', 'Carteira', ...extra, r[C.PREV]]); usou = true; }
+    if (!usou || !r[C.GCI]) continue;
+    const k = nomeArq + '|' + st;
+    if (!grupos.has(k)) grupos.set(k, { nome: nomeArq, status: st, gcis: new Set() });
+    grupos.get(k).gcis.add(String(r[C.GCI]));
+  }
+  if (!rows.length) return { texto: `${pedido}: nada ${sit === 'carteira' ? 'em carteira' : 'faturado'}${a.produto ? ' desse produto' : ''}.${sit === 'carteira' ? ' Para ver o que já faturou, consulte com "situacao":"faturado".' : ''}` };
+  rows.sort((x, y) => (x[14] - y[14]) || String(x[1]).localeCompare(String(y[1])));
+  const clientes = [...new Set(rows.map(x => x[0]))], soUmaSit = new Set(rows.map(x => x[5])).size === 1;
+  const totalPares = rows.reduce((s, x) => s + x[3], 0);
+  const gs = [...grupos.values()].map(g => ({ nome: g.nome, status: g.status, gcis: [...g.gcis] }));
+  const nPedidos = new Set(gs.flatMap(g => g.gcis)).size;
+  const res = { entendi: [sCli ? `<b>${sit === 'carteira' ? 'Carteira' : sit === 'faturado' ? 'Faturado' : 'Pedidos'}</b>` : '<b>Pedido</b>', esc(pedido), ...(a.produto ? [esc('produto: ' + a.produto)] : [])],
+    cols: ['Cliente', 'Produto', 'Cor', 'Pares', sCli && sit === 'carteira' ? 'Prev. fat.' : 'Data', 'Situação', 'Código', 'Referência', 'GCI', 'NF', 'OC', 'Vendedor'], num: [3], data: [],
+    rows: rows.map(x => x.slice(0, 12)), totais: null, resumo: '',
+    oculta: [...(clientes.length === 1 ? [0] : []), ...(soUmaSit ? [5] : []), 6, 7, 8, 9, 10, 11],
+    detalhe: x => [`Ref. ${x[7]}`, `Cód. ${x[6]}`, x[8] && `GCI ${x[8]}`, x[9] && `NF ${x[9]}`, x[10] && `OC ${x[10]}`, `Vendedor ${x[11]}`].filter(Boolean).join(' · ') };
+  // Botão em cada linha: só com a extensão, e só quando a lista tem mais de um pedido.
+  if (comExt && nPedidos > 1) {
+    const porLinha = new Map(rows.map(x => [x.slice(0, 12).join('|'), x]));
+    res.pdfLinha = v => { const x = porLinha.get(v.join('|')); return x && x[8] ? [{ nome: x[12], status: x[13], gcis: [String(x[8])] }] : null; };
+  }
+  const pdf = comExt ? gs : [];
+  const quem = sCli ? `${pedido}, ${sit === 'carteira' ? 'em carteira' : sit === 'faturado' ? 'faturado' : 'carteira e faturado'}${multiCod ? ` (${new Set(achadas.map(r => r[C.CLI])).size} lojas: um arquivo por loja no "gerar todos")` : ''}`
+    : `${pedido}: ${clientes.length > 1 ? `está em ${clientes.length} clientes (${clientes.join(', ')}): pergunte qual antes de tudo` : `cliente ${clientes[0]}`}`;
+  return { res, pdf, texto: `${quem}. ${fmt(totalPares)} pares em ${fmt(nPedidos)} pedido(s).\n` +
+    rows.slice(0, LINHAS_IA).map(x => `${x[1]} ${x[2]}: ${fmt(x[3])} pares, ${x[5].toLowerCase()}${x[4] ? (x[5] === 'Carteira' ? ', previsão ' : ' em ') + x[4] : ''}, GCI ${x[8] || '?'}${x[10] ? ', OC ' + x[10] : ''}${x[9] ? ', NF ' + x[9] : ''}`).join('\n') +
+    (rows.length > LINHAS_IA ? `\nATENÇÃO: só os ${LINHAS_IA} primeiros de ${rows.length} aparecem acima; a tabela completa está embaixo da resposta.` : '') +
+    (pdf.length ? `\nOs botões de PDF já apareceram para o vendedor${nPedidos > 1 ? ': um em cada linha e um para gerar todos' : ''}. Não copie a lista: diga o total e destaque a próxima previsão.`
+      : '\nO PDF do pedido só sai no computador com a extensão do EBM: diga isso, e que no celular ainda não dá. Os dados acima ele já pode usar.') };
+}
+const pdfHtml = l => {
+  if (!l || !l.length) return '';
+  const n = new Set(l.flatMap(g => g.gcis)).size;
+  return `<div class="acoes"><button class="sug" data-pedido-pdf="${esc(JSON.stringify(l))}">${n > 1 ? `Gerar todos os pedidos (${n})` : 'Gerar PDF do pedido'}</button></div><div class="dots-rot" data-pdf-status></div>`;
+};
+/* Gerar vários: o mesmo jeito da Detalhada. Um arquivo por cliente e situação; se o EBM não couber
+   todos numa consulta, a extensão diz quantos cabem, o número fica guardado (mesma chave de lá) e
+   o resto sai em lotes "(1 de 3)". */
+const CHAVE_LIMITE_GCI = 'detalhada_ebm_gcis_por_consulta';
+const limiteGcis = () => { try { const n = Number(localStorage.getItem(CHAVE_LIMITE_GCI)); return n >= 1 ? n : Infinity; } catch (_) { return Infinity; } };
+const guardarLimite = n => { n = Math.max(1, Math.floor(Number(n) || 0)); if (n && n < limiteGcis()) try { localStorage.setItem(CHAVE_LIMITE_GCI, String(n)); } catch (_) {} };
+function fatiarPdf(g, max) {
+  if (!(max >= 1) || g.gcis.length <= max) return [g];
+  const base = g.base || g.nome, partes = Math.ceil(g.gcis.length / max), lotes = [];
+  for (let k = 0, i = 0; k < partes; k++) {
+    const tam = Math.ceil((g.gcis.length - i) / (partes - k));
+    lotes.push({ ...g, base, gcis: g.gcis.slice(i, i + tam), nome: `${base} (${k + 1} de ${partes})` });
+    i += tam;
+  }
+  return lotes;
+}
+// Um arquivo: resolve quando a extensão termina ou dá erro.
+async function umPdfRobo(g, diz) {
+  diz('O robô está gerando no EBM: leva cerca de 1 minuto…');
+  try {
+    const f = await fetch(BOLETOS_URL + '/pedido', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gcis: g.gcis, status: g.status, nome: g.nome }), signal: AbortSignal.timeout(300000) });
+    const r = await f.json();
+    if (!r.ok) return { erro: r.erro || 'O robô não conseguiu gerar o PDF.', codigo: r.codigo, cabem: r.cabem };
+    return { ok: true, arquivo: r.arquivo, faltam: r.faltam || [] };
+  } catch (e) { return { erro: 'O robô não respondeu: ' + (e.message || e) }; }
+}
+const umPdf = (g, diz) => !temExtensaoEbm() ? umPdfRobo(g, diz) : new Promise(ok => {
+  const fim = r => { window.removeEventListener('cms-ebm-resposta', ouvir); clearTimeout(limite); ok(r); };
+  const ouvir = e => {
+    const d = e.detail || {};
+    if (d.tipo === 'progresso') diz(d.texto || 'Gerando…');
+    else if (d.tipo === 'fim') fim({ ok: true, texto: d.texto });
+    else if (d.tipo === 'erro') fim({ erro: d.texto || 'Não consegui gerar o PDF.', codigo: d.codigo, cabem: d.cabem });
+  };
+  const limite = setTimeout(() => fim({ erro: 'O EBM não respondeu em 3 minutos.' }), 180000);
+  window.addEventListener('cms-ebm-resposta', ouvir);
+  window.dispatchEvent(new CustomEvent('cms-ebm-pdf', { detail: { gcis: g.gcis, status: g.status, nomeArquivo: g.nome } }));
+});
+let _pdfEmCurso = false;
+document.addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-pedido-pdf]');
+  if (!b) return;
+  const st = b.closest('.bolha').querySelector('[data-pdf-status]');
+  const diz = (txt, erro) => { if (st) { st.textContent = txt; st.style.color = erro ? 'var(--erro)' : ''; } rolar(); };
+  if (!geraPdf()) { diz('Neste aparelho não há extensão do EBM nem o robô ligado.', true); return; }
+  if (_pdfEmCurso) { diz('Já tem um PDF sendo gerado: aguarde.'); return; }
+  const fila = JSON.parse(b.dataset.pedidoPdf).flatMap(g => fatiarPdf(g, limiteGcis()));
+  _pdfEmCurso = true; b.disabled = true;
+  let feitos = 0;
+  const arquivos = [], avisos = [];
+  try {
+    for (let i = 0; i < fila.length; i++) {
+      const prefixo = fila.length > 1 ? `Arquivo ${i + 1} de ${fila.length}: ` : '';
+      diz(prefixo + 'abrindo o EBM…');
+      const r = await umPdf(fila[i], t => diz(prefixo + t));
+      if (r.ok) {
+        feitos++;
+        if (r.arquivo) {
+          // O robô entrega o arquivo pelo serviço: baixa já, e o link fica para baixar de novo.
+          const url = `${BOLETOS_URL}/arquivo?nome=${encodeURIComponent(r.arquivo)}`;
+          arquivos.push({ nome: r.arquivo, url });
+          // No celular não baixa sozinho: o link abre na tela quando ele tocar.
+          baixarJa(url, r.arquivo);
+          if (r.faltam.length) avisos.push(`${r.arquivo}: faltaram ${r.faltam.join(', ')}`);
+        }
+        continue;
+      }
+      // Não coube: mede, guarda e refaz só o que falta deste cliente, sem repetir o que já saiu.
+      if (r.codigo === 'gcis-nao-couberam' && r.cabem >= 1 && fila[i].gcis.length > r.cabem) {
+        guardarLimite(r.cabem);
+        const g = fila[i], base = g.base || g.nome;
+        let fimBase = i;
+        while (fimBase + 1 < fila.length && (fila[fimBase + 1].base || fila[fimBase + 1].nome) === base) fimBase++;
+        const juntos = { ...g, nome: base, base, gcis: fila.slice(i, fimBase + 1).flatMap(x => x.gcis) };
+        fila.splice(i, fimBase - i + 1, ...fatiarPdf(juntos, r.cabem));
+        i--; continue;
+      }
+      const falta = fila.length - feitos, ja = feitos ? `Saíram ${feitos} de ${fila.length}. ` : '';
+      if (r.codigo === 'popup-bloqueado') diz(ja + 'O Chrome bloqueou a janela do EBM: libere os pop-ups deste site e toque de novo.', true);
+      else if (r.codigo === 'precisa-login' || r.codigo === 'login-recusado') diz(ja + 'A extensão está sem o login do EBM: gere um PDF pela Detalhada uma vez para guardá-lo e toque de novo.', true);
+      else diz(ja + `Parei com ${falta} por gerar: ${r.erro}`, true);
+      return;
+    }
+    const onde = arquivos.length && noCelular() ? 'toque abaixo para abrir' : 'veja na pasta de downloads';
+    diz((fila.length > 1 ? `Pronto: ${feitos} arquivos, ${onde}.` : `PDF pronto: ${onde}.`) + (avisos.length ? ` Atenção: ${avisos.join('; ')}.` : ''), !!avisos.length);
+    if (st) for (const x of arquivos) st.insertAdjacentHTML('beforeend', ` <div class="acoes">${linkPdf(x.url, x.nome)}</div>`);
+  } finally { _pdfEmCurso = false; b.disabled = false; }
+});
+
+/* dae: a guia da nota retida na fiscalização (Ceará e Piauí), pelo CMS_DARES no serviço local. A nota
+   diz o resto: a Detalhada dá o cliente e a data (em 13 notas do histórico, faturamento = emissão),
+   o cadastro dá CNPJ e estado. Antes de buscar, o cartão mostra quem é o cliente, e só o TOQUE no
+   botão aciona o robô: a IA não tem como pular a confirmação, porque não chama o serviço. */
+const UFS_DAE = { CE: 'Ceará', PI: 'Piauí' };
+const isoDoDia = d => new Date(d * 864e5).toISOString().slice(0, 10);
+// O topo dos cartões de confirmação: quem é o cliente, com o que o cadastro tiver.
+function quemE(cod) {
+  const D = APP.dic, i = D.cli.findIndex(c => String(c[0]) === String(cod));
+  const nome = i >= 0 ? D.cli[i][1] : String(cod), k = String(cod), c = APP.cad?.get(k) || {};
+  const fant = APP.fantasia?.[k] && norm(APP.fantasia[k]) !== norm(nome) ? APP.fantasia[k] : nome;
+  const uf = String(c.uf || '').toUpperCase();
+  const dados = [c.razao && norm(c.razao) !== norm(fant) ? c.razao : '', c.doc ? `CNPJ ${fmtDoc(c.doc)}` : '', c.cidade ? `${c.cidade}${uf ? '/' + uf : ''}` : '', `código ${k}`].filter(Boolean).join(' · ');
+  return { k, c, uf, fant, topo: `<div class="cd-tit">${esc(fant)}</div><div class="cd-l">${esc(dados)}</div>` };
+}
+function cartaoDae(cod, notas) {
+  // Devolve o cartão, ou o motivo de não dar para buscar.
+  const { k, c, uf, fant, topo } = quemE(cod);
+  if (!c.doc) return { motivo: `${fant} (código ${k}) está sem CNPJ no cadastro do portal, então não dá para buscar o DAE por aqui. Esse caso é com a Débora.` };
+  if (!UFS_DAE[uf]) return { motivo: `${fant} é de ${uf || 'estado não informado'}. Por enquanto, o DAE pelo Nexo é só de Ceará e Piauí. Esse caso é com a Débora.` };
+  const dados = n => esc(JSON.stringify({ nota: n.nf, emissao: n.iso, cliente: c.razao || fant, cnpj: c.doc, uf, cod: k, fant }));
+  const uma = notas.length === 1;
+  return { fant, html: `<div class="cartao-dae">${topo}` +
+    (uma ? `<div class="cd-l"><b>Nota ${esc(notas[0].nf)}</b> · faturada em ${esc(notas[0].data)}</div><div class="cd-p">É essa?</div><div class="acoes"><button class="sug forte" data-dae="${dados(notas[0])}">Sim, buscar o DAE</button><button class="btn-sec" data-dae-nao="1">Não é essa</button></div>`
+      : notas.length ? `<div class="cd-p">De qual nota é o DAE?</div><div class="acoes">${notas.map(n => `<button class="sug" data-dae="${dados(n)}">NF ${esc(n.nf)} · ${esc(n.data.slice(0, 5))}</button>`).join('')}</div><div class="cd-l">Se não estiver aqui, me diga o número da nota.</div>`
+      : `<div class="cd-p">Não achei nota recente desse cliente. Qual é o número da nota?</div>`) + `<div class="dots-rot" data-dae-status></div></div>` };
+}
+async function agDae(a) {
+  await olharRobo();
+  if (!APP.roboPdf) return { texto: 'O DAE ainda só sai pelo computador do escritório, com o serviço ligado. Diga isso ao vendedor: por enquanto, o pedido é com a Débora.' };
+  const D = APP.dic, X = indices(), p = prepAtivo(), nf = soNumero(a.nf);
+  const notasDe = rs => { const m = new Map(); for (const r of rs) if (r[C.NF] && r[C.FAT] > 0 && r[C.DFAT] >= 0) { const k = String(r[C.NF]); if (!m.has(k) || r[C.DFAT] < m.get(k).dia) m.set(k, { nf: k, dia: r[C.DFAT], iso: isoDoDia(r[C.DFAT]), data: dataDe(r[C.DFAT]) }); } return [...m.values()].sort((x, y) => y.dia - x.dia); };
+  let cartoes = [], opcoes = null;
+  if (nf) {
+    // A mesma frase de "não existe" para nota de outro vendedor: ele não fica sabendo dela.
+    const rs = APP.L.filter(r => (p < 0 || r[C.PREP] === p) && soNumero(r[C.NF]) === nf);
+    if (!rs.length) return { texto: `Não achei a nota ${a.nf} na Detalhada${p >= 0 ? ' entre os clientes dele' : ''}. Peça para conferir o número. Se a nota estiver certa, o caso é com a Débora.` };
+    for (const ci of new Set(rs.map(r => r[C.CLI]))) cartoes.push(cartaoDae(D.cli[ci][0], notasDe(rs.filter(r => r[C.CLI] === ci)).slice(0, 1)));
+  } else if (a.cliente) {
+    const dono = new Map();
+    for (const r of APP.L) if (!dono.has(r[C.CLI])) dono.set(r[C.CLI], r[C.PREP]);
+    const f = agFiltro(p < 0 ? X.cli : X.cli.filter(x => dono.get(x.i) === p), String(a.cliente), 'cliente', i => D.cli[i][1]);
+    if (f.erro) return { erro: f.erro };
+    if (f.set.size > 1) {
+      const lojas = [...f.set].sort((x, y) => rotuloLoja(x).localeCompare(rotuloLoja(y)));
+      return { erro: `"${a.cliente}" tem ${lojas.length} lojas. Os botões já apareceram: pergunte de qual é o DAE.`, opcoes: lojas.slice(0, 12).map(i => ({ rotulo: rotuloLoja(i), valor: `dae do código ${D.cli[i][0]}` })) };
+    }
+    const ci = [...f.set][0], hoje = diaDe(hojeIso());
+    cartoes.push(cartaoDae(D.cli[ci][0], notasDe(APP.L.filter(r => r[C.CLI] === ci && hoje - r[C.DFAT] <= 90)).slice(0, 8)));
+  } else return { erro: 'Qual o número da nota, ou de qual cliente? Pergunte ao vendedor.' };
+  const motivos = cartoes.filter(x => x.motivo).map(x => x.motivo), bons = cartoes.filter(x => x.html);
+  if (!bons.length) return { texto: motivos.join(' ') + ' Diga isso ao vendedor.' };
+  return { cartao: bons.map(x => x.html).join(''), texto: `O cartão de ${bons.map(x => x.fant).join(', ')} apareceu para o vendedor. A busca só começa quando ele tocar no botão: peça para conferir o cliente e confirmar, e NÃO diga que já buscou.` + (motivos.length ? ' ' + motivos.join(' ') : '') };
+}
+document.addEventListener('click', async ev => {
+  const nao = ev.target.closest('[data-dae-nao]');
+  if (nao) { const c = nao.closest('.cartao-dae'); c.querySelector('.acoes').remove(); c.querySelector('[data-dae-status]').textContent = 'Certo, não busquei. Me diga o número certo da nota ou o cliente.'; rolar(); return; }
+  const b = ev.target.closest('[data-dae]');
+  if (!b) return;
+  const c = JSON.parse(b.dataset.dae), cart = b.closest('.cartao-dae'), st = cart.querySelector('[data-dae-status]');
+  cart.querySelectorAll('button').forEach(x => { x.disabled = true; });
+  st.innerHTML = digitando(`Buscando na Sefaz ${c.uf === 'PI' ? 'do Piauí' : 'do Ceará'}: leva cerca de 1 minuto…`); rolar();
+  let r;
+  try {
+    const f = await fetch(BOLETOS_URL + '/dae', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(c), signal: AbortSignal.timeout(300000) });
+    r = await f.json();
+  } catch (e) { r = { ok: false, erro: 'O robô não respondeu: ' + (e.message || e) }; }
+  const fim = htm => { st.innerHTML = htm; cart.querySelectorAll('button[data-dae]').forEach(x => { x.disabled = false; }); rolar(); };
+  if (!r.ok) { fim(`<span class="aviso">${esc(r.erro || 'Não consegui buscar.')} Tente de novo; se continuar, o caso é com a Débora.</span>`); return; }
+  const qual = `a nota ${c.nota}`, s = String(r.status || '').toUpperCase();
+  let html;
+  if (s.startsWith('OK')) {
+    const url = `${BOLETOS_URL}/arquivo?nome=${encodeURIComponent(r.arquivo)}`, lin = r.aberto || [];
+    // No Piauí a guia é da cobrança, que pode cobrar outras notas: o que ele paga é o total dela.
+    const cob = r.cobranca || {}, outras = (cob.notas || []).length - 1;
+    const soma = cob.total ? `R$ ${cob.total}${outras > 0 ? ` (a cobrança inclui mais ${outras} nota${outras > 1 ? 's' : ''})` : ''}`
+      : lin.map(x => `${x.vencimento ? 'vence em ' + x.vencimento + ', ' : ''}R$ ${x.valor || '?'}`).join('; ');
+    html = `<div class="ag-texto"><p><b>DAE em aberto</b> para ${esc(qual)}${soma ? ': ' + esc(soma) : ''}.</p></div><div class="acoes">${linkPdf(url, r.arquivo, 'PDF do DAE')}</div>` +
+      (s.includes('SEM CONFERIR') || r.obs ? `<div class="dots-rot">${esc(r.obs || 'Não deu para conferir o PDF: olhe antes de enviar.')}</div>` : '');
+    baixarJa(url, r.arquivo);
+  } else if (s === 'JA PAGO') html = `<div class="ag-texto"><p><b>Esse DAE já consta como pago</b> na Sefaz${(r.pagos[0] && r.pagos[0].vencimento) ? ` (vencimento ${esc(r.pagos[0].vencimento)})` : ''}${(r.pagos[0] && r.pagos[0].valor) ? `, R$ ${esc(r.pagos[0].valor)}` : ''}. Não há guia para gerar. Se a nota continua retida, o caso é com a Débora.</p></div>`;
+  else if (s.startsWith('SEM')) html = `<div class="ag-texto"><p><b>A Sefaz não mostra cobrança</b> para ${esc(qual)} no período ${esc(r.periodo || '')}. Se ela está retida, o caso é com a Débora.</p></div>`;
+  else html = `<span class="aviso">Não saiu a guia de ${esc(qual)}: ${esc(r.obs || r.status)}. Esse caso é com a Débora.</span>`;
+  fim(html);
+  // A IA fica sabendo do resultado, para a conversa continuar com sentido.
+  AG.msgs.push({ role: 'user', content: `[resultado de dae] ${qual}: ${r.status}. ${r.obs || ''}` });
+});
 
 /* clientes: o cadastro em lista, uma linha por loja ("CNPJs da Ideal",
    "meus clientes de Caxias", "quem é o 21511"). Junta o cadastro do portal
@@ -1489,7 +2115,8 @@ function agClientes(a) {
 /* boleto → TESTE: 2ª via pelo robô do CMS Boletos rodando NESTE computador
    (C:\SCRIPTS AUTONOMOS\boletos_local.py). Fora daqui o serviço não existe e
    a ferramenta avisa. A trava por vendedor vale aqui: o código sai da base,
-   só entre os clientes de quem pergunta. Quando houver VPS, só muda o endereço. */
+   só entre os clientes de quem pergunta. Quando houver VPS, só muda o endereço.
+   Como no DAE, antes de buscar o cartão mostra quem é o cliente, e só o TOQUE aciona o robô. */
 const BOLETOS_URL = 'http://127.0.0.1:8765';
 async function agBoleto(a) {
   const D = APP.dic, X = indices(), p = prepAtivo();
@@ -1508,16 +2135,25 @@ async function agBoleto(a) {
   }
   if (lojas.length > 6) return { erro: `São ${lojas.length} lojas; de uma vez o robô busca no máximo 6. Peça para ele escolher as lojas.` };
   const codigos = [...new Set(lojas.map(i => String(D.cli[i][0])))];
+  const dados = esc(JSON.stringify({ codigos, de: a.de, ate: a.ate }));
+  const periodo = a.de || a.ate ? `<div class="cd-l">Vencimento ${a.de ? 'de ' + esc(dataIso(a.de)) : ''}${a.ate ? ' até ' + esc(dataIso(a.ate)) : ''}</div>` : '';
+  const uma = codigos.length === 1, quem = codigos.map(quemE);
+  const topo = uma ? quem[0].topo : `<div class="cd-tit">${codigos.length} lojas</div>` + lojas.map(i => `<div class="cd-l">${esc(rotuloLoja(i))}</div>`).join('');
+  return { cartao: `<div class="cartao-dae">${topo}${periodo}<div class="cd-p">${uma ? 'É esse cliente?' : 'São essas lojas?'}</div><div class="acoes"><button class="sug forte" data-boleto="${dados}">Sim, buscar os boletos</button><button class="btn-sec" data-boleto-nao="1">${uma ? 'Não é esse' : 'Não são essas'}</button></div><div class="dots-rot" data-dae-status></div></div>`,
+    texto: `O cartão de ${quem.map(x => x.fant).join(', ')} apareceu para o vendedor. A busca só começa quando ele tocar no botão: peça para conferir o cliente e confirmar, e NÃO diga que já buscou nem invente boleto.` };
+}
+const dataIso = s => String(s).split('-').reverse().join('/');
+async function buscarBoletos({ codigos, de, ate }) {
   let resp;
   try {
     const corta = new AbortController();
     const t = setTimeout(() => corta.abort(), 90000 * codigos.length);
     const f = await fetch(BOLETOS_URL + '/boletos', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ codigos, de: a.de, ate: a.ate }), signal: corta.signal });
+      body: JSON.stringify({ codigos, de, ate }), signal: corta.signal });
     clearTimeout(t);
     resp = await f.json();
   } catch (e) {
-    return { erro: 'A busca de boletos ainda é um teste e só funciona no computador do escritório, com o "Boletos para o agente" ligado. Diga isso ao vendedor.' };
+    return { erro: 'A busca de boletos ainda é um teste e só funciona no computador do escritório, com o "Boletos para o agente" ligado.' };
   }
   if (!resp.ok) return { erro: resp.erro || 'O robô de boletos falhou.' };
   const rows = [], linhas = [], links = [];
@@ -1526,20 +2162,62 @@ async function agBoleto(a) {
     const partes = [];
     for (const k of Object.keys(sit)) {
       for (const it of c[k] || []) {
-        rows.push([c.nome || c.codigo, c.codigo, it.nota || '', it.parcela || '', it.vencimento || '', it.valor || '', sit[k] + (it.motivo ? ` (${it.motivo})` : '')]);
+        rows.push([c.nome || c.codigo, c.codigo, it.nota || '', it.parcela || '', it.vencimento || '', it.valor || '', sit[k], it.motivo || '']);
         partes.push(`${sit[k]}: NF ${it.nota || '?'} parcela ${it.parcela || '?'}, vence ${it.vencimento || '?'}, R$ ${it.valor || '?'}` +
           (k === 'atrasadas' && it.dias ? `, ${it.dias} dias de atraso` : k === 'em_dia' && it.dias ? `, vence em ${it.dias} dias` : '') + (it.motivo ? `, motivo: ${it.motivo}` : ''));
       }
     }
-    for (const nome of c.arquivos || []) links.push({ nome, url: `${BOLETOS_URL}/arquivo?nome=${encodeURIComponent(nome)}` });
+    // No PDF entram as vencidas e as em dia; as não emitidas o próprio EBM não libera.
+    const noPdf = (c.atrasadas || []).length + (c.em_dia || []).length;
+    for (const nome of c.arquivos || []) {
+      const url = `${BOLETOS_URL}/arquivo?nome=${encodeURIComponent(nome)}`;
+      links.push({ nome, url, rotulo: `PDF com ${noPdf} boleto${noPdf === 1 ? '' : 's'}${resp.clientes.length > 1 ? ` de ${c.nome || c.codigo}` : ''}` });
+      baixarJa(url, nome);
+    }
     linhas.push(`${c.nome || ''} (código ${c.codigo}): ${c.status}${c.obs ? ' — ' + c.obs : ''}${(c.arquivos || []).length ? ` · ${c.arquivos.length} PDF pronto para baixar` : ''}` +
       (partes.length ? '\n  ' + partes.join('\n  ') : ''));
   }
-  const res = { entendi: ['<b>Boletos no EBM</b>', esc(`vencimento de ${resp.de} a ${resp.ate}`)], cols: ['Cliente', 'Código', 'NF', 'Parcela', 'Vencimento', 'Valor (R$)', 'Situação'],
-    num: [], data: [], rows, totais: null, resumo: '' };
+  const res = { entendi: ['<b>Boletos no EBM</b>', esc(`vencimento de ${resp.de} a ${resp.ate}`)], cols: ['Cliente', 'Código', 'NF', 'Parcela', 'Vencimento', 'Valor (R$)', 'Situação', 'Motivo'],
+    num: [], data: [], rows, totais: null, resumo: '', rotuloPdf: 'PDF do resumo',
+    // Na tela vai o que cabe no celular; NF, parcela e código abrem ao tocar. O Excel leva tudo.
+    // rotuloPdf: esta tabela também vai para o cliente, como resumo; "Baixar PDF" se confundia com os boletos.
+    oculta: [...(new Set(rows.map(x => x[1])).size === 1 ? [0] : []), 1, 2, 3, 7],
+    detalhe: x => [`NF ${x[2]}`, x[3] && `Parcela ${x[3]}`, `Cód. ${x[1]}`, x[7] && `Motivo: ${x[7]}`].filter(Boolean).join(' · ') };
   return { res, links, texto: `Boletos com vencimento de ${resp.de} a ${resp.ate}:\n${linhas.join('\n')}\n` +
-    (links.length ? 'Os botões para baixar o PDF já apareceram para o vendedor.' : 'Nenhum PDF foi gerado.') + ' "Não emitida" = o sistema não libera a 2ª via (cartório ou banco correspondente): explique o motivo.' };
+    (links.length ? 'O PDF já foi gerado com todas as parcelas em dia e vencidas, e o botão para abrir apareceu para o vendedor: diga quantos boletos há nele.' : 'Nenhum PDF foi gerado.') + ' "Não emitida" = o sistema não libera a 2ª via (cartório ou banco correspondente): explique o motivo.' };
 }
+// O toque no cartão: o robô roda sem passar pela IA, então funciona até com a cota esgotada.
+document.addEventListener('click', async ev => {
+  const nao = ev.target.closest('[data-boleto-nao]');
+  if (nao) { const c = nao.closest('.cartao-dae'); c.querySelector('.acoes').remove(); c.querySelector('[data-dae-status]').textContent = 'Certo, não busquei. Me diga o código, o nome ou o CNPJ do cliente certo.'; rolar(); return; }
+  const b = ev.target.closest('[data-boleto]');
+  if (!b) return;
+  const cart = b.closest('.cartao-dae'), st = cart.querySelector('[data-dae-status]');
+  cart.querySelectorAll('button').forEach(x => { x.disabled = true; });
+  st.innerHTML = digitando(ROTULO_FERRAMENTA.boleto + '…'); rolar();
+  const out = await buscarBoletos(JSON.parse(b.dataset.boleto));
+  if (out.erro) { st.innerHTML = `<span class="aviso">${esc(out.erro)}</span>`; cart.querySelectorAll('button').forEach(x => { x.disabled = false; }); rolar(); return; }
+  st.remove(); cart.querySelector('.acoes').remove();
+  const conta = n => out.res.rows.filter(x => String(x[6]).startsWith(n)).length;
+  const partes = [['Vencida', 'vencida(s)'], ['Em dia', 'em dia'], ['Não emitida', 'não emitida(s)'], ['Imposto', 'imposto(s)']].map(([k, r]) => conta(k) ? `${conta(k)} ${r}` : '').filter(Boolean).join(', ');
+  const per = out.texto.match(/vencimento de ([\d/]+) a ([\d/]+)/) || [];
+  const fim = document.createElement('div');
+  fim.innerHTML = `<div class="ag-texto"><p>Boletos com vencimento de ${esc(per[1] || '')} a ${esc(per[2] || '')}: ${esc(partes || 'nenhum')}.</p>${conta('Não emitida') ? '<p>Toque numa linha para ver os detalhes. As não emitidas não têm 2ª via.</p>' : ''}</div>` +
+    (out.links.length ? `<div class="acoes">${out.links.map(l => linkPdf(l.url, l.nome, l.rotulo)).join('')}</div>` : '') + agTabelaHtml(out.res, 0);
+  fim.querySelector('details').open = true;
+  // A tabela daqui não é das que a bolha conhece: os botões dela param aqui.
+  fim.addEventListener('click', e => {
+    const x = e.target.closest('[data-ag]');
+    if (!x) return;
+    e.stopPropagation();
+    if (x.dataset.ag === 'todas') { x.closest('details').querySelector('.tabela-wrap').outerHTML = tabelaHtml(out.res, Infinity); x.remove(); }
+    else baixar(x, out.res, x.dataset.ag);
+  });
+  cart.after(fim); rolar();
+  AG.ultimaTabela = out.res;
+  // A IA fica sabendo do resultado, para a conversa continuar com sentido.
+  AG.msgs.push({ role: 'user', content: paraIA('boleto', out) });
+});
 
 // Texto da IA com o básico de markdown: negrito, listas, quebras e tabelas.
 function mdSimples(t) {
@@ -1583,7 +2261,7 @@ function agTabelaHtml(res, i) {
   return `<details class="ag-tab"><summary>${esc(textoPlano(res.entendi.join(' · ')))} <span>· ${fmt(res.rows.length)} linha(s)</span></summary>` +
     `${res.rows.length ? tabelaHtml(res, MOSTRAR) : '<div class="digitando">Nenhuma linha.</div>'}` +
     `<div class="acoes">${res.rows.length > MOSTRAR ? `<button class="btn-sec" data-ag="todas" data-i="${i}">Ver todas (${fmt(res.rows.length)})</button>` : ''}` +
-    `<button class="btn-sec" data-ag="xlsx" data-i="${i}">Baixar Excel</button><button class="btn-sec" data-ag="pdf" data-i="${i}">Baixar PDF</button></div></details>`;
+    `<button class="btn-sec" data-ag="xlsx" data-i="${i}">Baixar Excel</button><button class="btn-sec" data-ag="pdf" data-i="${i}">${esc(res.rotuloPdf || 'Baixar PDF')}</button></div></details>`;
 }
 
 // O histórico vai inteiro, mas resultado antigo de ferramenta vai resumido:
@@ -1593,6 +2271,11 @@ function agHistorico() {
   const recentes = new Set(idxRes.slice(-4));
   return AG.msgs.map((m, i) => idxRes.includes(i) && !recentes.has(i) ? { role: m.role, content: m.content.slice(0, 400) + '\n(…resumido)' } : m);
 }
+
+// O gpt-oss às vezes devolve lixo em vez de responder: "!!!!!!", só a palavra "text" ou inglês sem nexo
+// ("didn- Lastly: wasn"). Medido em 30/10/2026: 3 respostas em cerca de 20. Quem responde é em português.
+// Também vaza o raciocínio interno, com as marcas do modelo: "<|channel|>analysis: need respond with...".
+const iaEmbaralhou = t => { const s = String(t || '').trim(); return !s || /^text$/i.test(s) || /(.)\1{15,}/.test(s) || /<\|[a-z_]+\|>/i.test(s) || /^(analysis|commentary|assistant(analysis|commentary|final)?)\b/i.test(s) || (s.match(/\b(didn|wasn|wouldn|hadn|isn|lastly)\b/gi) || []).length >= 2; };
 
 // Uma pergunta inteira: pede à IA, roda as ferramentas que ela pedir e
 // devolve a resposta. Não mexe na tela (a bateria de testes usa o mesmo).
@@ -1614,10 +2297,10 @@ async function agRodar(texto, aoPasso) {
       for (let tenta = 0; tenta < 3; tenta++) {
         const modelo = AG.modelo || (tenta === 2 ? '@cf/meta/llama-3.3-70b-instruct-fp8-fast' : undefined);
         r = await chamarWorker('agenteDetalhada', { hoje: hojeIso(), contexto, sistema, modelo, mensagens: agHistorico() }, 60000);
-        if (!r || !r.ok || r.acao === 'ferramenta' || !/(.)\1{15,}/.test(r.texto || '')) break;
+        if (!r || !r.ok || r.acao === 'ferramenta' || !iaEmbaralhou(r.texto)) break;
       }
       if (!r || !r.ok) throw new Error(r?.erro || 'sem resposta');
-      if (r.acao !== 'ferramenta' && /(.)\1{15,}/.test(r.texto || '')) throw new Error('a IA devolveu texto embaralhado');
+      if (r.acao !== 'ferramenta' && iaEmbaralhou(r.texto)) throw new Error('a IA devolveu texto embaralhado');
       if (r.acao !== 'ferramenta') {
         AG.msgs.push({ role: 'assistant', content: JSON.stringify({ resposta: r.texto }) });
         return { texto: r.texto, tabelas, extras, usadas, modelo: r.modelo };
@@ -1634,11 +2317,13 @@ async function agRodar(texto, aoPasso) {
         try { out = await fn(r.args || {}); } catch (e) { out = { erro: 'A ferramenta falhou: ' + (e.message || e) }; }
       }
       if (out.res && out.res.rows) { tabelas.push(out.res); AG.ultimaTabela = out.res; }
+      if (out.cartao) extras.push(out.cartao);
+      if (out.pdf && out.pdf.length) extras.push(pdfHtml(out.pdf));
       if (out.opcoes && out.opcoes.length) {
         extras.push(`<div class="acoes">${out.opcoes.map(o => `<button class="sug" data-opcao="${esc(o.valor)}">${esc(o.rotulo)}</button>`).join('')}</div>`);
       }
       if (out.links && out.links.length) {
-        extras.push(`<div class="acoes">${out.links.map(l => `<a class="sug" href="${esc(l.url)}" download="${esc(l.nome)}">Baixar ${esc(l.nome)}</a>`).join('')}</div>`);
+        extras.push(`<div class="acoes">${out.links.map(l => linkPdf(l.url, l.nome, l.rotulo)).join('')}</div>`);
       }
       if (out.catalogo) {
         const c = out.catalogo.catalogo;
@@ -1676,9 +2361,10 @@ async function perguntarAgente(texto) {
       else baixar(b, res, b.dataset.ag);
     });
   } catch (e) {
-    // Cota grátis diária da Cloudflare (10 mil "neurons"): zera às 0h UTC = 21h de Brasília.
+    // Cota grátis diária da Cloudflare (10 mil "neurons"). Sem hora de volta: em 30/10
+    // o painel já mostrava 0 usados às 9h e a IA ainda recusava.
     bolha.innerHTML = /4006|daily free allocation/i.test(e.message || '')
-      ? '<span class="aviso">A cota grátis de IA de hoje acabou. Ela volta às 21h (horário de Brasília).</span>'
+      ? '<span class="aviso">A cota grátis de IA acabou por enquanto. Tente de novo mais tarde.</span>'
       : `<span class="aviso">Não consegui responder agora (${esc(e.message || e)}). Tente de novo em instantes.</span>`;
   } finally {
     $('enviar').disabled = false;
@@ -1851,7 +2537,7 @@ async function iniciar() {
   carregando.closest('.msg').remove();
   if (!base) { addMsg('ia', '<span class="aviso">Não foi possível carregar a base. Tente abrir de novo em instantes.</span>'); return; }
   APP.base = base; APP.dic = base.dic; APP.L = base.l;
-  APP.catPronto = carregarCatalogo().catch(() => {});
+  APP.catPronto = carregarCatalogo().catch(() => {}).then(olharRobo);
 
   if (APP.veTudo) {
     $('verComo').innerHTML = '<option value="">Todos os vendedores</option>' +
@@ -1864,6 +2550,17 @@ async function iniciar() {
   }
   $('pergunta').disabled = false; $('enviar').disabled = false;
   $('pergunta').focus();
+  // Teste no Chrome do Marcos (com a extensão do EBM): só existe no localhost; o arquivo não vai para o site.
+  if (AGENTE && location.hostname === 'localhost' && new URLSearchParams(location.search).has('teste')) {
+    const noAr = await chamarWorker('agenteDetalhada', { hoje: hojeIso(), contexto: {}, modelo: '@cf/meta/llama-3.1-8b-instruct-fast', mensagens: [{ role: 'user', content: 'oi' }] }, 30000).then(r => !!(r && r.ok)).catch(() => false);
+    if (!noAr) try { (0, eval)(await (await fetch('_teste_demo.js', { cache: 'no-store' })).text())(); } catch (e) { console.warn('sem demonstração', e); }
+  }
+  // Abertura do Nexo: fixa, sem IA, e fora do histórico que vai para ela.
+  if (AGENTE) {
+    const nome = String(APP.sessao.nome || '').replace(/\(.*?\)/g, '').trim().split(/\s+/)[0];
+    const primeiro = nome ? nome[0].toUpperCase() + nome.slice(1).toLowerCase() : '';
+    addMsg('ia', `<div class="ag-texto">Oi${primeiro ? ', ' + esc(primeiro) : ''}! Sou o Nexo, o assistente da CMS. O que você precisa hoje?</div>`);
+  }
   if (BATERIA && APP.veTudo) montarBateria();
 }
 
