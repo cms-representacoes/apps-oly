@@ -1266,6 +1266,7 @@ function agSistema(ctx) {
     '- resumo_repasses: totais e rankings do que foi repassado: "total repassado pelo Jorge nos últimos 7 dias", "quem mais repassou no mês", "produto mais repassado", "saldo de repasse", "lotes sem pedido", "o que foi cancelado", "como está a campanha". args: {"periodo":"hoje|ontem|7d|15d|30d|tudo" (qualquer número de dias, como 10d), "de","ate":"AAAA-MM-DD","vendedor","produto","cliente","ver":"vendedores|produtos|clientes|saldo|prazo|saidas|campanha"}. Sem período citado, deixe de fora e diga que olhou desde o primeiro pedido. "ver" escolhe a tabela. Cite só o que ele perguntou, em poucas frases.',
     '- pedido: mostra os produtos com o botão de PDF do EBM. Use SEMPRE que a pergunta for sobre o pedido, a carteira ou o faturado de UM cliente, nota, GCI ou OC, mesmo com "quanto" ou "quantos": "me passa o pedido dessa nota", "PDF do GCI X", "a carteira da Fit Store", "os pedidos da Degraus", "quanto a Degraus tem de carteira?", "o que falta faturar pra X". args: {"nf"} ou {"gci"} ou {"oc"} ou {"cliente","produto","cor","situacao":"carteira|faturado|tudo","de":"AAAA-MM-DD","ate":"AAAA-MM-DD"}. Pedido é carteira + faturado (deixe "situacao" de fora); carteira ou "o que falta faturar" = "carteira"; faturado = "faturado". Na resposta, diga carteira e faturado separados, nunca somados, e a próxima previsão; não copie a lista. Use consultar para total de vendedor, marca ou linha, ranking ou mais de um cliente.',
     '- dae: a guia (DAE ou DAR) da nota retida na fiscalização, só de clientes de Ceará e Piauí. Use para "preciso do DAE da nota X", "tem DAE do cliente Y?". args: {"nf"} ou {"cliente"}. Aparece um cartão com o cliente para ele confirmar, e só o toque dele faz a busca: você nunca diz que buscou nem inventa valor.',
+    '- metas: a meta do vendedor ou da CMS, igual à tela de Metas: total de tênis, cada faixa e as famílias em R$, com meta, potencial, faturado e quanto falta, mais a trava dos 15%. Use para "como está minha meta?", "quanto falta pra bater?", "meta do Jorge em setembro", "como está a trava?", "quem está melhor na meta?". args: {"vendedor","mes":"AAAA-MM ou AAAA-T4 (trimestre)","marca":"OLY|UA","comparar":true|false}. Sem mês, vale o atual; sem vendedor, a ferramenta decide (o vendedor só vê a dele, e a CMS vê a soma do time). "comparar":true só para comparar o time. Potencial é o vendido mais o que ainda não faturou; não some com outros números nem use consultar para meta.',
     '- catalogo: mostra ao vendedor os botões para gerar o catálogo (pedidos do cliente com foto) em PDF ou Excel, igual ao da Detalhada. args: {"cliente","formato":"pdf|xlsx","imagens":true|false}.',
     '- baixar: baixa em Excel ou PDF a última tabela de consultar, clientes_sem_pedido ou movimento. args: {"formato":"xlsx|pdf"}.',
     '- boleto: 2ª via dos boletos de um cliente, buscada no EBM da Vulcabras: parcelas em dia, vencidas e as que o sistema não emite (com o motivo), e o PDF para baixar. args: {"cliente","de":"AAAA-MM-DD","ate":"AAAA-MM-DD","todas":true|false}. Primeiro aparece um cartão com o cliente para ele confirmar, e só o toque dele faz a busca: você nunca diz que buscou nem inventa boleto. Se o nome tiver várias lojas, a ferramenta mostra a lista para o vendedor escolher; "todas":true só quando ele pedir todas. O período é o do VENCIMENTO e pode ter vários meses ("de outubro a dezembro" = de 01/10 a 31/12); sem período citado, deixe de fora (vale o mês atual). Quando o resultado chegar, diga SEMPRE o período de vencimento que olhou e ofereça outro (os vencidos de meses anteriores ou os próximos meses). Demora até 1 minuto por cliente.',
@@ -1281,7 +1282,7 @@ function agSistema(ctx) {
     '- Nunca cite nomes de ferramentas ou de parâmetros, e nunca invente caminho fora daqui (como mandar abrir outro sistema): diga só o que o resultado disse.',
     '- Datas no texto em DD/MM/AAAA. Números com ponto de milhar (1.234).',
     '- Cumprimento, agradecimento ou dúvida sobre um termo: responda direto, sem ferramenta.',
-    '- Você só enxerga pedidos, carteira, faturamento, entradas e saídas do mês, o cadastro de produtos e clientes, os boletos do EBM e o que tem no Showroom. Meta, estoque na loja do cliente, comissão e preço de custo você não enxerga: diga isso com gentileza.',
+    '- Você só enxerga pedidos, carteira, faturamento, entradas e saídas do mês, o cadastro de produtos e clientes, os boletos do EBM e o que tem no Showroom, e as metas. Estoque na loja do cliente, comissão e preço de custo você não enxerga: diga isso com gentileza.',
   ].filter(s => s !== '').join('\n');
 }
 
@@ -1505,6 +1506,7 @@ const FERRAMENTAS = {
   resumo_repasses: a => agResumoRepasses(a),
   pedido: async a => { await olharRobo(); return agPedido(a); },
   dae: a => agDae(a),
+  metas: a => agMetas(a),
   baixar: a => {
     if (!AG.ultimaTabela) return { erro: 'Ainda não há tabela nesta conversa para baixar.' };
     const formato = a.formato === 'pdf' ? 'pdf' : 'xlsx';
@@ -1513,7 +1515,7 @@ const FERRAMENTAS = {
   },
 };
 const ROTULO_FERRAMENTA = { consultar: 'Consultando a carteira', clientes_sem_pedido: 'Procurando quem não comprou', movimento: 'Olhando entradas e saídas',
-  ficha: 'Abrindo a ficha', clientes: 'Procurando no cadastro', disponivel: 'Olhando o Showroom', repasses_cliente: 'Olhando os repasses do cliente', resumo_repasses: 'Montando o resumo de repasses', pedido: 'Procurando o pedido', dae: 'Procurando a nota', catalogo: 'Preparando o catálogo', baixar: 'Gerando o arquivo', boleto: 'Buscando os boletos no EBM (pode levar 1 minuto)' };
+  ficha: 'Abrindo a ficha', clientes: 'Procurando no cadastro', disponivel: 'Olhando o Showroom', repasses_cliente: 'Olhando os repasses do cliente', resumo_repasses: 'Montando o resumo de repasses', pedido: 'Procurando o pedido', dae: 'Procurando a nota', metas: 'Olhando as metas', catalogo: 'Preparando o catálogo', baixar: 'Gerando o arquivo', boleto: 'Buscando os boletos no EBM (pode levar 1 minuto)' };
 
 /* disponivel: "tem tal produto?". Varre o Showroom com a MESMA conta da tela
    (js/disponivel.js): saldo menos o que já foi pedido, cota do rateio, ocultos,
@@ -2092,6 +2094,116 @@ document.addEventListener('click', async ev => {
   AG.msgs.push({ role: 'user', content: `[resultado de dae] ${qual}: ${r.status}. ${r.obs || ''}` });
 });
 
+/* metas: a mesma conta da tela de Metas (metas/index.html), sobre o mesmo metas/dados/metas.json.
+   Potencial é o que a equipe acompanha: inclui o vendido que ainda não faturou. Régua da Vulcabras: total
+   de tênis 90%, faixa 100%, família em R$ 95%. A trava dos 15% é da CMS: as outras famílias Olympikus mais
+   a Under Armour inteira, sobre a META de tênis Olympikus em R$, cobrada no trimestre.
+   Trava por vendedor como na tela: ele só vê o próprio código; CMS e DEV veem o time. */
+const META_GATILHO = { total: 0.9, faixa: 1, familia: 0.95 }, META_15 = 0.15;
+const META_MARCAS = {
+  OLY: { rotulo: 'Olympikus', tenis: 'OLY', familias: ['ACOLY', 'CHOLY', 'MEOLY', 'CFOLY'], faixas: ['CLASSICOS', 'CONF_FEM', 'CONF_MASC', 'CORRIDA/TREINO', 'INFANTIL', 'CORRE'] },
+  UA: { rotulo: 'Under Armour', tenis: 'UA_TN', familias: ['UA_AC', 'UA_ME', 'UA_CH', 'UA_CF'], faixas: ['RUN INSPIRED', 'RUNNING', 'TRAINING', 'BASKETBALL'] },
+};
+const META_NOMES = { CLASSICOS: 'Clássicos', CONF_FEM: 'Conf. feminino', CONF_MASC: 'Conf. masculino', 'CORRIDA/TREINO': 'Corrida e treino', INFANTIL: 'Infantil', CORRE: 'Corre',
+  'RUN INSPIRED': 'Run inspired', RUNNING: 'Running', TRAINING: 'Training', BASKETBALL: 'Basketball', ACOLY: 'Acessórios', CHOLY: 'Chinelos', MEOLY: 'Meias', CFOLY: 'Confecção',
+  UA_AC: 'Acessórios', UA_CH: 'Chinelos', UA_ME: 'Meias', UA_CF: 'Confecção' };
+const META_UA = ['UA_TN', 'UA_AC', 'UA_CH', 'UA_ME', 'UA_CF'], META_FORA = ['4322318'];
+async function baseMetas() {
+  if (!APP.metas) { const r = await fetch('../metas/dados/metas.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status); APP.metas = await r.json(); }
+  return APP.metas;
+}
+const metaMeses = (M, sel) => { const q = /^(\d{4})-T(\d)$/.exec(sel); if (!q) return [sel]; const b = (q[2] - 1) * 3; return [1, 2, 3].map(i => `${q[1]}-${String(b + i).padStart(2, '0')}`).filter(m => M.meses.some(x => x.mes === m)); };
+function metaPercorre(M, sel, cod, visita) {
+  for (const mes of metaMeses(M, sel)) for (const p of (M.meses.find(x => x.mes === mes) || {}).prepostos || []) {
+    if (cod !== 'TODOS' && String(p.codigo) !== String(cod)) continue;
+    for (const l of p.linhas || []) visita(l);
+  }
+}
+const metaValor = (l, c) => l['pot_' + c] == null ? l['real_' + c] : l['pot_' + c];
+const metaZero = () => ({ meta_q: 0, meta_r: 0, pos_q: 0, pos_r: 0, fat_q: 0, fat_r: 0, tem: false });
+const metaSoma = (a, l) => { a.meta_q += l.meta_qtd || 0; a.meta_r += l.meta_rs || 0; a.pos_q += metaValor(l, 'qtd') || 0; a.pos_r += metaValor(l, 'rs') || 0; a.fat_q += l.fat_qtd || 0; a.fat_r += l.fat_rs || 0; a.tem = true; return a; };
+function metaAgrega(M, sel, cod, marca) {
+  const cfg = META_MARCAS[marca], tot = metaZero(), faixas = {}, familias = {}, ua = marca === 'OLY' ? metaZero() : null;
+  metaPercorre(M, sel, cod, l => {
+    if (l.marca === cfg.tenis) { metaSoma(tot, l); metaSoma(faixas[l.faixa] = faixas[l.faixa] || metaZero(), l); }
+    else if (cfg.familias.includes(l.marca)) metaSoma(familias[l.marca] = familias[l.marca] || metaZero(), l);
+    else if (ua && META_UA.includes(l.marca)) metaSoma(ua, l);
+  });
+  return { tot, faixas, familias, ua };
+}
+function metaTrava(M, sel, cod) {
+  let meta = 0; const partes = {};
+  metaPercorre(M, sel, cod, l => {
+    if (l.marca === 'OLY') { meta += l.meta_rs || 0; return; }
+    const k = META_UA.includes(l.marca) ? 'UA' : ['ACOLY', 'CHOLY', 'MEOLY', 'CFOLY'].includes(l.marca) ? l.marca : null;
+    if (k) partes[k] = (partes[k] || 0) + (metaValor(l, 'rs') || 0);
+  });
+  if (!meta) return null;
+  const num = Object.values(partes).reduce((s, v) => s + v, 0);
+  return { meta, num, partes, pct: num / meta, falta: meta * META_15 - num, ok: num / meta >= META_15 };
+}
+async function agMetas(a) {
+  let M;
+  try { M = await baseMetas(); } catch (e) { return { erro: 'Não consegui ler as metas agora: ' + (e.message || e) }; }
+  const meses = (M.meses || []).map(m => m.mes).sort(), agora = hojeIso().slice(0, 7);
+  const sel = /^\d{4}-(\d{2}|T[1-4])$/.test(String(a.mes || '')) ? String(a.mes) : (meses.includes(agora) ? agora : meses[meses.length - 1]);
+  if (!metaMeses(M, sel).length || !metaMeses(M, sel).every(m => meses.includes(m))) return { erro: `Não tenho metas de ${sel}. Tenho de ${meses[0]} a ${meses[meses.length - 1]}.` };
+  const marca = /ua|under/i.test(String(a.marca || '')) ? 'UA' : 'OLY', cfg = META_MARCAS[marca];
+  const prepostos = new Map();
+  for (const m of metaMeses(M, sel)) for (const p of (M.meses.find(x => x.mes === m) || {}).prepostos || []) if (!META_FORA.includes(String(p.codigo))) prepostos.set(String(p.codigo), p);
+  const curto = p => /^c\s*m\s*s$/i.test(String(p.nome).trim()) ? 'Núcleo' : String(p.nome).trim().split(/\s+/)[0];
+  const pct = (v, m) => m > 0 ? `${(v / m * 100).toFixed(1).replace('.', ',')}%` : 'sem meta';
+  const pares = v => `${fmt(Math.round(v))} pares`;
+  const quando = M.atualizado_em ? `Carta lida em ${new Date(M.atualizado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}.` : '';
+  // Comparar o time é visão de gestor, como na tela.
+  if (a.comparar) {
+    if (!APP.veTudo) return { erro: 'A comparação entre vendedores é só para a CMS. Mostre a meta dele.' };
+    const lin = [...prepostos.values()].map(p => { const d = metaAgrega(M, sel, p.codigo, marca), tv = metaTrava(M, sel, p.codigo); return { nome: curto(p), meta: d.tot.meta_q, pos: d.tot.pos_q, fat: d.tot.fat_q, tv }; }).sort((x, y) => (y.meta ? y.pos / y.meta : 0) - (x.meta ? x.pos / x.meta : 0));
+    const res = { entendi: ['<b>Metas</b>', esc(`${cfg.rotulo} · ${sel}`), 'comparando o time'], cols: ['Vendedor', 'Meta', 'Potencial', '%', 'Faturado', 'Trava 15%'], num: [], data: [], totais: null, resumo: '',
+      rows: lin.map(x => [x.nome, pares(x.meta), pares(x.pos), pct(x.pos, x.meta), pares(x.fat), x.tv ? pct(x.tv.num, x.tv.meta) : '']), oculta: [4] };
+    return { res, texto: `Metas de ${sel}, ${cfg.rotulo}, total de tênis (régua: 90%). ${quando}\n` + lin.map(x => `${x.nome}: meta ${pares(x.meta)}, potencial ${pares(x.pos)} (${pct(x.pos, x.meta)}), faturado ${pares(x.fat)}${x.tv ? `, 15%: ${pct(x.tv.num, x.tv.meta)}` : ''}`).join('\n') };
+  }
+  // De quem: o vendedor só o dele; "Ver como" manda em quem vê tudo; sem nome, o time inteiro.
+  let cod, nome, termo = String(a.vendedor || '').trim();
+  if (!APP.veTudo) {
+    cod = String(APP.sessao.codigo).trim(); const p = prepostos.get(cod); nome = p ? curto(p) : APP.sessao.nome;
+    if (termo && !norm(p ? p.nome : nome).includes(norm(termo).split(/\s+/)[0])) return { erro: 'Ele só pode ver a própria meta: diga isso com gentileza e ofereça mostrar a dele.' };
+    if (!p) return { texto: `Não há meta de ${nome} em ${sel}.` };
+  } else {
+    if (!termo && prepAtivo() >= 0) termo = APP.dic.prep[prepAtivo()];
+    if (!termo || /^(cms|todos|time|equipe|casa)$/i.test(termo)) { cod = 'TODOS'; nome = 'CMS (soma do time)'; }
+    else {
+      const t0 = norm(termo).replace(/^N[UÚ]CLEO$/, 'C M S');
+      const p = [...prepostos.values()].find(x => String(x.codigo) === t0 || norm(x.nome).includes(t0) || norm(x.nome).split(/\s+/)[0] === t0.split(/\s+/)[0]);
+      if (!p) return { erro: `Não achei "${termo}" entre os vendedores com meta: ${[...prepostos.values()].map(curto).join(', ')}.` };
+      cod = String(p.codigo); nome = curto(p);
+    }
+  }
+  const d = metaAgrega(M, sel, cod, marca), cms = metaAgrega(M, sel, 'TODOS', marca);
+  if (!d.tot.tem && !Object.keys(d.familias).length) return { texto: `${nome} não tem meta de ${cfg.rotulo} em ${sel}.` };
+  const linha = (rot, g, gat, porPares) => { const meta = porPares ? g.meta_q : g.meta_r, pos = porPares ? g.pos_q : g.pos_r, fat = porPares ? g.fat_q : g.fat_r, alvo = meta * gat, falta = alvo - pos, f = porPares ? pares : reais;
+    return { rot, meta, pos, gat, porPares, v: [rot, f(meta), f(pos), pct(pos, meta), meta > 0 ? (falta > 0 ? f(falta) : 'bateu') : '', f(fat), meta > 0 ? `${f(alvo)} (${Math.round(gat * 100)}%)` : ''] }; };
+  const ordem = o => { const i = cfg.faixas.indexOf(o); return i < 0 ? 90 : i; };
+  const linhas = [linha('Total de tênis', d.tot, META_GATILHO.total, true),
+    ...Object.keys(d.faixas).sort((x, y) => ordem(x) - ordem(y)).map(k => linha(META_NOMES[k] || k, d.faixas[k], META_GATILHO.faixa, true)),
+    ...cfg.familias.map(k => linha(META_NOMES[k] || k, d.familias[k] || metaZero(), META_GATILHO.familia, false)),
+    ...(d.ua && d.ua.tem ? [linha('Under Armour', d.ua, META_GATILHO.familia, false)] : [])];
+  // Na tela vai o número curto, sem "pares" e sem centavos; ao tocar na linha abre o resto. O Excel leva tudo.
+  const curtoV = s => String(s).replace(' pares', '').replace(/^R\$\s*/, '').replace(/,\d{2}$/, '');
+  const res = { entendi: ['<b>Metas</b>', esc(`${nome} · ${cfg.rotulo} · ${sel}`)], cols: ['Item', 'Meta', 'Pot.', '%', 'Falta', 'Unidade', 'Faturado', 'Alvo'], num: [], data: [], totais: null, resumo: '',
+    rows: linhas.map(l => [l.porPares ? l.v[0] : `${l.v[0]} (R$)`, curtoV(l.v[1]), curtoV(l.v[2]), l.v[3].replace(/,\d%$/, '%'), curtoV(l.v[4]), l.porPares ? 'pares' : 'R$', l.v[5], l.v[6]]), oculta: [5, 6, 7],
+    detalhe: x => [`Em ${x[5]}`, `Faturado ${x[6]}`, x[7] && `Alvo ${x[7]}`].filter(Boolean).join(' · ') };
+  const tri = sel.includes('T') ? sel : `${sel.slice(0, 4)}-T${Math.floor((+sel.slice(5, 7) - 1) / 3) + 1}`;
+  const t15 = marca === 'OLY' ? metaTrava(M, sel, cod) : null, t15Tri = marca === 'OLY' ? metaTrava(M, tri, cod) : null;
+  const trava = t => `${pct(t.num, t.meta)} (${t.ok ? `${reais(-t.falta)} acima dos 15%` : `faltam ${reais(t.falta)} para os 15%`})`;
+  const cmsPct = cms.tot.meta_q > 0 ? cms.tot.pos_q / cms.tot.meta_q : 0;
+  return { res, texto: `Metas de ${nome}, ${cfg.rotulo}, ${sel}. ${quando}\n` +
+    linhas.map(l => `${l.rot}: meta ${l.v[1]}, potencial ${l.v[2]} (${l.v[3]}), faturado ${l.v[5]}${l.meta > 0 ? `, ${l.v[4] === 'bateu' ? `bateu o alvo de ${Math.round(l.gat * 100)}%` : `faltam ${l.v[4]} para o alvo de ${Math.round(l.gat * 100)}%`}` : ''}`).join('\n') +
+    (t15 && cod !== 'TODOS' ? `\nTrava dos 15%: no mês ${trava(t15)}; no trimestre ${tri}, que é o que vale, ${trava(t15Tri)}.` : t15 ? `\nOutras famílias sobre o tênis (só leitura para a CMS): ${pct(t15.num, t15.meta)} no mês.` : '') +
+    `\nTotal de tênis da CMS: ${(cmsPct * 100).toFixed(1).replace('.', ',')}% da meta (a faixa só conta com a CMS em 90%).\n` +
+    'A tabela já apareceu. Não copie: diga o total, o que está mais perto de bater e o que falta. Fale em "potencial" e diga que inclui o que ainda não faturou. Não afirme prêmio nem estrela: isso a tela de Metas mostra.' };
+}
+
 /* clientes: o cadastro em lista, uma linha por loja ("CNPJs da Ideal",
    "meus clientes de Caxias", "quem é o 21511"). Junta o cadastro do portal
    com os clientes da Detalhada que não estão nele (esses vêm sem CNPJ).
@@ -2319,6 +2431,7 @@ function corrigeFerramenta(texto, r, passo) {
   if (r.nome === 'pedido') return sitTexto ? { ...r, args: { ...r.args, situacao: sitTexto } } : r;
   if (r.nome !== 'consultar') return r;
   const a = r.args || {}, f = a.filtros || {}, um = v => Array.isArray(v) ? (v.length === 1 ? v[0] : '') : v;
+  if (/\bmetas?\b/i.test(texto)) return { ...r, nome: 'metas', args: um(f.vendedor) ? { vendedor: um(f.vendedor) } : {} };
   if (querDispo && um(f.produto) && !f.cliente) return { ...r, nome: 'disponivel', args: { produto: um(f.produto), ...(um(f.cor) ? { cor: um(f.cor) } : {}) } };
   if (!/ped(?:ido|iu|iram)|pdf|emit|ebm|carteira|faturar|faturad/i.test(texto)) return r;
   const alvo = um(f.nf) ? { nf: um(f.nf) } : um(f.gci) ? { gci: um(f.gci) } : um(f.oc) ? { oc: um(f.oc) } : um(f.cliente) ? { cliente: um(f.cliente) } : null;
