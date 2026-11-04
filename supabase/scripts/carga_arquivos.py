@@ -55,14 +55,17 @@ def sql(consulta):
 
 def chave_servico():
     st, r = pedir(f"https://api.supabase.com/v1/projects/{PROJETO}/api-keys?reveal=true", cabecalhos=GESTAO)
+    # A chave secreta nova (sb_secret_...), que se troca sem derrubar o resto;
+    # as legadas (anon / service_role) vão ser desligadas
     for k in json.loads(r):
-        if k.get("name") == "service_role":
+        if k.get("type") == "secret":
             return k["api_key"]
-    raise RuntimeError("chave service_role não encontrada")
+    raise RuntimeError("chave secreta não encontrada")
 
 
 SERVICO = chave_servico()
-STORAGE = {"Authorization": f"Bearer {SERVICO}", "apikey": SERVICO}
+# A chave nova não é JWT: vai só no cabeçalho apikey
+STORAGE = {"apikey": SERVICO}
 
 
 def criar_bucket(nome):

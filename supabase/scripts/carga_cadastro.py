@@ -122,8 +122,9 @@ def main(saida):
     ]
     sql = ["begin;\n", "set local session_replication_role = replica;\n",
            "truncate cadastro.clientes_prepostos, cadastro.clientes, cadastro.produtos, cadastro.fichas, "
-           "cadastro.tabela_especial, cadastro.exclusivos, cadastro.novidades, cadastro.faixas;\n",
-           "delete from cadastro.perfis where user_id is null;\n"]
+           "cadastro.tabela_especial, cadastro.exclusivos, cadastro.novidades, cadastro.faixas;\n"]
+    # Perfis não são recarregados: e-mail, papel e login são cuidados no banco.
+    # A carga só acrescenta quem aparecer novo na lista do portal.
     for tabela, linhas in ordem:
         if tabela == "cadastro.perfis":
             sql.append(carga(tabela, linhas).replace(");\n", ") on conflict (codigo) do nothing;\n"))

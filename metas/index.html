@@ -508,6 +508,8 @@ button{ font-family:inherit; cursor:pointer; border:0; background:none; color:in
   <div id="painel"><div class="carregando"><i></i><div>lendo as metas…</div></div></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="../js/banco.js"></script>
 <script>
 /* ── a régua da Vulcabras ─────────────────────────────────────────────
    O total de tênis bate com 90% da meta, a faixa com 100% e a família em
@@ -613,7 +615,26 @@ function getSessao(){
     return cod ? { ...s, codigo:cod, nome:VENDEDORES_TESTE[cod] } : s;
   }catch(_){ return null; }
 }
-const SESSAO = getSessao();
+let SESSAO = getSessao();
+
+/* Piloto da migração: na própria máquina (ou com ?fonte=banco) a tela lê do
+   Supabase, com login de verdade. O endereço publicado segue no arquivo até
+   a virada. */
+const USAR_BANCO = ['localhost', '127.0.0.1'].includes(location.hostname)
+  || new URLSearchParams(location.search).get('fonte') === 'banco';
+
+/* Remonta o mesmo formato do metas.json a partir das tabelas */
+async function lerMetasDoBanco(){
+  const p = await CMSBanco.exigirLogin();
+  SESSAO = { codigo: p.codigo, nome: p.nome };
+  const [meses, geral] = await Promise.all([
+    CMSBanco.db.schema('relatorios').from('metas').select('dados').order('mes'),
+    CMSBanco.db.schema('sistema').from('documentos').select('dados').eq('chave', 'metas/geral').maybeSingle(),
+  ]);
+  if(meses.error) throw meses.error;
+  if(geral.error) throw geral.error;
+  return { ...(geral.data ? geral.data.dados : {}), meses: meses.data.map(m => m.dados) };
+}
 const souCms = () => NOMES_CMS.includes(String((SESSAO && SESSAO.nome) || '').toUpperCase());
 const meuCodigo = () => String((SESSAO && SESSAO.codigo) || '').trim();
 
@@ -634,6 +655,18 @@ const F = { marca:'OLY', mes:null, prep:'TODOS', medida:'pot', comparar:false, a
    O mesmo arquivo do Metas Preposto e da vitrine: se divergisse, uma das
    três telas estaria mentindo. */
 async function carregar(){
+  if(USAR_BANCO){
+    try{
+      const t0 = performance.now();
+      METAS = await lerMetasDoBanco();
+      console.info('[metas] lidas do banco em', Math.round(performance.now() - t0), 'ms');
+    }catch(e){
+      if(e && e.message === 'login sem perfil') return;
+      $('painel').innerHTML = `<div class="aviso">Não consegui ler as metas do banco (${esc(e.message)}).</div>`;
+      return;
+    }
+    return mostrar();
+  }
   if(!SESSAO){
     $('painel').innerHTML = `<div class="aviso">Entre pelo <b>Portal do Vendedor</b> para ver as metas.
       <a href="../index.html" style="color:var(--marca);font-weight:800">Ir para o portal</a></div>`;
@@ -649,6 +682,10 @@ async function carregar(){
       (${esc(e.message)}). O arquivo é publicado pelo robô da Carta.</div>`;
     return;
   }
+  mostrar();
+}
+
+function mostrar(){
   pintarQuando(METAS.atualizado_em);
   const meses = (METAS.meses || []).map(m => m.mes).sort();
   if(!meses.length){ $('painel').innerHTML = '<div class="aviso">O arquivo não tem mês nenhum.</div>'; return; }

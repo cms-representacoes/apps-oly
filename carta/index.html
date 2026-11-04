@@ -399,6 +399,8 @@ details.regras[open] summary svg{transform:rotate(180deg)}
   <p class="rodape" id="rodape">CMS Representações</p>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="../js/banco.js"></script>
 <script>
 (function(){
 'use strict';
@@ -406,7 +408,12 @@ details.regras[open] summary svg{transform:rotate(180deg)}
 // ── Parâmetros das regras (o JSON pode sobrescrever em "regras") ─────────
 var PADRAO = { gatilho: 100, zona: 10, regra360: 15, beneficio: 50 };
 var SESSION_KEY = 'cms_portal_session_v1';
-var MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+// Piloto da migração: na própria máquina (ou com ?fonte=banco) a tela lê do
+// Supabase, com login. Lá o vendedor só recebe a própria carta — o banco
+// recusa as outras, mesmo trocando o ?vendedor= do endereço.
+var USAR_BANCO = ['localhost', '127.0.0.1'].indexOf(location.hostname) >= 0
+  || new URLSearchParams(location.search).get('fonte') === 'banco';
+var MESES =['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 var MESES_C = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 var MARCAS = { OLY: 'Olympikus', UA: 'Under Armour' };
 
@@ -628,8 +635,27 @@ function buscar(url){
 function arquivo(v, marca, mes){ return 'dados/' + encodeURIComponent(v) + '/' + marca + '/' + mes + '.json'; }
 function carregarMes(v, marca, mes){
   var k = v + '|' + marca + '|' + mes;
-  if(!(k in estado.docs)) estado.docs[k] = buscar(arquivo(v, marca, mes)).catch(function(){ return null; });
+  if(!(k in estado.docs)) estado.docs[k] = USAR_BANCO
+    ? CMSBanco.db.schema('relatorios').from('carta').select('dados')
+        .eq('preposto', v).eq('marca', marca).eq('mes', mes).maybeSingle()
+        .then(function(r){ return r.data ? r.data.dados : null; })
+    : buscar(arquivo(v, marca, mes)).catch(function(){ return null; });
   return estado.docs[k];
+}
+// O índice no banco; quem não é CMS/DEV fica só com a própria linha
+function lerIndiceDoBanco(){
+  return CMSBanco.exigirLogin().then(function(p){
+    return CMSBanco.db.schema('sistema').from('documentos').select('dados').eq('chave', 'carta/indice').maybeSingle()
+      .then(function(r){
+        if(r.error) throw r.error;
+        var ind = r.data ? r.data.dados : { vendedores: [] };
+        if(!CMSBanco.souAdmin()){
+          ind.vendedores = (ind.vendedores || []).filter(function(v){ return v.codigo === p.codigo; });
+          estado.vendedor = p.codigo;
+        }
+        return ind;
+      });
+  });
 }
 function vendInfo(){ return (estado.indice.vendedores || []).filter(function(v){ return v.codigo === estado.vendedor; })[0] || null; }
 function mesesDisponiveis(){ var v = vendInfo(); return (v && v.marcas && v.marcas[estado.marca]) ? v.marcas[estado.marca].slice().sort() : []; }
@@ -685,7 +711,7 @@ function guilloche(){
 
 function desenharCabecalho(doc){
   var s = sessao();
-  var podeTrocar = !s || /^c ?m ?s$/i.test(String(s.nome || '').trim());
+  var podeTrocar = USAR_BANCO ? CMSBanco.souAdmin() : (!s || /^c ?m ?s$/i.test(String(s.nome || '').trim()));
   var vs = estado.indice.vendedores || [];
   var info = vendInfo();
   var nome = info ? nomeProprio(info.nome) : (doc ? nomeProprio(doc.vendedor.nome) : estado.vendedor);
@@ -965,7 +991,8 @@ function desenhar(){
 
 function iniciar(){
   $('conteudo').innerHTML = '<div class="carregando"></div>';
-  (estado.indice ? Promise.resolve(estado.indice) : buscar('dados/indice.json')).then(function(ind){
+  (estado.indice ? Promise.resolve(estado.indice)
+    : USAR_BANCO ? lerIndiceDoBanco() : buscar('dados/indice.json')).then(function(ind){
     estado.indice = ind;
     if(!estado.vendedor){ var v = (ind.vendedores || [])[0]; estado.vendedor = v ? v.codigo : null; }
     desenhar();
