@@ -163,6 +163,24 @@ main{ flex:1; overflow-y:auto; overflow-x:hidden; padding:14px 16px; }
 .cd-p{ font-weight:700; margin-top:9px; }
 .cartao-dae [data-dae-status]{ margin-top:8px; font-style:normal; }
 .cartao-dae button:disabled{ opacity:.55; cursor:default; }
+.cartao-ebm [data-dae-status] .ag-texto, .cartao-ebm [data-dae-status] .ebm-cor{ font-style:normal; font-size:14px; color:var(--tinta); }
+.cartao-ebm [data-dae-status] .ag-texto .cd-l{ font-size:12.5px; }
+.ebm-cor{ margin-top:12px; }
+.ebm-cor h4{ margin:0 0 4px; font-size:14px; color:var(--oliva-escuro); }
+.ebm-cor h4 + .ebm-wrap{ margin-top:6px; }
+.ebm-wrap{ overflow-x:auto; border-radius:8px; background:#fff; }
+.ebm-tab{ border-collapse:collapse; width:100%; font-size:11px; font-variant-numeric:tabular-nums; }
+.ebm-tab th, .ebm-tab td{ padding:5px 1px; text-align:center; border-bottom:1px solid #eef3e2; white-space:nowrap; }
+.ebm-tab thead th{ background:var(--lima-claro); color:var(--oliva-escuro); font-weight:800; font-size:11px; text-transform:none; letter-spacing:0; position:static; }
+@media (max-width:500px){ .bolha:has(.cartao-ebm){ padding-left:5px; padding-right:5px; } .cartao-ebm{ padding:10px 9px; } .cartao-ebm .ebm-wrap{ margin:0 -8px; } }
+.ebm-tab .dt{ text-align:left; padding:5px 2px 5px 4px; position:sticky; left:0; background:#fff; font-weight:700; font-size:11px; line-height:1.15; }
+.ebm-tab thead .dt{ background:var(--lima-claro); }
+.ebm-tab .dt small{ font-weight:500; color:var(--tinta-3); font-size:10px; }
+.ebm-tab tr.novo .dt::after{ content:" ▲"; color:var(--oliva); font-size:9px; }
+.ebm-tab td.z{ color:#c9d2b8; }
+.ebm-tab .tot{ font-weight:800; text-align:right; padding:5px 4px 5px 2px; }
+.ebm-meta{ font-size:12.5px; color:var(--tinta-2); margin-top:6px; }
+.ebm-meta b{ color:var(--tinta); }
 .dica-pdf{ flex-basis:100%; font-size:12.5px; font-style:italic; color:var(--tinta-3); }
 a.sug{ text-decoration:none; display:inline-block; }
 .entendi{ font-size:12px; color:var(--tinta-2); background:var(--lima-fundo); border:1px dashed var(--lima-forte);
@@ -1438,6 +1456,7 @@ function agSistema(ctx) {
     '- clientes: lista do cadastro, uma linha por loja: código, nome fantasia, razão social, CNPJ, cidade, telefone, e-mails. Para "CNPJs do grupo X", "e-mails das lojas X", "meus clientes de tal cidade", "quem é o código N", "qual o código da X". args: {"nome","codigo","cnpj","cidade","uf"} (pelo menos um).',
     'Cliente pode ser dito pelo nome que o vendedor usa, pelo nome fantasia, pela razão social, pelo código ou pelo CNPJ: passe do jeito que ele escreveu, as ferramentas acham.',
     '- disponivel: o que TEM para vender agora no Showroom: estoque (pronta entrega), lotes de repasse (saldo, data de entrega, grade) e produção (pares e mês de previsão, ainda sem grade). "Dispo" e "disponibilidade" significam esta ferramenta: "tem dispo de X?" é a pergunta padrão. Use também para "tem tal produto?", "qual a grade?", "quando chega?". Sem ele citar uma origem, deixe "origem" de fora: ela olha tudo. Na resposta, comece SEMPRE pelo repasse, depois estoque, depois produção. args: {"produto","cor","origem":"estoque|repasse|producao"}. Diferente de consultar, que é o que o cliente JÁ pediu. Diga que é o saldo de agora, sem reserva. Só o saldo que vier aqui pode ser afirmado; sem saldo, diga que não tem. Mostre estoque, repasse e produção separados e NUNCA some um com o outro.',
+    '- ebm_disponivel: confere o produto AO VIVO no EBM da Vulcabras, na tela de digitação de pedido: o Disponível por tamanho (estoque pronto) e a Meta Prod. (produção, pares sem grade), em várias datas de faturamento. Use quando ele pedir para olhar, conferir ou confirmar no EBM ("confere no EBM se tem Marte", "no EBM aparece?", "tem meta produtiva?"), ou quando disser que o Showroom mostra saldo mas no EBM não acha. args: {"produto","cor"}. Aparece um cartão com as cores, e só o toque dele faz a pesquisa: você nunca diz número nem que já pesquisou.',
     '- repasses_cliente: o que foi REPASSADO para um cliente e está a caminho ou já entrou (prev. fat., pares, situação). Use para "o cliente X tem repasse?", "quais repasses da Degraus?", "tem algo de repasse pro 21511?": quando o nome é de CLIENTE. Se o nome for de PRODUTO ("tem repasse de index?"), a ferramenta é disponivel. Na dúvida entre os dois, pergunte. args: {"cliente","situacao":"a_chegar|todos"} (padrão: a_chegar).',
     '- resumo_repasses: totais e rankings do que foi repassado: "total repassado pelo Jorge nos últimos 7 dias", "quem mais repassou no mês", "produto mais repassado", "saldo de repasse", "lotes sem pedido", "o que foi cancelado", "como está a campanha de incentivo". "Carta campanha" ou "carta" NÃO é daqui: é a meta (use metas). args: {"periodo":"hoje|ontem|7d|15d|30d|tudo" (qualquer número de dias, como 10d), "de","ate":"AAAA-MM-DD","vendedor","produto","cliente","ver":"vendedores|produtos|clientes|saldo|prazo|saidas|campanha"}. Sem período citado, deixe de fora e diga que olhou desde o primeiro pedido. "ver" escolhe a tabela. Cite só o que ele perguntou, em poucas frases.',
     '- pedido: mostra os produtos com o botão de PDF do EBM. Use SEMPRE que a pergunta for sobre o pedido, a carteira ou o faturado de UM cliente, nota, GCI ou OC, mesmo com "quanto" ou "quantos": "me passa o pedido dessa nota", "PDF do GCI X", "a carteira da Fit Store", "os pedidos da Degraus", "quanto a Degraus tem de carteira?", "o que falta faturar pra X". args: {"nf"} ou {"gci"} ou {"oc"} ou {"cliente","produto","cor","situacao":"carteira|faturado|tudo","de":"AAAA-MM-DD","ate":"AAAA-MM-DD"}. Pedido é carteira + faturado (deixe "situacao" de fora); carteira ou "o que falta faturar" = "carteira"; faturado = "faturado". Na resposta, diga carteira e faturado separados, nunca somados, e a próxima previsão; não copie a lista. Use consultar para total de vendedor, marca ou linha, ranking ou mais de um cliente.',
@@ -1678,6 +1697,7 @@ const FERRAMENTAS = {
   boleto: a => agBoleto(a),
   clientes: a => agClientes(a),
   disponivel: a => agDisponivel(a),
+  ebm_disponivel: a => agEbmDisponivel(a),
   repasses_cliente: a => agRepassesCliente(a),
   resumo_repasses: a => agResumoRepasses(a),
   pedido: async a => { await olharRobo(); return agPedido(a); },
@@ -1691,7 +1711,7 @@ const FERRAMENTAS = {
   },
 };
 const ROTULO_FERRAMENTA = { consultar: 'Consultando a carteira', clientes_sem_pedido: 'Procurando quem não comprou', movimento: 'Olhando entradas e saídas',
-  ficha: 'Abrindo a ficha', clientes: 'Procurando no cadastro', disponivel: 'Olhando o Showroom', repasses_cliente: 'Olhando os repasses do cliente', resumo_repasses: 'Montando o resumo de repasses', pedido: 'Procurando o pedido', dae: 'Procurando a nota', metas: 'Olhando as metas', catalogo: 'Preparando o catálogo', baixar: 'Gerando o arquivo', boleto: 'Buscando os boletos no EBM (pode levar 1 minuto)' };
+  ficha: 'Abrindo a ficha', clientes: 'Procurando no cadastro', disponivel: 'Olhando o Showroom', ebm_disponivel: 'Procurando o produto', repasses_cliente: 'Olhando os repasses do cliente', resumo_repasses: 'Montando o resumo de repasses', pedido: 'Procurando o pedido', dae: 'Procurando a nota', metas: 'Olhando as metas', catalogo: 'Preparando o catálogo', baixar: 'Gerando o arquivo', boleto: 'Buscando os boletos no EBM (pode levar 1 minuto)' };
 
 /* disponivel: "tem tal produto?". Varre o Showroom com a MESMA conta da tela
    (js/disponivel.js): saldo menos o que já foi pedido, cota do rateio, ocultos,
@@ -2012,8 +2032,8 @@ const linkPdf = (url, nome, rotulo) => cartaoArquivo({ url, nome, rotulo });
 const baixarJa = () => {};
 const geraPdf = () => temExtensaoEbm() || !!APP.roboPdf;
 async function olharRobo() {
-  try { const r = await fetch(BOLETOS_URL + '/ping', { signal: AbortSignal.timeout(1500) }); APP.roboPdf = !!(await r.json()).pedido; }
-  catch (_) { APP.roboPdf = false; }
+  try { const r = await fetch(BOLETOS_URL + '/ping', { signal: AbortSignal.timeout(1500) }); const j = await r.json(); APP.roboPdf = !!j.pedido; APP.roboDispo = !!j.disponivel; }
+  catch (_) { APP.roboPdf = false; APP.roboDispo = false; }
 }
 function agPedido(a) {
   const D = APP.dic, X = indices(), p = prepAtivo();
@@ -2279,6 +2299,129 @@ document.addEventListener('click', async ev => {
   fim(html);
   // A IA fica sabendo do resultado, para a conversa continuar com sentido.
   AG.msgs.push({ role: 'user', content: `[resultado de dae] ${qual}: ${r.status}. ${r.obs || ''}` });
+});
+
+/* ebm_disponivel: o Disponível por tamanho e a Meta Prod. lidos AO VIVO na digitação de pedido do EBM
+   (ebm_dispo_robo.py no serviço local). É a palavra final quando o Showroom mostra saldo e o vendedor
+   diz que não acha. Os dois números mudam com a data de faturamento: o robô passa pelos dias 01 e 08
+   (1ª quinzena) e 16 e 23 (2ª) deste mês e dos dois seguintes. Para só pesquisar, entra com a CMS (7293)
+   e o cliente de maior carteira do vendedor, e sai pelo cancelar. Como no DAE, quem dispara é o toque
+   na cor: a IA não chama o serviço. */
+function datasEbm(hoje = new Date()) {
+  const out = [], dd = n => String(n).padStart(2, '0');
+  for (let k = 0; k < 3; k++) {
+    const a = new Date(hoje.getFullYear(), hoje.getMonth() + k, 1);
+    for (const dia of [1, 8, 16, 23]) {
+      const d = new Date(a.getFullYear(), a.getMonth(), dia);
+      if (d > hoje) out.push(`${dd(dia)}/${dd(d.getMonth() + 1)}/${d.getFullYear()}`);
+    }
+  }
+  return out;
+}
+// O cliente que entra na digitação: o de mais pares em carteira do vendedor (de todos, para quem vê tudo).
+function clienteDaConsulta() {
+  const p = prepAtivo(), soma = new Map();
+  for (const r of APP.L) if ((p < 0 || r[C.PREP] === p) && r[C.CART] > 0) soma.set(r[C.CLI], (soma.get(r[C.CLI]) || 0) + r[C.CART]);
+  let ci = -1, mx = 0;
+  for (const [i, v] of soma) if (v > mx) { mx = v; ci = i; }
+  return ci < 0 ? null : { cod: String(APP.dic.cli[ci][0]), nome: APP.dic.cli[ci][1] };
+}
+const corChave = c => norm(c).replace(/[^A-Z0-9]/g, '');
+function cartaoEbm(prod, cli, corPedida) {
+  const nome = prod.desc || prod.nome || prod.ref;
+  const cores = [...prod.cores].sort((x, y) => x.localeCompare(y, 'pt-BR'));
+  // As cores vêm abreviadas (MILITR, PTRLEO): sem as vogais, "militar" e "MILITR" ficam iguais.
+  const esqueleto = s => corChave(s).replace(/[AEIOU]/g, '');
+  const pedida = corPedida ? (cores.find(c => corChave(c) === corChave(corPedida)) || cores.find(c => esqueleto(c) === esqueleto(corPedida))
+    || cores.find(c => { const k = corChave(c), q = corChave(corPedida); return q.length >= 3 && (k.startsWith(q) || q.startsWith(k)); })) : '';
+  const dados = cor => esc(JSON.stringify({ artigo: prod.ref, nome, cor, cliente: cli.cod }));
+  const botoes = (pedida ? [pedida, ...cores.filter(c => c !== pedida)] : cores)
+    .map(c => `<button class="sug${c === pedida ? ' forte' : ''}" data-ebm="${dados(c)}">${esc(c)}</button>`).join('');
+  return `<div class="cartao-dae cartao-ebm"><div class="cd-tit">${esc(nome)}</div><div class="cd-l">Ref. ${esc(prod.ref)} · consulta ao vivo no EBM</div>` +
+    `<div class="cd-p">${cores.length ? 'Qual cor?' : 'Pesquisar todas as cores?'}</div><div class="acoes">${botoes}<button class="btn-sec" data-ebm="${dados('')}">Todas as cores</button></div>` +
+    `<div class="cd-l">Olha as datas de faturamento dos dias 01, 08, 16 e 23, deste mês e dos dois seguintes. Uma cor leva cerca de 1 minuto; todas, de 3 a 5.</div>` +
+    `<div class="dots-rot" data-dae-status></div></div>`;
+}
+async function agEbmDisponivel(a) {
+  if (!a.produto) return { erro: 'De qual produto? Pergunte ao vendedor.' };
+  await olharRobo();
+  if (!APP.roboDispo) return { texto: 'A consulta ao vivo no EBM ainda só funciona com o robô do escritório ligado, e ele não respondeu agora. Diga isso ao vendedor e ofereça o que o Showroom mostra.' };
+  const X = indices();
+  if (!X.prod) return { erro: 'O catálogo ainda está carregando. Peça para ele mandar de novo em alguns segundos.' };
+  const r = agFiltro(X.prod, String(a.produto), 'produto', i => `${APP.prods[i].desc || APP.prods[i].nome} (${APP.prods[i].ref})`);
+  if (r.erro) return { erro: r.erro };
+  let achados = [...r.set].map(i => APP.prods[i]);
+  // Nome exato manda: "MARTE" é o adulto, não o "MARTE INFANTIL".
+  const exato = norm(a.produto), iguais = achados.filter(p => norm(p.desc || p.nome) === exato || norm(p.ref) === exato);
+  if (iguais.length) achados = iguais;
+  if (achados.length > 1) {
+    const ops = achados.slice(0, 10);
+    return { erro: `"${a.produto}" casou com ${achados.length} produtos: ${ops.map(p => `${p.desc || p.nome} (${p.ref})`).join(', ')}. Os botões já apareceram: pergunte qual é.`,
+      opcoes: ops.map(p => ({ rotulo: `${p.desc || p.nome} · ${p.ref}`, valor: `confere no EBM o ${p.ref}${a.cor ? ' cor ' + a.cor : ''}` })) };
+  }
+  const prod = achados[0], cli = clienteDaConsulta();
+  if (!cli) return { erro: 'Não achei um cliente com carteira para abrir a digitação no EBM. Peça para ele dizer um cliente.' };
+  return { cartao: cartaoEbm(prod, cli, a.cor),
+    texto: `O cartão de ${prod.desc || prod.nome} (${prod.ref}) apareceu com as cores. A pesquisa no EBM só começa quando ele tocar numa cor ou em "Todas as cores": peça para escolher e NÃO diga números nem que já pesquisou.` };
+}
+// Quadro data x tamanho, como o rodapé do EBM: datas seguidas com a mesma grade viram uma linha,
+// ▲ marca a data em que entrou mais produto e a meta (que não tem grade) vai embaixo.
+function respostaEbm(r, pedido) {
+  const dm = d => d.slice(0, 5), blocos = [];
+  for (const c of r.cores || []) {
+    const ls = c.linhas || [];
+    if (!ls.length) continue;
+    const nome = `${c.cor}${c.nome && corChave(c.nome) !== corChave(c.cor) ? ' · ' + c.nome : ''}`;
+    const tams = Object.keys(ls[0].grade || {}), grupos = [];
+    for (const l of ls) {
+      const u = grupos[grupos.length - 1];
+      if (u && JSON.stringify(u.l.grade) === JSON.stringify(l.grade) && u.l.meta === l.meta) u.ate = l.data;
+      else grupos.push({ l, de: l.data, ate: l.data });
+    }
+    let ant = null;
+    const linhas = grupos.map(g => {
+      const novo = ant && g.l.total > ant.total; ant = g.l;
+      const dt = g.de === g.ate ? dm(g.de) : `${dm(g.de)}<br><small>até ${dm(g.ate)}</small>`;
+      return `<tr${novo ? ' class="novo"' : ''}><td class="dt">${dt}</td>` +
+        tams.map(t => g.l.grade[t] ? `<td>${fmt(g.l.grade[t])}</td>` : '<td class="z">·</td>').join('') + `<td class="tot">${fmt(g.l.total)}</td></tr>`;
+    }).join('');
+    const metas = [];
+    for (const l of ls) if (!metas.length || metas[metas.length - 1].meta !== l.meta) metas.push(l);
+    const comMeta = metas.filter(x => x.meta);
+    const meta = comMeta.length ? 'Meta de produção: ' + comMeta.map(x => `<b>${fmt(x.meta)}</b> a partir de ${dm(x.data)}`).join(' · ') : 'Meta de produção: nenhuma nessas datas.';
+    blocos.push(`<div class="ebm-cor"><h4>${esc(nome)}</h4>` + (tams.length
+      ? `<div class="ebm-wrap"><table class="ebm-tab"><thead><tr><th class="dt">Fatura</th>${tams.map(t => `<th>${esc(t)}</th>`).join('')}<th class="tot">Total</th></tr></thead><tbody>${linhas}</tbody></table></div>`
+      : '<div class="ebm-meta">Nada disponível nessas datas.</div>') + `<div class="ebm-meta">${meta}</div></div>`);
+  }
+  // Data trocada pelo EBM não interessa ao vendedor: só fica o aviso que pede ação (rascunho que sobrou).
+  const avisos = (r.avisos || []).filter(x => !/trocou/.test(x)).map(x => `<div class="dots-rot">${esc(x)}</div>`).join('');
+  const html = `<div class="ag-texto"><p><b>${esc(r.descricao || pedido.nome)}</b> no EBM, agora:</p></div>${blocos.join('') || '<div class="ebm-meta">Nenhuma cor trouxe resposta.</div>'}${avisos}`;
+  const txt = (r.cores || []).map(c => `${c.cor}: ` + (c.linhas || []).map(x => `${x.data} disp ${x.total} meta ${x.meta}`).join('; ')).join(' | ');
+  return { html, txt };
+}
+document.addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-ebm]');
+  if (!b) return;
+  const pedido = JSON.parse(b.dataset.ebm), cart = b.closest('.cartao-dae'), st = cart.querySelector('[data-dae-status]');
+  cart.querySelectorAll('button').forEach(x => { x.disabled = true; });
+  st.innerHTML = ampulheta(`Pesquisando ${pedido.cor ? 'a cor ' + pedido.cor : 'todas as cores'} no EBM: ${pedido.cor ? 'cerca de 1 minuto' : 'de 3 a 5 minutos'}…`); rolar();
+  let r;
+  try {
+    const f = await fetch(BOLETOS_URL + '/disponivel', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ artigo: pedido.artigo, cliente: pedido.cliente, cores: pedido.cor ? [pedido.cor] : [], datas: datasEbm() }), signal: AbortSignal.timeout(600000) });
+    r = await f.json();
+  } catch (e) { r = { ok: false, erro: 'O robô não respondeu: ' + (e.message || e) }; }
+  const fim = htm => { st.innerHTML = htm; cart.querySelectorAll('button[data-ebm]').forEach(x => { x.disabled = false; }); rolar(); };
+  if (!r.ok) { fim(`<span class="aviso">${esc(r.erro || 'Não consegui pesquisar.')} Tente de novo em um minuto.</span>`); return; }
+  if (r.semCor) {
+    const dados = cor => esc(JSON.stringify({ ...pedido, cor }));
+    fim(`<div class="cd-p">O EBM não tem a cor ${esc(pedido.cor)} nesse artigo. As cores de lá são:</div><div class="acoes">${(r.coresEbm || []).map(c => `<button class="sug" data-ebm="${dados(c)}">${esc(c)}</button>`).join('')}</div>`);
+    AG.msgs.push({ role: 'user', content: `[resultado de ebm_disponivel] a cor ${pedido.cor} não existe no EBM para ${pedido.artigo}; cores de lá: ${(r.coresEbm || []).join(', ')}` });
+    return;
+  }
+  const { html, txt } = respostaEbm(r, pedido);
+  fim(html);
+  AG.msgs.push({ role: 'user', content: `[resultado de ebm_disponivel] ${r.descricao || pedido.nome} (${pedido.artigo}): ${txt}` });
 });
 
 /* metas: a mesma conta da tela de Metas (metas/index.html), sobre o mesmo metas/dados/metas.json.
@@ -2621,6 +2764,12 @@ function corrigeFerramenta(texto, r, passo) {
     const a = r.args || {}, f = a.filtros || {}, v = [a.vendedor, f.vendedor].flat().filter(Boolean), mes = String(a.mes || a.de || '').slice(0, 7);
     return { ...r, nome: 'metas', args: { ...(v.length === 1 ? { vendedor: v[0] } : {}), ...(/^\d{4}-\d{2}$/.test(mes) ? { mes } : {}), ...(/quem|prepostos|vendedores|time|ranking/i.test(texto) ? { comparar: true } : {}) } };
   }
+  // "Confere no EBM se tem Marte": produto com EBM na frase é a consulta ao vivo, não o Showroom publicado.
+  if (/\bebm\b/i.test(texto) && ['disponivel', 'consultar'].includes(r.nome)) {
+    const a = r.args || {}, f = a.filtros || {}, um1 = v => Array.isArray(v) ? (v.length === 1 ? v[0] : '') : v;
+    const produto = um1(a.produto) || um1(f.produto), cor = um1(a.cor) || um1(f.cor);
+    if (produto && !f.cliente && !a.cliente) return { ...r, nome: 'ebm_disponivel', args: { produto, ...(cor ? { cor } : {}) } };
+  }
   // "Me passa a carteira da X" sem a situação: a frase manda, porque o padrão do pedido é tudo.
   if (r.nome === 'pedido') return sitTexto ? { ...r, args: { ...r.args, situacao: sitTexto } } : r;
   if (r.nome !== 'consultar') return r;
@@ -2810,6 +2959,7 @@ const TESTES = [
   { v: 'JORGE', q: ['quanto saiu da minha carteira essa semana?'], ok: r => { const dow = (new Date(hojeIso() + 'T00:00:00Z').getUTCDay() + 6) % 7; return batMov(r, { tipo: 'saidas', de: batDia(-dow), ate: hojeIso() }); } },
   { v: 'JORGE', q: ['o que o Degraus tem para faturar no próximo mês, por produto?', 'baixa essa tabela em excel'], ok: r => ({ ok: batUsou(r, 'baixar'), esp: 'usar a ferramenta baixar' }) },
   { v: 'JORGE', q: ['manda o catálogo do degraus em pdf'], ok: r => ({ ok: batUsou(r, 'catalogo'), esp: 'usar a ferramenta catalogo' }) },
+  { v: 'JORGE', q: ['confere no EBM se tem marte infantil'], ok: r => ({ ok: batUsou(r, 'ebm_disponivel'), esp: 'usar a ferramenta ebm_disponivel' }) },
   { v: 'JORGE', q: ['quanto de corre 4 eu tenho em carteira, por cor?'], ok: r => { const t = batCons({ filtros: { produto: 'CORRE 4' }, situacao: 'carteira', agrupar: ['cor'], ordenar: 'carteira' }); return t.rows.length ? { ok: batTem(r.texto, t.rows[0][1]), esp: `maior cor: ${t.rows[0][0]} ${fmt(t.rows[0][1])}` } : { ok: /n[aã]o|nenhum|zero|\b0\b/i.test(r.texto), esp: 'sem carteira' }; } },
   { v: 'JORGE', q: ['quantas notas o Degraus recebeu no mês passado?'], ok: r => { const m = batMes(-1), t = batCons({ filtros: { cliente: 'DEGRAUS' }, situacao: 'faturado', de: m.de, ate: m.ate, agrupar: ['nf'] }); return { ok: batTem(r.texto, t.rows.length), esp: `${t.rows.length} nota(s)` }; } },
   { v: 'JORGE', q: ['obrigado!'], ok: r => ({ ok: !r.usadas.length, esp: 'agradecer sem consultar' }) },
