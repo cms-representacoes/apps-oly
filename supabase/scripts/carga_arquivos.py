@@ -1,6 +1,8 @@
 """Leva para o Storage do Supabase o que hoje é arquivo dentro do repositório:
 
-  relatorios/  planilhas do RFV e da Performance (hoje em base64 dentro do JSON)
+  relatorios/  planilhas do RFV e da Performance (hoje em base64 dentro do JSON),
+               completa em <relatorio>/todos/ e uma por vendedor em <relatorio>/<código>/
+  planilhas/   Produtos, Clientes e DISPO, que as telas leem direto
   arquivo/     backups antigos de data/backups, compactados em .gz
 
 Os dois buckets são privados. Cada arquivo ganha uma linha de índice no banco
@@ -13,6 +15,7 @@ Uso:  py -I supabase/scripts/carga_arquivos.py
 """
 import base64
 import gzip
+import io
 import json
 import re
 import sys
@@ -21,6 +24,8 @@ import urllib.parse
 import urllib.request
 import winreg
 from pathlib import Path
+
+import openpyxl
 
 PROJETO = "rczlnuemmluhkgwzdino"
 URL = f"https://{PROJETO}.supabase.co"
@@ -88,31 +93,98 @@ def q(v):
     return "null" if v is None else "'" + str(v).replace("'", "''") + "'"
 
 
+XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def vendedores():
+    """código -> primeiro nome como as abas da Performance escrevem (Jorge)."""
+    return {r["codigo"]: r["nome"].split()[0].title()
+            for r in sql("select codigo, nome from cadastro.perfis where papel = 'vendedor'")}
+
+
+def xlsx_bytes(wb):
+    saida = io.BytesIO()
+    wb.save(saida)
+    return saida.getvalue()
+
+
+def rfv_do_vendedor(conteudo, codigo):
+    """Só as linhas do vendedor (coluna C = Preposto); as 2 de cabeçalho ficam."""
+    wb = openpyxl.load_workbook(io.BytesIO(conteudo))
+    ws = wb.worksheets[0]
+    for i in range(ws.max_row, 2, -1):
+        if str(ws.cell(i, 3).value or "").strip() != codigo:
+            ws.delete_rows(i)
+    return xlsx_bytes(wb)
+
+
+def perf_do_vendedor(conteudo, nome):
+    """Planilha: só a aba do vendedor. JSON (ano corrente): só as linhas dele."""
+    if conteudo[:1] == b"{":
+        j = json.loads(conteudo)
+        j["dados"] = [r for r in j.get("dados", []) if str(r[0]).strip().title() == nome]
+        return json.dumps(j, ensure_ascii=False).encode("utf-8") if j["dados"] else None
+    wb = openpyxl.load_workbook(io.BytesIO(conteudo))
+    abas = [ws for ws in wb.worksheets if ws.title.strip().title() == nome]
+    if not abas:
+        return None
+    for ws in list(wb.worksheets):
+        if ws not in abas:
+            wb.remove(ws)
+    return xlsx_bytes(wb)
+
+
 def relatorios():
+    """Versão completa em <relatorio>/todos/ (CMS e DEV) e uma por vendedor em
+    <relatorio>/<código>/, com só o que é dele."""
     criar_bucket("relatorios")
+    vend = vendedores()
     linhas = []
     rfv = json.loads((DATA / "rfv.json").read_text(encoding="utf-8"))
+    extra = json.dumps({"corrSem": rfv.get("corrSem")})
     for chave, f in rfv["files"].items():
-        caminho = f"rfv/{f['name']}"
-        enviar("relatorios", caminho, base64.b64decode(f["b64"]),
-               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        linhas.append(("rfv", chave, f["name"], caminho, rfv.get("updatedAt"),
-                       json.dumps({"corrSem": rfv.get("corrSem")})))
+        nome = re.sub(r"[^A-Za-z0-9.\-]+", "_", f["name"])
+        completo = base64.b64decode(f["b64"])
+        for dono, conteudo in [("todos", completo)] + [(c, rfv_do_vendedor(completo, c)) for c in vend]:
+            caminho = f"rfv/{dono}/{nome}"
+            enviar("relatorios", caminho, conteudo, XLSX)
+            linhas.append(("rfv", chave, f["name"], caminho, rfv.get("updatedAt"), extra, dono))
     perf = json.loads((DATA / "performance.json").read_text(encoding="utf-8"))
     for chave, f in perf["periods"].items():
-        conteudo = base64.b64decode(f["b64"])
+        completo = base64.b64decode(f["b64"])
         # 2026-ALL é JSON já processado, não planilha
-        tipo = "application/json" if conteudo[:1] == b"{" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        tipo = "application/json" if completo[:1] == b"{" else XLSX
         # O Storage só aceita ASCII no caminho; o nome original fica no índice
         nome = re.sub(r"[^A-Za-z0-9.\-]+", "_", f["name"])
-        caminho = f"performance/{chave}/{nome}"
-        enviar("relatorios", caminho, conteudo, tipo)
-        linhas.append(("performance", chave, f["name"], caminho, f.get("updatedAt"),
-                       json.dumps({"ano": f.get("ano"), "sem": f.get("sem")})))
-    valores = ",".join(f"({q(a)},{q(b)},{q(c)},{q(d)},{q(e)},{q(x)}::jsonb)" for a, b, c, d, e, x in linhas)
+        extra = json.dumps({"ano": f.get("ano"), "sem": f.get("sem")})
+        for dono, conteudo in [("todos", completo)] + [(c, perf_do_vendedor(completo, n)) for c, n in vend.items()]:
+            if conteudo is None:
+                continue                 # vendedor sem aba neste período
+            caminho = f"performance/{dono}/{chave}/{nome}"
+            enviar("relatorios", caminho, conteudo, tipo)
+            linhas.append(("performance", chave, f["name"], caminho, f.get("updatedAt"), extra, dono))
+    valores = ",".join(f"({q(a)},{q(b)},{q(c)},{q(d)},{q(e)},{q(x)}::jsonb,{q(o)})" for a, b, c, d, e, x, o in linhas)
     sql("delete from relatorios.arquivos; insert into relatorios.arquivos "
-        f"(relatorio, chave, nome, caminho, atualizado_em, extra) values {valores};")
+        f"(relatorio, chave, nome, caminho, atualizado_em, extra, dono) values {valores};")
     return len(linhas)
+
+
+def planilhas():
+    """Planilhas de cadastro lidas direto pelas telas (Catálogo, admin)."""
+    criar_bucket("planilhas")
+    raiz, v2 = DATA.parent, DATA.parent.parent / "apps-oly-v2"
+    alvos = [(v2 / "Produtos.xlsx", "produtos/oly/Produtos.xlsx"),
+             (v2 / "produtos_ua.xlsx", "produtos/ua/produtos_ua.xlsx"),
+             (raiz / "Produtos.xlsx", "produtos/portal/Produtos.xlsx"),
+             (v2 / "Clientes.xlsx", "clientes/catalogo/Clientes.xlsx"),
+             (raiz / "CLIENTES.xlsx", "clientes/portal/CLIENTES.xlsx"),
+             (raiz / "DISPO.xlsx", "dispo/DISPO.xlsx")]
+    n = 0
+    for origem, caminho in alvos:
+        if origem.exists():
+            enviar("planilhas", caminho, origem.read_bytes(), XLSX)
+            n += 1
+    return n
 
 
 def backups():
@@ -140,6 +212,7 @@ def backups():
 
 if __name__ == "__main__":
     print("relatorios:", relatorios())
+    print("planilhas:", planilhas())
     n, b, g = backups()
     print(f"backups: {n} arquivos, {b / 1e6:.1f} MB -> {g / 1e6:.1f} MB compactados")
     sys.exit(0)

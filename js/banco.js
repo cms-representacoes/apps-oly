@@ -136,6 +136,9 @@
       await pedirEntrada();
     }
     perfil = await lerPerfil();
+    // Guardado só para a tela se montar antes do login responder; o que cada
+    // um recebe quem decide é o banco, nunca este valor
+    try{ localStorage.setItem('cms_banco_perfil', JSON.stringify(perfil)); }catch(_){}
     if(!perfil){
       janela(`<h2>Sem acesso</h2><p>Este login não está ligado a nenhum usuário do portal. Fale com a CMS.</p>
               <button type="button" id="cb-sair">Sair</button>`).querySelector('#cb-sair').onclick = sair;
@@ -145,13 +148,36 @@
     return perfil;
   }
 
+  /* Relatório guardado como arquivo (RFV, Performance): a versão de quem
+     está logado — a completa para CMS/DEV, a do próprio vendedor para ele.
+     Devolve cada arquivo em base64, o mesmo formato que o Worker entregava. */
+  async function relatorio(nome){
+    const dono = (perfil.papel === 'cms' || perfil.papel === 'dev') ? 'todos' : perfil.codigo;
+    const { data, error } = await db.schema('relatorios').from('arquivos')
+      .select('chave, nome, caminho, atualizado_em, extra').eq('relatorio', nome).eq('dono', dono);
+    if(error) throw error;
+    return Promise.all(data.map(async a => {
+      const r = await db.storage.from('relatorios').download(a.caminho);
+      if(r.error) throw r.error;
+      const bytes = new Uint8Array(await r.data.arrayBuffer());
+      let bin = '';
+      for(let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+      return { chave: a.chave, nome: a.nome, b64: btoa(bin), atualizadoEm: a.atualizado_em, extra: a.extra || {} };
+    }));
+  }
+
+  function perfilGuardado(){
+    try{ return JSON.parse(localStorage.getItem('cms_banco_perfil') || 'null'); }catch(_){ return null; }
+  }
+
   async function sair(){
+    try{ localStorage.removeItem('cms_banco_perfil'); }catch(_){}
     await db.auth.signOut();
     location.reload();
   }
 
   window.CMSBanco = {
-    db, exigirLogin, sair,
+    db, exigirLogin, sair, relatorio, perfilGuardado,
     get perfil(){ return perfil; },
     souAdmin: () => !!perfil && (perfil.papel === 'cms' || perfil.papel === 'dev'),
     souDev: () => !!perfil && perfil.papel === 'dev',

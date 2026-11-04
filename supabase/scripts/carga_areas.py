@@ -403,6 +403,14 @@ def relatorios():
     ]
     for arq in sorted((V2 / "data").glob("*.json")):
         docs.append({"chave": f"v2/{arq.stem}", "app": "apps-oly-v2", "dados": ler(arq), "origem": f"apps-oly-v2/data/{arq.name}"})
+    # Análise de Giro (planos de conta por cliente) e base da Matriz Esportes
+    for arq in sorted((V2 / "analise-giro" / "dados").glob("*.json")):
+        docs.append({"chave": f"giro/{arq.stem}", "app": "analise-giro", "dados": ler(arq),
+                     "origem": f"apps-oly-v2/analise-giro/dados/{arq.name}"})
+    base_matriz = V2 / "matriz_esportes" / "base_produtos.json"
+    if base_matriz.exists():
+        docs.append({"chave": "matriz/base_produtos", "app": "matriz", "dados": ler(base_matriz),
+                     "origem": "apps-oly-v2/matriz_esportes/base_produtos.json"})
     status = [
         {"app": "portal", "pausado": bool(ler(DATA / "app_status.json").get("paused")),
          "mensagem": ler(DATA / "app_status.json").get("message") or ""},
