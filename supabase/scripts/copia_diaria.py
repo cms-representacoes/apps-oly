@@ -20,6 +20,8 @@ from pathlib import Path
 AQUI = Path(__file__).resolve().parent
 APPS = AQUI.parents[1]
 PROJETO = "rczlnuemmluhkgwzdino"
+# As fotos grandes ("produtos", ~1,7 GB) só cabem no plano Pro
+GRUPOS_IMAGENS = ["mini", "portal"]
 
 
 def token():
@@ -99,6 +101,11 @@ def main():
     if r.returncode:
         raise RuntimeError(f"carga_arquivos.py: {r.stderr[-600:]}")
     print(r.stdout.strip())
+    # Fotos: só o que mudou. Falha aqui é aviso, não derruba a cópia dos dados
+    r = subprocess.run([sys.executable, "-I", "-X", "utf8", str(AQUI / "carga_imagens.py"), *GRUPOS_IMAGENS],
+                       capture_output=True, text=True, encoding="utf-8")
+    print("imagens:", (r.stdout.strip().splitlines() or ["?"])[-1] if not r.returncode
+          else "AVISO " + (r.stdout + r.stderr).strip()[-300:])
 
     esp, banco = esperado(), no_banco()
     diferencas = {k: (esp[k], banco.get(k)) for k in esp if esp[k] != banco.get(k)}
