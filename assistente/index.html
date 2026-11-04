@@ -181,6 +181,23 @@ main{ flex:1; overflow-y:auto; overflow-x:hidden; padding:14px 16px; }
 .ebm-tab .tot{ font-weight:800; text-align:right; padding:5px 4px 5px 2px; }
 .ebm-meta{ font-size:12.5px; color:var(--tinta-2); margin-top:6px; }
 .ebm-meta b{ color:var(--tinta); }
+.cat-linha{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:#fff; border-radius:10px; padding:9px 10px; margin-top:8px; }
+.cat-linha .sug{ flex:none; text-decoration:none; }
+.cat-txt{ min-width:0; flex:1; }
+.cat-linha .sug.forte{ padding:9px 13px; font-size:13.5px; }
+.cat-linha + .arq{ margin-top:6px; }
+.cat-antigas{ margin-top:10px; }
+.cat-antigas summary{ cursor:pointer; font-size:13px; font-weight:700; color:var(--oliva-escuro); padding:6px 2px; }
+.cat-sem{ margin-top:8px; }
+.cartao-cat .cd-p{ margin-top:10px; }
+.foto-grande{ background:#fff; border-radius:10px; margin-top:8px; display:flex; justify-content:center; }
+.foto-g{ max-width:100%; max-height:340px; object-fit:contain; }
+.foto-angs{ display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
+.foto-ang{ border:1px solid var(--lima-claro); background:#fff; border-radius:8px; padding:2px; cursor:pointer; }
+.foto-ang .foto-mini{ width:58px; height:58px; object-fit:contain; display:block; }
+.foto-cores{ display:grid; grid-template-columns:repeat(auto-fill, minmax(92px, 1fr)); gap:6px; margin-top:8px; }
+.foto-q{ border:1px solid var(--lima-claro); background:#fff; border-radius:10px; padding:4px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; font:600 11.5px/1.2 inherit; color:var(--oliva-escuro); }
+.foto-q .foto-mini{ width:100%; aspect-ratio:1; object-fit:contain; display:block; }
 .dica-pdf{ flex-basis:100%; font-size:12.5px; font-style:italic; color:var(--tinta-3); }
 a.sug{ text-decoration:none; display:inline-block; }
 .entendi{ font-size:12px; color:var(--tinta-2); background:var(--lima-fundo); border:1px dashed var(--lima-forte);
@@ -1462,7 +1479,9 @@ function agSistema(ctx) {
     '- pedido: mostra os produtos com o botão de PDF do EBM. Use SEMPRE que a pergunta for sobre o pedido, a carteira ou o faturado de UM cliente, nota, GCI ou OC, mesmo com "quanto" ou "quantos": "me passa o pedido dessa nota", "PDF do GCI X", "a carteira da Fit Store", "os pedidos da Degraus", "quanto a Degraus tem de carteira?", "o que falta faturar pra X". args: {"nf"} ou {"gci"} ou {"oc"} ou {"cliente","produto","cor","situacao":"carteira|faturado|tudo","de":"AAAA-MM-DD","ate":"AAAA-MM-DD"}. Pedido é carteira + faturado (deixe "situacao" de fora); carteira ou "o que falta faturar" = "carteira"; faturado = "faturado". Na resposta, diga carteira e faturado separados, nunca somados, e a próxima previsão; não copie a lista. Use consultar para total de vendedor, marca ou linha, ranking ou mais de um cliente.',
     '- dae: a guia (DAE ou DAR) da nota retida na fiscalização, só de clientes de Ceará e Piauí. Use para "preciso do DAE da nota X", "tem DAE do cliente Y?". args: {"nf"} ou {"cliente"}. Aparece um cartão com o cliente para ele confirmar, e só o toque dele faz a busca: você nunca diz que buscou nem inventa valor.',
     '- metas: a meta do vendedor ou da CMS, igual à tela de Metas (a "carta campanha" ou "carta" da Vulcabras é esta meta): total de tênis, cada faixa e as famílias em R$, com meta, potencial, faturado e quanto falta, mais a trava dos 15%. Use para "como está minha meta?", "quanto falta pra bater?", "meta do Jorge em setembro", "como está a trava?", "quem está melhor na meta?". args: {"vendedor","mes":"AAAA-MM ou AAAA-T4 (trimestre)","marca":"OLY|UA","comparar":true|false}. Sem mês, vale o atual; sem vendedor, a ferramenta decide (o vendedor só vê a dele, e a CMS vê a soma do time). "comparar":true só para comparar o time. Potencial é o vendido mais o que ainda não faturou; não some com outros números nem use consultar para meta.',
-    '- catalogo: mostra ao vendedor os botões para gerar o catálogo (pedidos do cliente com foto) em PDF ou Excel, igual ao da Detalhada. args: {"cliente","formato":"pdf|xlsx","imagens":true|false}.',
+    '- catalogo: SÓ com cliente na frase: mostra ao vendedor os botões para gerar o catálogo (pedidos do cliente com foto) em PDF ou Excel, igual ao da Detalhada. args: {"cliente","formato":"pdf|xlsx","imagens":true|false}.',
+    '- catalogo_produtos: o CATÁLOGO DE PRODUTOS da Olympikus e da Under Armour em PDF, igual ao do Catálogo Digital. Use para "catálogo oly", "catálogo UA", "catálogo corrida", "catálogo corre", "catálogo vestuário", "catálogo mochila", "catálogo boné feminino 1S27" — sem cliente na frase. args: {"busca": a frase dele inteira}. Aparece um cartão com os botões de PDF por marca e coleção; não liste produtos.',
+    '- foto_produto: a FOTO de um produto do catálogo, com o botão de enviar no WhatsApp. Use para "manda a foto do marte infantil militar", "foto do 43649393", "tem foto da mochila X?". args: {"busca": a frase dele inteira}.',
     '- baixar: baixa em Excel ou PDF a última tabela de consultar, clientes_sem_pedido ou movimento. args: {"formato":"xlsx|pdf"}.',
     '- boleto: 2ª via dos boletos de um cliente, buscada no EBM da Vulcabras: parcelas em dia, vencidas e as que o sistema não emite (com o motivo), e o PDF para baixar. args: {"cliente","de":"AAAA-MM-DD","ate":"AAAA-MM-DD","todas":true|false}. Primeiro aparece um cartão com o cliente para ele confirmar, e só o toque dele faz a busca: você nunca diz que buscou nem inventa boleto. Se o nome tiver várias lojas, a ferramenta mostra a lista para o vendedor escolher; "todas":true só quando ele pedir todas. O período é o do VENCIMENTO e pode ter vários meses ("de outubro a dezembro" = de 01/10 a 31/12); sem período citado, deixe de fora (vale o mês atual). Quando o resultado chegar, diga SEMPRE o período de vencimento que olhou e ofereça outro (os vencidos de meses anteriores ou os próximos meses). Demora até 1 minuto por cliente.',
     '',
@@ -1698,6 +1717,8 @@ const FERRAMENTAS = {
   clientes: a => agClientes(a),
   disponivel: a => agDisponivel(a),
   ebm_disponivel: a => agEbmDisponivel(a),
+  catalogo_produtos: a => agCatalogoProdutos(a),
+  foto_produto: a => agFotoProduto(a),
   repasses_cliente: a => agRepassesCliente(a),
   resumo_repasses: a => agResumoRepasses(a),
   pedido: async a => { await olharRobo(); return agPedido(a); },
@@ -1711,7 +1732,7 @@ const FERRAMENTAS = {
   },
 };
 const ROTULO_FERRAMENTA = { consultar: 'Consultando a carteira', clientes_sem_pedido: 'Procurando quem não comprou', movimento: 'Olhando entradas e saídas',
-  ficha: 'Abrindo a ficha', clientes: 'Procurando no cadastro', disponivel: 'Olhando o Showroom', ebm_disponivel: 'Procurando o produto', repasses_cliente: 'Olhando os repasses do cliente', resumo_repasses: 'Montando o resumo de repasses', pedido: 'Procurando o pedido', dae: 'Procurando a nota', metas: 'Olhando as metas', catalogo: 'Preparando o catálogo', baixar: 'Gerando o arquivo', boleto: 'Buscando os boletos no EBM (pode levar 1 minuto)' };
+  ficha: 'Abrindo a ficha', clientes: 'Procurando no cadastro', disponivel: 'Olhando o Showroom', ebm_disponivel: 'Procurando o produto', repasses_cliente: 'Olhando os repasses do cliente', resumo_repasses: 'Montando o resumo de repasses', pedido: 'Procurando o pedido', dae: 'Procurando a nota', metas: 'Olhando as metas', catalogo: 'Preparando o catálogo', catalogo_produtos: 'Procurando no catálogo', foto_produto: 'Procurando a foto', baixar: 'Gerando o arquivo', boleto: 'Buscando os boletos no EBM (pode levar 1 minuto)' };
 
 /* disponivel: "tem tal produto?". Varre o Showroom com a MESMA conta da tela
    (js/disponivel.js): saldo menos o que já foi pedido, cota do rateio, ocultos,
@@ -2747,6 +2768,279 @@ const iaEmbaralhou = t => { const s = String(t || '').trim(); return !s || /^tex
 // voltou como total de pares (só o pedido traz o botão de PDF) e "tem dispo de swift 6?" como "não tenho
 // acesso ao estoque" (quem olha o Showroom é o disponivel). Aqui a página corrige a escolha.
 // Pedido e carteira de UM cliente, nota, GCI ou OC sempre vêm com os produtos e o PDF, até no "quanto".
+/* catalogo_produtos e foto_produto: o Catálogo Digital (apps-oly-v2) das duas marcas, lido das mesmas
+   planilhas. O PDF não é montado aqui: o botão abre o próprio catálogo com os produtos escolhidos e ele
+   gera com o mesmo motor do botão "Gerar o catálogo em PDF", para o arquivo sair idêntico. */
+const CATALOGO_URL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? `http://${location.hostname}:3002/` : '../../apps-oly-v2/';
+const CAT_MARCAS = [{ id: 'oly', nome: 'Olympikus', xlsx: 'Produtos.xlsx' }, { id: 'ua', nome: 'Under Armour', xlsx: 'produtos_ua.xlsx' }];
+const CAT_CATEGORIAS = { FTW: 'Calçados', 'V&A': 'Vestuário', MEIA: 'Meias', ACC: 'Acessórios', CHI: 'Chinelos' };
+const CAT_PALAVRA_CATEGORIA = { CALCADO: 'FTW', CALCADOS: 'FTW', TENIS: 'FTW', SAPATO: 'FTW', SAPATOS: 'FTW', VESTUARIO: 'V&A', ROUPA: 'V&A', ROUPAS: 'V&A',
+  CONFECCAO: 'V&A', VA: 'V&A', MEIA: 'MEIA', MEIAS: 'MEIA', ACESSORIO: 'ACC', ACESSORIOS: 'ACC', CHINELO: 'CHI', CHINELOS: 'CHI', SANDALIA: 'CHI', SANDALIAS: 'CHI' };
+const CAT_PALAVRA_GENERO = { FEMININO: 'Feminino', FEMININA: 'Feminino', FEM: 'Feminino', MULHER: 'Feminino', MASCULINO: 'Masculino', MASCULINA: 'Masculino',
+  MASC: 'Masculino', HOMEM: 'Masculino', INFANTIL: 'Infantil', KIDS: 'Infantil', CRIANCA: 'Infantil', UNISSEX: 'Unissex' };
+const CAT_FORA = new Set(('CATALOGO CATALOGOS CATALAGO FOTO FOTOS IMAGEM IMAGENS DE DO DA DOS DAS O A OS AS UM UMA ME MANDA MANDE MANDAR PASSA GERA GERAR FAZ FAZER '
+  + 'QUERO PRECISO PRA PARA COM EM NO NA PDF LINHA COLECAO TODOS TODAS TUDO E AI TEM MOSTRA VER VE COR CORES').split(' '));
+const CAT = { rows: null, carregando: null };
+const RE_CORRE = /\bCORRE\b/;
+
+function catCarregar() {
+  if (CAT.rows) return Promise.resolve(CAT.rows);
+  return CAT.carregando || (CAT.carregando = (async () => {
+    if (typeof XLSX === 'undefined') await carregarScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+    const sim = v => /^(SIM|S|X|1|TRUE|VERDADEIRO)$/i.test(String(v ?? '').trim());
+    const lotes = await Promise.all(CAT_MARCAS.map(async m => {
+      const buf = await (await fetch(`${CATALOGO_URL}${m.xlsx}?t=${Date.now()}`)).arrayBuffer();
+      const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
+      // Os nomes das colunas variam de acento e caixa: compara pela chave sem acento, como o catálogo.
+      return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' }).map(r => {
+        const c = {}; for (const k in r) c[norm(k)] = r[k];
+        return { marca: m.id, imagem: String(c.IMAGEM || '').trim(), categoria: String(c.CATEGORIA || '').trim(), segmento: String(c.SEGMENTO || '').trim(),
+          codigo: String(c.CODIGO || '').trim(), produto: String(c.PRODUTO || '').trim(), cor: String(c.COR || '').trim(), genero: String(c.GENERO || '').trim(),
+          colecao: String(c.COLECAO || '').trim().toUpperCase(), lanc: sim(c.LANCAMENTO), novaCor: sim(c['NOVA COR']) };
+      }).filter(r => r.codigo && r.cor);
+    }));
+    return (CAT.rows = lotes.flat());
+  })().catch(e => { CAT.carregando = null; throw e; }));
+}
+// 1S27 vem antes de 2S26 e de 1S26: o ano manda, depois o semestre.
+const catOrdemColecao = c => { const m = /^([12])S(\d{2})$/.exec(c); return m ? -(Number(m[2]) * 2 + Number(m[1])) : 0; };
+const catSeg = s => norm(s).replace(/[^A-Z]/g, '');
+
+// Lê a frase: marca, coleção, categoria, segmento, gênero, a linha CORRE e o que sobrar como nome do produto.
+function catEntender(texto, rows) {
+  const palavras = norm(texto).replace(/[^A-Z0-9&\s]/g, ' ').split(/\s+/).filter(Boolean);
+  const segs = new Map(rows.map(r => [catSeg(r.segmento), r.segmento]).filter(([k]) => k));
+  const q = { marca: '', colecao: '', categoria: '', segmento: '', genero: '', corre: false, novo: '', nome: [] };
+  for (const w of palavras) {
+    if (/^(OLY|OLYMPIKUS)$/.test(w)) q.marca = 'oly';
+    else if (/^(UA|UNDER|ARMOUR)$/.test(w)) q.marca = 'ua';
+    else if (/^[12]S\d{2}$/.test(w)) q.colecao = w;
+    else if (w === 'CORRE') q.corre = true;
+    // "lançamentos" é o modelo novo; "cores novas" é a cor nova de modelo que já existia; "novidades" são os dois.
+    else if (/^LANCAMENTOS?$/.test(w)) q.novo = q.novo && q.novo !== 'lanc' ? 'tudo' : 'lanc';
+    else if (/^NOVAS?$/.test(w)) q.novo = q.novo && q.novo !== 'cor' ? 'tudo' : 'cor';
+    else if (/^(NOVIDADES?|NOVOS?)$/.test(w)) q.novo = 'tudo';
+    else if (CAT_PALAVRA_CATEGORIA[w]) q.categoria = CAT_PALAVRA_CATEGORIA[w];
+    else if (CAT_PALAVRA_GENERO[w]) q.genero = CAT_PALAVRA_GENERO[w];
+    else if (segs.has(w) || (w.endsWith('S') && segs.has(w.slice(0, -1)))) q.segmento = segs.has(w) ? w : w.slice(0, -1);
+    else if (!CAT_FORA.has(w)) q.nome.push(w);
+  }
+  return q;
+}
+function catFiltrar(rows, q, semNome) {
+  const temNome = (r, w) => { const n = ' ' + norm(r.produto).replace(/[^A-Z0-9]/g, ' ') + ' '; return n.includes(' ' + w) || (w.length > 3 && w.endsWith('S') && n.includes(' ' + w.slice(0, -1))); };
+  return rows.filter(r => (!q.marca || r.marca === q.marca) && (!q.colecao || r.colecao === q.colecao) && (!q.categoria || r.categoria === q.categoria)
+    && (!q.segmento || catSeg(r.segmento) === q.segmento) && (!q.genero || r.genero === q.genero) && (!q.corre || RE_CORRE.test(norm(r.produto)))
+    && (!q.novo || (q.novo === 'lanc' ? r.lanc : q.novo === 'cor' ? r.novaCor : r.lanc || r.novaCor))
+    && (semNome || q.nome.every(w => temNome(r, w))));
+}
+// Uma linha por código|cor: o mesmo par aparece em mais de uma coleção e em tamanhos diferentes.
+function catGrupos(lista) {
+  const g = new Map();
+  for (const r of lista) {
+    const k = r.marca + '|' + r.colecao;
+    if (!g.has(k)) g.set(k, { marca: r.marca, colecao: r.colecao, itens: new Map() });
+    const ch = r.codigo + '|' + r.cor;
+    if (!g.get(k).itens.has(ch)) g.get(k).itens.set(ch, r);
+  }
+  return [...g.values()].sort((a, b) => catOrdemColecao(a.colecao) - catOrdemColecao(b.colecao) || (a.marca === 'oly' ? -1 : 1));
+}
+const catNomeMarca = id => (CAT_MARCAS.find(m => m.id === id) || {}).nome || id;
+function catLinkPdf(g, id) {
+  return CATALOGO_URL + '?' + new URLSearchParams({ marca: g.marca, nexo: 'pdf', nexoid: id, col: g.colecao, itens: [...g.itens.keys()].join(',') });
+}
+// O Catálogo roda escondido num iframe, gera o PDF com o motor dele e devolve o arquivo por mensagem.
+const CAT_PDFS = new Map();
+window.addEventListener('message', ev => {
+  const m = ev.data;
+  if (!m || m.cmsCat == null) return;
+  const job = CAT_PDFS.get(m.id);
+  if (!job || ev.source !== job.frame.contentWindow) return;
+  if (m.cmsCat === 'progresso') job.andamento(m);
+  else { CAT_PDFS.delete(m.id); clearTimeout(job.limite); job.frame.remove(); job.fim(m); }
+});
+function catGerarPdf(g) {
+  return new Promise(fim => {
+    const id = 'c' + Date.now() + Math.random().toString(36).slice(2, 6), frame = document.createElement('iframe');
+    frame.setAttribute('aria-hidden', 'true'); frame.tabIndex = -1;
+    frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:1280px;height:900px;border:0;opacity:0;pointer-events:none';
+    const job = { frame, fim, andamento: g.andamento || (() => {}),
+      limite: setTimeout(() => { CAT_PDFS.delete(id); frame.remove(); fim({ cmsCat: 'erro', erro: 'O catálogo demorou demais para responder.' }); }, 300000) };
+    CAT_PDFS.set(id, job);
+    frame.src = catLinkPdf(g, id);
+    document.body.appendChild(frame);
+  });
+}
+document.addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-cat-pdf]');
+  if (!b) return;
+  const linha = b.closest('.cat-linha'), st = linha.querySelector('[data-cat-st]'), cart = b.closest('.cartao-cat');
+  const d = JSON.parse(b.dataset.catPdf);
+  b.disabled = true; b.hidden = true;
+  st.innerHTML = ampulheta('Abrindo o catálogo…'); rolar();
+  const r = await catGerarPdf({ marca: d.marca, colecao: d.col, itens: new Map(d.itens.map(k => [k, 1])),
+    andamento: m => { const t = st.querySelector('.am-rot'); if (t) t.textContent = `Montando o PDF: ${m.pct}%${m.pagina ? ` · página ${m.pagina} de ${m.total}` : ''}`; } });
+  if (r.cmsCat !== 'pronto' || !r.blob) { st.innerHTML = `<span class="aviso">${esc(r.erro || 'Não consegui gerar o PDF.')}</span>`; b.disabled = false; b.hidden = false; rolar(); return; }
+  linha.insertAdjacentHTML('afterend', cartaoArquivo({ blob: r.blob, nome: r.nome, rotulo: `Catálogo ${catNomeMarca(d.marca)} ${d.col} · ${d.filtro}` }));
+  st.innerHTML = ''; b.textContent = 'Gerar de novo'; b.disabled = false; b.hidden = false; rolar();
+});
+function catDescricao(q) {
+  return [q.corre ? 'Corre' : '', CAT_CATEGORIAS[q.categoria] || '', q.segmento ? q.segmento[0] + q.segmento.slice(1).toLowerCase() : '',
+    q.genero, { lanc: 'Lançamentos', cor: 'Cores novas', tudo: 'Novidades' }[q.novo] || '', q.nome.join(' ').toLowerCase()].filter(Boolean).join(' · ');
+}
+
+async function agCatalogoProdutos(a) {
+  const rows = await catCarregar();
+  const texto = String(a.busca || a.produto || '');
+  const q = catEntender(texto, rows);
+  const filtro = catDescricao(q);
+  // Só a marca (ou nada): as categorias dela viram botões, cada um com quantas cores tem.
+  if (!filtro) {
+    const marcas = q.marca ? [q.marca] : CAT_MARCAS.map(m => m.id);
+    const blocos = marcas.map(m => {
+      const daMarca = rows.filter(r => r.marca === m), col = q.colecao || [...new Set(daMarca.map(r => r.colecao))].sort((x, y) => catOrdemColecao(x) - catOrdemColecao(y))[0];
+      const conta = f => new Set(daMarca.filter(r => r.colecao === col && f(r)).map(r => r.codigo + '|' + r.cor)).size;
+      const pal = m === 'oly' ? 'oly' : 'ua';
+      const ops = Object.entries(CAT_CATEGORIAS).map(([k, rot]) => [rot, conta(r => r.categoria === k && !RE_CORRE.test(norm(r.produto))), `catálogo ${pal} ${col} ${rot.toLowerCase()}`])
+        .concat(m === 'oly' ? [['Corre', conta(r => RE_CORRE.test(norm(r.produto))), `catálogo ${pal} ${col} corre`]] : []).filter(x => x[1]);
+      return `<div class="cd-p">${esc(catNomeMarca(m))} · ${esc(col)}</div><div class="acoes">` +
+        ops.map(([rot, n, v]) => `<button class="sug" data-opcao="${esc(v)}">${esc(rot)} · ${fmt(n)}</button>`).join('') + '</div>';
+    }).join('');
+    return { cartao: `<div class="cartao-dae cartao-cat"><div class="cd-tit">Catálogo</div><div class="cd-l">Escolha a categoria: o número é de cores.</div>${blocos}</div>`,
+      texto: 'Apareceram os botões das categorias do catálogo. Peça para ele escolher; não liste as categorias de novo.' };
+  }
+  // Linha sem coleção na planilha não vira PDF: o catálogo não teria com o que filtrar.
+  const achados = catFiltrar(rows, q).filter(r => r.colecao);
+  if (!achados.length) {
+    const semNome = q.nome.length ? catFiltrar(rows, q, true) : [];
+    return { erro: `Não achei "${filtro}" no catálogo${q.marca ? ' da ' + catNomeMarca(q.marca) : ''}.` + (semNome.length && q.nome.length && filtro !== q.nome.join(' ').toLowerCase() ? ` A palavra "${q.nome.join(' ').toLowerCase()}" não aparece no nome de nenhum produto.` : '') };
+  }
+  const grupos = catGrupos(achados);
+  const linha = g => {
+    const n = g.itens.size, modelos = new Set([...g.itens.values()].map(r => r.codigo)).size, pesado = n > 120;
+    const dados = esc(JSON.stringify({ marca: g.marca, col: g.colecao, itens: [...g.itens.keys()], filtro }));
+    return `<div class="cat-linha"><div class="cat-txt"><b>${esc(catNomeMarca(g.marca))}</b> · ${esc(g.colecao)}<div class="cd-l">${fmt(modelos)} modelo${modelos > 1 ? 's' : ''}, ${fmt(n)} cor${n > 1 ? 'es' : ''}` +
+      `${pesado ? ' · PDF grande: vale filtrar mais' : ''}</div><div class="dots-rot" data-cat-st></div></div><button class="sug forte" data-cat-pdf="${dados}">Gerar PDF</button></div>`;
+  };
+  // Trabalhamos a coleção mais nova: as anteriores ficam fechadas, a um toque, para não confundir.
+  // Se ele pediu uma coleção pelo nome, ela vem aberta.
+  const atual = [...new Set(rows.map(r => r.colecao).filter(Boolean))].sort((x, y) => catOrdemColecao(x) - catOrdemColecao(y))[0];
+  const abertos = q.colecao ? grupos : grupos.filter(g => g.colecao === atual), antigos = grupos.filter(g => !abertos.includes(g));
+  const colsAntigas = [...new Set(antigos.map(g => g.colecao))];
+  const html = (abertos.length ? abertos.map(linha).join('') : `<div class="cd-l cat-sem">Não tem na ${esc(atual)}.</div>`) +
+    (antigos.length ? `<details class="cat-antigas"><summary>Coleções anteriores · ${esc(colsAntigas.join(', '))}</summary>${antigos.map(linha).join('')}</details>` : '');
+  return { cartao: `<div class="cartao-dae cartao-cat"><div class="cd-tit">Catálogo · ${esc(filtro)}</div>${html}` +
+      `<div class="cd-l">O PDF é o mesmo do Catálogo e aparece aqui no chat. Para afinar, peça com mais palavras: "catálogo corrida feminino".</div></div>`,
+    texto: abertos.length ? `O cartão do catálogo apareceu com o PDF da ${q.colecao || atual}: ${abertos.map(g => `${catNomeMarca(g.marca)} (${g.itens.size} cores)`).join(', ')}.${antigos.length ? ' Coleções anteriores ficam fechadas no cartão; só fale delas se ele perguntar.' : ''} Ele toca em "Gerar PDF"; não repita os números.`
+      : `Não tem "${filtro}" na ${atual}; só em coleções anteriores (${colsAntigas.join(', ')}), que estão fechadas no cartão. Diga isso a ele.` };
+}
+
+// ── fotos ─────────────────────────────────────────────────────────────
+const CAT_EXTS = ['.jpg', '.jpeg', '.png', '.webp'];
+const catFotoBase = r => CATALOGO_URL + 'imagens_olympikus/' + encodeURI(String(r.imagem || `${r.codigo}_${r.cor}`).replace(/\.(png|jpe?g|webp)$/i, '').replace(/[\/\\\s]+/g, '_'));
+// Uma <img> que tenta as extensões em ordem e some se nenhuma abrir.
+const catImg = (base, cls, extra = '') => `<img class="${cls}" loading="lazy" alt="" src="${esc(base + CAT_EXTS[0])}" data-base="${esc(base)}" data-ext="0" onerror="catImgErro(this)"${extra}>`;
+function catImgErro(el) {
+  const i = Number(el.dataset.ext || 0) + 1;
+  if (i < CAT_EXTS.length) { el.dataset.ext = String(i); el.src = el.dataset.base + CAT_EXTS[i]; return; }
+  // Ângulo que não existe some; na miniatura da cor fica só o nome.
+  const ang = el.closest('.foto-ang'); if (ang) ang.remove(); else el.style.display = 'none';
+}
+function catCasaCor(cores, pedida) {
+  if (!pedida) return '';
+  const esqueleto = s => corChave(s).replace(/[AEIOU]/g, ''), q = corChave(pedida);
+  return cores.find(c => corChave(c) === q) || cores.find(c => esqueleto(c) === esqueleto(pedida))
+    || cores.find(c => { const k = corChave(c); return q.length >= 3 && (k.startsWith(q) || q.startsWith(k)); }) || '';
+}
+function catFotosDe(itens, titulo) {
+  // Com uma cor só, os quatro ângulos; com várias, uma miniatura por cor (toque abre os ângulos dela).
+  if (itens.length === 1) {
+    const r = itens[0], b = catFotoBase(r).replace(/(__0[2-4]|_0[2-4])$/, '');
+    const angs = ['', '__02', '__03', '__04'].map((s, i) => `<button class="foto-ang" data-foto-ver="${esc(b + s)}">${catImg(b + s, 'foto-mini')}</button>`).join('');
+    return `<div class="cartao-dae cartao-foto"><div class="cd-tit">${esc(titulo)}</div><div class="cd-l">${esc(catNomeMarca(r.marca))} · ${esc(r.codigo)} · ${esc(r.cor)}</div>` +
+      `<div class="foto-grande">${catImg(b, 'foto-g', ' data-foto-atual')}</div><div class="foto-angs">${angs}</div>` +
+      `<div class="acoes"><button class="sug forte" data-foto-enviar="${esc(r.codigo + '_' + r.cor)}">Enviar foto</button></div></div>`;
+  }
+  const q = r => `<button class="foto-q" data-opcao="${esc(`foto do ${r.codigo} cor ${r.cor}`)}" data-foto-nome="${esc(r.codigo + '_' + r.cor)}">${catImg(catFotoBase(r), 'foto-mini')}<span>${esc(r.cor)}</span></button>`;
+  // As cores da coleção atual ficam à vista; as das anteriores, fechadas (se o modelo não está na atual, abre o que tem).
+  const atuais = itens.filter(r => r.atual), antigas = itens.filter(r => !r.atual), abre = atuais.length ? atuais : antigas;
+  const fechadas = atuais.length ? antigas : [];
+  return `<div class="cartao-dae cartao-foto"><div class="cd-tit">${esc(titulo)}</div><div class="cd-l">${esc(catNomeMarca(itens[0].marca))} · ${esc(itens[0].codigo)} · toque numa cor para ver e enviar${atuais.length ? '' : ` · fora da ${esc(itens[0].colAtual)}`}</div>` +
+    `<div class="foto-cores">${abre.map(q).join('')}</div>` +
+    `<div class="acoes"><button class="sug forte" data-foto-todas>Enviar todas (${abre.length})</button></div>` +
+    (fechadas.length ? `<details class="cat-antigas"><summary>Cores de coleções anteriores · ${fechadas.length}</summary><div class="foto-cores">${fechadas.map(q).join('')}</div></details>` : '') + '<div class="dots-rot" data-foto-st></div></div>';
+}
+async function agFotoProduto(a) {
+  const rows = await catCarregar();
+  const palavras = norm(String(a.busca || [a.produto, a.cor].filter(Boolean).join(' '))).replace(/[^A-Z0-9\s]/g, ' ').split(/\s+/).filter(w => w && !CAT_FORA.has(w));
+  if (!palavras.length) return { erro: 'De qual produto é a foto? Pergunte ao vendedor.' };
+  // Referência direta ("foto do 43649393 cor MILITR"), senão o nome; a última palavra pode ser a cor.
+  const porNome = ws => rows.filter(r => ws.every(w => r.codigo === w || (' ' + norm(r.produto).replace(/[^A-Z0-9]/g, ' ') + ' ').includes(' ' + w + ' ')));
+  let lista = porNome(palavras), cor = '';
+  if (!lista.length && palavras.length > 1) { lista = porNome(palavras.slice(0, -1)); cor = palavras[palavras.length - 1]; }
+  if (!lista.length) return { erro: `Não achei "${palavras.join(' ').toLowerCase()}" no catálogo.` };
+  // Nome exato manda ("marte" é o adulto, não o "marte infantil"); a coleção mais nova vem primeiro.
+  const nomeQ = palavras.slice(0, cor ? -1 : undefined).join(' ');
+  const exatos = lista.filter(r => norm(r.produto) === nomeQ);
+  if (exatos.length) lista = exatos;
+  lista.sort((x, y) => catOrdemColecao(x.colecao) - catOrdemColecao(y.colecao));
+  const modelos = [...new Map(lista.map(r => [r.codigo, r])).values()];
+  if (modelos.length > 1) {
+    const ops = modelos.slice(0, 10);
+    return { erro: `"${nomeQ.toLowerCase()}" casou com ${modelos.length} produtos. Os botões já apareceram: pergunte qual é.`,
+      opcoes: ops.map(r => ({ rotulo: `${r.produto} · ${r.codigo}`, valor: `foto do ${r.codigo}${cor ? ' cor ' + cor : ''}` })) };
+  }
+  // Uma por cor, da coleção mais nova em que ela aparece; "atual" é estar na coleção mais nova do catálogo.
+  const colAtual = [...new Set(rows.map(r => r.colecao).filter(Boolean))].sort((x, y) => catOrdemColecao(x) - catOrdemColecao(y))[0];
+  const porCor = new Map();
+  for (const r of lista) if (!porCor.has(r.cor)) porCor.set(r.cor, { ...r, colAtual, atual: lista.some(x => x.cor === r.cor && x.colecao === colAtual) });
+  const doModelo = [...porCor.values()];
+  const pedida = cor && catCasaCor(doModelo.map(r => r.cor), cor);
+  const itens = pedida ? doModelo.filter(r => r.cor === pedida) : doModelo;
+  return { cartao: catFotosDe(itens, modelos[0].produto),
+    texto: pedida || itens.length === 1 ? `A foto de ${modelos[0].produto} ${itens[0].cor} apareceu com o botão de enviar.` : `As fotos das cores de ${modelos[0].produto} da ${colAtual} apareceram (as de coleções anteriores ficam fechadas); ele toca na cor para ver e enviar, ou em "Enviar todas".${cor ? ` Não achei a cor "${cor.toLowerCase()}".` : ''}` };
+}
+document.addEventListener('click', async ev => {
+  const ver = ev.target.closest('[data-foto-ver]');
+  if (ver) {
+    const g = ver.closest('.cartao-foto')?.querySelector('[data-foto-atual]');
+    if (g && ver.querySelector('img')) { g.dataset.base = ver.dataset.fotoVer; g.dataset.ext = ver.querySelector('img').dataset.ext; g.src = ver.querySelector('img').src; }
+    return;
+  }
+  const todas = ev.target.closest('[data-foto-todas]');
+  if (todas) {
+    // As miniaturas à vista que abriram: no celular vão juntas para o compartilhar; no computador, baixam uma a uma.
+    const cart = todas.closest('.cartao-foto'), st = cart.querySelector('[data-foto-st]');
+    const imgs = [...cart.querySelectorAll(':scope > .foto-cores .foto-q img')].filter(i => i.complete && i.naturalWidth);
+    if (!imgs.length) return;
+    todas.disabled = true; st.innerHTML = ampulheta(`Preparando ${imgs.length} foto${imgs.length > 1 ? 's' : ''}…`);
+    try {
+      const arqs = await Promise.all(imgs.map(async i => {
+        const ext = (i.currentSrc.match(/\.(jpe?g|png|webp)$/i) || ['', 'jpg'])[1].toLowerCase(), blob = await (await fetch(i.currentSrc)).blob();
+        return new File([blob], `${i.closest('.foto-q').dataset.fotoNome.replace(/[^A-Za-z0-9_-]+/g, '_')}.${ext}`, { type: blob.type || 'image/jpeg' });
+      }));
+      st.innerHTML = '';
+      if (navigator.canShare && navigator.canShare({ files: arqs })) await navigator.share({ files: arqs });
+      else for (const f of arqs) { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); await new Promise(r => setTimeout(r, 350)); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
+    } catch (e) { st.innerHTML = e && e.name === 'AbortError' ? '' : `<span class="aviso">Não consegui preparar as fotos.</span>`; }
+    todas.disabled = false;
+    return;
+  }
+  const b = ev.target.closest('[data-foto-enviar]');
+  if (!b) return;
+  const img = b.closest('.cartao-foto')?.querySelector('[data-foto-atual]');
+  if (!img || !img.complete || !img.naturalWidth) return;
+  const ext = (img.currentSrc.match(/\.(jpe?g|png|webp)$/i) || ['', 'jpg'])[1].toLowerCase();
+  const nome = `${b.dataset.fotoEnviar.replace(/[^A-Za-z0-9_-]+/g, '_')}.${ext}`;
+  try {
+    const blob = await (await fetch(img.currentSrc)).blob();
+    const arq = new File([blob], nome, { type: blob.type || 'image/' + (ext === 'jpg' ? 'jpeg' : ext) });
+    // No celular abre o compartilhar (WhatsApp); no computador baixa.
+    if (navigator.canShare && navigator.canShare({ files: [arq] })) { await navigator.share({ files: [arq] }); return; }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(arq); a.download = nome; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  } catch (e) { if (e && e.name !== 'AbortError') window.open(img.currentSrc, '_blank'); }
+});
+
 function corrigeFerramenta(texto, r, passo) {
   const querDispo = /\bdispo\b|disponib|dispon[ií]ve|showroom|\btem\b.*\brepasses?\b/i.test(texto);
   const cart = /carteira|falta faturar|a faturar/i.test(texto), fat = /faturad/i.test(texto);
@@ -2754,6 +3048,8 @@ function corrigeFerramenta(texto, r, passo) {
   // Respondeu sem olhar nada: o que ele pediu sai da própria frase.
   if (r.acao !== 'ferramenta') {
     if (passo !== 1) return r;
+    if (/cat[aá]l[oa]go/i.test(texto) && !/\bcliente\b/i.test(texto)) return { ok: true, acao: 'ferramenta', nome: 'catalogo_produtos', args: { busca: texto } };
+    if (/\b(fotos?|imagens?)\b/i.test(texto)) return { ok: true, acao: 'ferramenta', nome: 'foto_produto', args: { busca: texto } };
     const m = texto.match(/\bdispo(?:nibilidade)?\s+(?:d[eoa]s?\s+)?(.+?)[\s?.!]*$/i);
     if (m) return { ok: true, acao: 'ferramenta', nome: 'disponivel', args: { produto: m[1] } };
     const n = texto.match(/ped(?:ido|iu).*\b(?:nota|nf)\s*(\d[\d.]{3,})/i);
@@ -2764,6 +3060,11 @@ function corrigeFerramenta(texto, r, passo) {
     const a = r.args || {}, f = a.filtros || {}, v = [a.vendedor, f.vendedor].flat().filter(Boolean), mes = String(a.mes || a.de || '').slice(0, 7);
     return { ...r, nome: 'metas', args: { ...(v.length === 1 ? { vendedor: v[0] } : {}), ...(/^\d{4}-\d{2}$/.test(mes) ? { mes } : {}), ...(/quem|prepostos|vendedores|time|ranking/i.test(texto) ? { comparar: true } : {}) } };
   }
+  // "Catálogo" sem cliente é o de produtos; "foto do X" é a foto do catálogo (com cliente continua o catálogo da Detalhada).
+  if (passo === 1) { const a = r.args || {}, f = a.filtros || {}, comCliente = a.cliente || f.cliente;
+    if (/cat[aá]l[oa]go/i.test(texto) && !comCliente && r.nome !== 'catalogo_produtos') return { ...r, nome: 'catalogo_produtos', args: { busca: texto } };
+    if (/(fotos?|imagens?)/i.test(texto) && !/cat[aá]l[oa]go/i.test(texto) && !comCliente && !['foto_produto', 'catalogo'].includes(r.nome)) return { ...r, nome: 'foto_produto', args: { busca: texto } };
+    if (['catalogo_produtos', 'foto_produto'].includes(r.nome) && !a.busca) return { ...r, args: { busca: texto } }; }
   // "Confere no EBM se tem Marte": produto com EBM na frase é a consulta ao vivo, não o Showroom publicado.
   if (/\bebm\b/i.test(texto) && ['disponivel', 'consultar'].includes(r.nome)) {
     const a = r.args || {}, f = a.filtros || {}, um1 = v => Array.isArray(v) ? (v.length === 1 ? v[0] : '') : v;
@@ -2959,6 +3260,8 @@ const TESTES = [
   { v: 'JORGE', q: ['quanto saiu da minha carteira essa semana?'], ok: r => { const dow = (new Date(hojeIso() + 'T00:00:00Z').getUTCDay() + 6) % 7; return batMov(r, { tipo: 'saidas', de: batDia(-dow), ate: hojeIso() }); } },
   { v: 'JORGE', q: ['o que o Degraus tem para faturar no próximo mês, por produto?', 'baixa essa tabela em excel'], ok: r => ({ ok: batUsou(r, 'baixar'), esp: 'usar a ferramenta baixar' }) },
   { v: 'JORGE', q: ['manda o catálogo do degraus em pdf'], ok: r => ({ ok: batUsou(r, 'catalogo'), esp: 'usar a ferramenta catalogo' }) },
+  { v: 'JORGE', q: ['catálogo mochila'], ok: r => ({ ok: batUsou(r, 'catalogo_produtos'), esp: 'usar a ferramenta catalogo_produtos' }) },
+  { v: 'JORGE', q: ['manda a foto do marte infantil militar'], ok: r => ({ ok: batUsou(r, 'foto_produto'), esp: 'usar a ferramenta foto_produto' }) },
   { v: 'JORGE', q: ['confere no EBM se tem marte infantil'], ok: r => ({ ok: batUsou(r, 'ebm_disponivel'), esp: 'usar a ferramenta ebm_disponivel' }) },
   { v: 'JORGE', q: ['quanto de corre 4 eu tenho em carteira, por cor?'], ok: r => { const t = batCons({ filtros: { produto: 'CORRE 4' }, situacao: 'carteira', agrupar: ['cor'], ordenar: 'carteira' }); return t.rows.length ? { ok: batTem(r.texto, t.rows[0][1]), esp: `maior cor: ${t.rows[0][0]} ${fmt(t.rows[0][1])}` } : { ok: /n[aã]o|nenhum|zero|\b0\b/i.test(r.texto), esp: 'sem carteira' }; } },
   { v: 'JORGE', q: ['quantas notas o Degraus recebeu no mês passado?'], ok: r => { const m = batMes(-1), t = batCons({ filtros: { cliente: 'DEGRAUS' }, situacao: 'faturado', de: m.de, ate: m.ate, agrupar: ['nf'] }); return { ok: batTem(r.texto, t.rows.length), esp: `${t.rows.length} nota(s)` }; } },
