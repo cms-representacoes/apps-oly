@@ -114,13 +114,16 @@ def relatorios():
 
 def backups():
     criar_bucket("arquivo")
+    # Backup é foto de um dia: o que já subiu não muda, só os novos vão
+    ja_enviados = {r["caminho"] for r in sql("select caminho from sistema.arquivo_historico")}
     linhas, total, total_gz = [], 0, 0
     for arq in sorted((DATA / "backups").rglob("*.json")):
         bruto = arq.read_bytes()
         gz = gzip.compress(bruto, 9)
         rel = arq.relative_to(DATA / "backups").as_posix()
         caminho = f"backups/{rel}.gz"
-        enviar("arquivo", caminho, gz, "application/gzip")
+        if caminho not in ja_enviados:
+            enviar("arquivo", caminho, gz, "application/gzip")
         tipo = rel.split("/")[0] if "/" in rel else rel.split("_backup")[0]
         m = re.search(r"(\d{4}-\d{2}-\d{2})", rel)
         linhas.append((caminho, tipo, m.group(1) if m else None, len(bruto), len(gz)))
