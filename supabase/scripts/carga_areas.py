@@ -373,6 +373,19 @@ def matriz():
 
 
 # ─── Relatórios e documentos ──────────────────────────────────────────
+def meta_detalhada():
+    """O cabeçalho da base (data, origem, movimento, prev0), sem as linhas:
+    a função carteira.base_detalhada() remonta o arquivo a partir dele."""
+    d = ler(DATA / "detalhada.json")
+    info = ler(DATA / "detalhada-info.json")
+    return {
+        "v": d.get("v"), "gerado": d.get("gerado"), "origem": d.get("origem"),
+        "dataDia": d.get("dataDia"), "publicadoEm": info.get("publicadoEm"),
+        "mov": {k: v for k, v in (d.get("mov") or {}).items() if k not in ("dic", "ev")},
+        "prev0": {k: v for k, v in (d.get("prev0") or {}).items() if k != "k"},
+    }
+
+
 def relatorios():
     carta = []
     for arq in sorted((APPS / "carta" / "dados").glob("*/*/*.json")):
@@ -386,6 +399,7 @@ def relatorios():
         {"chave": "status/vitrine", "app": "vitrine", "dados": ler(DATA / "vitrine_status.json"), "origem": "data/vitrine_status.json"},
         {"chave": "repasse/novidades", "app": "repasses", "dados": ler(DATA / "novidades-repasse.json"), "origem": "data/novidades-repasse.json"},
         {"chave": "vitrine/reativar", "app": "vitrine", "dados": ler(DATA / "reativar.json"), "origem": "data/reativar.json"},
+        {"chave": "detalhada/meta", "app": "detalhada", "dados": meta_detalhada(), "origem": "data/detalhada.json"},
     ]
     for arq in sorted((V2 / "data").glob("*.json")):
         docs.append({"chave": f"v2/{arq.stem}", "app": "apps-oly-v2", "dados": ler(arq), "origem": f"apps-oly-v2/data/{arq.name}"})

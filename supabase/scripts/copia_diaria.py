@@ -92,6 +92,8 @@ def main():
         for i, arq in enumerate(arquivos, 1):
             rodar_arquivo(arq)
         print(f"{len(arquivos)} partes enviadas")
+    # A Detalhada abre de uma base pronta por vendedor: monta depois da carga
+    print("bases da detalhada montadas:", sql("select carteira.preparar_bases() as n")[0]["n"])
     r = subprocess.run([sys.executable, "-I", str(AQUI / "carga_arquivos.py")],
                        capture_output=True, text=True, encoding="utf-8")
     if r.returncode:
