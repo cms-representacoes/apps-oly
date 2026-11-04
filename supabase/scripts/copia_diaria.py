@@ -84,6 +84,9 @@ def no_banco():
 
 
 def main():
+    # Quem lê esta saída (o robô) decodifica em UTF-8; sem isto, um acento
+    # vindo das imagens derrubava a cópia inteira
+    sys.stdout.reconfigure(encoding="utf-8")
     inicio = time.time()
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)

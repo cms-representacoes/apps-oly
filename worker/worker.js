@@ -1,5 +1,5 @@
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     // ── CORS: lista de origens permitidas ────────────────────────────────────
     // Adicione aqui qualquer outro domínio que vá consumir o Worker (catálogo, admin, etc)
     const ALLOWED_ORIGINS = [
@@ -382,6 +382,25 @@ export default {
       return gitCommitBlob(owner, repo, branch, path, blobSha, message);
     }
 
+    // ── Cópia no Supabase (migração) ──────────────────────────────────────
+    // Depois de gravar no GitHub, o mesmo conteúdo vai para o banco, em
+    // segundo plano (ctx.waitUntil): quem salvou não espera, e se o banco
+    // falhar o GitHub já gravou — a cópia da noite acerta o que faltar.
+    // Sem SUPABASE_URL e SUPABASE_SECRETA nas variáveis do Worker, não faz nada.
+    function espelhar(caminho, conteudo) {
+      if (!env.SUPABASE_URL || !env.SUPABASE_SECRETA) return;
+      const envio = fetch(`${String(env.SUPABASE_URL).trim()}/rest/v1/rpc/receber_arquivo`, {
+        method: "POST",
+        headers: { apikey: String(env.SUPABASE_SECRETA).trim(), "Content-Type": "application/json",
+                   "Content-Profile": "sistema" },
+        body: JSON.stringify({ caminho, conteudo })
+      }).then(async r => {
+        const resp = await r.text();
+        if (!r.ok || resp.includes("erro")) console.warn("[supabase]", caminho, r.status, resp.slice(0, 200));
+      }).catch(e => console.warn("[supabase]", caminho, String(e)));
+      if (ctx && ctx.waitUntil) ctx.waitUntil(envio);
+    }
+
     async function saveFile(url, content, sha, message, compacto = false) {
       const { owner, repo, path } = parseRepoUrl(url);
       const branch = env.GITHUB_BRANCH || "main";
@@ -409,6 +428,7 @@ export default {
       // Os demais arquivos continuam legiveis no diff do GitHub.
       const jsonStr = compacto ? JSON.stringify(content) : JSON.stringify(content, null, 2);
       await gitCommitFile(owner, repo, branch, path, jsonStr, message);
+      espelhar(`${repo}/${path}`, content);
       return { success: true };
     }
 
@@ -1301,6 +1321,7 @@ export default {
           }
           // 90 dias sem mexer e a sacola se apaga sozinha.
           await env.SACOLAS.put(chave, valor, { expirationTtl: 60 * 60 * 24 * 90 });
+          espelhar("kv/" + chave, JSON.parse(valor));
           return new Response(JSON.stringify({ success: true, em }), { status: 200, headers: corsHeaders });
         }
 
@@ -1385,6 +1406,7 @@ export default {
           }
           // Um ano: o mix vale a temporada inteira, nao a semana.
           await env.SACOLAS.put(prefixo + codigo, valor, { expirationTtl: 60 * 60 * 24 * 365 });
+          espelhar("kv/" + prefixo + codigo, registro);
           return new Response(JSON.stringify({ success: true, em: registro.em }),
             { status: 200, headers: corsHeaders });
         }
