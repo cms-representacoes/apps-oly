@@ -7769,12 +7769,14 @@ async function gerarCatalogoPdf(){
 
     function faixaOrigem(o, x, y, w){
       const linhas = [];
-      if(o.pronta) linhas.push({ c:C.est, rot:'ESTOQUE',
+      // Pedido do Nexo por origem ("catálogo do estoque"): só a linha pedida, para o cliente não confundir.
+      const so = window.__nexoPdf && window.__nexoPdf.origem;
+      if(o.pronta && (!so || so === 'estoque')) linhas.push({ c:C.est, rot:'ESTOQUE',
         val:nf(o.pronta.total) + ' un', grade:o.pronta.grade });
-      if(o.repasse) for(const l of o.repasse.lotes) linhas.push({ c:C.rep, rot:'REPASSE',
+      if(o.repasse && (!so || so === 'repasse')) for(const l of o.repasse.lotes) linhas.push({ c:C.rep, rot:'REPASSE',
         val:nf(l.saldo) + ' un', grade:l.grade,
         det:`Nº ${l.num}${l.gci ? ' · GCI ' + l.gci : ''} · fat. ${l.data || '—'}` });
-      if(o.meta) linhas.push({ c:C.pro, rot:'PRODUÇÃO',
+      if(o.meta && (!so || so === 'producao')) linhas.push({ c:C.pro, rot:'PRODUÇÃO',
         val:nf(o.meta.quinzenas[0].v) + ' un',
         det:o.meta.quinzenas.map(q => q.rot + ' ' + nf(q.v)).join('  ·  ') });
 
@@ -7909,13 +7911,18 @@ async function gerarCatalogoPdf(){
         // Com a vitrine inteira marcada isso passa de um minuto. Sem contador,
         // o vendedor acha que travou e sai da tela no meio.
         if(itens.length > 12) passo(btn, `${nf(feitos)}/${nf(itens.length)}`);
+        if(window.__nexoPdf) window.__nexoPdf.andamento(Math.round(feitos / itens.length * 100), feitos, itens.length);
       }
       rodape(pag);
     }
-    doc.save(`catalogo_${MARCA}_${d.getFullYear()}${p2(d.getMonth()+1)}${p2(d.getDate())}` +
-      `_${p2(d.getHours())}${p2(d.getMinutes())}.pdf`);
+    const nomePdf = `catalogo_${MARCA}_${d.getFullYear()}${p2(d.getMonth()+1)}${p2(d.getDate())}` +
+      `_${p2(d.getHours())}${p2(d.getMinutes())}.pdf`;
+    // Gerado a pedido do Nexo: o arquivo volta para o chat em vez de baixar.
+    if(window.__nexoPdf) window.__nexoPdf.pronto(doc.output('blob'), nomePdf);
+    else doc.save(nomePdf);
   }catch(e){
     console.error(e);
+    if(window.__nexoPdf) window.__nexoPdf.erro(e);
     avisar('Não deu para gerar o PDF', 'Tente de novo em alguns instantes.');
   }finally{ liberado(btn); }
 }
@@ -8200,6 +8207,45 @@ async function gerarCatalogoXlsx(){
 }
 
 $('btnSelPdf').onclick = gerarCatalogoPdf;
+
+/* Pedido do Nexo: ?nexo=pdf&nexoid=...&origem=estoque|repasse|producao, num iframe escondido do chat.
+   Os produtos (k = artigo|cor) vêm da página do Nexo, que é da mesma origem: a lista passaria de mil
+   códigos e não cabe no endereço. Marca, gera com o mesmo gerarCatalogoPdf, devolve o arquivo por
+   mensagem e põe de volta os marcados do vendedor. */
+(function pedidoDoNexo(){
+  const p = new URLSearchParams(location.search), id = p.get('nexoid') || '';
+  if(p.get('nexo') !== 'pdf' || !id || window.parent === window) return;
+  let pedido = null;
+  try{ pedido = window.parent.CAT_PEDIDOS && window.parent.CAT_PEDIDOS.get(id); }catch(_){}
+  const avisar = m => { try{ window.parent.postMessage(Object.assign({ id }, m), '*'); }catch(_){} };
+  if(!pedido || !pedido.itens || !pedido.itens.length) return avisar({ cmsCat:'erro', erro:'O pedido do catálogo não chegou ao Showroom.' });
+  let entregue = false;
+  window.__nexoPdf = {
+    origem: ['estoque', 'repasse', 'producao'].includes(p.get('origem')) ? p.get('origem') : '',
+    andamento: (pct, pagina, total) => avisar({ cmsCat:'progresso', pct, pagina, total, unidade:'produto' }),
+    pronto: (blob, nome) => { entregue = true; avisar({ cmsCat:'pronto', blob, nome }); },
+    erro: e => { entregue = true; avisar({ cmsCat:'erro', erro:'O Showroom falhou: ' + (e && e.message || e) }); },
+  };
+  const inicio = Date.now();
+  const tentar = async () => {
+    if(!(STATE.produtos && STATE.produtos.length && window.jspdf)){
+      if(Date.now() - inicio < 90000) return void setTimeout(tentar, 400);
+      return window.__nexoPdf.erro(new Error('não carregou a tempo'));
+    }
+    const antes = [...STATE.marcados];
+    STATE.marcados.clear();
+    pedido.itens.forEach(k => STATE.marcados.add(k));
+    try{
+      await gerarCatalogoPdf();
+      if(!entregue) window.__nexoPdf.erro(new Error('não achei esses produtos no Showroom'));
+    }finally{
+      STATE.marcados.clear();
+      antes.forEach(k => STATE.marcados.add(k));
+      try{ pintarSelecao(); }catch(_){}
+    }
+  };
+  tentar();
+})();
 $('btnSelXlsx').onclick = gerarCatalogoXlsx;
 $('btnSelTodos').onclick = marcarTodosVisiveis;
 $('btnSelLimpar').onclick = limparMarcados;

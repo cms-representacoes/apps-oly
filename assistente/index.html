@@ -189,6 +189,8 @@ main{ flex:1; overflow-y:auto; overflow-x:hidden; padding:14px 16px; }
 .cat-antigas{ margin-top:10px; }
 .cat-antigas summary{ cursor:pointer; font-size:13px; font-weight:700; color:var(--oliva-escuro); padding:6px 2px; }
 .cat-sem{ margin-top:8px; }
+.cat-atalhos{ margin-top:6px; }
+.cat-atalhos .sug{ font-size:12.5px; padding:6px 11px; }
 .cartao-cat .cd-p{ margin-top:10px; }
 .foto-grande{ background:#fff; border-radius:10px; margin-top:8px; display:flex; justify-content:center; }
 .foto-g{ max-width:100%; max-height:340px; object-fit:contain; }
@@ -1480,7 +1482,7 @@ function agSistema(ctx) {
     '- dae: a guia (DAE ou DAR) da nota retida na fiscalização, só de clientes de Ceará e Piauí. Use para "preciso do DAE da nota X", "tem DAE do cliente Y?". args: {"nf"} ou {"cliente"}. Aparece um cartão com o cliente para ele confirmar, e só o toque dele faz a busca: você nunca diz que buscou nem inventa valor.',
     '- metas: a meta do vendedor ou da CMS, igual à tela de Metas (a "carta campanha" ou "carta" da Vulcabras é esta meta): total de tênis, cada faixa e as famílias em R$, com meta, potencial, faturado e quanto falta, mais a trava dos 15%. Use para "como está minha meta?", "quanto falta pra bater?", "meta do Jorge em setembro", "como está a trava?", "quem está melhor na meta?". args: {"vendedor","mes":"AAAA-MM ou AAAA-T4 (trimestre)","marca":"OLY|UA","comparar":true|false}. Sem mês, vale o atual; sem vendedor, a ferramenta decide (o vendedor só vê a dele, e a CMS vê a soma do time). "comparar":true só para comparar o time. Potencial é o vendido mais o que ainda não faturou; não some com outros números nem use consultar para meta.',
     '- catalogo: SÓ com cliente na frase: mostra ao vendedor os botões para gerar o catálogo (pedidos do cliente com foto) em PDF ou Excel, igual ao da Detalhada. args: {"cliente","formato":"pdf|xlsx","imagens":true|false}.',
-    '- catalogo_produtos: o CATÁLOGO DE PRODUTOS da Olympikus e da Under Armour em PDF, igual ao do Catálogo Digital. Use para "catálogo oly", "catálogo UA", "catálogo corrida", "catálogo corre", "catálogo vestuário", "catálogo mochila", "catálogo boné feminino 1S27" — sem cliente na frase. args: {"busca": a frase dele inteira}. Aparece um cartão com os botões de PDF por marca e coleção; não liste produtos.',
+    '- catalogo_produtos: o CATÁLOGO DE PRODUTOS da Olympikus e da Under Armour em PDF, igual ao do Catálogo Digital. Use para "catálogo oly", "catálogo UA", "catálogo corrida", "catálogo corre", "catálogo vestuário", "catálogo mochila", "catálogo boné feminino 1S27", e também o catálogo do que TEM: "catálogo do estoque", "catálogo do repasse chinelo", "catálogo da produção meias" — sem cliente na frase. args: {"busca": a frase dele inteira}. Aparece um cartão com os botões de PDF por marca e coleção; não liste produtos.',
     '- foto_produto: a FOTO de um produto do catálogo, com o botão de enviar no WhatsApp. Use para "manda a foto do marte infantil militar", "foto do 43649393", "tem foto da mochila X?". args: {"busca": a frase dele inteira}.',
     '- baixar: baixa em Excel ou PDF a última tabela de consultar, clientes_sem_pedido ou movimento. args: {"formato":"xlsx|pdf"}.',
     '- boleto: 2ª via dos boletos de um cliente, buscada no EBM da Vulcabras: parcelas em dia, vencidas e as que o sistema não emite (com o motivo), e o PDF para baixar. args: {"cliente","de":"AAAA-MM-DD","ate":"AAAA-MM-DD","todas":true|false}. Primeiro aparece um cartão com o cliente para ele confirmar, e só o toque dele faz a busca: você nunca diz que buscou nem inventa boleto. Se o nome tiver várias lojas, a ferramenta mostra a lista para o vendedor escolher; "todas":true só quando ele pedir todas. O período é o do VENCIMENTO e pode ter vários meses ("de outubro a dezembro" = de 01/10 a 31/12); sem período citado, deixe de fora (vale o mês atual). Quando o resultado chegar, diga SEMPRE o período de vencimento que olhou e ofereça outro (os vencidos de meses anteriores ou os próximos meses). Demora até 1 minuto por cliente.',
@@ -2779,7 +2781,7 @@ const CAT_PALAVRA_CATEGORIA = { CALCADO: 'FTW', CALCADOS: 'FTW', TENIS: 'FTW', S
 const CAT_PALAVRA_GENERO = { FEMININO: 'Feminino', FEMININA: 'Feminino', FEM: 'Feminino', MULHER: 'Feminino', MASCULINO: 'Masculino', MASCULINA: 'Masculino',
   MASC: 'Masculino', HOMEM: 'Masculino', INFANTIL: 'Infantil', KIDS: 'Infantil', CRIANCA: 'Infantil', UNISSEX: 'Unissex' };
 const CAT_FORA = new Set(('CATALOGO CATALOGOS CATALAGO FOTO FOTOS IMAGEM IMAGENS DE DO DA DOS DAS O A OS AS UM UMA ME MANDA MANDE MANDAR PASSA GERA GERAR FAZ FAZER '
-  + 'QUERO PRECISO PRA PARA COM EM NO NA PDF LINHA COLECAO TODOS TODAS TUDO E AI TEM MOSTRA VER VE COR CORES').split(' '));
+  + 'QUERO PRECISO PRA PARA COM EM NO NA PDF LINHA TODOS TODAS TUDO E AI TEM MOSTRA VER VE COR CORES ENTREGA PRODUTIVA QUE').split(' '));
 const CAT = { rows: null, carregando: null };
 const RE_CORRE = /\bCORRE\b/;
 
@@ -2810,12 +2812,18 @@ const catSeg = s => norm(s).replace(/[^A-Z]/g, '');
 function catEntender(texto, rows) {
   const palavras = norm(texto).replace(/[^A-Z0-9&\s]/g, ' ').split(/\s+/).filter(Boolean);
   const segs = new Map(rows.map(r => [catSeg(r.segmento), r.segmento]).filter(([k]) => k));
-  const q = { marca: '', colecao: '', categoria: '', segmento: '', genero: '', corre: false, novo: '', nome: [] };
+  const q = { marca: '', colecao: '', categoria: '', segmento: '', genero: '', corre: false, novo: '', origem: '', fonte: '', nome: [] };
   for (const w of palavras) {
     if (/^(OLY|OLYMPIKUS)$/.test(w)) q.marca = 'oly';
     else if (/^(UA|UNDER|ARMOUR)$/.test(w)) q.marca = 'ua';
     else if (/^[12]S\d{2}$/.test(w)) q.colecao = w;
+    else if (/^COLECA?O(ES)?$/.test(w)) q.fonte = 'colecao';
+    else if (/^SHOW-?ROOM$/.test(w)) q.fonte = 'showroom';
     else if (w === 'CORRE') q.corre = true;
+    // Origem do Showroom: o catálogo passa a ser do que TEM, e sai do Showroom com quantidade e grade.
+    else if (/^(ESTOQUES?|PRONTA)$/.test(w)) q.origem = 'estoque';
+    else if (/^REPASSES?$/.test(w)) q.origem = 'repasse';
+    else if (/^(PRODUCAO|PRODUCOES|META|METAS)$/.test(w)) q.origem = 'producao';
     // "lançamentos" é o modelo novo; "cores novas" é a cor nova de modelo que já existia; "novidades" são os dois.
     else if (/^LANCAMENTOS?$/.test(w)) q.novo = q.novo && q.novo !== 'lanc' ? 'tudo' : 'lanc';
     else if (/^NOVAS?$/.test(w)) q.novo = q.novo && q.novo !== 'cor' ? 'tudo' : 'cor';
@@ -2867,7 +2875,8 @@ function catGerarPdf(g) {
     const job = { frame, fim, andamento: g.andamento || (() => {}),
       limite: setTimeout(() => { CAT_PDFS.delete(id); frame.remove(); fim({ cmsCat: 'erro', erro: 'O catálogo demorou demais para responder.' }); }, 300000) };
     CAT_PDFS.set(id, job);
-    frame.src = catLinkPdf(g, id);
+    if (g.fonte === 'showroom') { CAT_PEDIDOS.set(id, { itens: g.lista }); setTimeout(() => CAT_PEDIDOS.delete(id), 600000); }
+    frame.src = g.fonte === 'showroom' ? SHOWROOM_URL + '?' + new URLSearchParams({ marca: g.marca, nexo: 'pdf', nexoid: id, origem: g.origem }) : catLinkPdf(g, id);
     document.body.appendChild(frame);
   });
 }
@@ -2878,10 +2887,10 @@ document.addEventListener('click', async ev => {
   const d = JSON.parse(b.dataset.catPdf);
   b.disabled = true; b.hidden = true;
   st.innerHTML = ampulheta('Abrindo o catálogo…'); rolar();
-  const r = await catGerarPdf({ marca: d.marca, colecao: d.col, itens: new Map(d.itens.map(k => [k, 1])),
-    andamento: m => { const t = st.querySelector('.am-rot'); if (t) t.textContent = `Montando o PDF: ${m.pct}%${m.pagina ? ` · página ${m.pagina} de ${m.total}` : ''}`; } });
+  const r = await catGerarPdf({ marca: d.marca, colecao: d.col, fonte: d.fonte, origem: d.origem, lista: d.itens, itens: new Map(d.itens.map(k => [k, 1])),
+    andamento: m => { const t = st.querySelector('.am-rot'); if (t) t.textContent = `Montando o PDF: ${m.pct}%${m.pagina ? ` · ${m.unidade || 'página'} ${m.pagina} de ${m.total}` : ''}`; } });
   if (r.cmsCat !== 'pronto' || !r.blob) { st.innerHTML = `<span class="aviso">${esc(r.erro || 'Não consegui gerar o PDF.')}</span>`; b.disabled = false; b.hidden = false; rolar(); return; }
-  linha.insertAdjacentHTML('afterend', cartaoArquivo({ blob: r.blob, nome: r.nome, rotulo: `Catálogo ${catNomeMarca(d.marca)} ${d.col} · ${d.filtro}` }));
+  linha.insertAdjacentHTML('afterend', cartaoArquivo({ blob: r.blob, nome: r.nome, rotulo: `Catálogo ${catNomeMarca(d.marca)} ${d.col ? d.col + ' ' : ''}· ${d.filtro}` }));
   st.innerHTML = ''; b.textContent = 'Gerar de novo'; b.disabled = false; b.hidden = false; rolar();
 });
 function catDescricao(q) {
@@ -2893,6 +2902,9 @@ async function agCatalogoProdutos(a) {
   const rows = await catCarregar();
   const texto = String(a.busca || a.produto || '');
   const q = catEntender(texto, rows);
+  if (q.fonte === 'showroom' && !q.origem) q.origem = 'tudo';
+  if (q.origem) return agCatalogoOrigem(q, rows);
+  if (!q.fonte && !q.colecao) return catPerguntaFonte(q, rows, texto);
   const filtro = catDescricao(q);
   // Só a marca (ou nada): as categorias dela viram botões, cada um com quantas cores tem.
   if (!filtro) {
@@ -2933,6 +2945,74 @@ async function agCatalogoProdutos(a) {
       `<div class="cd-l">O PDF é o mesmo do Catálogo e aparece aqui no chat. Para afinar, peça com mais palavras: "catálogo corrida feminino".</div></div>`,
     texto: abertos.length ? `O cartão do catálogo apareceu com o PDF da ${q.colecao || atual}: ${abertos.map(g => `${catNomeMarca(g.marca)} (${g.itens.size} cores)`).join(', ')}.${antigos.length ? ' Coleções anteriores ficam fechadas no cartão; só fale delas se ele perguntar.' : ''} Ele toca em "Gerar PDF"; não repita os números.`
       : `Não tem "${filtro}" na ${atual}; só em coleções anteriores (${colsAntigas.join(', ')}), que estão fechadas no cartão. Diga isso a ele.` };
+}
+
+// O catálogo do que TEM: a lista do Showroom (estoque, repasse ou produção), com as mesmas palavras do
+// catálogo. Segmento, coleção e lançamento vêm da planilha do catálogo pelo artigo|cor; o que não está
+// nela só não entra quando a busca usa uma dessas palavras.
+const SHOWROOM_URL = '../vitrine/';
+window.CAT_PEDIDOS = new Map();   // a lista vai pela página (mais de mil códigos não cabem no endereço)
+const CAT_ORIGEM = { estoque: { rot: 'Estoque', campo: 'pronta', pares: o => o.pronta.total },
+  repasse: { rot: 'Repasse', campo: 'repasse', pares: o => o.repasse.lotes.reduce((s, l) => s + (l.saldo || 0), 0) },
+  producao: { rot: 'Produção', campo: 'meta', pares: o => o.meta.quinzenas.reduce((s, x) => s + (x.v || 0), 0) } };
+CAT_ORIGEM.tudo = { rot: 'Disponível', tem: o => o.pronta || o.repasse || o.meta,
+  pares: o => ['estoque', 'repasse', 'producao'].reduce((s, k) => s + (o[CAT_ORIGEM[k].campo] ? CAT_ORIGEM[k].pares(o) : 0), 0) };
+const CAT_CATEG_SHOWROOM = { FTW: ['TENIS', 'FTW'], 'V&A': ['VESTUARIO'], ACC: ['ACESSORIO'], MEIA: ['MEIA'], CHI: ['CHINELO', 'CHI'] };
+function catShowroomFiltrar(q, rows, L, origem) {
+  const O = CAT_ORIGEM[origem], chave = (a, c) => a + '|' + String(c).replace(/[^A-Z0-9]/gi, '').toUpperCase();
+  const doCat = new Map();
+  for (const r of [...rows].sort((x, y) => catOrdemColecao(x.colecao) - catOrdemColecao(y.colecao))) if (!doCat.has(chave(r.codigo, r.cor))) doCat.set(chave(r.codigo, r.cor), r);
+  const gen = { Feminino: ['FEMININO'], Masculino: ['MASCULINO'], Infantil: ['INFANTIL', 'KIDS'], Unissex: ['UNISSEX'] };
+  const nomeTem = (o, w) => { const n = ' ' + norm(o.nome).replace(/[^A-Z0-9]/g, ' ') + ' '; return n.includes(' ' + w) || (w.length > 3 && w.endsWith('S') && n.includes(' ' + w.slice(0, -1))); };
+  return L.filter(o => {
+    if (!(O.tem ? O.tem(o) : o[O.campo])) return false;
+    const c = doCat.get(chave(o.artigo, o.cor));
+    return (!q.marca || o.marca === q.marca) && (!q.categoria || CAT_CATEG_SHOWROOM[q.categoria].includes(norm(o.categoria)))
+      && (!q.genero || gen[q.genero].includes(norm(o.genero))) && (!q.corre || RE_CORRE.test(norm(o.nome)))
+      && (!q.segmento || (c && catSeg(c.segmento) === q.segmento)) && (!q.colecao || (c && c.colecao === q.colecao))
+      && (!q.novo || (c && (q.novo === 'lanc' ? c.lanc : q.novo === 'cor' ? c.novaCor : c.lanc || c.novaCor)))
+      && q.nome.every(w => nomeTem(o, w));
+  });
+}
+async function agCatalogoOrigem(q, rows) {
+  let L;
+  try { L = await baseDisponivel(); } catch (e) { return { erro: 'Não consegui ler o Showroom agora: ' + (e.message || e) }; }
+  const O = CAT_ORIGEM[q.origem], achados = catShowroomFiltrar(q, rows, L, q.origem);
+  const filtro = [O.rot, catDescricao(q)].filter(Boolean).join(' · ');
+  if (!achados.length) return { erro: `Hoje não tem nada em ${O.rot.toLowerCase()} no Showroom para "${catDescricao(q) || 'essa busca'}"${q.marca ? ' da ' + catNomeMarca(q.marca) : ''}.` };
+  const linhas = CAT_MARCAS.map(m => {
+    const it = achados.filter(o => o.marca === m.id);
+    if (!it.length) return '';
+    const pares = it.reduce((s, o) => s + O.pares(o), 0), pesado = it.length > 120;
+    const dados = esc(JSON.stringify({ fonte: 'showroom', marca: m.id, origem: q.origem, col: '', itens: it.map(o => o.k), filtro }));
+    // Sem outro filtro, as categorias dessa marca viram atalhos para um PDF menor.
+    const cats = !catDescricao(q) ? Object.entries(CAT_CATEG_SHOWROOM).map(([k, v]) => [CAT_CATEGORIAS[k], it.filter(o => v.includes(norm(o.categoria))).length]).filter(x => x[1]) : [];
+    return `<div class="cat-linha"><div class="cat-txt"><b>${esc(m.nome)}</b> · ${esc(O.rot.toLowerCase())}<div class="cd-l">${fmt(it.length)} cor${it.length > 1 ? 'es' : ''}, ${fmt(pares)} pares` +
+      `${pesado ? ' · PDF grande: vale filtrar mais' : ''}</div><div class="dots-rot" data-cat-st></div></div><button class="sug forte" data-cat-pdf="${dados}">Gerar PDF</button></div>` +
+      (cats.length ? `<div class="acoes cat-atalhos">${cats.map(([rot, n]) => `<button class="sug" data-opcao="${esc(`catálogo do showroom ${q.origem === 'tudo' ? '' : O.rot.toLowerCase() + ' '}${m.id === 'oly' ? 'oly' : 'ua'} ${rot.toLowerCase()}`)}">${esc(rot)} · ${fmt(n)}</button>`).join('')}</div>` : '');
+  }).join('');
+  return { cartao: `<div class="cartao-dae cartao-cat"><div class="cd-tit">Catálogo · ${esc(filtro)}</div>${linhas}` +
+      `<div class="cd-l">O PDF sai do Showroom, com a quantidade e a grade ${q.origem === 'tudo' ? 'de estoque, repasse e produção' : 'de ' + esc(O.rot.toLowerCase())} de cada produto, e aparece aqui no chat.</div></div>`,
+    texto: `O cartão do catálogo de ${O.rot.toLowerCase()} apareceu: ${CAT_MARCAS.map(m => [m, achados.filter(o => o.marca === m.id).length]).filter(x => x[1]).map(([m, n]) => `${m.nome} (${n} cores)`).join(', ')}. Ele toca em "Gerar PDF"; não repita os números.` };
+}
+
+// "Catálogo X" sem dizer de onde: a coleção (tudo que a marca lançou) ou o Showroom (o que tem para
+// vender). Cada botão já diz quanto tem e manda a mesma frase com a fonte escolhida.
+async function catPerguntaFonte(q, rows, texto) {
+  let L = [];
+  try { L = await baseDisponivel(); } catch (e) {}
+  const atual = [...new Set(rows.map(r => r.colecao).filter(Boolean))].sort((x, y) => catOrdemColecao(x) - catOrdemColecao(y))[0];
+  const resto = norm(texto).replace(/CAT[AÁ]L[OA]GO[S]?/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+  const nCol = new Set(catFiltrar(rows, { ...q, colecao: atual }).map(r => r.marca + r.codigo + '|' + r.cor)).size;
+  const bt = (rot, n, frase, forte) => `<button class="sug${forte ? ' forte' : ''}" data-opcao="${esc(frase)}"${n ? '' : ' disabled'}>${esc(rot)} · ${fmt(n)}</button>`;
+  const sr = ['estoque', 'repasse', 'producao', 'tudo'].map(k => bt(k === 'tudo' ? 'Tudo que tem' : CAT_ORIGEM[k].rot, L.length ? catShowroomFiltrar(q, rows, L, k).length : 0,
+    `catálogo do showroom ${k === 'tudo' ? '' : CAT_ORIGEM[k].rot.toLowerCase() + ' '}${resto}`.trim()));
+  const filtro = catDescricao(q);
+  return { cartao: `<div class="cartao-dae cartao-cat"><div class="cd-tit">Catálogo${filtro ? ' · ' + esc(filtro) : ''}: de onde?</div>` +
+      `<div class="cd-p">Coleção (tudo o que a marca lançou)</div><div class="acoes">${bt('Coleção ' + atual, nCol, `catálogo da coleção ${atual.toLowerCase()} ${resto}`.trim(), true)}</div>` +
+      `<div class="cd-p">Showroom (o que tem para vender, com quantidade e grade)</div><div class="acoes">${sr.join('')}</div>` +
+      `<div class="cd-l">O número é de cores.</div></div>`,
+    texto: 'Apareceu a pergunta "de onde?": coleção ou Showroom (estoque, repasse, produção ou tudo). Peça para ele tocar numa opção; não repita os números.' };
 }
 
 // ── fotos ─────────────────────────────────────────────────────────────
