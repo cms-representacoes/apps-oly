@@ -2499,6 +2499,8 @@ export default {
             // essa base, e precisa dele para nomear o PDF que ela emite.
             clienteNome:  String(body.data.clienteNome || ""),
             marca:        String(body.data.marca || ""),
+            // De que app saiu o link (vitrine, catalogo): o Catálogo lista só os dele, em qualquer aparelho.
+            origem:       String(body.data.origem || ""),
             produtos:     Array.isArray(body.data.produtos) ? body.data.produtos : [],
             criadoEm:     agora,
             validadeHoras: Number(VL_OPCOES[Number(body.data.validadeHoras)] || 48),
@@ -2554,6 +2556,8 @@ export default {
             meus.push({
               codigo,
               cliente:      l.cliente,
+              clienteNome:  l.clienteNome || "",
+              origem:       l.origem || "",
               marca:        l.marca,
               qtdProdutos:  Array.isArray(l.produtos) ? l.produtos.length : 0,
               criadoEm:     l.criadoEm,
