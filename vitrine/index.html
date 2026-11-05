@@ -8246,6 +8246,37 @@ $('btnSelPdf').onclick = gerarCatalogoPdf;
   };
   tentar();
 })();
+/* Link do Nexo: ?nexo=link&nexoid=...&origem=estoque|repasse|producao|tudo&horas=168, no iframe escondido.
+   O Nexo manda os produtos e o código do cliente (CAT_PEDIDOS); aqui o link sai pelo mesmo gerarLink do
+   botão (grade, lote, mês e as tiras do que o cliente já comprou) e o endereço volta por mensagem. */
+(function linkDoNexo(){
+  const p = new URLSearchParams(location.search), id = p.get('nexoid') || '';
+  if(p.get('nexo') !== 'link' || !id || window.parent === window) return;
+  let pedido = null;
+  try{ pedido = window.parent.CAT_PEDIDOS && window.parent.CAT_PEDIDOS.get(id); }catch(_){}
+  const devolver = m => { try{ window.parent.postMessage(Object.assign({ id }, m), '*'); }catch(_){} };
+  if(!pedido || !pedido.itens || !pedido.itens.length || !pedido.cliente) return devolver({ cmsCat:'erro', erro:'O pedido do link não chegou ao Showroom.' });
+  const inicio = Date.now();
+  const tentar = async () => {
+    if(!(STATE.produtos && STATE.produtos.length)){
+      if(Date.now() - inicio < 90000) return void setTimeout(tentar, 400);
+      return devolver({ cmsCat:'erro', erro:'O Showroom não carregou a tempo.' });
+    }
+    STATE.marcados.clear();
+    pedido.itens.forEach(k => STATE.marcados.add(k));
+    const o = p.get('origem');
+    LK.origens = new Set(['estoque', 'repasse', 'producao'].includes(o) ? [o] : ['estoque', 'repasse', 'producao']);
+    LK.horas = Number(p.get('horas')) || 168;
+    LK.criado = null;
+    $('lkCliente').value = String(pedido.cliente);
+    try{
+      await gerarLink();
+      if(LK.criado && LK.criado.url) devolver({ cmsCat:'link', url: LK.criado.url, codigo: LK.criado.codigo, qtd: LK.criado.qtd });
+      else devolver({ cmsCat:'erro', erro:'O Showroom não conseguiu gerar o link (nenhum dos produtos tem a origem pedida, ou o servidor recusou).' });
+    }catch(e){ devolver({ cmsCat:'erro', erro:'O Showroom falhou: ' + (e && e.message || e) }); }
+  };
+  tentar();
+})();
 $('btnSelXlsx').onclick = gerarCatalogoXlsx;
 $('btnSelTodos').onclick = marcarTodosVisiveis;
 $('btnSelLimpar').onclick = limparMarcados;

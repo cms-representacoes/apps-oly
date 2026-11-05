@@ -189,6 +189,16 @@ main{ flex:1; overflow-y:auto; overflow-x:hidden; padding:14px 16px; }
 .cat-antigas{ margin-top:10px; }
 .cat-antigas summary{ cursor:pointer; font-size:13px; font-weight:700; color:var(--oliva-escuro); padding:6px 2px; }
 .cat-sem{ margin-top:8px; }
+.cartao-link .lk-linha{ margin-top:8px; }
+.cartao-link .lk-url{ font-size:12.5px; background:#fff; border-radius:8px; padding:7px 9px; word-break:break-all; margin:4px 0; color:var(--tinta-2); }
+.cartao-tri .ct-meses{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin-top:8px; }
+.cartao-tri .ct-m{ background:#fff; border-radius:10px; padding:7px 8px; display:flex; flex-direction:column; gap:1px; min-width:0; }
+.cartao-tri .ct-m.atual{ outline:2px solid var(--lima-forte); }
+.cartao-tri .ct-m span{ font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--tinta-2); }
+.cartao-tri .ct-m b{ font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cartao-tri .ct-m small{ font-size:11px; color:var(--tinta-2); }
+.cartao-tri .ct-tot{ display:flex; justify-content:space-between; align-items:baseline; margin-top:10px; font-size:13px; }
+.cartao-tri .ct-tot b{ font-size:17px; }
 .cat-atalhos{ margin-top:6px; }
 .cat-atalhos .sug{ font-size:12.5px; padding:6px 11px; }
 .cartao-cat .cd-p{ margin-top:10px; }
@@ -221,6 +231,14 @@ a.sug{ text-decoration:none; display:inline-block; }
 .ag-tab{ margin-top:10px; border:1px solid var(--linha); border-radius:10px; padding:0 10px; }
 .ag-tab summary{ cursor:pointer; padding:9px 0; font-size:13px; font-weight:600; color:var(--oliva-escuro); }
 .ag-tab summary span{ font-weight:500; color:var(--tinta-3); }
+.ag-tab summary{ list-style:none; }
+.ag-tab summary::-webkit-details-marker{ display:none; }
+.ag-tab summary .ver{ display:block; font-weight:700; color:var(--oliva-escuro); }
+.ag-tab summary .ver::after{ content:' ▾'; }
+.ag-tab[open] summary .ver::after{ content:' ▴'; }
+.ag-tab summary .sobre{ display:block; font-size:11.5px; margin-top:2px; }
+.ag-tab .dica-det{ font-size:12px; color:var(--tinta-3); margin:0 0 6px; }
+.ag-tab tr.tem-det{ cursor:pointer; }
 .ag-tab[open]{ padding-bottom:10px; }
 #batModelo{ font:inherit; font-size:13px; padding:7px 8px; border:1px solid var(--linha); border-radius:8px; background:#fff; max-width:100%; }
 #batSaida td{ vertical-align:top; max-width:320px; white-space:normal; }
@@ -249,8 +267,8 @@ td.com-pdf{ width:1%; white-space:nowrap; text-align:right; }
 .pdf-mini{ border:1px solid var(--lima-forte); background:var(--lima-fundo); color:var(--oliva-escuro); border-radius:7px; padding:5px 9px; font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
 .pdf-mini:hover{ background:var(--lima-claro); }
 .pdf-mini:disabled{ opacity:.5; cursor:default; }
-tr.det td{ white-space:normal; background:var(--lima-fundo); font-size:12.5px; color:var(--tinta-2); }
-.tabela-wrap.compacta td{ white-space:normal; }
+tr.det td{ white-space:pre-line; background:var(--lima-fundo); font-size:12.5px; color:var(--tinta-2); }
+.tabela-wrap.compacta td{ white-space:pre-line; }
 .acoes{ display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
 .btn-sec{ border:1px solid var(--linha); background:#fff; color:var(--tinta-2); border-radius:8px;
   height:32px; padding:0 11px; font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
@@ -306,7 +324,7 @@ textarea:focus{ outline:2px solid var(--lima-forte); outline-offset:0; }
   .tabela-wrap.compacta td{ padding:7px 4px; }
   .tabela-wrap.compacta td.nome{ min-width:84px; }
   .tabela-wrap.compacta td:last-child{ white-space:nowrap; }
-  .tabela-wrap.compacta tr.det td{ white-space:normal; }
+  .tabela-wrap.compacta tr.det td{ white-space:pre-line; }
   .tem-det td:last-child::after{ content:''; }
   .ag-tab{ padding:0 5px; }
 }
@@ -491,6 +509,75 @@ function parecidos(lista, termo) {
     g.idx.push(x.i); porNome.set(nome, g);
   }
   return [...porNome.values()].sort((a, b) => b.nota - a.nota);
+}
+
+/* Erro de digitação nas palavras do PRÓPRIO Nexo ("cataloho chonelo", "carteria", "disponibildade").
+   Nomes de cliente e de produto não passam por aqui (eles têm o parecidos() nas ferramentas): palavra que
+   existe num nome nunca é trocada, para "Marte" não virar "metas". Uma só palavra perto: troca e avisa
+   o que entendeu. Duas perto ("meas": meias ou metas): o Nexo pergunta antes de consultar. */
+const NEXO_PALAVRAS = ('catálogo catálogos chinelo chinelos mochila mochilas boné bonés meia meias vestuário roupa roupas calçado calçados '
+  + 'tênis sandália sandálias acessório acessórios camiseta camisetas bermuda bermudas jaqueta jaquetas feminino feminina masculino '
+  + 'masculina infantil unissex lançamento lançamentos novidades estoque repasse repasses produção showroom coleção carteira faturado '
+  + 'faturados faturamento faturar pedido pedidos boleto boletos disponível disponíveis disponibilidade foto fotos imagem imagens meta metas '
+  + 'previsão cliente clientes vendedor vendedores campanha campanhas olympikus under armour corrida entradas saídas cancelado cancelados '
+  + 'transferência cadastro telefone endereço grade grades tamanho tamanhos nota fiscal código').split(' ');
+// Palavras comuns que ficam a uma letra de alguma acima ("preciso" x "previsão", "bons" x "boné", "tens" x "tênis").
+const NEXO_COMUNS = new Set(('preciso precisa precisava quero queria quanto quantos quantas quais onde quando porque tenho temos tens tem '
+  + 'existe mostra mostrar manda mande mandar passa passar gerar fazer consegue consigo voce obrigado obrigada valeu beleza bons boas '
+  + 'tarde noite hoje ontem amanha semana este esse essa isso aquele todos todas tudo mais menos maior maiores menores melhor primeiro '
+  + 'ultimo proximo tambem ainda agora depois antes sobre entre desde pares total valor preco cores numero loja lojas cidade nome junto '
+  + 'favor pode podes poderia gostaria dele dela deles delas meus minhas minha nosso nossa quem como entao assim certo errado novo nova '
+  + 'novos novas data dias mandou chegou saiu entrou faturou vendeu vendi comprou compra comprar vender venda vendas fato mesa metal '
+  + 'gente nada nenhum nenhuma algum alguma outro outra outros outras mesmo mesma cada sabe saber falta faltam fala falar '
+  + 'mes dia ano foi sem boa bom meu seu sua com que nao ver tal produto produtos modelo modelos linha linhas referencia notas '
+  + 'faturei faturamos faturaram faturando fatura faturas pedi pediu pediram pedimos pedindo pedir vendemos venderam recebeu receber').split(' ').map(norm));
+let NEXO_NOMES = null;
+function nexoNomes() {
+  const tam = (APP.dic ? APP.dic.cli.length + APP.dic.ref.length : 0) + (CAT.rows ? CAT.rows.length : 0);
+  if (NEXO_NOMES && NEXO_NOMES.tam === tam) return NEXO_NOMES.set;
+  const set = new Set(), poe = t => { for (const w of String(t).split(/[^A-Z0-9]+/)) if (w.length >= 4) set.add(w); };
+  try { const I = indices(); for (const k of ['cli', 'ref', 'cor', 'prep', 'faixa']) for (const x of I[k] || []) poe(x.txt); } catch (e) {}
+  for (const r of CAT.rows || []) poe(norm(r.produto));
+  for (const w of NEXO_PALAVRAS) set.delete(norm(w));
+  NEXO_NOMES = { tam, set };
+  return set;
+}
+// Plural e singular do mesmo termo não são dúvida ("fotoss": foto ou fotos dá na mesma).
+const nexoRaiz = w => pelaFala(norm(w).replace(/S$/, ''));
+function corrigirFrase(texto) {
+  const voc = NEXO_PALAVRAS.map(p => ({ p, k: pelaFala(norm(p)) })), exatos = new Set(NEXO_PALAVRAS.map(norm));
+  const nomes = nexoNomes(), trocas = [], duvidas = [];
+  const novo = String(texto).replace(/\p{L}+/gu, w => {
+    const n = norm(w);
+    if (n.length < 3 || exatos.has(n) || NEXO_COMUNS.has(n) || nomes.has(n)) return w;
+    const k = pelaFala(n), lim = n.length >= 7 ? 2 : 1;
+    let melhor = Infinity, cands = [];
+    for (const v of voc) {
+      // Quem erra digitando quase nunca erra a primeira letra: isso segura muita troca indevida.
+      if (v.k[0] !== k[0] || Math.abs(v.k.length - k.length) > lim) continue;
+      const d = distancia(k, v.k);
+      if (d < melhor) { melhor = d; cands = [v.p]; } else if (d === melhor) cands.push(v.p);
+    }
+    if (melhor > lim) return w;
+    const grupos = [...new Map(cands.map(c => [nexoRaiz(c), c])).values()];
+    if (grupos.length > 1) { duvidas.push({ palavra: w, opcoes: grupos.slice(0, 3) }); return w; }
+    trocas.push([w, grupos[0]]);
+    return grupos[0];
+  });
+  return { texto: novo, trocas, duvidas };
+}
+// Troca na frase o trecho que a ferramenta não achou ("degrauss") pelo nome escolhido no botão.
+function trocarTermo(texto, termo, nome) {
+  const ws = [...String(texto).matchAll(/[\p{L}\p{N}]+/gu)], alvo = norm(termo).split(/[^A-Z0-9]+/).filter(Boolean);
+  if (!ws.length || !alvo.length || alvo.length > ws.length) return `${texto} (${nome})`;
+  let nota = -1, em = -1;
+  for (let i = 0; i + alvo.length <= ws.length; i++) {
+    const x = alvo.reduce((t, a, j) => t + parecenca(pelaFala(a), pelaFala(norm(ws[i + j][0]))), 0) / alvo.length;
+    if (x > nota) { nota = x; em = i; }
+  }
+  if (nota < 0.5) return `${texto} (${nome})`;
+  const ult = ws[em + alvo.length - 1];
+  return texto.slice(0, ws[em].index) + nome + texto.slice(ult.index + ult[0].length);
 }
 
 function indices() {
@@ -936,6 +1023,18 @@ function executar(q) {
   if (q.limite > 0) { rows = rows.slice(0, q.limite); res.resumo += ` · mostrando os ${rows.length} maiores`; }
   // Linha de total só quando a tabela traz tudo: no "top 10" ela somaria o que não aparece.
   res.rows = rows.map(x => x.v);
+  // Agrupado por cliente, vendedor ou data: ao tocar, os produtos do grupo (produto · cor · pares · GCI).
+  if (movimento && !['produto', 'produto_cor'].includes(agrupar)) {
+    const MOT = { fat: 'faturou', trf: 'sem nota', chk: 'a confirmar' };
+    const itensDe = new Map();
+    for (const [k, g] of grupos) {
+      const m = new Map();
+      for (const f of g.lista) { const kk = [f.refNome, f.cor, f.gci, f.m].join('|'); const x = m.get(kk) || { f, qt: 0 }; x.qt += f.qt; m.set(kk, x); }
+      const ls = [...m.values()].sort((a, b) => b.qt - a.qt);
+      itensDe.set(k, ls.slice(0, 40).map(({ f, qt }) => `${f.refNome} ${f.cor} · ${fmt(qt)} pares · GCI ${f.gci}${tipo === 'saidas' ? ' · ' + (MOT[f.m] || f.m) : ''}${agrupar !== 'cliente' ? ' · ' + f.cliNome : ''}`).join('\n') + (ls.length > 40 ? `\n… e mais ${ls.length - 40}` : ''));
+    }
+    res.detalhe = row => itensDe.get(row.slice(0, CAB.length).join('|')) || '';
+  }
   res.num = res.cols.map((_, j) => j).filter(j => j >= CAB.length);
   if (!(q.limite > 0)) res.totais = res.cols.map((_, j) => j === 0 ? 'Total' : j >= res.cols.length - MEDIDAS.length ? tot[j - (res.cols.length - MEDIDAS.length)] : '');
   return res;
@@ -1086,7 +1185,8 @@ function tabelaHtml(res, limite) {
     if (res.data.includes(j)) return `<td>${v != null && v >= 0 ? dataDe(v) : ''}</td>`;
     if (res.num.includes(j)) return `<td class="n">${fmt(v)}</td>`;
     // Tabela compacta: ano curto na tela; o Excel e o PDF continuam com a data inteira.
-    const txt = res.detalhe ? String(v == null ? '' : v).replace(/^(\d{2}\/\d{2}\/)\d{2}(\d{2})$/, '$1$2') : v;
+    const ano = String(new Date().getFullYear());
+    const txt = res.detalhe ? String(v == null ? '' : v).replace(/^(\d{2}\/\d{2})\/(\d{2})(\d{2})$/, (m, dm, a1, a2) => a1 + a2 === ano ? dm : `${dm}/${a2}`) : v;
     return `<td class="${j === 0 ? 'nome' : ''}">${esc(txt)}</td>`;
   };
   // res.oculta: colunas que só vão para o Excel/PDF. res.detalhe: o que abre ao tocar na linha.
@@ -1098,8 +1198,8 @@ function tabelaHtml(res, limite) {
     return res.detalhe ? `<tr class="tem-det" onclick="if (!event.target.closest('button')) this.nextElementSibling.hidden = !this.nextElementSibling.hidden">${tds}</tr><tr class="det" hidden><td colspan="${mostra.length + (res.pdfLinha ? 1 : 0)}">${esc(res.detalhe(r))}</td></tr>` : `<tr>${tds}</tr>`;
   };
   const corpo = res.rows.slice(0, limite).map(linha).join('');
-  const tot = res.totais ? `<tr class="total">${res.totais.map((v, j) => j === 0 ? '<td>Total</td>' : v === '' ? '<td></td>' : `<td class="n">${fmt(v)}</td>`).join('')}</tr>` : '';
-  return `<div class="tabela-wrap${res.detalhe ? ' compacta' : ''}"><table><thead><tr>${mostra.map(j => `<th class="${res.num.includes(j) ? 'n' : ''}">${esc(res.cols[j])}</th>`).join('')}${res.pdfLinha ? '<th></th>' : ''}</tr></thead><tbody>${corpo}${limite >= res.rows.length ? tot : ''}</tbody></table></div>`;
+  const tot = res.totais ? `<tr class="total">${mostra.map((j, i) => { const v = res.totais[j]; return i === 0 ? '<td>Total</td>' : v === '' || v == null ? '<td></td>' : `<td class="n">${fmt(v)}</td>`; }).join('')}${res.pdfLinha ? '<td></td>' : ''}</tr>` : '';
+  return `<div class="tabela-wrap${res.detalhe ? ' compacta' : ''}"><table><thead><tr>${mostra.map(j => `<th class="${res.num.includes(j) ? 'n' : ''}">${esc((res.curtos && res.curtos[res.cols[j]]) || res.cols[j])}</th>`).join('')}${res.pdfLinha ? '<th></th>' : ''}</tr></thead><tbody>${corpo}${limite >= res.rows.length ? tot : ''}</tbody></table></div>`;
 }
 
 /* ── planilha e PDF ────────────────────────────────────
@@ -1126,13 +1226,41 @@ function dadosExport(res) {
   return { titulo, filtros, corpo, quando, nome, linhas: res.rows.length };
 }
 
+async function baixarXlsxFormatado(res) {
+  if (typeof ExcelJS === 'undefined') await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js');
+  const x = dadosExport(res), wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Assistente', { views: [{ state: 'frozen', ySplit: 5, showGridLines: false }] });
+  const fonte = { name: 'Calibri', size: 12 }, meio = { horizontal: 'center', vertical: 'middle' };
+  const fina = { style: 'thin' }, borda = { top: fina, left: fina, bottom: fina, right: fina };
+  [x.titulo, x.filtros || 'Sem filtros', `${fmt(x.linhas)} linha(s) · gerado em ${x.quando}`].forEach((t, i) => {
+    const c = ws.getCell(i + 1, 1); c.value = t; c.font = fonte; c.alignment = { horizontal: 'center' };
+  });
+  const cab = ws.getRow(5);
+  cab.values = res.cols; cab.height = 38.25;
+  cab.eachCell(c => { c.font = fonte; c.alignment = { ...meio, wrapText: true }; c.border = borda; });
+  x.corpo.forEach((linha, i) => {
+    const row = ws.getRow(6 + i);
+    row.values = linha;
+    for (let j = 1; j <= res.cols.length; j++) {
+      const c = row.getCell(j);
+      c.font = fonte; c.alignment = { horizontal: 'center' }; c.border = borda;
+      if (res.num.includes(j - 1) && typeof c.value === 'number') c.numFmt = '#,##0';
+    }
+  });
+  (res.larguras || []).forEach((w, j) => { ws.getColumn(j + 1).width = w; });
+  ws.autoFilter = { from: { row: 5, column: 1 }, to: { row: 5 + x.corpo.length, column: res.cols.length } };
+  const dados = await wb.xlsx.writeBuffer();
+  return { blob: new Blob([dados], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nome: x.nome + '.xlsx' };
+}
+
 async function baixarXlsx(res) {
+  if (res.formatado) return baixarXlsxFormatado(res);
   if (typeof XLSX === 'undefined') await carregarScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
   const x = dadosExport(res);
   const aoa = [[x.titulo], [x.filtros || 'Sem filtros'], [`${fmt(x.linhas)} linha(s) · gerado em ${x.quando}`], [], res.cols, ...x.corpo];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   const linhaCab = 4;
-  ws['!cols'] = res.cols.map((c, i) => ({ wch: i === 0 ? 38 : Math.max(10, c.length + 3) }));
+  ws['!cols'] = res.cols.map((c, i) => ({ wch: (res.larguras && res.larguras[i]) || (i === 0 ? 38 : Math.max(10, c.length + 3)) }));
   ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: linhaCab, c: 0 }, e: { r: linhaCab + res.rows.length, c: res.cols.length - 1 } }) };
   for (let r = 0; r < x.corpo.length; r++) for (const c of res.num) {
     const cel = ws[XLSX.utils.encode_cell({ r: linhaCab + 1 + r, c })];
@@ -1181,6 +1309,8 @@ async function baixarPdf(res) {
 
 // O arquivo da tabela vira um cartão logo abaixo dos botões, como os do robô.
 async function baixar(botao, res, formato) {
+  // A tela pode ser resumida (um pedido por linha, produtos ao tocar) e o arquivo sair item a item, em colunas.
+  if (res.exportar) res = { ...res, cols: res.exportar.cols, rows: res.exportar.rows, num: res.exportar.num || [], larguras: res.exportar.larguras, formatado: res.exportar.formatado, data: [], totais: null, oculta: [] };
   const rot = botao ? botao.textContent : '';
   if (botao) { botao.disabled = true; botao.textContent = 'Gerando…'; }
   try {
@@ -1452,7 +1582,7 @@ function agSistema(ctx) {
   const per = ctx.periodo || {};
   const cobre = [per.faturado && `faturado de ${per.faturado.de} a ${per.faturado.ate}`, per.carteira && `carteira com previsão de ${per.carteira.de} a ${per.carteira.ate}`].filter(Boolean);
   return [
-    'Você é o Nexo, o assistente da CMS Representações (calçados, roupas e acessórios Olympikus e Under Armour). Enxerga a Detalhada (a carteira de pedidos) e busca boletos no EBM da Vulcabras. Conversa com vendedores pelo celular, em português do Brasil, como um colega experiente e direto. Se perguntarem quem você é, diga que é o Nexo, assistente da CMS.',
+    'Você é o Nexo, o assistente da CMS Representações (calçados, roupas e acessórios Olympikus e Under Armour). Enxerga a Detalhada (a carteira de pedidos) e busca boletos no EBM da Vulcabras. Conversa com vendedores pelo celular, em português do Brasil, como um colega experiente e direto, do jeito que se fala no WhatsApp: frases curtas, naturais, sem formalidade e sem jargão de sistema (nada de "não existe na base", "registro", "consulta retornou"). Se perguntarem quem você é, diga que é o Nexo, assistente da CMS.',
     `Hoje é ${hojeIso()}.`,
     ctx.vendedor ? `Quem fala com você: ${ctx.vendedor}. Ele só enxerga os próprios clientes; as ferramentas já aplicam essa trava sozinhas.` : 'Quem fala com você vê a base inteira (todos os vendedores).',
     ctx.vendedores && ctx.vendedores.length ? `Vendedores na base: ${lista(ctx.vendedores, 30)}.` : '',
@@ -1480,9 +1610,15 @@ function agSistema(ctx) {
     '- resumo_repasses: totais e rankings do que foi repassado: "total repassado pelo Jorge nos últimos 7 dias", "quem mais repassou no mês", "produto mais repassado", "saldo de repasse", "lotes sem pedido", "o que foi cancelado", "como está a campanha de incentivo". "Carta campanha" ou "carta" NÃO é daqui: é a meta (use metas). args: {"periodo":"hoje|ontem|7d|15d|30d|tudo" (qualquer número de dias, como 10d), "de","ate":"AAAA-MM-DD","vendedor","produto","cliente","ver":"vendedores|produtos|clientes|saldo|prazo|saidas|campanha"}. Sem período citado, deixe de fora e diga que olhou desde o primeiro pedido. "ver" escolhe a tabela. Cite só o que ele perguntou, em poucas frases.',
     '- pedido: mostra os produtos com o botão de PDF do EBM. Use SEMPRE que a pergunta for sobre o pedido, a carteira ou o faturado de UM cliente, nota, GCI ou OC, mesmo com "quanto" ou "quantos": "me passa o pedido dessa nota", "PDF do GCI X", "a carteira da Fit Store", "os pedidos da Degraus", "quanto a Degraus tem de carteira?", "o que falta faturar pra X". args: {"nf"} ou {"gci"} ou {"oc"} ou {"cliente","produto","cor","situacao":"carteira|faturado|tudo","de":"AAAA-MM-DD","ate":"AAAA-MM-DD"}. Pedido é carteira + faturado (deixe "situacao" de fora); carteira ou "o que falta faturar" = "carteira"; faturado = "faturado". Na resposta, diga carteira e faturado separados, nunca somados, e a próxima previsão; não copie a lista. Use consultar para total de vendedor, marca ou linha, ranking ou mais de um cliente.',
     '- dae: a guia (DAE ou DAR) da nota retida na fiscalização, só de clientes de Ceará e Piauí. Use para "preciso do DAE da nota X", "tem DAE do cliente Y?". args: {"nf"} ou {"cliente"}. Aparece um cartão com o cliente para ele confirmar, e só o toque dele faz a busca: você nunca diz que buscou nem inventa valor.',
-    '- metas: a meta do vendedor ou da CMS, igual à tela de Metas (a "carta campanha" ou "carta" da Vulcabras é esta meta): total de tênis, cada faixa e as famílias em R$, com meta, potencial, faturado e quanto falta, mais a trava dos 15%. Use para "como está minha meta?", "quanto falta pra bater?", "meta do Jorge em setembro", "como está a trava?", "quem está melhor na meta?". args: {"vendedor","mes":"AAAA-MM ou AAAA-T4 (trimestre)","marca":"OLY|UA","comparar":true|false}. Sem mês, vale o atual; sem vendedor, a ferramenta decide (o vendedor só vê a dele, e a CMS vê a soma do time). "comparar":true só para comparar o time. Potencial é o vendido mais o que ainda não faturou; não some com outros números nem use consultar para meta.',
+    '- metas: a meta do vendedor ou da CMS, igual à tela de Metas (a "carta campanha" ou "carta" da Vulcabras é esta meta; quanto ela PAGA em R$ é a ferramenta carta): total de tênis, cada faixa e as famílias em R$, com meta, potencial, faturado e quanto falta, mais a trava dos 15%. Use para "como está minha meta?", "quanto falta pra bater?", "meta do Jorge em setembro", "como está a trava?", "quem está melhor na meta?". args: {"vendedor","mes":"AAAA-MM ou AAAA-T4 (trimestre)","marca":"OLY|UA","comparar":true|false}. Sem mês, vale o atual; sem vendedor, a ferramenta decide (o vendedor só vê a dele, e a CMS vê a soma do time). "comparar":true só para comparar o time. Potencial é o vendido mais o que ainda não faturou; não some com outros números nem use consultar para meta.',
     '- catalogo: SÓ com cliente na frase: mostra ao vendedor os botões para gerar o catálogo (pedidos do cliente com foto) em PDF ou Excel, igual ao da Detalhada. args: {"cliente","formato":"pdf|xlsx","imagens":true|false}.',
     '- catalogo_produtos: o CATÁLOGO DE PRODUTOS da Olympikus e da Under Armour em PDF, igual ao do Catálogo Digital. Use para "catálogo oly", "catálogo UA", "catálogo corrida", "catálogo corre", "catálogo vestuário", "catálogo mochila", "catálogo boné feminino 1S27", e também o catálogo do que TEM: "catálogo do estoque", "catálogo do repasse chinelo", "catálogo da produção meias" — sem cliente na frase. args: {"busca": a frase dele inteira}. Aparece um cartão com os botões de PDF por marca e coleção; não liste produtos.',
+    '- carta: quanto a CARTA CAMPANHA (o prêmio da meta) paga em R$: hoje, com a carteira e batendo tudo, os gatilhos e o que destrava mais dinheiro. Use para "quanto eu ganho se bater a meta", "quanto minha carta paga", "o que falta pra destravar a carta", "quanto o Jorge ganha". Não é comissão. args: {"vendedor","mes":"AAAA-MM"}.',
+    '- link_cliente: gera o LINK PARA O CLIENTE escolher produtos (do catálogo da coleção ou do Showroom), em etapas: pergunta de onde, pergunta o cliente e ele confirma tocando no botão. Use para "gera um link de mochilas", "manda um link de chinelos do estoque para a Degraus". args: {"busca": a frase dele inteira, "cliente": o nome se ele disse}.',
+    '- problemas: pedidos com PROBLEMA na carteira: atrasados (previsão de faturamento vencida) e com a previsão adiada. Mostra cliente, GCI, pares e previsão; os produtos abrem ao tocar na linha. Use para "tenho pedido com problema?", "pedidos atrasados", "tem pedido atrasado da Casa Pio?", "algum pedido foi prorrogado?". args: {"cliente","vendedor","tipo":"atrasado|adiado","dias": só os com mais de N dias}.',
+    '- rfv: o RFV da Detalhada, QUEM COMPROU EM CADA SEMESTRE: placar (clientes ativos, compraram no 2º, sem compra no 2º) e a lista de uma situação: "sem2" (não comprou no 2º semestre, inclusive quem nunca comprou), "so1" (só no 1º), "so2" (novo, só no 2º), "dois" (nos dois). Também a situação de um cliente ("como a Luar está no RFV"). Dá para recortar por produto, cor, linha ou marca ("quem não comprou chinelo no 2º semestre"). args: {"situacao","cliente","vendedor","produto","cor","linha","marca"}. Para o que OFERECER a quem parou, use reativar.',
+    '- reativar: clientes PARADOS para reativar (compraram até junho e, de julho em diante, não têm nota, carteira nem repasse; rede conta como um cliente só), com o que oferecer do Showroom do que eles compravam (repasse primeiro). Use para "quem eu preciso reativar", "clientes parados", "quem parou de comprar", "a Luar parou de comprar?", "o que oferecer pra Luar voltar". args: {"cliente" (opcional, para um só), "vendedor", "dias" (parado há pelo menos N dias), "so_repasse":true}.',
+    '- meta_showroom: o que o Showroom tem (repasse, estoque, produção) de uma faixa ou família da META, para ajudar a fechar. Use para "o que tem no Showroom para fechar a meta de Conf. feminino", "o que vender para bater corrida e treino". args: {"faixa": o nome da faixa como na meta, "marca":"OLY|UA"}.',
     '- foto_produto: a FOTO de um produto do catálogo, com o botão de enviar no WhatsApp. Use para "manda a foto do marte infantil militar", "foto do 43649393", "tem foto da mochila X?". args: {"busca": a frase dele inteira}.',
     '- baixar: baixa em Excel ou PDF a última tabela de consultar, clientes_sem_pedido ou movimento. args: {"formato":"xlsx|pdf"}.',
     '- boleto: 2ª via dos boletos de um cliente, buscada no EBM da Vulcabras: parcelas em dia, vencidas e as que o sistema não emite (com o motivo), e o PDF para baixar. args: {"cliente","de":"AAAA-MM-DD","ate":"AAAA-MM-DD","todas":true|false}. Primeiro aparece um cartão com o cliente para ele confirmar, e só o toque dele faz a busca: você nunca diz que buscou nem inventa boleto. Se o nome tiver várias lojas, a ferramenta mostra a lista para o vendedor escolher; "todas":true só quando ele pedir todas. O período é o do VENCIMENTO e pode ter vários meses ("de outubro a dezembro" = de 01/10 a 31/12); sem período citado, deixe de fora (vale o mês atual). Quando o resultado chegar, diga SEMPRE o período de vencimento que olhou e ofereça outro (os vencidos de meses anteriores ou os próximos meses). Demora até 1 minuto por cliente.',
@@ -1490,7 +1626,9 @@ function agSistema(ctx) {
     'REGRAS:',
     '- Todo número que você disser tem que ter vindo de uma ferramenta nesta conversa. Nunca invente nem estime; se precisar de outro total, consulte de novo. Diferença e porcentagem entre dois números que vieram das ferramentas você pode calcular.',
     '- Nunca diga que não tem dado de um período sem antes consultar: a base cobre as datas informadas acima.',
-    '- Se a ferramenta disser que um nome é ambíguo ou não existe, pergunte ao vendedor qual é (mostre as opções) em vez de chutar.',
+    '- Se a ferramenta disser que um nome é ambíguo ou não existe, pergunte ao vendedor qual é em vez de chutar. Se os botões já apareceram, só pergunte ("Qual desses você quis dizer?"); senão, mostre as opções.',
+    '- Ele digita rápido no celular e erra letras: entenda o que ele quis dizer pelo sentido. Na dúvida de verdade, faça UMA pergunta curta; nunca responda "não entendi" seco.',
+    '- Não repita a pergunta dele de volta, não comece com "Claro!" ou "Certo!" e não termine com "Posso ajudar em mais alguma coisa?". Vá direto ao que ele pediu.',
     '- Se o resultado avisar que a lista foi cortada, não conclua nada sobre quem ficou de fora: consulte de novo com filtro pelos nomes que interessam. Para "desses, quem não pediu X", use clientes_sem_pedido com a lista em "clientes".',
     '- Se a pergunta for vaga demais para consultar, pergunte o que falta numa frase.',
     '- As tabelas das ferramentas aparecem para o vendedor logo abaixo da sua resposta. Não copie tabelas no texto: destaque o essencial (totais, os maiores, o que chama atenção) em poucas frases ou numa lista curta, com **negrito** nos números importantes.',
@@ -1513,6 +1651,7 @@ function agFiltro(lista, termo, rotulo, mostra) {
     if (a && ((a.nota >= 0.85 && (!b || b.nota <= a.nota - 0.1)) || (!b && a.nota >= 0.8))) {
       achou = a.idx; nota = ` (escrito "${termo}")`;
     } else if (cand.length) {
+      AG.parecidos = { termo, nomes: cand.slice(0, 5).map(c => c.nome) };
       return { erro: `${rotulo} "${termo}" não existe; os mais parecidos: ${cand.slice(0, 5).map(c => c.nome).join(', ')}. Pergunte qual é.` };
     } else return { erro: `${rotulo} "${termo}" não existe na base${rotulo === 'cliente' && prepAtivo() >= 0 ? ' deste vendedor' : ''}.` };
   }
@@ -1616,7 +1755,7 @@ function agConsultar(a) {
     else { if (g === 'previsao') data.push(cols.length); cols.push(...DIMS[g][0]); }
   }
   const medidas = sit === 'carteira' ? ['Carteira'] : sit === 'faturado' ? ['Faturado'] : ['Carteira', 'Faturado', 'Total'];
-  const grupos = new Map();
+  const grupos = new Map(), itens = [];
   let totC = 0, totF = 0;
   for (const r of base) {
     if (!conds.every(c => c(r))) continue;
@@ -1624,6 +1763,7 @@ function agConsultar(a) {
     if (sit !== 'faturado' && r[C.CART] > 0 && noPer(r[C.PREV])) partes.push(['c', r[C.CART], r[C.PREV]]);
     if (sit !== 'carteira' && r[C.FAT] > 0) { const d = r[C.DFAT] >= 0 ? r[C.DFAT] : r[C.PREV]; if (noPer(d)) partes.push(['f', r[C.FAT], d]); }
     for (const [tipo, qt, dia] of partes) {
+      if (!agrupar.length) itens.push([r, tipo, qt, dia]);
       const chave = [];
       for (const g of agrupar) chave.push(...(g === 'mes' ? [mesDe(dia)] : g === 'dia' ? [dia] : DIMS[g][1](r)));
       const k = JSON.stringify(chave);
@@ -1656,6 +1796,43 @@ function agConsultar(a) {
   const num = medidas.map((_, i) => cols.length + i);
   const totais = sit === 'carteira' ? [totC] : sit === 'faturado' ? [totF] : [totC, totF, totC + totF];
   const titulo = sit === 'carteira' ? 'Carteira (a faturar)' : sit === 'faturado' ? 'Faturado' : 'Carteira e faturado';
+  // Sem agrupar, o total vem com a LISTA que o forma, uma linha por item (cliente, produto, cor, data,
+  // pares), e o resto (código, referência, GCI, NF, OC, vendedor) abre ao tocar. O total vai no resumo.
+  if (!agrupar.length && itens.length) {
+    const L = new Map();
+    for (const [r, tipo, qt, dia] of itens) {
+      const k = [r[C.CLI], r[C.REF], r[C.COR], r[C.GCI], r[C.NF], tipo, dia].join('|');
+      const x = L.get(k) || { r, tipo, dia, c: 0, f: 0 };
+      if (tipo === 'c') x.c += qt; else x.f += qt;
+      L.set(k, x);
+    }
+    const linhas = [...L.values()].sort((x, y) => (sit === 'carteira' ? x.dia - y.dia : y.dia - x.dia) || (y.c + y.f) - (x.c + x.f));
+    const rotData = sit === 'carteira' ? 'Prev. fat.' : sit === 'faturado' ? 'Faturado em' : 'Data';
+    const val = x => sit === 'carteira' ? [x.c] : sit === 'faturado' ? [x.f] : [x.c, x.f, x.c + x.f];
+    // À vista: cliente, produto, o documento (NF no faturado; GCI na carteira, que ainda não tem nota), a
+    // data e os pares. O resto abre ao tocar. Em "tudo", só o Total aparece; carteira e faturado vão no detalhe.
+    const doc = sit === 'faturado' ? 'NF' : sit === 'carteira' ? 'GCI' : '';
+    // No celular não cabem cinco colunas: o documento e a data dividem uma (um embaixo do outro). Separados, vão para o Excel.
+    const ano = String(new Date().getFullYear()), curta = d => { const t = dataDe(d); return t.endsWith('/' + ano) ? t.slice(0, 5) : t; };
+    const juntos = doc ? `${doc} / Data` : rotData;
+    const base0 = ['Cliente', 'Produto', juntos];
+    const extra = ['Cor', ...(doc ? [doc, rotData] : []), 'Código', 'Referência', ...['GCI', 'NF'].filter(c => c !== doc), 'OC', 'Vendedor'];
+    const campo = (x, c) => ({ Cor: D.cor[x.r[C.COR]], [rotData]: dataDe(x.dia), Código: D.cli[x.r[C.CLI]][0], Referência: D.ref[x.r[C.REF]][0], GCI: x.r[C.GCI] || '', NF: x.r[C.NF] || '',
+      OC: D.oc[x.r[C.OC]] ?? '', Vendedor: D.prep[x.r[C.PREP]] })[c];
+    const cols = [...base0, ...medidas, ...extra], o = base0.length + medidas.length;
+    const res = { entendi: [`<b>${titulo}</b>`, ...aplicados.map(esc)], cols,
+      curtos: { 'Faturado em': 'Data', 'Prev. fat.': 'Prev.', Faturado: 'Pares', Carteira: 'Pares', Total: 'Pares' },
+      num: medidas.map((_, i) => base0.length + i), data: [], totais: null,
+      oculta: [...(sit === 'tudo' ? [base0.length, base0.length + 1] : []), ...extra.map((_, i) => o + i)],
+      rows: linhas.map(x => [D.cli[x.r[C.CLI]][1], `${D.ref[x.r[C.REF]][1] || D.ref[x.r[C.REF]][0]} ${D.cor[x.r[C.COR]]}`, doc ? `${campo(x, doc)}\n${curta(x.dia)}` : curta(x.dia), ...val(x),
+        ...extra.map(c => campo(x, c))]),
+      detalhe: row => [...(sit === 'tudo' ? [`Carteira ${fmt(row[base0.length])} · Faturado ${fmt(row[base0.length + 1])}`] : []),
+        ...extra.map((c, i) => c !== 'Cor' && c !== doc && c !== rotData && row[o + i] !== '' && row[o + i] != null ? `${c} ${row[o + i]}` : '')].filter(Boolean).join(' · '),
+      resumo: `${medidas.map((m, i) => `${m}: ${fmt(totais[i])} pares`).join(' · ')} · ${fmt(linhas.length)} item(ns) na lista (cliente, produto, cor), em ${fmt(new Set(linhas.map(x => x.r[C.CLI])).size)} cliente(s)` +
+        (() => { const pc = new Map(); for (const x of linhas) pc.set(D.cli[x.r[C.CLI]][1], (pc.get(D.cli[x.r[C.CLI]][1]) || 0) + x.c + x.f);
+          return `. Por cliente (já somado, use estes números): ${[...pc.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([n, q]) => `${n} ${fmt(q)}`).join('; ')}`; })() };
+    return { res };
+  }
   const res = {
     entendi: [`<b>${titulo}</b>`, ...aplicados.map(esc)], cols: [...cols, ...medidas], num, data,
     rows: lista.map(gr => [...gr.chave, ...valor(gr)]),
@@ -1706,7 +1883,19 @@ const FERRAMENTAS = {
     res.resumo = `Situação de cada cliente (pelo nome, somando todos os códigos):\n${status.join('\n')}`;
     return { res };
   },
-  movimento: a => agPeloAssistente({ tipo: a.tipo === 'saidas' ? 'saidas' : 'entradas', de: a.de, ate: a.ate, agrupar: a.agrupar || 'nenhum', cliente: a.cliente, produto: a.produto, cor: a.cor, vendedor: a.vendedor }),
+  movimento: a => {
+    const out = agPeloAssistente({ tipo: a.tipo === 'saidas' ? 'saidas' : 'entradas', de: a.de, ate: a.ate, agrupar: !a.agrupar || a.agrupar === 'nenhum' ? 'cliente' : a.agrupar, cliente: a.cliente, produto: a.produto, cor: a.cor, vendedor: a.vendedor });
+    const r = out.res;
+    // No celular cabem três colunas: o nome, as encomendas e o total. Código, vendedor e a divisão das
+    // saídas (faturou, sem nota, a confirmar) vão para o detalhe ao tocar; o Excel leva todas.
+    if (r && r.rows && r.rows.length && r.detalhe) {
+      const esconde = ['Código', 'Vendedor', 'Faturou', 'Sem nota (transf.)', 'A confirmar'].map(c => r.cols.indexOf(c)).filter(j => j > 0);
+      const prod = r.detalhe;
+      r.oculta = esconde;
+      r.detalhe = row => [esconde.map(j => `${r.cols[j]}: ${r.num.includes(j) ? fmt(row[j]) : row[j]}`).join(' · '), prod(row)].filter(Boolean).join('\n');
+    }
+    return out;
+  },
   ficha: a => {
     const out = agPeloAssistente({ tipo: 'ficha', produto: a.produto, cliente: a.cliente });
     return out.res ? { texto: out.res.fichaTexto } : out;
@@ -1726,6 +1915,12 @@ const FERRAMENTAS = {
   pedido: async a => { await olharRobo(); return agPedido(a); },
   dae: a => agDae(a),
   metas: a => agMetas(a),
+  meta_showroom: a => agMetaShowroom(a),
+  carta: a => agCarta(a),
+  reativar: a => agReativar(a),
+  rfv: a => agRfv(a),
+  problemas: a => agProblemas(a),
+  link_cliente: a => agLinkCliente(a),
   baixar: async a => {
     if (!AG.ultimaTabela) return { erro: 'Ainda não há tabela nesta conversa para baixar.' };
     const formato = a.formato === 'pdf' ? 'pdf' : 'xlsx';
@@ -1734,7 +1929,7 @@ const FERRAMENTAS = {
   },
 };
 const ROTULO_FERRAMENTA = { consultar: 'Consultando a carteira', clientes_sem_pedido: 'Procurando quem não comprou', movimento: 'Olhando entradas e saídas',
-  ficha: 'Abrindo a ficha', clientes: 'Procurando no cadastro', disponivel: 'Olhando o Showroom', ebm_disponivel: 'Procurando o produto', repasses_cliente: 'Olhando os repasses do cliente', resumo_repasses: 'Montando o resumo de repasses', pedido: 'Procurando o pedido', dae: 'Procurando a nota', metas: 'Olhando as metas', catalogo: 'Preparando o catálogo', catalogo_produtos: 'Procurando no catálogo', foto_produto: 'Procurando a foto', baixar: 'Gerando o arquivo', boleto: 'Buscando os boletos no EBM (pode levar 1 minuto)' };
+  ficha: 'Abrindo a ficha', clientes: 'Procurando no cadastro', disponivel: 'Olhando o Showroom', ebm_disponivel: 'Procurando o produto', repasses_cliente: 'Olhando os repasses do cliente', resumo_repasses: 'Montando o resumo de repasses', pedido: 'Procurando o pedido', dae: 'Procurando a nota', metas: 'Olhando as metas', catalogo: 'Preparando o catálogo', meta_showroom: 'Procurando no Showroom', carta: 'Calculando a carta', reativar: 'Procurando quem parou de comprar', rfv: 'Olhando quem comprou em cada semestre', problemas: 'Procurando pedidos com problema', link_cliente: 'Montando o link', catalogo_produtos: 'Procurando no catálogo', foto_produto: 'Procurando a foto', baixar: 'Gerando o arquivo', boleto: 'Buscando os boletos no EBM (pode levar 1 minuto)' };
 
 /* disponivel: "tem tal produto?". Varre o Showroom com a MESMA conta da tela
    (js/disponivel.js): saldo menos o que já foi pedido, cota do rateio, ocultos,
@@ -2537,26 +2732,622 @@ async function agMetas(a) {
   }
   const d = metaAgrega(M, sel, cod, marca), cms = metaAgrega(M, sel, 'TODOS', marca);
   if (!d.tot.tem && !Object.keys(d.familias).length) return { texto: `${nome} não tem meta de ${cfg.rotulo} em ${sel}.` };
-  const linha = (rot, g, gat, porPares) => { const meta = porPares ? g.meta_q : g.meta_r, pos = porPares ? g.pos_q : g.pos_r, fat = porPares ? g.fat_q : g.fat_r, alvo = meta * gat, falta = alvo - pos, f = porPares ? pares : reais;
-    return { rot, meta, pos, gat, porPares, v: [rot, f(meta), f(pos), pct(pos, meta), meta > 0 ? (falta > 0 ? f(falta) : 'bateu') : '', f(fat), meta > 0 ? `${f(alvo)} (${Math.round(gat * 100)}%)` : ''] }; };
+  const linha = (rot, g, gat, porPares, chave) => { const meta = porPares ? g.meta_q : g.meta_r, pos = porPares ? g.pos_q : g.pos_r, fat = porPares ? g.fat_q : g.fat_r, alvo = meta * gat, falta = alvo - pos, f = porPares ? pares : reais;
+    return { rot, chave, meta, pos, gat, porPares, v: [rot, f(meta), f(pos), pct(pos, meta), meta > 0 ? (falta > 0 ? f(falta) : 'bateu') : '', f(fat), meta > 0 ? `${f(alvo)} (${Math.round(gat * 100)}%)` : ''] }; };
   const ordem = o => { const i = cfg.faixas.indexOf(o); return i < 0 ? 90 : i; };
-  const linhas = [linha('Total de tênis', d.tot, META_GATILHO.total, true),
-    ...Object.keys(d.faixas).sort((x, y) => ordem(x) - ordem(y)).map(k => linha(META_NOMES[k] || k, d.faixas[k], META_GATILHO.faixa, true)),
-    ...cfg.familias.map(k => linha(META_NOMES[k] || k, d.familias[k] || metaZero(), META_GATILHO.familia, false)),
-    ...(d.ua && d.ua.tem ? [linha('Under Armour', d.ua, META_GATILHO.familia, false)] : [])];
+  const linhas = [linha('Total de tênis', d.tot, META_GATILHO.total, true, 'tot'),
+    ...Object.keys(d.faixas).sort((x, y) => ordem(x) - ordem(y)).map(k => linha(META_NOMES[k] || k, d.faixas[k], META_GATILHO.faixa, true, k)),
+    ...cfg.familias.map(k => linha(META_NOMES[k] || k, d.familias[k] || metaZero(), META_GATILHO.familia, false, k)),
+    ...(d.ua && d.ua.tem ? [linha('Under Armour', d.ua, META_GATILHO.familia, false, 'UA')] : [])];
   // Na tela vai o número curto, sem "pares" e sem centavos; ao tocar na linha abre o resto. O Excel leva tudo.
   const curtoV = s => String(s).replace(' pares', '').replace(/^R\$\s*/, '').replace(/,\d{2}$/, '');
   const res = { entendi: ['<b>Metas</b>', esc(`${nome} · ${cfg.rotulo} · ${sel}`)], cols: ['Item', 'Meta', 'Pot.', '%', 'Falta', 'Unidade', 'Faturado', 'Alvo'], num: [], data: [], totais: null, resumo: '',
     rows: linhas.map(l => [l.porPares ? l.v[0] : `${l.v[0]} (R$)`, curtoV(l.v[1]), curtoV(l.v[2]), l.v[3].replace(/,\d%$/, '%'), curtoV(l.v[4]), l.porPares ? 'pares' : 'R$', l.v[5], l.v[6]]), oculta: [5, 6, 7],
     detalhe: x => [`Em ${x[5]}`, `Faturado ${x[6]}`, x[7] && `Alvo ${x[7]}`].filter(Boolean).join(' · ') };
   const t15Tri = marca === 'OLY' ? metaTrava(M, tri, cod) : null;
+  // O que ainda não bateu e tem o que vender no Showroom: botões, o mais perto de bater primeiro.
+  let opcoes = [];
+  try {
+    const L = await baseDisponivel(), fx = await metaFaixas();
+    opcoes = linhas.filter(l => l.meta > 0 && l.pos < l.meta * l.gat && META_SHOWROOM[marca][l.chave])
+      .sort((x, y) => y.pos / y.meta - x.pos / x.meta)
+      .map(l => ({ l, n: metaShowroomItens(L, fx, META_SHOWROOM[marca][l.chave]).length })).filter(x => x.n).slice(0, 4)
+      .map(({ l, n }) => ({ rotulo: `${l.rot} · ${n} no Showroom`, valor: `o que tem no Showroom para fechar a meta de ${l.rot}${marca === 'UA' ? ' (UA)' : ''}` }));
+  } catch (e) {}
   const trava = t => `${pct(t.num, t.meta)} (${t.ok ? `${reais(-t.falta)} acima dos 15%` : `faltam ${reais(t.falta)} para os 15%`})`;
   const cmsPct = cms.tot.meta_q > 0 ? cms.tot.pos_q / cms.tot.meta_q : 0;
   return { res, texto: `Metas de ${nome}, ${cfg.rotulo}, ${sel}. ${quando}\n` +
     linhas.map(l => `${l.rot}: meta ${l.v[1]}, potencial ${l.v[2]} (${l.v[3]}), faturado ${l.v[5]}${l.meta > 0 ? `, ${l.v[4] === 'bateu' ? `bateu o alvo de ${Math.round(l.gat * 100)}%` : `faltam ${l.v[4]} para o alvo de ${Math.round(l.gat * 100)}%`}` : ''}`).join('\n') +
     (t15Tri && cod !== 'TODOS' ? `\nTrava dos 15% no trimestre ${tri} (é a que vale; não fale da trava do mês): ${trava(t15Tri)}.` : t15Tri ? `\nOutras famílias sobre o tênis no trimestre ${tri} (só leitura para a CMS): ${pct(t15Tri.num, t15Tri.meta)}.` : '') +
     `\nTotal de tênis da CMS: ${(cmsPct * 100).toFixed(1).replace('.', ',')}% da meta (a faixa só conta com a CMS em 90%).\n` +
-    'A tabela já apareceu. Não copie: diga o total, o que está mais perto de bater e o que falta. Fale em "potencial" e diga que inclui o que ainda não faturou. Não afirme prêmio nem estrela: isso a tela de Metas mostra.' };
+    'A tabela já apareceu. Não copie: diga o total, o que está mais perto de bater e o que falta. Fale em "potencial" e diga que inclui o que ainda não faturou. Não afirme prêmio nem estrela: isso a tela de Metas mostra.' +
+    (opcoes.length ? ` Embaixo apareceram botões com o que o Showroom tem para fechar ${opcoes.length > 1 ? 'as faixas que faltam' : 'a faixa que falta'}: termine convidando, numa frase, a tocar num deles.` : ''), opcoes };
+}
+
+/* carta: quanto a Carta Campanha paga. A conta é a da tela da Carta (carta/index.html, calcular()):
+   G1 escritório e G2 vendedor batem 100% dos pares das faixas; G5 (regra 360) = outras famílias + UA
+   ≥ 15% do R$ de tênis do vendedor no trimestre até o mês. Faixa paga 100% com escritório e vendedor
+   em 100%; 50% quando o escritório bateu, o vendedor não, e há benefício (escritório com faixas e
+   famílias batidas, G2 e G5). Família paga 100% com os dois em 100%. Valor = R$ do vendedor na linha
+   × % da carta; sem os três gerais, a carta do mês é zero.
+   Os números vêm do metas.json (o robô de todo dia): os do vendedor são os mesmos da tela da Carta; o
+   escritório é a soma dos prepostos (a meta da fábrica para a casa não vem no arquivo). Só Olympikus:
+   a regra da carta da UA ainda não foi definida. */
+const cartaMes = m => ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][+m.slice(5, 7) - 1] + '/' + m.slice(0, 4);
+const CARTA_R = { gatilho: 100, beneficio: 50, regra360: 15 };
+const CARTA_FAM = ['MEOLY', 'CHOLY', 'ACOLY', 'CFOLY'];
+function cartaLinhas(M, mes) {
+  const mm = (M.meses || []).find(x => x.mes === mes);
+  return mm ? mm.prepostos || [] : [];
+}
+// modo: 'faturado' (só o que faturou), 'potencial' (com a carteira) ou 'meta' (simula bater 100% em tudo).
+function cartaCalcular(M, mes, cod, modo, ate) {
+  const R = CARTA_R, prep = cartaLinhas(M, mes);
+  const val = (l, c) => { const r = metaValor(l, c) || 0, f = modo === 'faturado' ? (l['real_' + c] || 0) : r; return modo === 'meta' ? Math.max(f, l['meta_' + c] || 0) : f; };
+  const chaveDe = l => l.marca === 'OLY' ? 'F|' + l.faixa : CARTA_FAM.includes(l.marca) ? 'M|' + l.marca : null;
+  const linhas = new Map();
+  for (const p of prep) for (const l of p.linhas || []) {
+    const k = chaveDe(l); if (!k) continue;
+    const x = linhas.get(k) || { k, fam: k[0] === 'M', cod: k.slice(2), pct: l.pct_cc || 0, eMeta: 0, eReal: 0, vMeta: 0, vReal: 0, rsV: 0 };
+    const c = x.fam ? 'rs' : 'qtd';
+    x.eMeta += l['meta_' + c] || 0; x.eReal += val(l, c);
+    if (String(p.codigo) === String(cod)) { x.vMeta += l['meta_' + c] || 0; x.vReal += val(l, c); x.rsV += val(l, 'rs'); if (l.pct_cc) x.pct = l.pct_cc; }
+    linhas.set(k, x);
+  }
+  const L = [...linhas.values()], F = L.filter(x => !x.fam), Fm = L.filter(x => x.fam);
+  const pc = (r, m) => m > 0 ? r / m * 100 : null, soma = (ls, k) => ls.reduce((s, x) => s + x[k], 0);
+  const g = (real, meta) => { const pct = pc(real, meta); return { real, meta, pct, ok: pct != null && pct >= R.gatilho, falta: Math.max(0, meta - real) }; };
+  const g1 = g(soma(F, 'eReal'), soma(F, 'eMeta')), g2 = g(soma(F, 'vReal'), soma(F, 'vMeta'));
+  // G5: o trimestre até o mês, só o vendedor.
+  const q = Math.floor((+mes.slice(5, 7) - 1) / 3) * 3;
+  let outras = 0, tenis = 0;
+  for (let i = q + 1; i <= +(ate || mes).slice(5, 7); i++) for (const p of cartaLinhas(M, `${mes.slice(0, 4)}-${String(i).padStart(2, '0')}`)) {
+    if (String(p.codigo) !== String(cod)) continue;
+    for (const l of p.linhas || []) { if (l.marca === 'OLY') tenis += val(l, 'rs'); else if (CARTA_FAM.includes(l.marca) || META_UA.includes(l.marca)) outras += val(l, 'rs'); }
+  }
+  const alvo360 = tenis * R.regra360 / 100, g5 = { atual: outras, alvo: alvo360, ok: alvo360 > 0 && outras >= alvo360, falta: Math.max(0, alvo360 - outras) };
+  const eOutras = pc(soma(Fm, 'eReal'), soma(Fm, 'eMeta'));
+  const gerais = g1.ok && g2.ok && g5.ok, beneficio = g1.ok && eOutras != null && eOutras >= R.gatilho && g2.ok && g5.ok;
+  for (const x of L) {
+    x.pe = pc(x.eReal, x.eMeta); x.pv = pc(x.vReal, x.vMeta); x.semMeta = !(x.vMeta > 0);
+    const eOk = x.pe != null && x.pe >= R.gatilho, vOk = x.pv != null && x.pv >= R.gatilho;
+    x.base = x.rsV * x.pct / 100;
+    x.fator = !x.semMeta && eOk && vOk ? 1 : !x.fam && !x.semMeta && eOk && !vOk && beneficio ? R.beneficio / 100 : 0;
+    x.porque = x.semMeta ? 'sem meta sua' : x.fator === 1 ? '' : x.fator ? 'paga metade (benefício)' : !eOk && vOk ? 'escritório não bateu' : eOk && !vOk ? 'falta você bater' : 'faltam os dois';
+    x.valor = gerais ? x.base * x.fator : 0;
+    x.falta = Math.max(0, x.vMeta - x.vReal);
+  }
+  return { F, Fm, g1, g2, g5, gerais, beneficio, carta: soma(L, 'valor'), possivel: L.reduce((s, x) => s + x.base * x.fator, 0) };
+}
+// A carta é apurada mês a mês e paga no FIM DO TRIMESTRE, somando os três meses. Mês fechado vale
+// pelo faturado; o mês de agora tem "hoje" e "com a carteira"; mês que não chegou fica "a apurar", com
+// o que daria batendo tudo.
+function cartaTrimestre(M, mes, cod) {
+  const t = Math.floor((+mes.slice(5, 7) - 1) / 3), ano = mes.slice(0, 4);
+  const tri = [1, 2, 3].map(i => `${ano}-${String(t * 3 + i).padStart(2, '0')}`), fim = tri.filter(m => cartaLinhas(M, m).length).pop() || mes;
+  const meses = tri.map(m => {
+    if (!cartaLinhas(M, m).length) return { m, sem: true, hoje: 0, carteira: 0, max: 0 };
+    const max = cartaCalcular(M, m, cod, 'meta', fim).possivel;
+    if (m > mes) return { m, futuro: true, hoje: 0, carteira: 0, max };
+    const f = cartaCalcular(M, m, cod, 'faturado', mes), po = m === mes ? cartaCalcular(M, m, cod, 'potencial', mes) : f;
+    // Mês fechado não volta: no "batendo tudo" ele entra pelo que rendeu.
+    return { m, fechado: m < mes, f, po, hoje: f.carta, carteira: po.carta, max: m < mes ? f.carta : max };
+  });
+  const soma = k => meses.reduce((s, x) => s + x[k], 0);
+  return { t: t + 1, ano, meses, hoje: soma('hoje'), carteira: soma('carteira'), max: soma('max') };
+}
+async function agCarta(a) {
+  let M;
+  try { M = await baseMetas(); } catch (e) { return { erro: 'Não consegui ler a carta agora: ' + (e.message || e) }; }
+  if (/ua|under/i.test(String(a.marca || ''))) return { texto: 'A carta da Under Armour ainda não tem a regra definida aqui (faixas e regra 360 da UA). Diga que por enquanto só calculo a carta Olympikus, e ofereça mostrar a meta da UA.' };
+  const meses = (M.meses || []).map(m => m.mes).sort(), agora = hojeIso().slice(0, 7);
+  const mes = /^\d{4}-\d{2}$/.test(String(a.mes || '')) ? String(a.mes) : (meses.includes(agora) ? agora : meses[meses.length - 1]);
+  const prep = cartaLinhas(M, mes);
+  if (!prep.length) return { erro: `Não tenho a carta de ${mes}. Tenho de ${meses[0]} a ${meses[meses.length - 1]}.` };
+  const curto = p => /^c\s*m\s*s$/i.test(String(p.nome).trim()) ? 'Núcleo' : String(p.nome).trim().split(/\s+/)[0];
+  const lista = prep.filter(p => !META_FORA.includes(String(p.codigo)));
+  let alvo;
+  if (!APP.veTudo) { alvo = prep.find(p => String(p.codigo) === String(APP.sessao.codigo).trim()); if (!alvo) return { texto: `Não há carta de ${APP.sessao.nome} em ${mes}.` }; }
+  else {
+    let termo = String(a.vendedor || '').trim();
+    if (!termo && prepAtivo() >= 0) termo = APP.dic.prep[prepAtivo()];
+    if (termo && !/^(cms|todos|time|equipe|casa)$/i.test(termo)) {
+      const t0 = norm(termo).replace(/^N[UÚ]CLEO$/, 'C M S');
+      alvo = lista.find(x => String(x.codigo) === t0 || norm(x.nome).includes(t0) || norm(x.nome).split(/\s+/)[0] === t0.split(/\s+/)[0]);
+      if (!alvo) return { erro: `Não achei "${termo}" entre os vendedores com carta: ${lista.map(curto).join(', ')}.` };
+    }
+  }
+  const nomes = { CONF_FEM: 'Conf. feminino', CONF_MASC: 'Conf. masculino', 'CORRIDA/TREINO': 'Corrida e treino', CLASSICOS: 'Clássicos', CORRE: 'Corre', INFANTIL: 'Infantil', ...META_NOMES };
+  const quando = M.atualizado_em ? `Números de ${new Date(M.atualizado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}.` : '';
+  // CMS sem escolher vendedor: a carta de cada um, lado a lado.
+  if (!alvo) {
+    const lin = lista.map(p => ({ nome: curto(p), q: cartaTrimestre(M, mes, p.codigo) })).sort((x, y) => y.q.carteira - x.q.carteira || y.q.max - x.q.max);
+    const tq = lin[0].q, rotTri = `${tq.t}º trimestre de ${tq.ano}`;
+    const res = { entendi: ['<b>Carta campanha</b>', esc(`Olympikus · ${rotTri}`), 'o time'], cols: ['Vendedor', 'Hoje (faturado)', 'Com a carteira', 'Batendo tudo'], num: [], data: [], totais: null, resumo: '',
+      rows: lin.map(x => [x.nome, reais(x.q.hoje), reais(x.q.carteira), reais(x.q.max)]) };
+    return { res, texto: `Carta campanha Olympikus, ${rotTri} (${tq.meses.map(x => cartaMes(x.m)).join(', ')}), acumulado por vendedor. A carta é apurada mês a mês e paga no fim do trimestre. ${quando}\n` +
+      lin.map(x => `${x.nome}: acumulado hoje ${reais(x.q.hoje)}; com a carteira ${reais(x.q.carteira)}; batendo 100% em tudo no trimestre, perto de ${reais(x.q.max)}`).join('\n') +
+      '\nA tabela já apareceu. Destaque quem está mais perto de destravar. Diga que é uma estimativa com as regras da carta; quem fecha o valor é a Vulcabras.' };
+  }
+  const nome = curto(alvo).toLowerCase().replace(/^./, c => c.toUpperCase());
+  const f = cartaCalcular(M, mes, alvo.codigo, 'faturado'), po = cartaCalcular(M, mes, alvo.codigo, 'potencial'), mx = cartaCalcular(M, mes, alvo.codigo, 'meta');
+  const pctTxt = v => v == null ? '—' : `${v.toFixed(0)}%`;
+  const todas = [...po.F, ...po.Fm].filter(x => !x.semMeta || x.base > 0);
+  const res = { entendi: ['<b>Carta campanha</b>', esc(`${nome} · Olympikus · ${cartaMes(mes)}`), 'com a carteira'], cols: ['Item', 'Você', 'Escritório', '% carta', 'Paga', 'Valor', 'Falta você'], num: [], data: [], totais: null, resumo: '',
+    rows: todas.map(x => [nomes[x.cod] || x.cod, pctTxt(x.pv), pctTxt(x.pe), `${String(x.pct).replace('.', ',')}%`, x.fator === 1 ? '100%' : x.fator ? '50%' : x.porque, reais(x.valor), x.falta > 0 ? (x.fam ? reais(x.falta) : `${fmt(Math.ceil(x.falta))} pares`) : 'bateu']),
+    oculta: [6], detalhe: r => r[6] === 'bateu' ? 'Você bateu' : `Falta você: ${r[6]}` };
+  const gat = c => [
+    c.g1.ok ? 'G1 escritório batido' : `G1 escritório: faltam ${fmt(Math.ceil(c.g1.falta))} pares de tênis (${pctTxt(c.g1.pct)})`,
+    c.g2.ok ? 'G2 seu total de tênis batido' : `G2 seu total de tênis: faltam ${fmt(Math.ceil(c.g2.falta))} pares (${pctTxt(c.g2.pct)})`,
+    c.g5.ok ? 'G5 regra 360 batida' : `G5 regra 360: faltam ${reais(c.g5.falta)} em outras famílias ou Under Armour no trimestre`].join('; ');
+  // A faixa mais perto de pagar inteira, e quanto ela acrescenta.
+  const perto = po.F.filter(x => !x.semMeta && x.fator < 1 && x.pe >= CARTA_R.gatilho).map(x => ({ x, ganho: x.base * (1 - x.fator) })).sort((p, q) => p.x.falta - q.x.falta)[0];
+  const tq = cartaTrimestre(M, mes, alvo.codigo), rotTri = `${tq.t}º trimestre de ${tq.ano}`;
+  const mesTxt = x => x.sem ? `${cartaMes(x.m)}: sem meta ainda` : x.futuro ? `${cartaMes(x.m)}: a apurar (batendo tudo, perto de ${reais(x.max)})`
+    : x.fechado ? `${cartaMes(x.m)} (fechado): ${reais(x.hoje)}${x.f.gerais ? '' : ', gatilhos gerais não bateram'}`
+    : `${cartaMes(x.m)} (em andamento): hoje ${reais(x.hoje)}, com a carteira ${reais(x.carteira)}, batendo tudo perto de ${reais(x.max)}`;
+  const linhaTri = x => `<div class="ct-m${x.m === mes ? ' atual' : ''}"><span>${esc(cartaMes(x.m).slice(0, 3))}</span><b>${x.sem || x.futuro ? 'a apurar' : esc(reais(x.m === mes ? x.carteira : x.hoje))}</b><small>${x.sem ? 'sem meta' : x.futuro ? 'até ' + esc(reais(x.max)) : x.fechado ? 'fechado' : 'com a carteira'}</small></div>`;
+  const cartao = `<div class="cartao-dae cartao-tri"><div class="cd-tit">Carta · ${esc(rotTri)}</div><div class="ct-meses">${tq.meses.map(linhaTri).join('')}</div>` +
+    `<div class="ct-tot"><span>Acumulado com a carteira</span><b>${esc(reais(tq.carteira))}</b></div>` +
+    `<div class="cd-l">Paga no fim do trimestre. Batendo tudo nos três meses: perto de ${esc(reais(tq.max))}.</div></div>`;
+  return { res, cartao, texto: `Carta campanha Olympikus de ${nome}. A carta é apurada mês a mês e PAGA NO FIM DO TRIMESTRE, somando os três meses. ${quando}\n` +
+    `${rotTri}:\n${tq.meses.map(mesTxt).join('\n')}\n` +
+    `Acumulado do trimestre: hoje ${reais(tq.hoje)}; com a carteira ${reais(tq.carteira)}; batendo 100% em tudo nos três meses, perto de ${reais(tq.max)}.\n` +
+    `Gatilhos de ${cartaMes(mes)} com a carteira: ${gat(po)}.\n` +
+    (!po.gerais ? `Nada paga antes dos gatilhos gerais (G1, G2 e G5) baterem: o que destrava a carta é ${!po.g2.ok ? `ele fechar o total de tênis (faltam ${fmt(Math.ceil(po.g2.falta))} pares)` : !po.g5.ok ? `a regra 360 (faltam ${reais(po.g5.falta)} em outras famílias ou UA)` : 'o escritório bater o total de tênis'}. Não aponte faixa como "o que destrava".
+` : '') +
+    (po.gerais && perto ? `Faixa mais perto de pagar inteira: ${nomes[perto.x.cod] || perto.x.cod}, faltam ${fmt(Math.ceil(perto.x.falta))} pares seus${perto.ganho > 0 ? ` (mais ${reais(perto.ganho)})` : ''}.\n` : '') +
+    'O cartão do trimestre e a tabela das faixas do mês já apareceram: não copie. Responda o que ele perguntou (quanto ganha) pelo TRIMESTRE (acumulado hoje, com a carteira e batendo tudo), diga o que destrava mais dinheiro, e avise numa frase curta que é uma estimativa com as regras da carta: quem fecha o valor é a Vulcabras.' };
+}
+
+/* reativar: a Reativação da Detalhada (apps-oly-v2/detalhada, reatApurar), no chat. A régua é a mesma:
+   comprou (faturou) até junho e, de julho em diante, não tem nota, nem carteira, nem repasse do 2º
+   semestre. Portas da mesma rede (mesmo nome fantasia com dois ou mais códigos) são um cliente só:
+   basta uma ter comprado para a rede sair. A oferta é o que ele mais comprava e tem hoje no Showroom,
+   em pronta entrega ou repasse (lote de 6 ou mais), com o repasse na frente. Produção não é oferta. */
+const REAT_MIN = 6;
+async function reatApurarNexo() {
+  const D = APP.dic, hoje = diaDe(hojeIso()), ano = new Date(hoje * 86400000).getUTCFullYear(), corte = Math.floor(Date.UTC(ano, 6, 1) / 86400000);
+  const s1 = new Map(), s2 = new Map(), aberto = new Map(), art = new Map(), ult = new Map(), prep = new Map();
+  for (const r of APP.L) {
+    const c = r[C.CLI];
+    if (r[C.FAT] > 0 && r[C.DFAT] >= 0) {
+      (r[C.DFAT] < corte ? s1 : s2).set(c, ((r[C.DFAT] < corte ? s1 : s2).get(c) || 0) + r[C.FAT]);
+      if (r[C.DFAT] < corte) { if (!art.has(c)) art.set(c, new Map()); const m = art.get(c), ref = D.ref[r[C.REF]][0]; m.set(ref, (m.get(ref) || 0) + r[C.FAT]); }
+      if ((ult.get(c) ?? -1) < r[C.DFAT]) ult.set(c, r[C.DFAT]);
+      prep.set(c, r[C.PREP]);
+    }
+    if (r[C.CART] > 0) aberto.set(c, (aberto.get(c) || 0) + r[C.CART]);
+  }
+  // Repasse com previsão no 2º semestre conta como compra.
+  const rep2 = new Set();
+  try { for (const it of await baseRepasses()) { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(it.prevFat); if (m && +m[3] === ano && +m[2] >= 7) rep2.add(String(it.cliCod)); } } catch (e) {}
+  const ativo = c => !!(s2.get(c) || aberto.get(c) || rep2.has(String(D.cli[c][0])));
+  // A rede: o mesmo nome fantasia em dois ou mais códigos.
+  const porNome = new Map();
+  D.cli.forEach(([, nome], i) => { const k = norm(nome); if (k) porNome.set(k, (porNome.get(k) || 0) + 1); });
+  const grupo = new Map();
+  for (const [c] of s1) { const k = norm(D.cli[c][1]), ch = porNome.get(k) > 1 ? 'r:' + k : 'c:' + c; if (!grupo.has(ch)) grupo.set(ch, []); grupo.get(ch).push(c); }
+  // O Showroom de hoje, por artigo: pronta entrega e repasse.
+  let porArt = new Map();
+  try {
+    for (const o of await baseDisponivel()) {
+      const k = String(o.artigo).trim().toUpperCase(), q = { rep: o.repasse ? CAT_ORIGEM.repasse.pares(o) : 0, est: o.pronta ? CAT_ORIGEM.estoque.pares(o) : 0 };
+      if (q.rep < REAT_MIN && q.est < REAT_MIN) continue;
+      if (!porArt.has(k)) porArt.set(k, []);
+      porArt.get(k).push({ o, rep: q.rep >= REAT_MIN ? q.rep : 0, est: q.est >= REAT_MIN ? q.est : 0 });
+    }
+  } catch (e) { porArt = null; }
+  const lista = [];
+  for (const [, portas] of grupo) {
+    if (portas.some(ativo)) continue;
+    portas.sort((x, y) => (s1.get(y) || 0) - (s1.get(x) || 0));
+    const c = portas[0], pares = portas.reduce((t, x) => t + (s1.get(x) || 0), 0);
+    const compras = new Map();
+    for (const x of portas) for (const [ref, q] of (art.get(x) || new Map())) compras.set(ref, (compras.get(ref) || 0) + q);
+    const ultimo = Math.max(...portas.map(x => ult.get(x) ?? -1));
+    const ofertas = [];
+    if (porArt) for (const [ref, q] of [...compras.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8))
+      for (const x of (porArt.get(String(ref).trim().toUpperCase()) || [])) ofertas.push({ ...x, comprou: q });
+    ofertas.sort((a, b) => (b.rep > 0) - (a.rep > 0) || (b.rep + b.est) - (a.rep + a.est));
+    const cod = String(D.cli[c][0]), cad = APP.cad && APP.cad.get(cod);
+    lista.push({ c, cod, nome: D.cli[c][1], preps: new Set(portas.map(x => prep.get(x))), prep: D.prep[prep.get(c)] || '', portas: portas.length,
+      cidade: cad && cad.cidade ? cad.cidade + (cad.uf ? '/' + cad.uf : '') : '', pares, dias: hoje - (ultimo >= 0 ? ultimo : hoje), ofertas, temRepasse: ofertas.some(o => o.rep > 0) });
+  }
+  lista.sort((a, b) => (b.temRepasse - a.temRepasse) || (b.pares - a.pares));
+  return { lista, comShowroom: !!porArt, ativo, s2, aberto, rep2, ult, hoje };
+}
+async function agReativar(a) {
+  const D = APP.dic;
+  let R;
+  try { R = await reatApurarNexo(); } catch (e) { return { erro: 'Não consegui montar a reativação agora: ' + (e.message || e) }; }
+  // De quem: o vendedor só os dele; quem vê tudo escolhe o vendedor (ou vê o time).
+  let p = prepAtivo();
+  // Quem vê tudo e citou um vendedor na frase ("quem o Jorge precisa reativar"), sem a IA ter passado.
+  if (APP.veTudo && !a.vendedor && a.frase) {
+    const ws = new Set(norm(a.frase).split(/[^A-Z]+/));
+    const i = D.prep.findIndex(x => ws.has(norm(x).split(/\s+/)[0]));
+    if (i >= 0) { a = { ...a, vendedor: D.prep[i] }; if (a.cliente && norm(a.cliente).includes(norm(D.prep[i]).split(/\s+/)[0])) delete a.cliente; }
+  }
+  if (APP.veTudo && a.vendedor && !/^(cms|todos|time|equipe)$/i.test(String(a.vendedor).trim())) {
+    const t = norm(a.vendedor).split(/\s+/)[0], i = D.prep.findIndex(x => norm(x).split(/\s+/)[0] === t || norm(x).includes(t));
+    if (i < 0) return { erro: `Não achei o vendedor "${a.vendedor}".` };
+    p = i;
+  }
+  let lista = p >= 0 ? R.lista.filter(x => x.preps.has(p)) : R.lista;
+  const fmtDias = d => d >= 60 ? `${Math.round(d / 30)} meses` : d === 1 ? '1 dia' : `${d} dias`;
+  const ofTxt = o => `${o.o.nome} ${o.o.cor}: ${[o.rep && `repasse ${fmt(o.rep)}`, o.est && `pronta entrega ${fmt(o.est)}`].filter(Boolean).join(', ')} (ele comprou ${fmt(o.comprou)} pares do modelo no 1º semestre)`;
+  // Um cliente só: está parado? e o que oferecer.
+  if (a.cliente) {
+    const meus = indices().cli.filter(x => p < 0 || APP.L.some(r => r[C.CLI] === x.i && r[C.PREP] === p));
+    const f = agFiltroPed(meus, String(a.cliente), 'cliente', i => D.cli[i][1]);
+    if (f.erro) return { erro: f.erro };
+    const achado = lista.find(x => f.set.has(x.c) || [...f.set].some(i => norm(D.cli[i][1]) === norm(x.nome)));
+    if (!achado) {
+      const i = [...f.set][0], dUlt = R.ult.get(i);
+      const motivo = R.s2.get(i) ? `comprou no 2º semestre${dUlt != null ? ` (último faturamento há ${fmtDias(R.hoje - dUlt)})` : ''}` : R.aberto.get(i) ? `tem ${fmt(R.aberto.get(i))} pares em carteira` : R.rep2.has(String(D.cli[i][0])) ? 'tem repasse com previsão no 2º semestre' : 'não comprou no 1º semestre (a régua é de quem comprou até junho)';
+      return { texto: `${f.texto.replace(/\s*\[ATENÇÃO:[^\]]*\]/, '')}: NÃO está na lista de reativação, porque ${motivo} (ou outra loja da mesma rede comprou). Diga isso ao vendedor.` };
+    }
+    const res = { entendi: ['<b>Reativação</b>', esc(achado.nome)], cols: ['Produto', 'Cor', 'Repasse', 'Pronta entrega', 'Ele comprou (1º sem.)'], num: [2, 3, 4], data: [], totais: null, resumo: '',
+      rows: achado.ofertas.map(o => [`${o.o.nome} (${o.o.artigo})`, o.o.cor, o.rep, o.est, o.comprou]) };
+    return { res: achado.ofertas.length ? res : undefined, texto: `${achado.nome} (${achado.cod})${achado.cidade ? ', ' + achado.cidade : ''}${achado.portas > 1 ? `, rede com ${achado.portas} lojas` : ''}: está PARADO. Comprou ${fmt(achado.pares)} pares no 1º semestre e não fatura há ${fmtDias(achado.dias)}; sem carteira nem repasse no 2º semestre.\n` +
+      (achado.ofertas.length ? `Tem no Showroom hoje do que ele comprava (repasse primeiro):\n${achado.ofertas.slice(0, 8).map(ofTxt).join('\n')}\nA tabela já apareceu: não copie; sugira por onde começar a conversa (o repasse primeiro). Não ofereça outra busca no fim.`
+        : 'Hoje o Showroom não tem pronta entrega nem repasse dos modelos que ele comprava. Diga isso e sugira olhar o catálogo da coleção para ele.') };
+  }
+  if (a.dias) lista = lista.filter(x => x.dias >= Number(a.dias));
+  const total = lista.length, semOferta = R.comShowroom ? lista.filter(x => !x.ofertas.length).length : 0;
+  // Como na tela da Detalhada: a lista é de quem tem o que oferecer hoje.
+  if (R.comShowroom) lista = lista.filter(x => x.ofertas.length);
+  if (a.so_repasse) lista = lista.filter(x => x.temRepasse);
+  if (!lista.length) return { texto: total ? `Há ${total} cliente(s) parados, mas nenhum tem hoje no Showroom algo do que comprava${a.so_repasse ? ' em repasse' : ''}.` : 'Nenhum cliente parado pela régua (comprou até junho e sumiu de julho em diante). Diga isso como boa notícia.' };
+  const comRep = lista.filter(x => x.temRepasse).length;
+  const res = { entendi: ['<b>Reativação</b>', esc(p >= 0 ? D.prep[p] : 'o time'), ...(a.dias ? [esc(`parado há ${a.dias}+ dias`)] : []), ...(a.so_repasse ? ['só com repasse'] : [])],
+    cols: ['Cliente', 'Cidade', 'Vendedor', 'Pares 1º sem.', 'Parado há', 'Para oferecer'], num: [3], data: [], totais: null, resumo: '',
+    rows: lista.map(x => [`${x.nome} (${x.cod})${x.portas > 1 ? ` · rede, ${x.portas} lojas` : ''}`, x.cidade, x.prep, x.pares, fmtDias(x.dias),
+      x.ofertas.slice(0, 2).map(o => `${o.o.nome} ${o.o.cor}${o.rep ? ' (repasse)' : ''}`).join('; ')]),
+    oculta: [1, 2], detalhe: r => [r[1], r[2] && 'Vendedor ' + r[2], r[5]].filter(Boolean).join(' · ') };
+  return { res, texto: `Reativação${p >= 0 ? ' de ' + D.prep[p] : ' do time'}: ${lista.length} cliente(s) parados com algo para oferecer hoje no Showroom (${comRep} com repasse)${semOferta ? `; outros ${semOferta} parados não têm hoje nada do que compravam` : ''}. Régua: comprou até junho e, de julho em diante, não tem nota, carteira nem repasse.\n` +
+    lista.slice(0, 15).map(x => `${x.nome} (${x.cod})${x.cidade ? ', ' + x.cidade : ''}: ${fmt(x.pares)} pares no 1º semestre, parado há ${fmtDias(x.dias)}; oferecer ${x.ofertas.slice(0, 2).map(o => `${o.o.nome} ${o.o.cor}${o.rep ? ' (repasse ' + fmt(o.rep) + ')' : ''}`).join(' e ')}`).join('\n') +
+    (lista.length > 15 ? `\n(e mais ${lista.length - 15} na tabela)` : '') +
+    '\nA tabela já apareceu: não copie. Diga quantos são, destaque os 3 maiores e o que oferecer a cada um (repasse primeiro), e diga que ele pode perguntar de um cliente para ver tudo o que oferecer.' };
+}
+
+/* rfv: o RFV da Detalhada (apps-oly-v2/detalhada, rfvApurar/rfvAgrupar), no chat. Quem comprou em cada
+   semestre. 1º semestre = faturou até junho; 2º = faturou de julho em diante OU tem pedido em carteira
+   (qualquer previsão: é venda que vai acontecer) OU repasse com previsão no semestre esperando a fábrica.
+   Portas da mesma rede somam numa linha: basta uma ter comprado. Os filtros de produto (marca, faixa,
+   produto, cor) não tiram ninguém da carteira: quem não comprou aquilo fica zerado, que é a resposta
+   que se procura ("quem não comprou chinelo no 2º semestre"). */
+const RFV_SIT = { dois: 'Comprou nos dois semestres', so1: 'Comprou só no 1º semestre', so2: 'Comprou só no 2º semestre (novo)', sem2: 'Sem compra no 2º semestre' };
+async function agRfv(a) {
+  const D = APP.dic, X = indices();
+  // De quem: o vendedor só a carteira dele; quem vê tudo escolhe (ou vê o time).
+  let p = prepAtivo();
+  if (APP.veTudo && !a.vendedor && a.frase) {
+    const ws = new Set(norm(a.frase).split(/[^A-Z]+/)), i = D.prep.findIndex(x => ws.has(norm(x).split(/\s+/)[0]));
+    if (i >= 0) { a = { ...a, vendedor: D.prep[i] }; if (a.cliente && norm(a.cliente) === norm(D.prep[i]).split(/\s+/)[0]) delete a.cliente; }
+  }
+  if (APP.veTudo && a.vendedor && !/^(cms|todos|time|equipe)$/i.test(String(a.vendedor).trim())) {
+    const t = norm(a.vendedor).split(/\s+/)[0], i = D.prep.findIndex(x => norm(x).split(/\s+/)[0] === t || norm(x).includes(t));
+    if (i < 0) return { erro: `Não achei o vendedor "${a.vendedor}".` };
+    p = i;
+  }
+  // O recorte de produto.
+  const filtros = [], um = v => Array.isArray(v) ? v[0] : v;
+  let fRef = null, fCor = null, fFx = null, fMarca = '';
+  if (um(a.produto)) { const r = agFiltro(X.ref, String(um(a.produto)), 'produto', i => D.ref[i][1] || D.ref[i][0]); if (r.erro) return { erro: r.erro }; fRef = r.set; filtros.push(r.texto); }
+  if (um(a.cor)) { const r = agFiltro(X.cor, String(um(a.cor)), 'cor', i => D.cor[i]); if (r.erro) return { erro: r.erro }; fCor = r.set; filtros.push(r.texto); }
+  if (um(a.linha)) { const r = agFiltro(X.faixa, String(um(a.linha)), 'linha', i => D.faixa[i]); if (r.erro) return { erro: r.erro }; fFx = r.set; filtros.push(r.texto); }
+  if (um(a.marca)) { fMarca = /ua|under/i.test(String(um(a.marca))) ? 'UA' : 'OLY'; filtros.push('marca: ' + (fMarca === 'UA' ? 'Under Armour' : 'Olympikus')); }
+  const marcaDe = r => /UA|UNDER/i.test(String((D.marca || [])[r[C.MARCA]] || '')) ? 'UA' : 'OLY';
+  // O corte: julho do ano mais recente da base.
+  let ultDia = -1;
+  for (const r of APP.L) { if (r[C.FAT] && r[C.DFAT] > ultDia) ultDia = r[C.DFAT]; if (r[C.CART] && r[C.PREV] > ultDia) ultDia = r[C.PREV]; }
+  const ano = new Date(Math.max(ultDia, 0) * 864e5).getUTCFullYear(), corte = Math.floor(Date.UTC(ano, 6, 1) / 864e5);
+  const porCli = new Map();
+  for (const r of APP.L) {
+    if (p >= 0 && r[C.PREP] !== p) continue;
+    const q = (r[C.CART] || 0) + (r[C.FAT] || 0);
+    const fora = (fMarca && marcaDe(r) !== fMarca) || (fFx && !fFx.has(r[C.FAIXA])) || (fRef && !fRef.has(r[C.REF])) || (fCor && !fCor.has(r[C.COR]));
+    if (fora && !q) continue;
+    let e = porCli.get(r[C.CLI]);
+    if (!e) { e = { p1: 0, f2: 0, car: 0, ult: -1, prep: new Map() }; porCli.set(r[C.CLI], e); }
+    if (q) e.prep.set(r[C.PREP], (e.prep.get(r[C.PREP]) || 0) + q);
+    if (fora) continue;
+    if (r[C.FAT] && r[C.DFAT] >= 0) { if (r[C.DFAT] < corte) e.p1 += r[C.FAT]; else e.f2 += r[C.FAT]; if (r[C.DFAT] > e.ult) e.ult = r[C.DFAT]; }
+    if (r[C.CART] && r[C.PREV] >= 0) e.car += r[C.CART];
+  }
+  // Repasse esperando a fábrica, com previsão no 2º semestre.
+  const rep2 = new Set();
+  try { for (const it of await baseRepasses()) { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(it.prevFat); if (m && (+m[3] > ano || (+m[3] === ano && +m[2] >= 7))) rep2.add(String(it.cliCod)); } } catch (e) {}
+  // A rede: o mesmo nome fantasia em dois ou mais códigos.
+  const porNome = new Map();
+  D.cli.forEach(([, nome]) => { const k = norm(nome); if (k) porNome.set(k, (porNome.get(k) || 0) + 1); });
+  const grupos = new Map();
+  for (const [ci, e] of porCli) {
+    const k = norm(D.cli[ci][1]), ch = porNome.get(k) > 1 ? 'r:' + k : 'c:' + ci;
+    let g = grupos.get(ch);
+    if (!g) grupos.set(ch, g = { rede: ch[0] === 'r', portas: [], p1: 0, f2: 0, car: 0, ult: -1, prep: new Map(), rep: false });
+    const porta = { ci, cod: String(D.cli[ci][0]), nome: D.cli[ci][1], ...e, rep: rep2.has(String(D.cli[ci][0])) };
+    g.portas.push(porta); g.p1 += e.p1; g.f2 += e.f2; g.car += e.car; g.rep = g.rep || porta.rep;
+    if (e.ult > g.ult) g.ult = e.ult;
+    for (const [k2, v] of e.prep) g.prep.set(k2, (g.prep.get(k2) || 0) + v);
+  }
+  const comprou2 = x => x.f2 + x.car > 0 || x.rep;
+  const lista = [...grupos.values()].map(g => {
+    g.portas.sort((x, y) => (y.p1 + y.f2 + y.car) - (x.p1 + x.f2 + x.car));
+    const pt = g.portas[0], v = [...g.prep.entries()].sort((x, y) => y[1] - x[1])[0];
+    g.cod = pt.cod; g.nome = pt.nome; g.ci = pt.ci; g.p2 = g.f2 + g.car; g.total = g.p1 + g.p2; g.vend = v ? D.prep[v[0]] : '';
+    g.sit = g.p1 > 0 && comprou2(g) ? 'dois' : g.p1 > 0 ? 'so1' : comprou2(g) ? 'so2' : 'nada';
+    return g;
+  });
+  const total = lista.length, compraram = lista.filter(comprou2).length, sem = total - compraram;
+  const pct = n => total ? Math.round(100 * n / total) + '%' : '—';
+  const dataDe = d => d < 0 ? '' : new Date(d * 864e5).toISOString().slice(0, 10).split('-').reverse().join('/');
+  const quem = p >= 0 ? D.prep[p] : 'o time', rec = filtros.length ? ` (${filtros.join('; ')})` : '';
+  const placar = `${quem}${rec}, ${ano}: ${fmt(total)} clientes ativos; ${fmt(compraram)} compraram no 2º semestre (${pct(compraram)}); ${fmt(sem)} sem compra no 2º semestre (${pct(sem)}). Comprar no 2º = nota de julho em diante, pedido em carteira ou repasse esperando a fábrica; rede conta como um cliente.`;
+  // Um cliente só.
+  if (a.cliente) {
+    const f = agFiltroPed(X.cli.filter(x => porCli.has(x.i)), String(a.cliente), 'cliente', i => D.cli[i][1]);
+    if (f.erro) return { erro: f.erro };
+    const g = lista.find(x => x.portas.some(pt => f.set.has(pt.ci)));
+    if (!g) return { texto: `${f.texto}: não tem compra${rec} na base deste ano.` };
+    const varia = g.p1 ? Math.round((g.p2 - g.p1) / g.p1 * 100) : null;
+    const res = g.rede ? { entendi: ['<b>RFV</b>', esc(g.nome), 'porta a porta'], cols: ['Loja', '1º sem.', '2º sem. faturado', 'Carteira', 'Último faturamento'], num: [1, 2, 3], data: [], totais: null, resumo: '',
+      rows: g.portas.map(pt => [`${pt.nome} (${pt.cod})`, pt.p1, pt.f2, pt.car, dataDe(pt.ult)]) } : undefined;
+    return { res, texto: `RFV de ${g.nome} (${g.cod})${g.rede ? `, rede com ${g.portas.length} lojas` : ''}${rec}: ${RFV_SIT[g.sit] || 'sem compra nos dois semestres'}.\n` +
+      `1º semestre: ${fmt(g.p1)} pares faturados. 2º semestre: ${fmt(g.p2)} pares (${fmt(g.f2)} faturados + ${fmt(g.car)} em carteira)${g.rep ? ', e tem repasse esperando a fábrica' : ''}.` +
+      (varia != null ? ` Variação do 2º sobre o 1º: ${varia > 0 ? '+' : ''}${varia}%.` : '') + (g.ult >= 0 ? ` Último faturamento: ${dataDe(g.ult)}.` : '') +
+      (g.rede ? `\nPortas paradas (sem compra no 2º): ${g.portas.filter(pt => pt.p1 > 0 && !comprou2(pt)).map(pt => pt.nome + ' ' + pt.cod).join(', ') || 'nenhuma'}. A tabela porta a porta já apareceu.` : '') +
+      '\nLembre que o 2º semestre ainda está em andamento se for o caso.' };
+  }
+  // A lista de uma situação (sem dizer qual, a de quem não comprou no 2º).
+  const sit = ['dois', 'so1', 'so2', 'sem2'].includes(a.situacao) ? a.situacao : 'sem2';
+  const sel = lista.filter(g => sit === 'sem2' ? !comprou2(g) : g.sit === sit).sort((x, y) => y.total - x.total || y.p1 - x.p1);
+  const res = { entendi: ['<b>RFV</b>', esc(RFV_SIT[sit]), esc(quem), ...filtros.map(esc)],
+    cols: ['Cliente', 'Vendedor', '1º sem.', '2º sem.', 'Carteira', 'Último faturamento'], num: [2, 3, 4], data: [], totais: null, resumo: '',
+    rows: sel.map(g => [`${g.nome} (${g.cod})${g.rede ? ` · rede, ${g.portas.length} lojas` : ''}`, g.vend, g.p1, g.p2, g.car, dataDe(g.ult)]),
+    oculta: p >= 0 ? [1] : [] };
+  if (!sel.length) return { texto: `${placar}\nNinguém em "${RFV_SIT[sit]}".` };
+  return { res, texto: `${placar}\nLista "${RFV_SIT[sit]}": ${fmt(sel.length)} cliente(s). Os maiores:\n` +
+    sel.slice(0, 12).map(g => `${g.nome} (${g.cod})${p < 0 && g.vend ? ' · ' + g.vend : ''}: 1º sem. ${fmt(g.p1)}, 2º sem. ${fmt(g.p2)}${g.car ? ` (${fmt(g.car)} em carteira)` : ''}${g.ult >= 0 ? `, último faturamento ${dataDe(g.ult)}` : ''}`).join('\n') +
+    (sel.length > 12 ? `\n(e mais ${sel.length - 12} na tabela)` : '') +
+    '\nA tabela já apareceu: não copie. Dê o placar (quantos compraram e quantos não, com %), destaque os maiores da lista e lembre que o 2º semestre está em andamento.' +
+    (sit === 'sem2' ? ' Se ele quiser saber o que oferecer a quem parou, a pergunta é "quem eu preciso reativar".' : '') };
+}
+
+/* problemas: as "Encomendas com problema" da Detalhada (probAtrasadas/probAdiadas), no chat.
+   Atrasada = em carteira com a previsão de faturamento já vencida. Adiada = a previsão de hoje é mais
+   tarde que a primeira que a encomenda teve (base.prev0, do script diário). Uma encomenda é
+   cliente · GCI · referência · cor. Na tabela vai um pedido (cliente + GCI) por linha, com pares e
+   previsão; ao tocar, abrem os produtos e o problema de cada um. */
+async function agProblemas(a) {
+  const D = APP.dic, hoje = diaDe(hojeIso()), p0 = (APP.base.prev0 && APP.base.prev0.k) || {};
+  let p = prepAtivo();
+  // Quem vê tudo e citou um vendedor ("pedidos com problema do Jorge").
+  const doVend = t => { const w = norm(t).split(/\s+/)[0]; return D.prep.findIndex(x => norm(x).split(/\s+/)[0] === w); };
+  if (APP.veTudo) {
+    if (a.cliente && doVend(a.cliente) >= 0 && String(a.cliente).trim().split(/\s+/).length === 1) { a = { ...a, vendedor: a.cliente }; delete a.cliente; }
+    if (!a.vendedor && a.frase) { const ws = new Set(norm(a.frase).split(/[^A-Z]+/)), i = D.prep.findIndex(x => ws.has(norm(x).split(/\s+/)[0])); if (i >= 0) a = { ...a, vendedor: D.prep[i] }; }
+    if (a.vendedor && !/^(cms|todos|time|equipe)$/i.test(String(a.vendedor).trim())) { const i = doVend(a.vendedor); if (i < 0) return { erro: `Não achei o vendedor "${a.vendedor}".` }; p = i; }
+  }
+  let cliSet = null, rotCli = '';
+  if (a.cliente) {
+    const meus = indices().cli.filter(x => p < 0 || APP.L.some(r => r[C.CLI] === x.i && r[C.PREP] === p));
+    const f = agFiltroPed(meus, String(a.cliente), 'cliente', i => D.cli[i][1]);
+    if (f.erro) return { erro: f.erro };
+    cliSet = f.set; rotCli = f.texto.replace(/\s*\[ATENÇÃO:[^\]]*\]/, '');
+  }
+  // As encomendas em carteira (uma por cliente · GCI · referência · cor).
+  const enc = new Map();
+  for (const r of APP.L) {
+    if (r[C.CART] <= 0 || (p >= 0 && r[C.PREP] !== p) || (cliSet && !cliSet.has(r[C.CLI]))) continue;
+    const k = [D.cli[r[C.CLI]][0], r[C.GCI], D.ref[r[C.REF]][0], D.cor[r[C.COR]]].join('|');
+    const o = enc.get(k);
+    if (o) { o.cart += r[C.CART]; o.prev = Math.max(o.prev, r[C.PREV]); } else enc.set(k, { k, r, cart: r[C.CART], prev: r[C.PREV] });
+  }
+  const tipo = /adi|prorrog/i.test(String(a.tipo || '')) ? 'adi' : /atras|venc/i.test(String(a.tipo || '')) ? 'atr' : '';
+  const itens = [];
+  for (const e of enc.values()) {
+    const atr = e.prev >= 0 && e.prev < hoje, adi = p0[e.k] != null && e.prev > p0[e.k];
+    if ((atr && tipo !== 'adi') || (adi && tipo !== 'atr')) itens.push({ ...e, atr: atr ? hoje - e.prev : 0, adi: adi ? e.prev - p0[e.k] : 0, era: adi ? p0[e.k] : null });
+  }
+  const min = Number(a.dias) || 0;
+  const sel = min ? itens.filter(e => Math.max(e.atr, e.adi) >= min) : itens;
+  const dataDe = d => d < 0 || d == null ? '' : new Date(d * 864e5).toISOString().slice(0, 10).split('-').reverse().join('/');
+  const quem = rotCli || (p >= 0 ? D.prep[p] : 'o time');
+  if (!sel.length) return { texto: `${quem}: nenhum pedido ${tipo === 'adi' ? 'com previsão adiada' : tipo === 'atr' ? 'atrasado' : 'com problema (atrasado ou com previsão adiada)'}${min ? ` há mais de ${min} dias` : ''}. Diga isso como boa notícia, em uma frase.` };
+  // Um pedido por linha: cliente + GCI.
+  const ped = new Map();
+  for (const e of sel) {
+    const k = e.r[C.CLI] + '|' + e.r[C.GCI];
+    if (!ped.has(k)) ped.set(k, { cli: e.r[C.CLI], gci: e.r[C.GCI], prep: e.r[C.PREP], itens: [] });
+    ped.get(k).itens.push(e);
+  }
+  const lista = [...ped.values()].map(g => {
+    g.pares = g.itens.reduce((t, e) => t + e.cart, 0);
+    g.prev = Math.min(...g.itens.map(e => e.prev));
+    g.maxAtr = Math.max(...g.itens.map(e => e.atr)); g.maxAdi = Math.max(...g.itens.map(e => e.adi));
+    g.itens.sort((x, y) => y.cart - x.cart);
+    return g;
+  }).sort((x, y) => y.maxAtr - x.maxAtr || y.maxAdi - x.maxAdi || y.pares - x.pares);
+  const probTxt = e => [e.atr && `atrasado ${e.atr} dia${e.atr > 1 ? 's' : ''}`, e.adi && `adiado ${e.adi} dia${e.adi > 1 ? 's' : ''} (era ${dataDe(e.era)})`].filter(Boolean).join(' e ');
+  const prodTxt = e => { const [ref, desc] = D.ref[e.r[C.REF]]; return `${desc || ref} ${D.cor[e.r[C.COR]]} (${ref}) · ${fmt(e.cart)} pares · prev. ${dataDe(e.prev)} · ${probTxt(e)}`; };
+  const res = { entendi: ['<b>Pedidos com problema</b>', esc(quem), ...(tipo ? [tipo === 'atr' ? 'atrasados' : 'previsão adiada'] : []), ...(min ? [esc(`+${min} dias`)] : [])],
+    cols: ['Cliente', 'GCI', 'Pares', 'Prev. fat.', 'Produtos', 'Vendedor'], num: [2], data: [], totais: null, resumo: '',
+    rows: lista.map(g => [`${D.cli[g.cli][1]} (${D.cli[g.cli][0]})`, String(g.gci), g.pares, dataDe(g.prev), g.itens.map(prodTxt).join('\n'), D.prep[g.prep]]),
+    oculta: [4, 5], detalhe: x => (APP.veTudo && p < 0 ? `Vendedor ${x[5]}\n` : '') + x[4],
+    // No Excel e no PDF, uma linha por produto, cada informação na sua coluna.
+    // O modelo é o que o Marcos formatou à mão (05/11/2026): Calibri 12 centralizado, bordas finas, sem
+    // grade, cabeçalho alto e congelado, e Novo Destino e Prazo em branco para preencher.
+    exportar: { cols: ['Cliente', 'Código', 'GCI', 'Artigo', 'Descrição', 'Cor', 'Pares', 'Prev. fat.', 'Situação', 'Dias atrasado', 'Novo Destino', 'Prazo'],
+      num: [6, 9], larguras: [30.875, 10.875, 11.875, 12.875, 28.875, 10.875, 7.875, 11.875, 18.875, 12.875, 13, 13], formatado: true,
+      rows: lista.flatMap(g => g.itens.map(e => { const [ref, desc] = D.ref[e.r[C.REF]];
+        return [D.cli[g.cli][1], String(D.cli[g.cli][0]), String(g.gci), String(ref), desc || '', D.cor[e.r[C.COR]], e.cart, dataDe(e.prev),
+          e.atr && e.adi ? 'Atrasado e adiado' : e.atr ? 'Atrasado' : 'Previsão adiada', e.atr || null, null, null]; })) } };
+  const nAtr = sel.filter(e => e.atr).length, nAdi = sel.filter(e => e.adi).length, mais15 = sel.filter(e => e.atr > 15).length;
+  const terceira = APP.veTudo && p >= 0 ? ` (quem pergunta é da CMS: fale de ${D.prep[p]} na terceira pessoa)` : '';
+  return { res, texto: `Pedidos com problema ${rotCli ? 'de ' + quem : p >= 0 ? 'da carteira de ' + quem : 'do time'}${terceira}: ${lista.length} pedido(s) (GCI), ${fmt(sel.reduce((t, e) => t + e.cart, 0))} pares. Por produto: ${nAtr} atrasado(s) (previsão vencida; ${mais15} há mais de 15 dias) e ${nAdi} com a previsão adiada.\n` +
+    lista.slice(0, 10).map(g => `${D.cli[g.cli][1]} · GCI ${g.gci} · ${fmt(g.pares)} pares · prev. ${dataDe(g.prev)} · ${[g.maxAtr && `atraso de até ${g.maxAtr} dias`, g.maxAdi && `adiado até ${g.maxAdi} dias`].filter(Boolean).join(', ')}`).join('\n') +
+    (lista.length > 10 ? `\n(e mais ${lista.length - 10} na tabela)` : '') +
+    '\nA tabela já apareceu (cliente, GCI, pares e previsão; tocando na linha abrem os produtos). Não copie: diga quantos pedidos e pares, o mais atrasado, e que ele toca na linha para ver os produtos. Atraso de poucos dias é rotina de faturamento: não alarme.' };
+}
+
+/* link_cliente: o link para o cliente, pelo chat. Os mesmos produtos do catálogo (palavras, coleção ou
+   Showroom); em etapas: de onde (se não disse) → para qual cliente → o vendedor toca no cliente certo
+   (é a confirmação) → o link sai com Copiar e WhatsApp. Da coleção, o link é a página do Catálogo
+   (link.html, criarLink com origem "catalogo"); do Showroom, o próprio Showroom gera escondido (as
+   regras de grade, lote e mês são dele). Enquanto falta o cliente, AG.linkPend guarda o pedido. */
+const LINK_HORAS = 168;
+function linkProdutoCatalogo(r) {
+  return { k: r.codigo + '|' + r.cor, codigo: r.codigo, cor: r.cor, corCodigo: '', produto: r.produto, imagem: r.imagem, genero: r.genero,
+    categoria: r.categoria, segmento: r.segmento, colecao: r.colecao, lanc: r.lanc, novaCor: r.novaCor, cont: r.cont,
+    pdv: r.preco ? 'R$ ' + r.preco.toFixed(2).replace('.', ',') : '', tam: (r.tam || '').replace('/', '-') };
+}
+function linkShowroomPeloNexo(marca, itens, cliente, origem) {
+  return new Promise(res => {
+    const id = 'lk' + Date.now() + Math.random().toString(36).slice(2, 6);
+    CAT_PEDIDOS.set(id, { itens, cliente });
+    const frame = document.createElement('iframe');
+    frame.style.cssText = 'position:fixed;left:-9999px;top:0;width:1200px;height:900px;border:0;visibility:hidden';
+    const fim = r => { window.removeEventListener('message', ouve); clearTimeout(limite); CAT_PEDIDOS.delete(id); frame.remove(); res(r); };
+    const ouve = ev => { const d = ev.data || {}; if (d.id === id && (d.cmsCat === 'link' || d.cmsCat === 'erro')) fim(d); };
+    const limite = setTimeout(() => fim({ cmsCat: 'erro', erro: 'O Showroom demorou demais para responder.' }), 120000);
+    window.addEventListener('message', ouve);
+    frame.src = SHOWROOM_URL + '?' + new URLSearchParams({ marca, nexo: 'link', nexoid: id, origem: origem || 'tudo', horas: LINK_HORAS });
+    document.body.appendChild(frame);
+  });
+}
+async function agLinkCliente(a) {
+  const D = APP.dic, rows = await catCarregar();
+  // "…para a Degraus" é o cliente, não produto: sai da busca (a IA às vezes manda a frase inteira).
+  const busca = String(a.busca || '').replace(/\s+\bpar[ao]\s+(?:o\s+|a\s+)?(?:cliente\s+)?\S.*$/i, '').trim(), texto = busca.replace(/\blinks?\b/gi, ' catálogo ');
+  const q = catEntender(texto, rows);
+  if (q.fonte === 'showroom' && !q.origem) q.origem = 'tudo';
+  // 1) de onde
+  if (!q.origem && !q.fonte && !q.colecao) {
+    const r = await catPerguntaFonte(q, rows, texto);
+    if (!r.cartao) return r;
+    return { cartao: r.cartao.replace(/catálogo d([ao]) /g, 'link d$1 ').replace('Catálogo', 'Link para o cliente'),
+      texto: 'Apareceu a pergunta de onde vêm os produtos do link: coleção ou Showroom (estoque, repasse, produção ou tudo). Peça para ele tocar numa opção; não repita os números e NÃO pergunte o cliente ainda (isso vem no passo seguinte).' };
+  }
+  // 2) os produtos, por marca
+  const atual = [...new Set(rows.map(r => r.colecao).filter(Boolean))].sort((x, y) => catOrdemColecao(x) - catOrdemColecao(y))[0];
+  let porMarca = [];
+  if (q.origem) {
+    let L; try { L = await baseDisponivel(); } catch (e) { return { erro: 'Não consegui ler o Showroom agora: ' + (e.message || e) }; }
+    const achados = catShowroomFiltrar(q, rows, L, q.origem);
+    porMarca = CAT_MARCAS.map(m => ({ m, itens: achados.filter(o => o.marca === m.id) })).filter(x => x.itens.length);
+  } else {
+    const col = q.colecao || atual, vistos = new Set();
+    const achados = catFiltrar(rows, { ...q, colecao: col }).filter(r => { const k = r.marca + r.codigo + '|' + r.cor; if (vistos.has(k)) return false; vistos.add(k); return true; });
+    porMarca = CAT_MARCAS.map(m => ({ m, itens: achados.filter(r => r.marca === m.id) })).filter(x => x.itens.length);
+    q.colecao = col;
+  }
+  const filtro = [q.origem ? 'Showroom · ' + (q.origem === 'tudo' ? 'tudo que tem' : CAT_ORIGEM[q.origem].rot) : 'Coleção ' + q.colecao, catDescricao(q)].filter(Boolean).join(' · ');
+  const total = porMarca.reduce((t, x) => t + x.itens.length, 0);
+  if (!total) { AG.linkPend = null; return { erro: `Não achei produtos para o link (${filtro}). Peça para ele dizer de outro jeito.` }; }
+  const frase = q.origem ? `link do showroom ${q.origem === 'tudo' ? '' : CAT_ORIGEM[q.origem].rot.toLowerCase() + ' '}${catDescricao(q)}` : `link da coleção ${q.colecao.toLowerCase()} ${catDescricao(q)}`;
+  // 3) para qual cliente
+  const p = prepAtivo();
+  const meus = indices().cli.filter(x => p < 0 || APP.L.some(r => r[C.CLI] === x.i && r[C.PREP] === p) || (!APP.veTudo && APP.soCad?.has(x.i)));
+  if (!a.codigo) {
+    if (!a.cliente) {
+      AG.linkPend = { busca: frase.trim() };
+      return { texto: `Os produtos do link: ${total} (${filtro})${porMarca.length > 1 ? `, em ${porMarca.length} links, um por marca` : ''}. Falta o cliente: pergunte, numa frase curta, para qual cliente é o link (o nome da loja ou o código). Não liste produtos.` };
+    }
+    const f = agFiltroPed(meus, String(a.cliente), 'cliente', i => D.cli[i][1]);
+    AG.linkPend = { busca: frase.trim() };
+    if (f.erro) return { erro: f.erro };
+    const cods = [...new Set([...f.set].map(i => String(D.cli[i][0])))].slice(0, 8);
+    const opcoes = cods.map(cod => { const i = D.cli.findIndex(c => String(c[0]) === cod), cad = APP.cad && APP.cad.get(cod);
+      return { rotulo: `${D.cli[i][1]} · ${cod}${cad && cad.cidade ? ' · ' + cad.cidade : ''}`, valor: `confirmo o link para o cliente ${cod}` }; });
+    return { opcoes, texto: `Achei ${cods.length === 1 ? 'este cliente' : cods.length + ' clientes'} para "${a.cliente}": os botões já apareceram. Peça para ele tocar no cliente certo para confirmar e gerar o link (${total} produtos, ${filtro}). Não liste os nomes de novo.` };
+  }
+  // 4) confirmado: gera
+  const cod = String(a.codigo), ci = D.cli.findIndex(c => String(c[0]) === cod);
+  if (ci < 0 || !meus.some(x => x.i === ci)) return { erro: `O cliente ${cod} não está na carteira dele.` };
+  const nomeCli = (APP.fantasia && APP.fantasia[cod]) || D.cli[ci][1];
+  const prontos = [], falhas = [];
+  for (const { m, itens } of porMarca) {
+    if (q.origem) {
+      const r = await linkShowroomPeloNexo(m.id, itens.map(o => o.k), cod, q.origem);
+      if (r.cmsCat === 'link') prontos.push({ m, url: r.url, qtd: r.qtd || itens.length }); else falhas.push(`${m.nome}: ${r.erro}`);
+    } else {
+      try {
+        const j = await chamarWorker('criarLink', { data: { vendedor: String(APP.sessao.codigo || ''), vendedorNome: String(APP.sessao.nome || ''), cliente: cod, clienteNome: nomeCli,
+          marca: m.id, origem: 'catalogo', validadeHoras: LINK_HORAS, produtos: itens.map(linkProdutoCatalogo) } }, 30000);
+        if (!j || !j.success || !j.codigo) throw new Error((j && j.erro) || 'o servidor não devolveu o link');
+        prontos.push({ m, url: new URL(CATALOGO_URL + 'link.html?link=' + j.codigo, location.href).href, qtd: itens.length });
+      } catch (e) { falhas.push(`${m.nome}: ${e.message || e}`); }
+    }
+  }
+  AG.linkPend = null;
+  if (!prontos.length) return { erro: 'Não consegui gerar o link agora. ' + falhas.join(' · ') };
+  const cartao = `<div class="cartao-dae cartao-link"><div class="cd-tit">Link para ${esc(nomeCli)}</div>` + prontos.map(x => {
+    const msg = `Olá! Separei ${x.qtd} produto${x.qtd !== 1 ? 's' : ''} da ${x.m.nome} para você. Toque em "Quero" nos que gostar e me devolva por aqui:\n${x.url}`;
+    return `<div class="lk-linha"><div class="cd-l">${esc(x.m.nome)} · ${fmt(x.qtd)} produto${x.qtd !== 1 ? 's' : ''} · ${esc(filtro)} · vale 7 dias</div><div class="lk-url">${esc(x.url)}</div>` +
+      `<div class="acoes"><button class="sug" data-copiar="${esc(x.url)}">Copiar</button><a class="sug forte" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(msg)}">Enviar no WhatsApp</a></div></div>`;
+  }).join('') + (falhas.length ? `<div class="cd-l aviso">${esc(falhas.join(' · '))}</div>` : '') +
+    `<div class="cd-l">${q.origem ? 'A resposta do cliente chega no Showroom.' : 'A resposta do cliente aparece no botão Links do Catálogo, e vai para a sacola.'}</div></div>`;
+  return { cartao, texto: `Link gerado para ${nomeCli} (${cod}): ${prontos.map(x => `${x.m.nome} com ${x.qtd} produtos`).join(' e ')}. O cartão com Copiar e Enviar no WhatsApp já apareceu. Diga em uma frase que está pronto; não repita o endereço.` };
+}
+document.addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-copiar]');
+  if (!b) return;
+  try { await navigator.clipboard.writeText(b.dataset.copiar); const t = b.textContent; b.textContent = 'Copiado ✓'; setTimeout(() => b.textContent = t, 1600); }
+  catch (e) { prompt('Copie o link:', b.dataset.copiar); }
+});
+
+/* meta_showroom: o "Vamos buscar?" da tela de Metas, no chat. A faixa da meta vira o filtro do Showroom
+   pelo mesmo de-para da tela (data/faixas.json: artigo → faixa); as famílias sem faixa lá vão pela
+   categoria. O que tem repasse vem primeiro: é o que se quer oferecer antes. */
+const META_SHOWROOM = {
+  OLY: { tot: { cat: 'TENIS', marca: 'oly' }, CLASSICOS: { faixa: 'CLASSICOS' }, CONF_FEM: { faixa: 'CONF_FEM' }, CONF_MASC: { faixa: 'CONF_MASC' },
+    'CORRIDA/TREINO': { faixa: 'CORRIDA/TREINO' }, INFANTIL: { faixa: 'INFANTIL' }, CORRE: { faixa: 'CORRE' }, ACOLY: { faixa: 'ACESSORIOS' },
+    CHOLY: { faixa: 'CHINELOS' }, MEOLY: { faixa: 'MEIA OLY' }, CFOLY: { cat: 'VESTUARIO', marca: 'oly' }, UA: { marca: 'ua' } },
+  UA: { tot: { faixa: 'TENIS UA' }, UA_ME: { faixa: 'MEIA UA' }, UA_AC: { cat: 'ACESSORIO', marca: 'ua' }, UA_CH: { cat: 'CHINELO', marca: 'ua' }, UA_CF: { cat: 'VESTUARIO', marca: 'ua' } },
+};
+const META_CAT_SR = { TENIS: ['TENIS', 'FTW'], VESTUARIO: ['VESTUARIO', 'V&A'], ACESSORIO: ['ACESSORIO', 'ACC'], CHINELO: ['CHINELO', 'CHI'] };
+async function metaFaixas() {
+  if (!APP.faixas) { const r = await fetch('../data/faixas.json?t=' + Date.now(), { cache: 'no-store' }); APP.faixas = r.ok ? ((await r.json()).faixa || {}) : {}; }
+  return APP.faixas;
+}
+function metaShowroomItens(L, fx, sp) {
+  return L.filter(o => (!sp.faixa || String(fx[o.artigo] || '').toUpperCase() === sp.faixa)
+    && (!sp.marca || o.marca === sp.marca) && (!sp.cat || META_CAT_SR[sp.cat].includes(norm(o.categoria))));
+}
+async function agMetaShowroom(a) {
+  // UA só pela marca pedida ou pelo "(UA)" do botão: "Under Armour" sozinho é a família da meta Olympikus.
+  const ua = /^(UA|UNDER)/i.test(String(a.marca || '').trim()) || /\(UA\)/i.test(String(a.faixa || '')), marca = ua ? 'UA' : 'OLY';
+  const limpo = t => norm(t).replace(/[^A-Z0-9/ ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const termo = limpo(String(a.faixa || '').replace(/\(UA\)/gi, ''));
+  if (!termo) return { erro: 'De qual faixa da meta? Pergunte ao vendedor.' };
+  const nomes = { tot: 'Total de tênis', UA: 'Under Armour' }, chaves = Object.keys(META_SHOWROOM[marca]);
+  const nomeDe = k => nomes[k] || META_NOMES[k] || k;
+  const chave = chaves.find(k => limpo(nomeDe(k)) === termo || limpo(k) === termo) || chaves.find(k => limpo(nomeDe(k)).includes(termo) || termo.includes(limpo(nomeDe(k))))
+    || (/TENIS/.test(termo) ? 'tot' : '');
+  if (!chave) return { erro: `"${a.faixa}" não é uma faixa da meta que eu ligue ao Showroom. As que eu ligo: ${chaves.map(nomeDe).join(', ')}.` };
+  let L, fx;
+  try { [L, fx] = await Promise.all([baseDisponivel(), metaFaixas()]); } catch (e) { return { erro: 'Não consegui ler o Showroom agora: ' + (e.message || e) }; }
+  const sp = META_SHOWROOM[marca][chave], rot = nomeDe(chave);
+  const qt = (o, k) => o[CAT_ORIGEM[k].campo] ? CAT_ORIGEM[k].pares(o) : 0;
+  const itens = metaShowroomItens(L, fx, sp).map(o => ({ o, rep: qt(o, 'repasse'), est: qt(o, 'estoque'), pro: qt(o, 'producao') }))
+    .sort((x, y) => y.rep - x.rep || y.est - x.est || y.pro - x.pro);
+  if (!itens.length) return { texto: `Hoje o Showroom não tem nada de ${rot}${ua ? ' (UA)' : ''}: nem repasse, nem estoque, nem produção. Diga isso ao vendedor.` };
+  const soma = k => itens.reduce((s, x) => s + x[k], 0);
+  const res = { entendi: ['<b>Showroom</b>', esc(`para fechar ${rot}${ua ? ' (UA)' : ''}`)], cols: ['Produto', 'Cor', 'Repasse', 'Estoque', 'Produção', 'Total'], num: [2, 3, 4, 5], data: [],
+    rows: itens.map(x => [`${x.o.nome} (${x.o.artigo})`, x.o.cor, x.rep, x.est, x.pro, x.rep + x.est + x.pro]), totais: null, resumo: '' };
+  const q = new URLSearchParams({ marca: ua || sp.marca === 'ua' ? 'ua' : 'oly', origem: 'tudo' });
+  if (sp.faixa) q.set('faixa', sp.faixa); else if (sp.cat) q.set('categoria', sp.cat);
+  const porMarca = CAT_MARCAS.map(m => [m, itens.filter(x => x.o.marca === m.id)]).filter(x => x[1].length);
+  const cartao = `<div class="cartao-dae cartao-cat"><div class="cd-tit">Showroom · ${esc(rot)}${ua ? ' (UA)' : ''}</div>` +
+    porMarca.map(([m, it]) => `<div class="cat-linha"><div class="cat-txt"><b>${esc(m.nome)}</b><div class="cd-l">${fmt(it.length)} cor${it.length > 1 ? 'es' : ''}</div><div class="dots-rot" data-cat-st></div></div>` +
+      `<button class="sug forte" data-cat-pdf="${esc(JSON.stringify({ fonte: 'showroom', marca: m.id, origem: 'tudo', col: '', itens: it.map(x => x.o.k), filtro: 'Meta · ' + rot }))}">Gerar PDF</button></div>`).join('') +
+    `<div class="acoes"><a class="sug" target="_blank" rel="noopener" href="${esc(SHOWROOM_URL + '?' + q)}">Abrir no Showroom</a></div></div>`;
+  const top = itens.slice(0, 8).map(x => `${x.o.nome} ${x.o.cor}: ${[x.rep && `repasse ${fmt(x.rep)}`, x.est && `estoque ${fmt(x.est)}`, x.pro && `produção ${fmt(x.pro)}`].filter(Boolean).join(', ')}`).join('\n');
+  return { res, cartao, texto: `Showroom para fechar a meta de ${rot}${ua ? ' (UA)' : ''}: ${itens.length} produto(s); somando, repasse ${fmt(soma('rep'))}, estoque ${fmt(soma('est'))} e produção ${fmt(soma('pro'))}. Os primeiros (repasse primeiro):\n${top}\n` +
+    'A tabela e o botão do PDF já apareceram. Destaque em poucas frases o que tem de repasse (é o que vale oferecer primeiro) e não copie a tabela.' };
 }
 
 /* clientes: o cadastro em lista, uma linha por loja ("CNPJs da Ideal",
@@ -2747,8 +3538,11 @@ const paraIA = (nome, out) => `[resultado de ${nome}]\n` + (out.erro ? 'ERRO: ' 
 
 // Tabelas que a IA usou ficam embaixo da resposta, fechadas, com Excel e PDF.
 function agTabelaHtml(res, i) {
-  return `<details class="ag-tab"><summary>${esc(textoPlano(res.entendi.join(' · ')))} <span>· ${fmt(res.rows.length)} linha(s)</span></summary>` +
-    `${res.rows.length ? tabelaHtml(res, MOSTRAR) : '<div class="digitando">Nenhuma linha.</div>'}` +
+  const n = res.rows.length;
+  return `<details class="ag-tab"><summary><span class="ver">${n ? `Toque para ver a lista (${fmt(n)} ${n === 1 ? 'linha' : 'linhas'})` : 'Lista vazia'}</span>` +
+    `<span class="sobre">${esc(textoPlano(res.entendi.join(' · ')))}</span></summary>` +
+    (n && res.detalhe ? '<div class="dica-det">Toque numa linha para ver o detalhe.</div>' : '') +
+    `${n ? tabelaHtml(res, MOSTRAR) : '<div class="digitando">Nenhuma linha.</div>'}` +
     `<div class="acoes">${res.rows.length > MOSTRAR ? `<button class="btn-sec" data-ag="todas" data-i="${i}">Ver todas (${fmt(res.rows.length)})</button>` : ''}` +
     `<button class="btn-sec" data-ag="xlsx" data-i="${i}">Baixar Excel</button><button class="btn-sec" data-ag="pdf" data-i="${i}">${esc(res.rotuloPdf || 'Baixar PDF')}</button></div></details>`;
 }
@@ -2798,7 +3592,8 @@ function catCarregar() {
         const c = {}; for (const k in r) c[norm(k)] = r[k];
         return { marca: m.id, imagem: String(c.IMAGEM || '').trim(), categoria: String(c.CATEGORIA || '').trim(), segmento: String(c.SEGMENTO || '').trim(),
           codigo: String(c.CODIGO || '').trim(), produto: String(c.PRODUTO || '').trim(), cor: String(c.COR || '').trim(), genero: String(c.GENERO || '').trim(),
-          colecao: String(c.COLECAO || '').trim().toUpperCase(), lanc: sim(c.LANCAMENTO), novaCor: sim(c['NOVA COR']) };
+          colecao: String(c.COLECAO || '').trim().toUpperCase(), lanc: sim(c.LANCAMENTO), novaCor: sim(c['NOVA COR']),
+          tam: String(c.TAM || '').trim(), preco: Number(String(c.PRECO ?? '').replace(',', '.')) || 0, cont: sim(c.CONTINUIDADE) };
       }).filter(r => r.codigo && r.cor);
     }));
     return (CAT.rows = lotes.flat());
@@ -2852,6 +3647,11 @@ function catGrupos(lista) {
     if (!g.get(k).itens.has(ch)) g.get(k).itens.set(ch, r);
   }
   return [...g.values()].sort((a, b) => catOrdemColecao(a.colecao) - catOrdemColecao(b.colecao) || (a.marca === 'oly' ? -1 : 1));
+}
+// Nomes de produto do catálogo parecidos com o que ele digitou ("mrte" → MARTE).
+function catSugerir(nomes, termo) {
+  const lista = [...new Set(nomes.filter(Boolean))].map((n, i) => ({ i, txt: norm(n), nome: n }));
+  return parecidos(lista, termo).slice(0, 5).map(c => c.nome);
 }
 const catNomeMarca = id => (CAT_MARCAS.find(m => m.id === id) || {}).nome || id;
 function catLinkPdf(g, id) {
@@ -2925,6 +3725,9 @@ async function agCatalogoProdutos(a) {
   const achados = catFiltrar(rows, q).filter(r => r.colecao);
   if (!achados.length) {
     const semNome = q.nome.length ? catFiltrar(rows, q, true) : [];
+    const sug = semNome.length ? catSugerir(semNome.map(r => r.produto), q.nome.join(' ')) : [];
+    if (sug.length) return { erro: `Não achei "${q.nome.join(' ').toLowerCase()}" no catálogo. Os botões com os nomes parecidos já apareceram: pergunte numa frase curta qual deles ele quis dizer, sem listar de novo.`,
+      opcoes: sug.map(n => ({ rotulo: n, valor: trocarTermo(texto, q.nome.join(' '), n.toLowerCase()) })) };
     return { erro: `Não achei "${filtro}" no catálogo${q.marca ? ' da ' + catNomeMarca(q.marca) : ''}.` + (semNome.length && q.nome.length && filtro !== q.nome.join(' ').toLowerCase() ? ` A palavra "${q.nome.join(' ').toLowerCase()}" não aparece no nome de nenhum produto.` : '') };
   }
   const grupos = catGrupos(achados);
@@ -3058,7 +3861,15 @@ async function agFotoProduto(a) {
   const porNome = ws => rows.filter(r => ws.every(w => r.codigo === w || (' ' + norm(r.produto).replace(/[^A-Z0-9]/g, ' ') + ' ').includes(' ' + w + ' ')));
   let lista = porNome(palavras), cor = '';
   if (!lista.length && palavras.length > 1) { lista = porNome(palavras.slice(0, -1)); cor = palavras[palavras.length - 1]; }
-  if (!lista.length) return { erro: `Não achei "${palavras.join(' ').toLowerCase()}" no catálogo.` };
+  if (!lista.length) {
+    // A última palavra pode ser a cor: tenta o nome com e sem ela.
+    const nomes = rows.map(r => r.produto), fim = palavras.length > 1 ? palavras[palavras.length - 1].toLowerCase() : '';
+    let sug = catSugerir(nomes, palavras.join(' ')), comCor = '';
+    if (!sug.length && fim) { sug = catSugerir(nomes, palavras.slice(0, -1).join(' ')); comCor = ' ' + fim; }
+    if (sug.length) return { erro: `Não achei "${palavras.join(' ').toLowerCase()}" no catálogo. Os botões com os nomes parecidos já apareceram: pergunte numa frase curta qual deles ele quis dizer, sem listar de novo.`,
+      opcoes: sug.map(n => ({ rotulo: n, valor: `foto do ${n.toLowerCase()}${comCor}` })) };
+    return { erro: `Não achei "${palavras.join(' ').toLowerCase()}" no catálogo. Peça o nome ou a referência de outro jeito.` };
+  }
   // Nome exato manda ("marte" é o adulto, não o "marte infantil"); a coleção mais nova vem primeiro.
   const nomeQ = palavras.slice(0, cor ? -1 : undefined).join(' ');
   const exatos = lista.filter(r => norm(r.produto) === nomeQ);
@@ -3122,6 +3933,57 @@ document.addEventListener('click', async ev => {
 });
 
 function corrigeFerramenta(texto, r, passo) {
+  // O botão da meta ("o que tem no Showroom para fechar a meta de X") vai direto, sem depender da IA.
+  if (passo === 1) { const m = texto.match(/showroom.*\bfechar\b.*\bmeta\b(?:\s+d[aeo]s?)?\s+(.+?)[\s?.!]*$/i);
+    if (m) return { ok: true, acao: 'ferramenta', nome: 'meta_showroom', args: { faixa: m[1], marca: /\(UA\)/i.test(m[1]) ? 'UA' : 'OLY' } }; }
+  // Link para o cliente: "gera um link de mochilas", "link do estoque de chinelos para a Degraus".
+  if (passo === 1 && r.nome !== 'link_cliente' && /\blinks?\b/i.test(texto) && !/respond|abriu|viu\b/i.test(texto)) {
+    const a = r.args || {}, f = a.filtros || {}, um = v => Array.isArray(v) ? (v.length === 1 ? v[0] : '') : v;
+    const m = texto.match(/\bpar[ao]\s+(?:o\s+|a\s+)?(?:cliente\s+)?(.+?)[\s?.!]*$/i);
+    const cli = um(a.cliente) || um(f.cliente) || (m ? m[1].trim() : '');
+    return { ok: true, acao: 'ferramenta', nome: 'link_cliente', args: { busca: cli && m ? texto.slice(0, m.index) : texto, ...(cli ? { cliente: cli } : {}) } };
+  }
+  // Pedidos com problema: "tenho pedido com problema?", "pedidos atrasados da Casa Pio", "algum foi prorrogado?".
+  if (passo === 1 && r.nome !== 'problemas' && !/boleto|\bdae\b|\bdar\b/i.test(texto)
+    && (/(pedidos?|encomendas?|gci)\b.*\b(problemas?|atrasad\w*|adiad\w*|prorrogad\w*)|(problemas?|atrasad\w*|adiad\w*|prorrogad\w*)\b.*\b(pedidos?|encomendas?)/i.test(texto))) {
+    const a = r.args || {}, f = a.filtros || {}, um = v => Array.isArray(v) ? (v.length === 1 ? v[0] : '') : v;
+    const m = texto.match(/(?:problemas?|atrasad\w*|adiad\w*|prorrogad\w*)\s+(?:d[aeo]s?|pr[ao]|para)\s+(.+?)[\s?.!]*$/i);
+    const cli = um(a.cliente) || um(f.cliente) || (m && !/^(m[eê]s|semana|hoje|ontem|ano)\b/i.test(m[1]) ? m[1].trim() : '');
+    const tipo = /adiad|prorrog/i.test(texto) && !/atrasad/i.test(texto) ? 'adiado' : /atrasad/i.test(texto) && !/adiad|prorrog/i.test(texto) ? 'atrasado' : '';
+    return { ok: true, acao: 'ferramenta', nome: 'problemas', args: { frase: texto, ...(cli ? { cliente: cli } : {}), ...(tipo ? { tipo } : {}), ...(um(a.vendedor) || um(f.vendedor) ? { vendedor: um(a.vendedor) || um(f.vendedor) } : {}) } };
+  }
+  // RFV: "quem não comprou no 2º semestre", "quem comprou só no 1º semestre", "como a Luar está no RFV".
+  if (passo === 1 && r.nome !== 'rfv' && (/\brfv\b/i.test(texto) || (/semestre|\b[12]s\b/i.test(texto)
+    && /(n[aã]o|sem)\s+(compr|pedi)|compr\w*\s+(s[oó]|somente|apenas)\b|dois semestres|ambos|\bnovos?\b|s[oó]\s+no\s+[12]/i.test(texto)))) {
+    const a = r.args || {}, f = a.filtros || {}, um = v => Array.isArray(v) ? (v.length === 1 ? v[0] : '') : v;
+    const sit = /(n[aã]o|sem)\s+(compr|pedi)/i.test(texto) ? 'sem2' : /dois semestres|ambos/i.test(texto) ? 'dois'
+      : /(s[oó]|somente|apenas)\s+no\s+(1|primeiro)/i.test(texto) ? 'so1' : /(s[oó]|somente|apenas)\s+no\s+(2|segundo)|\bnovos?\b/i.test(texto) ? 'so2' : '';
+    const LINHA = { CHINELO: 'CHINELOS', CHINELOS: 'CHINELOS', ACESSORIO: 'ACESSORIOS', ACESSORIOS: 'ACESSORIOS', CORRIDA: 'CORRIDA/TREINO', TREINO: 'CORRIDA/TREINO',
+      CLASSICO: 'CLASSICOS', CLASSICOS: 'CLASSICOS', INFANTIL: 'INFANTIL', CORRE: 'CORRE', MEIA: 'MEIA', MEIAS: 'MEIA' };
+    const lw = norm(texto).split(/[^A-Z]+/).map(w => LINHA[w]).find(Boolean);
+    const linha = um(a.linha) || um(f.linha) || (lw === 'MEIA' ? (/\bua\b|under/i.test(texto) ? 'MEIA UA' : 'MEIA OLY') : lw === 'CORRE' && /vestu/i.test(texto) ? 'VESTUARIO CORRE' : lw);
+    const mc = texto.match(/como\s+(?:est[aá]\s+)?(?:o\s+|a\s+)?(.+?)\s+(?:est[aá]\s+|ficou\s+|vai\s+)?no\s+rfv/i) || texto.match(/\brfv\s+d[aoe]s?\s+(.+?)[\s?.!]*$/i);
+    const args = { situacao: um(a.situacao) || sit, frase: texto, ...(mc && !sit ? { cliente: mc[1].trim() } : {}) };
+    for (const [k, v] of [['cliente', um(a.cliente) || um(f.cliente)], ['vendedor', um(a.vendedor) || um(f.vendedor)], ['produto', um(a.produto) || um(f.produto)], ['cor', um(a.cor) || um(f.cor)],
+      ['marca', um(a.marca) || um(f.marca)], ['linha', linha]]) if (v) args[k] = v;
+    return { ok: true, acao: 'ferramenta', nome: 'rfv', args };
+  }
+  // Reativação: "quem eu preciso reativar", "clientes parados", "a Luar parou de comprar?".
+  if (passo === 1 && r.nome !== 'reativar' && /reativ|par(ou|aram) de comprar|clientes?\s+parad|sumi(u|ram)|voltar a comprar|oferecer\s+(pr[ao]|para)\b.*\bvoltar/i.test(texto)) {
+    const a = r.args || {}, f = a.filtros || {}, um = v => Array.isArray(v) ? (v.length === 1 ? v[0] : '') : v, cli = um(a.cliente) || um(f.cliente), vend = um(a.vendedor) || um(f.vendedor);
+    // Sem a IA, o cliente sai da frase: "a Luar parou de comprar?", "reativar a Luar", "o que oferecer pra Luar voltar".
+    const m = texto.match(/^(?:(?:e\s+)?(?:o|a|os|as)\s+)?(.+?)\s+par(?:ou|aram)\s+de\s+comprar/i) || texto.match(/reativar\s+(?:o|a|os|as)\s+(.+?)[\s?.!]*$/i)
+      || texto.match(/oferecer\s+(?:pr[ao]|para)\s+(?:o\s+|a\s+)?(.+?)\s+voltar/i);
+    const doTexto = m && !/^(quem|qu[ae]is|quantos|clientes?|meus|minhas|algu[eé]m)\b/i.test(m[1].trim()) ? m[1].trim() : '';
+    return { ok: true, acao: 'ferramenta', nome: 'reativar', args: { ...(cli || doTexto ? { cliente: cli || doTexto } : {}), ...(vend ? { vendedor: vend } : {}), frase: texto, ...(/repasse/i.test(texto) ? { so_repasse: true } : {}) } };
+  }
+  // Quanto ganha (prêmio, valor da carta) é a ferramenta carta, com ou sem a IA ter pedido; comissão o Nexo não vê.
+  const ganho = /\b(ganh\w*|receb\w*|pr[eê]mios?|paga|pagar|rende)\b/i;
+  if (passo === 1 && r.nome !== 'carta' && !/comiss/i.test(texto)
+    && ((/\bcarta\b/i.test(texto) && (ganho.test(texto) || /\bvalor\b/i.test(texto))) || (/\b(metas?|faixas?)\b/i.test(texto) && ganho.test(texto)))) {
+    const a = r.args || {}, f = a.filtros || {}, v = [a.vendedor, f.vendedor].flat().filter(Boolean), mes = String(a.mes || a.de || '').slice(0, 7);
+    return { ok: true, acao: 'ferramenta', nome: 'carta', args: { ...(v.length === 1 ? { vendedor: v[0] } : {}), ...(/^\d{4}-\d{2}$/.test(mes) ? { mes } : {}) } };
+  }
   const querDispo = /\bdispo\b|disponib|dispon[ií]ve|showroom|\btem\b.*\brepasses?\b/i.test(texto);
   const cart = /carteira|falta faturar|a faturar/i.test(texto), fat = /faturad/i.test(texto);
   const sitTexto = cart && fat ? 'tudo' : cart ? 'carteira' : fat ? 'faturado' : '';
@@ -3136,7 +3998,7 @@ function corrigeFerramenta(texto, r, passo) {
     return n ? { ok: true, acao: 'ferramenta', nome: 'pedido', args: { nf: n[1] } } : r;
   }
   // "Carta campanha" é a meta da Vulcabras, não a campanha de incentivo do Repasses.
-  if (/\bcarta\b/i.test(texto) && r.nome !== 'metas') {
+  if (/\bcarta\b/i.test(texto) && !['metas', 'carta'].includes(r.nome)) {
     const a = r.args || {}, f = a.filtros || {}, v = [a.vendedor, f.vendedor].flat().filter(Boolean), mes = String(a.mes || a.de || '').slice(0, 7);
     return { ...r, nome: 'metas', args: { ...(v.length === 1 ? { vendedor: v[0] } : {}), ...(/^\d{4}-\d{2}$/.test(mes) ? { mes } : {}), ...(/quem|prepostos|vendedores|time|ranking/i.test(texto) ? { comparar: true } : {}) } };
   }
@@ -3170,6 +4032,32 @@ function corrigeFerramenta(texto, r, passo) {
 // devolve a resposta. Não mexe na tela (a bateria de testes usa o mesmo).
 async function agRodar(texto, aoPasso) {
   const inicio = AG.msgs.length;
+  await APP.catPronto;
+  // O link esperando o cliente: o toque no cliente confirma; uma resposta curta (o nome) é o cliente.
+  const pend = AG.linkPend, conf = pend && texto.match(/^confirmo o link para o cliente (\S+)$/i);
+  if (pend && (conf || (texto.trim().split(/\s+/).length <= 5 && !/\b(cat[aá]logo|meta|carteira|fatur|boleto|pedido|reativ|rfv|foto|showroom|link)\w*/i.test(texto)))) {
+    AG.msgs.push({ role: 'user', content: texto });
+    aoPasso && aoPasso('link_cliente', 1);
+    const out = await agLinkCliente(conf ? { busca: pend.busca, codigo: conf[1] } : { busca: pend.busca, cliente: texto.trim() });
+    const extras = [];
+    if (out.cartao) extras.push(out.cartao);
+    if (out.opcoes && out.opcoes.length) extras.push(`<div class="acoes">${out.opcoes.map(o => `<button class="sug" data-opcao="${esc(o.valor)}">${esc(o.rotulo)}</button>`).join('')}</div>`);
+    const resp = out.erro ? out.erro.replace(/ Pergunte qual é\.?$/, '') : conf ? 'Pronto, o link está aí embaixo.' : (out.opcoes && out.opcoes.length > 1 ? 'Qual destes é o cliente? Toque para confirmar.' : 'É este o cliente? Toque para confirmar e gerar o link.');
+    AG.msgs.push({ role: 'assistant', content: JSON.stringify({ resposta: resp }) });
+    return { texto: resp, tabelas: [], extras, usadas: [{ nome: 'link_cliente', args: {} }] };
+  }
+  if (pend) AG.linkPend = null;
+  const cf = corrigirFrase(texto);
+  // Uma palavra que pode ser duas coisas: pergunta antes de gastar consulta. Cada botão é a frase já certa.
+  if (cf.duvidas.length) {
+    const d = cf.duvidas[0];
+    const resp = `Só pra eu não errar: "${d.palavra}" é ${d.opcoes.map(o => `**${o}**`).join(' ou ')}?`;
+    AG.msgs.push({ role: 'user', content: texto }, { role: 'assistant', content: JSON.stringify({ resposta: resp }) });
+    return { texto: resp, tabelas: [], usadas: [], extras: [`<div class="acoes">${d.opcoes.map(o =>
+      `<button class="sug" data-opcao="${esc(cf.texto.replace(d.palavra, o))}">${esc(o)}</button>`).join('')}</div>`] };
+  }
+  texto = cf.texto;
+  const entendi = cf.trocas.length ? texto : '';
   AG.msgs.push({ role: 'user', content: texto });
   const tabelas = [], extras = [], usadas = [];
   const p = prepAtivo();
@@ -3193,7 +4081,7 @@ async function agRodar(texto, aoPasso) {
       r = corrigeFerramenta(texto, r, passo);
       if (r.acao !== 'ferramenta') {
         AG.msgs.push({ role: 'assistant', content: JSON.stringify({ resposta: r.texto }) });
-        return { texto: r.texto, tabelas, extras, usadas, modelo: r.modelo };
+        return { texto: r.texto, tabelas, extras, usadas, modelo: r.modelo, entendi };
       }
       AG.msgs.push({ role: 'assistant', content: JSON.stringify({ ferramenta: r.nome, args: r.args }) });
       if (r.junto) { await olharRobo(); const j = agPedido(r.junto); if (j.res) { tabelas.push(j.res); extras.push(pdfHtml(j.pdf)); } }
@@ -3205,7 +4093,15 @@ async function agRodar(texto, aoPasso) {
       else {
         if (aoPasso) aoPasso(r.nome, passo);
         await APP.catPronto;   // cadastro e nomes fantasia: qualquer ferramenta acha o cliente por eles
+        AG.parecidos = null;
         try { out = await fn(r.args || {}); } catch (e) { out = { erro: 'A ferramenta falhou: ' + (e.message || e) }; }
+        // Nome que não existe, com parecidos: viram botões com a frase dele já trocada.
+        if (out.erro && AG.parecidos && !out.opcoes) {
+          const p = AG.parecidos;
+          out = { ...out, erro: out.erro.replace(/\s*Pergunte qual é\.?$/, '') + ' Os botões com esses nomes já apareceram para ele: pergunte numa frase curta qual deles ele quis dizer, sem listar os nomes de novo.',
+            opcoes: p.nomes.map(n => ({ rotulo: n, valor: trocarTermo(texto, p.termo, n) })) };
+        }
+        AG.parecidos = null;
       }
       if (out.res && out.res.rows) { tabelas.push(out.res); AG.ultimaTabela = out.res; }
       if (out.cartao) extras.push(out.cartao);
@@ -3238,11 +4134,11 @@ async function perguntarAgente(texto) {
   const bolha = addMsg('ia', digitando());
   $('enviar').disabled = true;
   try {
-    const { texto: resp, tabelas, extras } = await agRodar(texto, (nome, passo) => {
+    const { texto: resp, tabelas, extras, entendi } = await agRodar(texto, (nome, passo) => {
       bolha.innerHTML = ampulheta(`${ROTULO_FERRAMENTA[nome] || 'Consultando'}…`);
       rolar();
     });
-    bolha.innerHTML = `<div class="ag-texto">${mdSimples(resp)}</div>` + extras.join('') + tabelas.map(agTabelaHtml).join('');
+    bolha.innerHTML = (entendi ? `<div class="entendi">Entendi: “${esc(entendi)}”</div>` : '') + `<div class="ag-texto">${mdSimples(resp)}</div>` + extras.join('') + tabelas.map(agTabelaHtml).join('');
     bolha.addEventListener('click', ev => {
       const op = ev.target.closest('[data-opcao]');
       if (op) { if (!$('enviar').disabled) perguntarAgente(op.dataset.opcao); return; }
