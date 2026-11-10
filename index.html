@@ -1402,11 +1402,21 @@
      em 22/10, app_status.json (de 8/out) e dispo.json (daquela manha)
      vieram com o mesmo carimbo. Entao cada card le o carimbo de dentro da
      sua propria base. */
+  function _inicioDoDia(d){
+    var x = new Date(d.getTime());
+    x.setHours(0, 0, 0, 0);
+    return x.getTime();
+  }
+
   function _quandoTexto(iso){
     if(!iso) return null;
     var d = new Date(iso);
     if(isNaN(d.getTime())) return null;
-    var dias = Math.floor((Date.now() - d.getTime()) / 86400000);
+    // Dia de calendario, nao 24h corridas: a base de ontem as 09:03, aberta
+    // hoje as 08:30, tem 23h de idade e caia em "hoje". Normaliza as duas
+    // pontas na meia-noite local; o Math.round absorve o horario de verao.
+    // Mesmo calculo de repasses/index.html e metas/index.html.
+    var dias = Math.round((_inicioDoDia(new Date()) - _inicioDoDia(d)) / 86400000);
     var hhmm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
     var ddmm = ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2);
     return {
