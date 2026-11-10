@@ -218,6 +218,7 @@
   .tam button+button{border-left:1px solid var(--line)}
   .tam button.on{background:var(--acc);color:#fff}
   .item.rep{background:#fef2f2}
+  .item .po{display:block;font-size:11px;color:var(--mut);margin-top:2px;text-decoration:line-through}
   .aviso{font-size:11.5px;color:var(--red);font-weight:700;margin-top:6px}
 
   .em-linha{font-size:10.5px;font-weight:800;color:#991b1b;background:#fee2e2;border-radius:6px;padding:2px 6px;align-self:flex-start;margin-top:3px}
@@ -262,7 +263,7 @@
     <div class="lista" id="lista"></div>
     <div class="painel-pe">
       <button class="salvar" id="salvar" type="button" disabled>Salvar no estoque</button>
-      <div class="msg" id="msg">Tamanho: masculino 40, feminino 35.</div>
+      <div class="msg" id="msg">Tamanho: masculino 40, feminino 35. Preço: 50% do original.</div>
     </div>
   </aside>
 </main>
@@ -290,7 +291,7 @@
           <button type="button" data-y="" class="on">Calçado</button><button type="button" data-y="A">Acessório</button><button type="button" data-y="C">Confecção</button></div></div>
         <div class="mn-campo mn-todo"><label>Gênero <i>*</i></label><div class="mn-gen" id="mnG">
           <button type="button" data-g="Masculino">Masculino</button><button type="button" data-g="Feminino">Feminino</button><button type="button" data-g="Unissex">Unissex</button></div></div>
-        <div class="mn-campo"><label for="mnP">Preço</label><input id="mnP" class="livre" inputmode="decimal" autocomplete="off" placeholder="0,00"></div>
+        <div class="mn-campo"><label for="mnP">Preço original</label><input id="mnP" class="livre" inputmode="decimal" autocomplete="off" placeholder="0,00"></div>
       </div>
       <div class="mn-foto-tit">Foto <span class="op">(opcional, mas ajuda a vender)</span></div>
       <div class="mn-acoes">
@@ -327,6 +328,10 @@
   const so = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
   const brl = v => v ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
+  // amostra sai pela metade do preço da etiqueta (599,99 → 299,99), cortando os centavos
+  const metade = p => Math.floor(Math.round((Number(p) || 0) * 100) / 2) / 100;
+  const virgula = v => v ? v.toFixed(2).replace('.', ',') : '';
+  const lerPreco = v => parseFloat(String(v || '').replace(/\./g, '').replace(',', '.')) || 0;
   // foto recém-trazida do Trade Squash: o GitHub Pages leva ~1 min para publicar,
   // então ela é lida direto do repositório até o banco ser gerado de novo
   const RAW = 'https://raw.githubusercontent.com/cms-representacoes/apps-oly/main/Catalogo/';
@@ -481,7 +486,7 @@
               <button type="button" data-tam="${TAM.M}" class="${s.t === TAM.M ? 'on' : ''}">Masc 40</button>
               <button type="button" data-tam="${TAM.F}" class="${s.t === TAM.F ? 'on' : ''}">Fem 35</button></div>`}</div>
             <div class="campo"><label>Qtd</label><input type="number" min="1" step="1" inputmode="numeric" data-campo="qt" value="${esc_(s.qt || 1)}"></div>
-            <div class="campo"><label>Preço</label><input type="text" inputmode="decimal" data-campo="pr" value="${esc_(s.pr ?? '')}" placeholder="0,00"></div>
+            <div class="campo"><label>Preço (50%)</label><input type="text" inputmode="decimal" data-campo="pr" value="${esc_(s.pr ?? '')}" placeholder="0,00">${s.po ? `<small class="po">original ${brl(s.po)}</small>` : ''}</div>
           </div>
           ${linha ? `<div class="aviso">Em linha na ${COL_LINHA}: não pode virar amostra. Não será gravada.</div>`
                   : rep ? `<div class="aviso">Já está no estoque nesse tamanho. Não será gravada.</div>` : ''}
@@ -499,14 +504,14 @@
       const it = porArtigo.get(a).cores.find(x => x.c === c);
       if (emLinha(it)) return;   // trava: produto em linha não vira amostra
       sel.push({ id: idCor, a: it.a, c: it.c, n: porArtigo.get(a).nome, f: it.f, m: it.m, ts: it.ts, u: it.u, k: it.k, g: it.g || '',
-                 y: it.y || '', dc: '', t: tamDe(it.y, it.g), qt: 1, pr: it.p ? it.p.toFixed(2).replace('.', ',') : '' });
+                 y: it.y || '', dc: '', t: tamDe(it.y, it.g), qt: 1, pr: virgula(metade(it.p)), po: it.p || 0 });
     }
     guardar(); desenharLista(); buscar(); msg('');
   }
 
   function msg(t, tipo) {
     const m = $('#msg');
-    m.textContent = t || 'Tamanho: masculino 40, feminino 35.';
+    m.textContent = t || 'Tamanho: masculino 40, feminino 35. Preço: 50% do original.';
     m.className = 'msg' + (tipo ? ' ' + tipo : '');
   }
 
@@ -731,7 +736,7 @@
       mn.salvando = false; $('#mnOk').disabled = false; $('#mnOk').textContent = 'Adicionar à lista';
     }
     sel.push({ id: idCor, a, c, n, f, m: 0, ts: f ? 1 : 0, g: mn.g, man: 1, y: mn.y || '',
-               dc: $('#mnDc').value.trim(), t: tamDe(mn.y, mn.g), qt: 1, pr: $('#mnP').value.trim() });
+               dc: $('#mnDc').value.trim(), t: tamDe(mn.y, mn.g), qt: 1, po: lerPreco($('#mnP').value), pr: virgula(metade(lerPreco($('#mnP').value))) });
     guardar(); fecharManual(); desenharLista(); buscar();
     msg(`${a} · ${c} lançada à mão. Confira tamanho e quantidade e salve no estoque.`, 'ok');
   });
@@ -877,7 +882,7 @@
       const r = await worker({ action: 'addAmostras', data: enviar.map(s => ({
         artigo: s.a, descricao: s.n, cor: s.c, descricaoCor: (s.dc || '').trim(), genero: s.g,
         tamanho: s.t, quantidade: Math.max(1, parseInt(s.qt, 10) || 1),
-        preco: parseFloat(String(s.pr || '').replace(/\./g, '').replace(',', '.')) || 0, foto: s.f || (s.u ? V2 + s.u : '')
+        preco: lerPreco(s.pr), precoOriginal: s.po || 0, foto: s.f || (s.u ? V2 + s.u : '')
       })) }, true);
       const gravadas = new Set((r.adicionadas || []).map(x => x.artigo + '|' + so(x.cor) + '|' + x.tamanho));
       sel = sel.filter(s => !gravadas.has(s.a + '|' + so(s.c) + '|' + s.t));

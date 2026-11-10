@@ -60,6 +60,9 @@ export default {
       "removeAmostra",
       "tsPreviaImagem",
       "venderAmostra",
+      "venderAmostras",
+      "saveAmostrasConfig",
+      "removeAmostras",
       "desfazerVendaAmostra",
       "salvarImagemCatalogo"
     ]);
@@ -121,6 +124,8 @@ export default {
     const GITHUB_CANC_DISPO    = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/cancelamentos-dispo.json`;
     // Estoque de amostras fora de linha (Catálogo de Amostras)
     const GITHUB_AMOSTRAS      = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/amostras/estoque.json`;
+    // WhatsApp e nome de quem atende a loja do cliente (o link fica sem eles)
+    const GITHUB_AMOSTRAS_CONFIG = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/amostras/config.json`;
     const GITHUB_AMOSTRAS_VENDAS = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/amostras/vendas.json`;
     // cores em linha (1S27 do Catálogo Digital), geradas pelo amostras/gerar_banco.py
     const GITHUB_AMOSTRAS_LINHA = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/amostras/em-linha.json`;
@@ -1715,6 +1720,8 @@ export default {
               tamanho: String(a.tamanho || "").trim(),
               quantidade: Math.max(1, parseInt(a.quantidade, 10) || 1),
               preco: Number(a.preco) || 0,
+              // preço da etiqueta; a amostra sai pela metade (preco)
+              precoOriginal: Number(a.precoOriginal) || 0,
               foto: String(a.foto || "").trim(),
               cadastradoEm: agora
             });
@@ -1745,11 +1752,31 @@ export default {
           }
           if (body.quantidade !== undefined) am.quantidade = Math.max(1, parseInt(body.quantidade, 10) || 1);
           if (body.preco !== undefined) am.preco = Math.max(0, Number(body.preco) || 0);
+          if (body.precoOriginal !== undefined) am.precoOriginal = Math.max(0, Number(body.precoOriginal) || 0);
           if (body.descricaoCor !== undefined) am.descricaoCor = String(body.descricaoCor || "").trim();
           if (body.foto !== undefined) am.foto = String(body.foto || "").trim();
           am.alteradoEm = new Date().toISOString();
           await saveFile(GITHUB_AMOSTRAS, lista, sha, `amostras: ajuste ${am.artigo} ${am.cor}`);
           return new Response(JSON.stringify({ success: true, amostra: am }), { status: 200, headers: corsHeaders });
+        }
+
+        // ── CONFIG DA LOJA (CMS STORE) ─────────────────────────────────────
+        // getAmostrasConfig (público) → { whatsapp, atende }
+        if (body.action === "getAmostrasConfig") {
+          const { content } = await getFile(GITHUB_AMOSTRAS_CONFIG);
+          const c = content && typeof content === "object" && !Array.isArray(content) ? content : {};
+          return new Response(JSON.stringify({ success: true, whatsapp: c.whatsapp || "", atende: c.atende || "" }), { status: 200, headers: corsHeaders });
+        }
+        // saveAmostrasConfig { whatsapp, atende } (admin)
+        if (body.action === "saveAmostrasConfig") {
+          const whatsapp = String(body.whatsapp || "").replace(/\D/g, "");
+          if (whatsapp.length < 12 || whatsapp.length > 13) {
+            return new Response(JSON.stringify({ success: false, error: "WhatsApp inválido: use DDI + DDD + número." }), { status: 400, headers: corsHeaders });
+          }
+          const atende = String(body.atende || "").trim().slice(0, 40);
+          const { sha } = await getFile(GITHUB_AMOSTRAS_CONFIG);
+          await saveFile(GITHUB_AMOSTRAS_CONFIG, { whatsapp, atende, alteradoEm: new Date().toISOString() }, sha, "amostras: WhatsApp da loja");
+          return new Response(JSON.stringify({ success: true, whatsapp, atende }), { status: 200, headers: corsHeaders });
         }
 
         // ── VENDAS DE AMOSTRAS ────────────────────────────────────────────
@@ -1795,6 +1822,59 @@ export default {
             { path: pVen, conteudo: JSON.stringify(vendas, null, 2) }
           ], `amostras: venda ${am.artigo} ${am.cor} (${qtd}) para ${comprador}`);
           return new Response(JSON.stringify({ success: true, venda, saiuDoEstoque: saiu }), { status: 200, headers: corsHeaders });
+        }
+
+        // venderAmostras { itens:[{ id, quantidade, valor }], comprador, pagamento }
+        // Várias amostras para o MESMO comprador: uma venda por amostra (para dar
+        // para desfazer uma só), todas com o mesmo "lote", num commit só.
+        if (body.action === "venderAmostras" && Array.isArray(body.itens) && body.itens.length) {
+          const PAGTOS = ["pix", "dinheiro", "cartao"];
+          const comprador = String(body.comprador || "").trim();
+          const pagamento = String(body.pagamento || "").toLowerCase();
+          if (!comprador || !PAGTOS.includes(pagamento)) {
+            return new Response(JSON.stringify({ success: false, error: "Falta o comprador ou a forma de pagamento." }), { status: 400, headers: corsHeaders });
+          }
+          const { content: ce } = await getFile(GITHUB_AMOSTRAS);
+          let estoque = Array.isArray(ce) ? ce : [];
+          const { content: cv } = await getFile(GITHUB_AMOSTRAS_VENDAS);
+          const vendas = Array.isArray(cv) ? cv : [];
+          const agora = new Date().toISOString(), lote = crypto.randomUUID();
+          const feitas = [], saiu = [];
+          for (const it of body.itens) {
+            const am = estoque.find(a => a.id === it.id);
+            if (!am) return new Response(JSON.stringify({ success: false, error: "Uma das amostras não está mais no estoque. Atualize a tela." }), { status: 404, headers: corsHeaders });
+            const tem = Math.max(1, parseInt(am.quantidade, 10) || 1);
+            const qtd = Math.max(1, parseInt(it.quantidade, 10) || 1);
+            if (qtd > tem) return new Response(JSON.stringify({ success: false, error: `Só tem ${tem} par(es) de ${am.descricao} ${am.cor}.` }), { status: 409, headers: corsHeaders });
+            const venda = {
+              id: crypto.randomUUID(), amostraId: am.id, lote,
+              artigo: am.artigo, descricao: am.descricao, cor: am.cor, descricaoCor: am.descricaoCor || "",
+              genero: am.genero || "", tamanho: am.tamanho, foto: am.foto || "",
+              quantidade: qtd, precoUnit: Number(am.preco) || 0,
+              valor: Math.max(0, Math.round((Number(it.valor) || 0) * 100) / 100),
+              comprador, pagamento, vendidoEm: agora
+            };
+            vendas.push(venda); feitas.push(venda);
+            if (qtd >= tem) { estoque = estoque.filter(a => a.id !== am.id); saiu.push(am.id); }
+            else estoque = estoque.map(a => a.id === am.id ? { ...a, quantidade: tem - qtd, alteradoEm: agora } : a);
+          }
+          const { path: pEst } = parseRepoUrl(GITHUB_AMOSTRAS), { path: pVen } = parseRepoUrl(GITHUB_AMOSTRAS_VENDAS);
+          await gitCommitArquivos(env.GITHUB_OWNER, env.GITHUB_REPO, env.GITHUB_BRANCH || "main", [
+            { path: pEst, conteudo: JSON.stringify(estoque, null, 2) },
+            { path: pVen, conteudo: JSON.stringify(vendas, null, 2) }
+          ], `amostras: venda de ${feitas.length} amostra(s) para ${comprador}`);
+          return new Response(JSON.stringify({ success: true, vendas: feitas, saiuDoEstoque: saiu }), { status: 200, headers: corsHeaders });
+        }
+
+        // removeAmostras { ids:[] } → tira várias amostras do estoque num commit só
+        if (body.action === "removeAmostras" && Array.isArray(body.ids) && body.ids.length) {
+          const { content, sha } = await getFile(GITHUB_AMOSTRAS);
+          const lista = Array.isArray(content) ? content : [];
+          const ids = new Set(body.ids.map(String));
+          const fica = lista.filter(a => !ids.has(a.id));
+          const removidas = lista.length - fica.length;
+          if (removidas) await saveFile(GITHUB_AMOSTRAS, fica, sha, `amostras: removidas ${removidas}`);
+          return new Response(JSON.stringify({ success: true, removidas }), { status: 200, headers: corsHeaders });
         }
 
         // desfazerVendaAmostra { vendaId } → a venda sai do registro e os pares

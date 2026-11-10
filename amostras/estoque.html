@@ -131,6 +131,42 @@
   .linha:last-child{border-bottom:0}
   .linha:hover{background:#fafcff}
   .prod{display:flex;align-items:center;gap:12px;min-width:0}
+  /* seleção para vender ou excluir vários */
+  .sel-cx{width:20px;height:20px;flex:none;margin:0;accent-color:var(--acc);cursor:pointer}
+  @media (hover:none){ .sel-cx{width:24px;height:24px} }
+  .linha.marcada{background:#f0fdfa}
+  .sep-lista{display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--card2);border-bottom:1px solid var(--line);font-size:11px;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:.05em}
+  .sep-lista small{font-size:11px;background:#e2e8f0;color:#334155;border-radius:999px;padding:1px 8px;letter-spacing:0}
+  .sep-lista:first-child{color:var(--acc-d)}
+  .sep-lista:first-child small{background:var(--acc-l);color:var(--acc-d)}
+  .cab .cab-prod{display:flex;align-items:center;gap:12px}
+  .lote{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translate(-50%,140%);z-index:40;display:flex;align-items:center;gap:8px;max-width:calc(100% - 24px);padding:8px 8px 8px 16px;border-radius:16px;background:#0f172a;color:#fff;box-shadow:0 14px 40px rgba(15,23,42,.4);transition:transform .2s ease}
+  .lote.show{transform:translate(-50%,0)}
+  .lote .n{font-size:14px;font-weight:700;white-space:nowrap;margin-right:4px}
+  .lote .n b{color:#5eead4}
+  .lote .bts{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+  .lote .bts::-webkit-scrollbar{display:none}
+  .lote button{flex:none;height:38px;padding:0 14px;border-radius:10px;border:1px solid #334155;background:transparent;color:#e2e8f0;font:700 13.5px 'Plus Jakarta Sans',sans-serif;cursor:pointer;white-space:nowrap}
+  .lote button:hover{background:#1e293b}
+  .lote .l-vender{background:#16a34a;border-color:#16a34a;color:#fff}
+  .lote .l-excluir{border-color:#7f1d1d;color:#fca5a5}
+  .lote .l-x{width:38px;padding:0;font-size:18px}
+  body.com-lote .wrap{padding-bottom:90px}
+  @media (max-width:560px){ .lote{left:12px;right:12px;transform:translateY(140%);max-width:none} .lote.show{transform:none} .lote .n{font-size:13px} }
+  /* janela da venda em lote */
+  .vl-lista{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .vl-item{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border-bottom:1px solid #f1f5f9}
+  .vl-item:last-child{border-bottom:0}
+  .vl-item img,.vl-item .ph{width:44px;height:44px;border-radius:8px;object-fit:contain;background:var(--card2);border:1px solid var(--line)}
+  .vl-item b{display:block;font-size:13px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .vl-item small{font-size:11.5px;color:var(--mut)}
+  .vl-cmp{display:flex;gap:6px;align-items:center}
+  .vl-cmp select{height:36px;border:1px solid var(--line);border-radius:8px;padding:0 4px;font:600 13px 'Plus Jakarta Sans',sans-serif;background:#fff}
+  .vl-cmp input{width:86px;height:36px;border:1px solid var(--line);border-radius:8px;padding:0 8px;font:700 14px 'Plus Jakarta Sans',sans-serif;text-align:right;outline:none}
+  .vl-cmp input:focus{border-color:var(--acc)}
+  .vl-total{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:700;padding:2px 2px 0}
+  .vl-total b{font-size:18px;color:#16a34a}
+  @media (max-width:480px){ .vl-item{grid-template-columns:40px minmax(0,1fr)} .vl-cmp{grid-column:1 / -1;justify-content:flex-end} }
 
   .thumb-wrap{position:relative;flex-shrink:0;cursor:zoom-in}
   .thumb{width:54px;height:54px;border-radius:9px;background:var(--card2);object-fit:cover;border:1px solid var(--line);display:block}
@@ -144,7 +180,8 @@
   button.thumb-fb:hover{background:var(--acc-l)}
   .ed-pr{width:84px;height:32px;border:2px solid var(--acc);border-radius:8px;padding:0 6px;font:700 14px 'Plus Jakarta Sans',sans-serif;text-align:right;outline:none}
   .ed-dc{width:100%;max-width:220px;height:30px;border:2px solid var(--acc);border-radius:8px;padding:0 8px;font:600 13px 'Plus Jakarta Sans',sans-serif;outline:none}
-  .pr{display:flex;align-items:center;justify-content:flex-end;gap:6px}
+  .pr{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+  .pr .po{font-size:11.5px;font-weight:600;color:#94a3b8;text-decoration:line-through;order:-1}
   .meta .lapis{width:24px;height:24px;margin:-3px 0}
   .meta .sem-dc{color:#94a3b8;font-style:italic}
   .ed-linha{display:flex;align-items:center;gap:6px;width:100%;margin-top:2px}
@@ -233,11 +270,20 @@
   </div>
 
   <div class="lista">
-    <div class="cab"><span>Produto</span><span class="c">Tamanho</span><span class="n">Qtd</span><span class="n">Preço</span><span></span><span></span></div>
+    <div class="cab"><span class="cab-prod"><input type="checkbox" class="sel-cx" id="selTodos" title="Selecionar todos da lista" aria-label="Selecionar todos da lista">Produto</span><span class="c">Tamanho</span><span class="n">Qtd</span><span class="n">Preço</span><span></span><span></span></div>
     <div id="linhas"><div class="vazio">Carregando o estoque…</div></div>
   </div>
   <p class="estado" id="estado"></p>
   <div class="toast" id="toast"></div>
+  <div class="lote" id="lote" role="toolbar" aria-label="Ações nos selecionados">
+    <span class="n"><b id="loteN">0</b> <span id="loteRot">selecionados</span></span>
+    <div class="bts">
+      <button type="button" class="l-vender" id="loteVender">Vender</button>
+      <button type="button" class="l-excluir" id="loteExcluir">Excluir</button>
+      <button type="button" id="loteTodos">Selecionar todos</button>
+      <button type="button" class="l-x" id="loteLimpar" title="Limpar a seleção" aria-label="Limpar a seleção">×</button>
+    </div>
+  </div>
 </main>
 
 <div class="vd-fundo" id="lk" role="dialog" aria-modal="true" aria-labelledby="lkT">
@@ -247,9 +293,23 @@
       <div class="vd-campo"><label for="lkW">WhatsApp que recebe os pedidos <i>*</i></label><input id="lkW" inputmode="tel" autocomplete="off" placeholder="(85) 99999-9999"></div>
       <div class="vd-campo"><label for="lkN">Nome de quem atende</label><input id="lkN" autocomplete="off" placeholder="Ex.: Marcos"></div>
       <div class="vd-campo"><label>Link</label><div class="lk-link" id="lkL">Preencha o WhatsApp.</div></div>
-      <p class="lk-dica">A página mostra o que está no estoque na hora em que o cliente abre. O que for vendido some sozinho.</p>
+      <p class="lk-dica">O link é sempre o mesmo (bom para a bio do Instagram) e não mostra o número. A loja mostra o estoque na hora em que o cliente abre; o que for vendido some sozinho.</p>
     </div>
     <div class="vd-pe"><span class="msg" id="lkMsg"></span><button type="button" id="lkAbrir">Abrir a página</button><button type="button" class="ok" id="lkCopiar">Copiar link</button></div>
+  </div>
+</div>
+
+<div class="vd-fundo" id="vl" role="dialog" aria-modal="true" aria-labelledby="vlT">
+  <div class="vd-cx">
+    <div class="vd-cab"><div><b id="vlT">Vender amostras</b><span id="vlS">Mesmo comprador e forma de pagamento para todas.</span></div></div>
+    <div class="vd-corpo">
+      <div class="vd-campo"><label for="vlNome">Nome do comprador <i>*</i></label><input id="vlNome" autocomplete="off" placeholder="Ex.: Maria Souza"></div>
+      <div class="vd-campo"><label>Forma de pagamento <i>*</i></label>
+        <div class="vd-pag" id="vlPag"><button type="button" data-pag="pix">Pix</button><button type="button" data-pag="dinheiro">Dinheiro</button><button type="button" data-pag="cartao">Cartão</button></div></div>
+      <div class="vd-campo"><label>Produtos e valores</label><div class="vl-lista" id="vlLista"></div></div>
+      <div class="vl-total"><span>Total da venda</span><b id="vlTotal">R$ 0,00</b></div>
+    </div>
+    <div class="vd-pe"><span class="msg" id="vlMsg"></span><button type="button" id="vlN">Cancelar</button><button type="button" class="ok" id="vlOk">Confirmar venda</button></div>
   </div>
 </div>
 
@@ -286,6 +346,8 @@
   // mesmo token de escrita que o cadastro, o admin e o dispo usam
   const ADMIN_TOKEN = '1b489c97-7bc7-466a-a675-f559e1226371d9bea53d-a920-4059-a31c-6bc0b6d8c4c8';
   let estoque = [], filtroTam = '';
+  const marcados = new Set();   // ids selecionados para vender ou excluir juntos
+  let visiveis = [];            // ids que a lista mostra agora (para "selecionar todos")
   let ed = null;   // { id, campo: 'tam' | 'qt' | 'pr' | 'dc' } — célula em edição
   const ICON_LAPIS = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
   const ICON_LIXO = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
@@ -383,12 +445,27 @@
     $('#kPares').textContent = pares;
     $('#kValor').textContent = brl(valor);
 
-    if (!estoque.length) { $('#linhas').innerHTML = '<div class="vazio"><b>Estoque vazio</b>Cadastre as amostras pela tela de cadastro.</div>'; return; }
-    if (!vis.length) { $('#linhas').innerHTML = '<div class="vazio"><b>Nada encontrado</b>Esc apaga a busca.</div>'; return; }
+    // os marcados ficam no topo, mesmo fora da busca ou do filtro; embaixo, o resultado sem eles
+    const doTopo = estoque.map((x, i) => ({ x, i })).filter(({ x }) => marcados.has(x.id));
+    const resto = vis.filter(({ x }) => !marcados.has(x.id));
+    visiveis = vis.map(({ x }) => x.id);
 
-    $('#linhas').innerHTML = vis.map(({ x, i }) => `
-      <div class="linha">
-        <div class="prod">${thumb(x, i)}
+    if (!estoque.length) { atualizarLote(); $('#linhas').innerHTML = '<div class="vazio"><b>Estoque vazio</b>Cadastre as amostras pela tela de cadastro.</div>'; return; }
+    if (!vis.length && !doTopo.length) { atualizarLote(); $('#linhas').innerHTML = '<div class="vazio"><b>Nada encontrado</b>Esc apaga a busca.</div>'; return; }
+
+    const sep = (rot, n) => `<div class="sep-lista">${rot}<small>${n}</small></div>`;
+    $('#linhas').innerHTML =
+      (doTopo.length ? sep('Selecionados', doTopo.length) + doTopo.map(linha).join('') : '') +
+      (doTopo.length ? sep(t || filtroTam ? 'Resultado da busca' : 'Demais amostras', resto.length) : '') +
+      (resto.length ? resto.map(linha).join('') : (doTopo.length ? '<div class="vazio">Nada mais nesta busca.</div>' : ''));
+    atualizarLote();
+    const foco = document.querySelector('.ed-qt,.ed-pr,.ed-dc'); if (foco) { foco.focus(); foco.select(); }
+  }
+
+  function linha({ x, i }) {
+    return `
+      <div class="linha${marcados.has(x.id) ? ' marcada' : ''}">
+        <div class="prod"><input type="checkbox" class="sel-cx" data-sel="${h(x.id)}" ${marcados.has(x.id) ? 'checked' : ''} aria-label="Selecionar ${h(x.descricao)} ${h(x.cor)}">${thumb(x, i)}
           <div class="info">
             <p class="nome">${h(x.descricao || 'Sem nome')}</p>
             <p class="meta"><span>${h(x.artigo)}</span><span>·</span><span class="cor">${h(x.cor)}</span>${celDc(x)}</p>
@@ -399,8 +476,7 @@
         <div class="n num pr">${celPr(x)}</div>
         <div class="vd"><button class="bt-vender" type="button" data-vender="${h(x.id)}">Vender</button></div>
         <div class="ac"><button class="lixo" type="button" data-lixo="${h(x.id)}" title="Apagar do estoque" aria-label="Apagar do estoque">${ICON_LIXO}</button></div>
-      </div>`).join('');
-    const foco = document.querySelector('.ed-qt,.ed-pr,.ed-dc'); if (foco) { foco.focus(); foco.select(); }
+      </div>`;
   }
 
   const rotTam = t => t === '35' ? 'Fem 35' : t === '40' ? 'Masc 40' : t === 'U' ? 'Tam. U' : t === 'M' ? 'Tam. M' : (t || '—');
@@ -426,7 +502,7 @@
       const v = x.preco ? x.preco.toFixed(2).replace('.', ',') : '';
       return `<input class="ed-pr" type="text" inputmode="decimal" value="${v}" placeholder="0,00"><button class="ok-btn" type="button" data-ok-ed>OK</button>`;
     }
-    return `${x.preco ? brl(x.preco) : '<span style="color:#94a3b8">sem preço</span>'}
+    return `${x.preco ? brl(x.preco) : '<span style="color:#94a3b8">sem preço</span>'}${x.precoOriginal > x.preco ? `<small class="po" title="Preço original">${brl(x.precoOriginal)}</small>` : ''}
       <button class="lapis" type="button" data-ed="pr" data-id="${h(x.id)}" title="Ajustar preço" aria-label="Ajustar preço">${ICON_LAPIS}</button>`;
   }
   function celDc(x) {
@@ -454,6 +530,123 @@
       toast('Não deu para gravar a foto: ' + e.message, true);
     }
   }
+
+  // ── SELEÇÃO: vender ou excluir vários ──
+  function atualizarLote() {
+    for (const id of [...marcados]) if (!estoque.some(a => a.id === id)) marcados.delete(id);
+    const n = marcados.size;
+    $('#loteN').textContent = n; $('#loteRot').textContent = n === 1 ? 'selecionado' : 'selecionados';
+    $('#lote').classList.toggle('show', n > 0); document.body.classList.toggle('com-lote', n > 0);
+    const todosVis = visiveis.length && visiveis.every(id => marcados.has(id));
+    $('#selTodos').checked = !!todosVis;
+    $('#selTodos').indeterminate = !todosVis && visiveis.some(id => marcados.has(id));
+    $('#loteTodos').hidden = !!todosVis;
+  }
+  function marcar(id, on) {
+    on ? marcados.add(id) : marcados.delete(id);
+    const cx = document.querySelector(`[data-sel="${CSS.escape(id)}"]`);
+    if (cx) { cx.checked = on; cx.closest('.linha').classList.toggle('marcada', on); }
+  }
+  const marcarTodos = on => { visiveis.forEach(id => marcar(id, on)); desenhar(); };
+  $('#linhas').addEventListener('change', e => { const c = e.target.closest('[data-sel]'); if (c) { marcar(c.dataset.sel, c.checked); desenhar(); } });
+  $('#selTodos').addEventListener('change', e => marcarTodos(e.target.checked));
+  $('#loteTodos').addEventListener('click', () => marcarTodos(true));
+  $('#loteLimpar').addEventListener('click', () => { marcados.clear(); desenhar(); });
+
+  $('#loteExcluir').addEventListener('click', async () => {
+    const lista = estoque.filter(a => marcados.has(a.id)); if (!lista.length) return;
+    const nomes = lista.slice(0, 4).map(a => `${a.descricao} ${a.cor}`).join(', ') + (lista.length > 4 ? ` e mais ${lista.length - 4}` : '');
+    const ok = await perguntar({
+      titulo: lista.length === 1 ? 'Apagar 1 amostra?' : `Apagar ${lista.length} amostras?`,
+      texto: 'Elas saem do estoque. Isso não tem volta.', detalhe: nomes,
+      sub: `${lista.reduce((s, a) => s + (a.quantidade || 1), 0)} pares no total`, ok: 'Apagar', perigo: true });
+    if (!ok) return;
+    lista.forEach(a => linhaDe(a.id)?.classList.add('salvando'));
+    try {
+      await worker({ action: 'removeAmostras', ids: lista.map(a => a.id) }, true);
+      const ids = new Set(lista.map(a => a.id));
+      estoque = estoque.filter(a => !ids.has(a.id)); marcados.clear(); desenhar();
+      toast(lista.length === 1 ? 'Amostra apagada.' : `${lista.length} amostras apagadas.`);
+    } catch (e) {
+      lista.forEach(a => linhaDe(a.id)?.classList.remove('salvando'));
+      toast('Não deu para apagar: ' + e.message, true);
+    }
+  });
+
+  // venda em lote: um comprador e um pagamento; cada produto com o próprio valor
+  const vlEl = $('#vl');
+  const vl = { pag: '', salvando: false };
+  function vlSomar() {
+    const t = [...vlEl.querySelectorAll('[data-vl-val]')].reduce((s, i) => s + (num(i.value) || 0), 0);
+    $('#vlTotal').textContent = brl(t);
+  }
+  $('#loteVender').addEventListener('click', () => {
+    const lista = estoque.filter(a => marcados.has(a.id)); if (!lista.length) return;
+    Object.assign(vl, { pag: '', salvando: false });
+    $('#vlT').textContent = lista.length === 1 ? 'Vender 1 amostra' : `Vender ${lista.length} amostras`;
+    $('#vlNome').value = ''; $('#vlNome').classList.remove('ruim'); $('#vlPag').classList.remove('ruim');
+    vlEl.querySelectorAll('[data-pag]').forEach(b => b.classList.remove('on'));
+    $('#vlLista').innerHTML = lista.map(a => {
+      const tem = a.quantidade || 1;
+      return `<div class="vl-item" data-vl="${h(a.id)}">
+        <img src="${h(previa[a.id] || mini(nomeFoto(a)))}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph'}))">
+        <div><b>${h(a.descricao)}</b><small>${h(a.cor)} · ${h(rotTam(a.tamanho))}</small></div>
+        <div class="vl-cmp">${tem > 1 ? `<select data-vl-qt aria-label="Pares">${Array.from({ length: tem }, (_, i) => `<option value="${i + 1}">${i + 1} ${i ? 'pares' : 'par'}</option>`).join('')}</select>` : ''}
+          <input data-vl-val inputmode="decimal" value="${fmt(a.preco || 0)}" aria-label="Valor"></div></div>`;
+    }).join('');
+    vlSomar();
+    $('#vlMsg').textContent = ''; $('#vlOk').disabled = false; $('#vlOk').textContent = 'Confirmar venda';
+    vlEl.classList.add('show'); document.body.style.overflow = 'hidden';
+    setTimeout(() => $('#vlNome').focus(), 50);
+  });
+  const fecharVl = () => { if (vl.salvando) return; vlEl.classList.remove('show'); document.body.style.overflow = ''; };
+  $('#vlPag').addEventListener('click', e => {
+    const b = e.target.closest('[data-pag]'); if (!b) return;
+    vl.pag = b.dataset.pag; $('#vlPag').classList.remove('ruim');
+    vlEl.querySelectorAll('#vlPag [data-pag]').forEach(x => x.classList.toggle('on', x === b));
+  });
+  // trocou os pares: o valor acompanha (preço × pares), até a pessoa digitar outro
+  $('#vlLista').addEventListener('change', e => {
+    const s = e.target.closest('[data-vl-qt]'); if (!s) return;
+    const it = s.closest('[data-vl]'), a = estoque.find(x => x.id === it.dataset.vl), v = it.querySelector('[data-vl-val]');
+    if (a && !v.dataset.mexido) v.value = fmt((a.preco || 0) * +s.value);
+    vlSomar();
+  });
+  $('#vlLista').addEventListener('input', e => { if (e.target.matches('[data-vl-val]')) { e.target.dataset.mexido = 1; vlSomar(); } });
+  $('#vlN').addEventListener('click', fecharVl);
+  // corrigiu o que faltava: o aviso some na hora
+  $('#vlNome').addEventListener('input', () => { if ($('#vlNome').value.trim()) { $('#vlNome').classList.remove('ruim'); if (vl.pag) $('#vlMsg').textContent = ''; } });
+  $('#vlPag').addEventListener('click', () => { if ($('#vlNome').value.trim()) $('#vlMsg').textContent = ''; });
+  $('#vdNome').addEventListener('input', () => { if ($('#vdNome').value.trim()) { $('#vdNome').classList.remove('ruim'); if (vd.pag) $('#vdMsg').textContent = ''; } });
+  $('#vdPag').addEventListener('click', () => { if ($('#vdNome').value.trim()) $('#vdMsg').textContent = ''; });
+  vlEl.addEventListener('click', e => { if (e.target === vlEl) fecharVl(); });
+  $('#vlOk').addEventListener('click', async () => {
+    if (vl.salvando) return;
+    const comprador = $('#vlNome').value.trim();
+    const itens = [...vlEl.querySelectorAll('[data-vl]')].map(el => ({
+      id: el.dataset.vl, quantidade: +(el.querySelector('[data-vl-qt]')?.value || 1), valor: num(el.querySelector('[data-vl-val]').value)
+    }));
+    const falta = [];
+    if (!comprador) { falta.push('o nome do comprador'); $('#vlNome').classList.add('ruim'); } else $('#vlNome').classList.remove('ruim');
+    if (!vl.pag) { falta.push('a forma de pagamento'); $('#vlPag').classList.add('ruim'); }
+    if (itens.some(i => !(i.valor >= 0))) falta.push('valores válidos (ex.: 499,99)');
+    if (falta.length) { $('#vlMsg').textContent = 'Falta ' + falta.join(' e ') + '.'; return; }
+    vl.salvando = true; $('#vlOk').disabled = true; $('#vlOk').textContent = 'Registrando…'; $('#vlMsg').textContent = '';
+    try {
+      const r = await worker({ action: 'venderAmostras', itens, comprador, pagamento: vl.pag }, true);
+      vl.salvando = false; fecharVl();
+      const saiu = new Set(r.saiuDoEstoque || []);
+      for (const i of itens) { const a = estoque.find(x => x.id === i.id); if (a && !saiu.has(a.id)) a.quantidade = (a.quantidade || 1) - i.quantidade; }
+      estoque = estoque.filter(a => !saiu.has(a.id)); marcados.clear(); desenhar();
+      toast(`${itens.length === 1 ? 'Venda registrada' : itens.length + ' vendas registradas'} para ${comprador}. Estão na tela de Vendas.`);
+    } catch (e) {
+      vl.salvando = false; $('#vlOk').disabled = false; $('#vlOk').textContent = 'Confirmar venda';
+      $('#vlMsg').textContent = 'Não deu para registrar: ' + e.message;
+    }
+  });
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && vlEl.classList.contains('show') && !document.querySelector('.pq-fundo')) { e.preventDefault(); e.stopImmediatePropagation(); fecharVl(); }
+  }, true);
 
   // ── VENDA ──
   const vdEl = $('#vd');
@@ -520,38 +713,58 @@
     if (e.key === 'Escape' && vdEl.classList.contains('show') && !document.querySelector('.pq-fundo')) { e.preventDefault(); e.stopImmediatePropagation(); fecharVenda(); }
   }, true);
 
-  // ── LINK DO CLIENTE (loja.html) ──
-  const LOJA = 'https://cms-representacoes.github.io/apps-oly/amostras/loja.html';
-  const CHAVE_LK = 'amostras.link.v1';
+  // ── LINK DO CLIENTE (CMS STORE) ──
+  // O link é sempre o mesmo e limpo; o WhatsApp e o nome ficam salvos no servidor
+  // (a loja busca ao abrir). Trocar o número aqui não muda o link da bio.
+  const LOJA = 'https://cms-representacoes.github.io/apps-oly/store/';
   const lkEl = $('#lk');
+  const lk = { salvo: { whatsapp: '', atende: '' }, salvando: false };
   // número só com dígitos e com o 55 do Brasil na frente
   const zap = v => { let d = String(v || '').replace(/\D/g, ''); if (d && d.length <= 11) d = '55' + d; return d; };
-  const lkParams = () => { const p = new URLSearchParams(); const w = zap($('#lkW').value); if (w) p.set('w', w); const n = $('#lkN').value.trim(); if (n) p.set('n', n); return p.toString(); };
+  const zapBonito = d => { d = String(d || ''); const m = d.match(/^55(\d{2})(\d{4,5})(\d{4})$/); return m ? `(${m[1]}) ${m[2]}-${m[3]}` : d; };
+  const mudou = () => zap($('#lkW').value) !== lk.salvo.whatsapp || $('#lkN').value.trim() !== (lk.salvo.atende || '');
   function lkAtualizar() {
-    const w = zap($('#lkW').value);
-    $('#lkL').textContent = w.length >= 12 ? LOJA + '?' + lkParams() : 'Preencha o WhatsApp com DDD.';
+    $('#lkL').textContent = LOJA;
     $('#lkMsg').textContent = '';
-    try { localStorage.setItem(CHAVE_LK, JSON.stringify({ w: $('#lkW').value, n: $('#lkN').value })); } catch (e) {}
+    $('#lkCopiar').textContent = mudou() ? 'Salvar e copiar link' : 'Copiar link';
   }
-  function abrirLink() {
-    let g = {}; try { g = JSON.parse(localStorage.getItem(CHAVE_LK) || '{}'); } catch (e) {}
-    $('#lkW').value = g.w || ''; $('#lkN').value = g.n || '';
-    lkAtualizar(); lkEl.classList.add('show'); document.body.style.overflow = 'hidden';
-    setTimeout(() => $(g.w ? '#lkCopiar' : '#lkW').focus(), 50);
+  async function abrirLink() {
+    $('#lkW').value = ''; $('#lkN').value = ''; $('#lkL').textContent = LOJA;
+    lkEl.classList.add('show'); document.body.style.overflow = 'hidden';
+    $('#lkMsg').textContent = 'Lendo o WhatsApp salvo…';
+    try {
+      const c = await worker({ action: 'getAmostrasConfig' });
+      lk.salvo = { whatsapp: c.whatsapp || '', atende: c.atende || '' };
+      $('#lkW').value = zapBonito(lk.salvo.whatsapp); $('#lkN').value = lk.salvo.atende;
+    } catch (e) { $('#lkMsg').textContent = 'Não consegui ler o WhatsApp salvo: ' + e.message; return; }
+    lkAtualizar();
+    setTimeout(() => $(lk.salvo.whatsapp ? '#lkCopiar' : '#lkW').focus(), 50);
   }
-  const fecharLink = () => { lkEl.classList.remove('show'); document.body.style.overflow = ''; };
+  const fecharLink = () => { if (lk.salvando) return; lkEl.classList.remove('show'); document.body.style.overflow = ''; };
   const lkOk = () => { if (zap($('#lkW').value).length < 12) { $('#lkMsg').textContent = 'Falta o WhatsApp com DDD.'; $('#lkW').focus(); return false; } return true; };
+  async function salvarSeMudou() {
+    if (!mudou()) return true;
+    lk.salvando = true; $('#lkCopiar').disabled = true; $('#lkMsg').textContent = 'Salvando…';
+    try {
+      const r = await worker({ action: 'saveAmostrasConfig', whatsapp: zap($('#lkW').value), atende: $('#lkN').value.trim() }, true);
+      lk.salvo = { whatsapp: r.whatsapp, atende: r.atende };
+      return true;
+    } catch (e) { $('#lkMsg').textContent = 'Não deu para salvar: ' + e.message; return false; }
+    finally { lk.salvando = false; $('#lkCopiar').disabled = false; lkAtualizar(); }
+  }
   $('#btLink').addEventListener('click', abrirLink);
   ['#lkW', '#lkN'].forEach(i => $(i).addEventListener('input', lkAtualizar));
   $('#lkCopiar').addEventListener('click', async () => {
-    if (!lkOk()) return;
-    const url = LOJA + '?' + lkParams();
-    try { await navigator.clipboard.writeText(url); }
-    catch (e) { const t = document.createElement('textarea'); t.value = url; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
-    fecharLink(); toast('Link copiado. É só colar na conversa com o cliente.');
+    if (!lkOk() || !(await salvarSeMudou())) return;
+    try { await navigator.clipboard.writeText(LOJA); }
+    catch (e) { const t = document.createElement('textarea'); t.value = LOJA; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
+    fecharLink(); toast('Link copiado. É o mesmo de sempre: serve para a bio e para mandar ao cliente.');
   });
-  // no ambiente de teste abre a página daqui; publicado, abre o endereço do link
-  $('#lkAbrir').addEventListener('click', () => { if (lkOk()) window.open('loja.html?' + lkParams(), '_blank', 'noopener'); });
+  // no ambiente de teste abre a loja daqui; publicado, abre o endereço do link
+  $('#lkAbrir').addEventListener('click', async () => {
+    if (!lkOk() || !(await salvarSeMudou())) return;
+    window.open(/^(localhost|127\.)/.test(location.hostname) ? '../store/' : LOJA, '_blank', 'noopener');
+  });
   lkEl.addEventListener('click', e => { if (e.target === lkEl) fecharLink(); });
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape' && lkEl.classList.contains('show')) { e.preventDefault(); e.stopImmediatePropagation(); fecharLink(); }
