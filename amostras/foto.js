@@ -43,6 +43,10 @@
     .fa-sel{flex-basis:100%}
     .fa-pe button{flex:1}
     .fa-pc{display:none}.fa-cel{display:inline}
+    .fa-acoes{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -18px;padding:0 18px}
+    .fa-acoes::-webkit-scrollbar{display:none}
+    .fa-acoes button,.fa-acoes label{flex:none;white-space:nowrap}
+    .fa-link{font-size:16px}
   }`;
   const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

@@ -151,6 +151,16 @@
   .mn-acoes .gg-b{border-color:#2563eb;color:#1d4ed8}
   .mn-acoes .ts-b{border-color:var(--acc);color:var(--acc-d)}
   .mn-acoes button:disabled{cursor:wait;opacity:.7}
+  @media (max-width:760px){
+    .mn-acoes{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:-18px;margin-right:-18px;padding:0 18px}
+    .mn-acoes::-webkit-scrollbar{display:none}
+    .mn-acoes button,.mn-acoes label{flex:none;white-space:nowrap}
+  }
+  /* celular e tablet: a lista fica embaixo dos resultados; esta barra leva até ela */
+  .ir-lista{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:30;display:none;align-items:center;justify-content:space-between;gap:10px;height:52px;padding:0 8px 0 16px;border:0;border-radius:14px;background:#0f172a;color:#fff;font:700 14px 'Plus Jakarta Sans',sans-serif;box-shadow:0 10px 30px rgba(15,23,42,.35);cursor:pointer}
+  .ir-lista b{background:var(--acc);border-radius:999px;padding:2px 9px;margin-right:6px}
+  .ir-lista span.ir{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:10px;background:var(--acc)}
+  @media (max-width:1023px){ .ir-lista.show{display:flex} .corpo{padding-bottom:80px} }
   .mn-cola{min-height:130px}
   .mn-aviso{margin-top:12px;font-size:12.5px;font-weight:700;color:#b45309;background:#fef3c7;border-radius:9px;padding:8px 10px}
   .mn-aviso.erro{color:#991b1b;background:#fee2e2}
@@ -217,6 +227,7 @@
   .no-est{font-size:10.5px;font-weight:800;color:#92400e;background:#fef3c7;border-radius:6px;padding:2px 6px;align-self:flex-start;margin-top:3px}
   .estado{font-size:12.5px;color:var(--mut);margin:4px 2px 0}
 </style>
+<link rel="stylesheet" href="adm.css">
 </head>
 <body>
 <header class="topo">
@@ -225,8 +236,8 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
       Portal
     </a>
-    <div class="titulo"><b>Amostras · Cadastro</b><span>Busca no nosso banco de produtos</span></div>
-    <a class="ver-est" href="estoque.html">Ver estoque</a>
+    <div class="titulo"><b><span class="pre">Amostras · </span>Cadastro</b><span>Busca no nosso banco de produtos</span></div>
+    <nav class="acoes" aria-label="Atalhos"><a class="acao" href="estoque.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>Estoque</a><a class="acao" href="vendas.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>Vendas</a></nav>
   </div>
 </header>
 
@@ -255,6 +266,7 @@
     </div>
   </aside>
 </main>
+<button type="button" class="ir-lista" id="irLista"><span><b id="irN">0</b>para cadastrar</span><span class="ir">Ver lista ↓</span></button>
 
 <div class="zoom" id="zoom" role="dialog" aria-modal="true" aria-label="Foto ampliada">
   <button class="fechar" type="button" aria-label="Fechar">×</button>
@@ -444,8 +456,16 @@
     res.innerHTML = html;
   }
 
+  // barra "Ver lista" (celular e tablet): aparece com itens na lista e some quando a lista está na tela
+  let listaNaTela = false;
+  const irLista = () => { $('#irN').textContent = sel.length; $('#irLista').classList.toggle('show', sel.length > 0 && !listaNaTela); };
+  try {
+    new IntersectionObserver(es => { listaNaTela = es[0].isIntersecting; irLista(); }, { threshold: 0.15 }).observe(document.querySelector('.painel'));
+  } catch (e) {}
+  document.getElementById('irLista').addEventListener('click', () => document.querySelector('.painel').scrollIntoView({ behavior: 'smooth', block: 'start' }));
+
   function desenharLista() {
-    $('#nSel').textContent = sel.length;
+    $('#nSel').textContent = sel.length; irLista();
     $('#salvar').disabled = !sel.length || !estoque;
     const lista = $('#lista');
     if (!sel.length) { lista.innerHTML = '<div class="nada">Nenhuma amostra ainda.<br>Busque um artigo e toque em <b>+ Adicionar</b> na cor.</div>'; return; }
