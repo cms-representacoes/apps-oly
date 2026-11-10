@@ -1,0 +1,924 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Amostras · Cadastro</title>
+<meta name="theme-color" content="#0f172a">
+<link rel="icon" href="../icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f1f5f9; --card:#fff; --ink:#0f172a; --mut:#64748b; --line:#e2e8f0;
+    --top:#0f172a; --acc:#0d9488; --acc-d:#0f766e; --acc-l:#ccfbf1; --red:#dc2626;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+
+  /* topo */
+  .topo{background:var(--top);color:#f1f5f9;position:sticky;top:0;z-index:20}
+  .topo-in{max-width:1280px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:14px}
+  .portal-btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px 0 10px;border-radius:999px;background:#fff;border:1px solid #E2E8F0;color:#475569;font:700 14px 'Plus Jakarta Sans',sans-serif;text-decoration:none;flex:none}
+  .portal-btn:hover{background:#f8fafc}
+  .titulo{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+  .titulo b{font-size:17px;font-weight:800;letter-spacing:-.01em}
+  .titulo span{font-size:12px;color:#94a3b8}
+  .titulo{flex:1}
+  .ver-est{display:inline-flex;align-items:center;height:36px;padding:0 14px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font:700 13.5px 'Plus Jakarta Sans',sans-serif;text-decoration:none;flex:none}
+  .ver-est:hover{background:rgba(255,255,255,.16)}
+
+  /* busca */
+  .busca-wrap{max-width:1280px;margin:0 auto;padding:16px 16px 0}
+  .busca{position:relative}
+  .busca svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--mut);pointer-events:none}
+  .busca input{width:100%;height:56px;border-radius:14px;border:2px solid var(--line);background:#fff;padding:0 96px 0 48px;font:600 18px 'Plus Jakarta Sans',sans-serif;color:var(--ink);outline:none;transition:border-color .15s, box-shadow .15s}
+  .busca input:focus{border-color:var(--acc);box-shadow:0 0 0 4px rgba(13,148,136,.15)}
+  .busca input::placeholder{color:#94a3b8;font-weight:500}
+  .esc{position:absolute;right:12px;top:50%;transform:translateY(-50%);font:700 11px 'Plus Jakarta Sans',sans-serif;color:var(--mut);background:#f1f5f9;border:1px solid var(--line);border-radius:6px;padding:4px 8px;cursor:pointer}
+  .esc[hidden]{display:none}
+  .dica{font-size:12.5px;color:var(--mut);margin:8px 2px 0}
+
+  /* corpo */
+  .corpo{max-width:1280px;margin:0 auto;padding:16px;display:grid;grid-template-columns:1fr;gap:16px}
+  @media (min-width:1024px){ .corpo{grid-template-columns:minmax(0,1fr) 360px;align-items:start} }
+
+  .vazio{background:#fff;border:1px dashed #cbd5e1;border-radius:14px;padding:32px 20px;text-align:center;color:var(--mut);font-size:14px}
+  .vazio b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
+
+  .grupo{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+  .grupo-cab{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:0 2px 12px}
+  .grupo-cab .art{font-weight:800;font-size:15px;font-variant-numeric:tabular-nums}
+  .grupo-cab .nome{font-weight:700;font-size:15px}
+  .grupo-cab .qtd{font-size:12px;color:var(--mut);margin-left:auto}
+  .cores{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  @media (max-width:420px){ .cores{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px} }
+
+  .cor{border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;background:#fff;transition:border-color .15s, box-shadow .15s}
+  .cor.sel{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-l)}
+  .foto{aspect-ratio:1/1;background:#f8fafc;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .foto img{width:100%;height:100%;object-fit:contain}
+  .sem-foto{font-size:11px;color:#94a3b8;text-align:center;padding:8px}
+  .sem-foto-box{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px;text-align:center;width:100%}
+  .sem-foto-box svg{color:#cbd5e1}
+  .bt-ts{min-height:30px;padding:5px 10px;border-radius:8px;border:1px solid var(--acc);background:#fff;color:var(--acc-d);font:700 11.5px/1.25 'Plus Jakarta Sans',sans-serif;cursor:pointer;max-width:100%}
+  .bt-ts:hover{background:var(--acc-l)}
+  .bt-ts:disabled{border-color:var(--line);color:var(--mut);background:#f8fafc;cursor:wait}
+  .bt-ts .gira{display:inline-block;width:11px;height:11px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;margin-right:5px;vertical-align:-1px;animation:gira .7s linear infinite}
+  @keyframes gira{to{transform:rotate(360deg)}}
+  .ts-nao{font-size:11px;font-weight:700;color:#b45309;line-height:1.3}
+  .ts-ok{position:absolute;left:6px;top:6px;font-size:10px;font-weight:800;color:#fff;background:var(--acc);border-radius:6px;padding:2px 6px}
+  .foto{position:relative}
+  .foto.zoomavel{cursor:zoom-in}
+  /* com mouse: cursor de lupa e a foto cresce um pouco; lupa só nas telas de toque, discreta */
+  .foto.zoomavel img{transition:transform .2s ease}
+  .lupa{display:none}
+  @media (hover:hover) and (pointer:fine){ .foto.zoomavel:hover img{transform:scale(1.06)} }
+  @media (hover:none){
+    .lupa{position:absolute;right:6px;bottom:6px;width:20px;height:20px;border-radius:50%;background:rgba(15,23,42,.35);color:#fff;display:flex;align-items:center;justify-content:center;pointer-events:none}
+    .lupa svg{width:11px;height:11px}
+  }
+  .zoom{position:fixed;inset:0;background:rgba(15,23,42,.88);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:92;padding:20px}
+  .zoom.show{display:flex}
+  .zoom img{max-width:min(92vw,720px);max-height:72vh;object-fit:contain;background:#fff;border-radius:16px}
+  .zoom .zi{color:#fff;text-align:center}
+  .zoom .zi p{margin:0}
+  .zoom .zi p:first-child{font-size:16px;font-weight:700}
+  .zoom .zi p+p{font-size:13px;color:#cbd5e1;margin-top:3px}
+  .zoom .fechar{position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.15);color:#fff;font-size:22px;cursor:pointer}
+  .bt-gg{border-color:#2563eb;color:#1d4ed8}
+  .bt-gg:hover{background:#dbeafe}
+
+  /* janela da foto do Google (aba nova + colar) */
+  .gg-fundo{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;padding:16px;z-index:90}
+  .gg-fundo.show{display:flex}
+  .gg{background:#fff;border-radius:16px;width:100%;max-width:620px;max-height:calc(100vh - 32px);display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(15,23,42,.35);overflow:hidden}
+  .gg-cab{padding:16px 18px 12px;border-bottom:1px solid var(--line)}
+  .gg-cab .t{display:flex;align-items:center;gap:8px}
+  .gg-cab b{font-size:16px}
+  .gg-cab .s{font-size:12.5px;color:var(--mut);margin-top:2px}
+  .gg-x{margin-left:auto;width:34px;height:34px;border-radius:9px;border:0;background:#f1f5f9;color:var(--mut);font-size:20px;cursor:pointer}
+  .gg-corpo{overflow:auto;padding:14px 18px;flex:1}
+  .gg-passo{display:flex;gap:10px;align-items:flex-start;margin-bottom:14px}
+  .gg-passo .n{flex:none;width:24px;height:24px;border-radius:50%;background:var(--acc-l);color:var(--acc-d);font-weight:800;font-size:12.5px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .gg-passo .c{flex:1;min-width:0;font-size:13.5px;color:#334155;line-height:1.45}
+  .gg-busca{display:flex;gap:8px;margin-top:8px}
+  .gg-busca input{flex:1;min-width:0;height:40px;border:2px solid var(--line);border-radius:10px;padding:0 12px;font:600 14px 'Plus Jakarta Sans',sans-serif;outline:none}
+  .gg-busca input:focus{border-color:var(--acc)}
+  .gg-busca button{height:40px;padding:0 14px;border-radius:10px;border:0;background:#1d4ed8;color:#fff;font:700 13px 'Plus Jakarta Sans',sans-serif;cursor:pointer;white-space:nowrap}
+  .gg-busca button:hover{background:#1e40af}
+  .gg-cola{margin-top:8px;border:2px dashed #cbd5e1;border-radius:12px;background:#f8fafc;min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:14px;text-align:center;color:var(--mut);font-size:13px;outline:none;cursor:text}
+  .gg-cola:focus,.gg-cola.arrasta{border-color:var(--acc);background:#f0fdfa}
+  .gg-cola b{color:var(--ink);font-size:14px}
+  .gg-cola kbd{font:700 12px 'Plus Jakarta Sans',sans-serif;background:#fff;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;color:var(--ink)}
+  .gg-cola img{max-width:100%;max-height:260px;object-fit:contain;border-radius:8px;background:#fff}
+  .gg-link{width:100%;height:38px;margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:0 12px;font:500 13px 'Plus Jakarta Sans',sans-serif;outline:none}
+  .gg-link:focus{border-color:var(--acc)}
+  .gg-spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:gira .7s linear infinite;vertical-align:-2px;margin-right:6px}
+  .gg-pe{padding:12px 18px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px}
+  .gg-pe .sel{font-size:12.5px;color:var(--mut);flex:1;min-width:0}
+  .gg-pe .sel.erro{color:var(--red);font-weight:700}
+  .gg-pe .sel.ok{color:var(--acc-d);font-weight:700}
+  .gg-pe button{height:42px;padding:0 16px;border-radius:10px;font:700 14px 'Plus Jakarta Sans',sans-serif;cursor:pointer;border:1px solid var(--line);background:#fff;color:#334155;white-space:nowrap}
+  .gg-pe .gg-ok{border:0;background:var(--acc);color:#fff}
+  .gg-pe .gg-ok:disabled{background:#cbd5e1;cursor:not-allowed}
+
+  /* cadastro à mão */
+  .bt-man{display:inline-flex;align-items:center;gap:6px;margin-top:14px;height:40px;padding:0 16px;border-radius:10px;border:0;background:var(--acc);color:#fff;font:700 13.5px 'Plus Jakarta Sans',sans-serif;cursor:pointer}
+  .bt-man:hover{background:var(--acc-d)}
+  .outra-cor{margin-left:auto;background:none;border:1px dashed var(--acc);color:var(--acc-d);border-radius:8px;height:28px;padding:0 10px;font:700 12px 'Plus Jakarta Sans',sans-serif;cursor:pointer;white-space:nowrap}
+  .outra-cor:hover{background:var(--acc-l)}
+  .grupo-cab .qtd{margin-left:8px}
+  .mn-grade{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+  .mn-campo label{display:block;font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+  .mn-campo label i{font-style:normal;color:var(--red)}
+  .mn-campo input{width:100%;height:40px;border:2px solid var(--line);border-radius:10px;padding:0 11px;font:600 14px 'Plus Jakarta Sans',sans-serif;outline:none;text-transform:uppercase}
+  .mn-campo input.livre{text-transform:none}
+  .mn-campo input:focus{border-color:var(--acc)}
+  .mn-campo input.ruim{border-color:var(--red)}
+  .mn-todo{grid-column:1 / -1}
+  .mn-gen{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;height:40px}
+  .mn-gen button{flex:1;border:0;background:#fff;font:700 13px 'Plus Jakarta Sans',sans-serif;color:var(--mut);cursor:pointer}
+  .mn-gen button+button{border-left:1px solid var(--line)}
+  .mn-gen button.on{background:var(--acc);color:#fff}
+  .mn-foto-tit{display:flex;align-items:center;gap:8px;margin:16px 0 0;font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+  .mn-foto-tit .op{font-weight:600;text-transform:none;letter-spacing:0}
+  .mn-acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .mn-acoes button,.mn-acoes label{height:36px;padding:0 12px;border-radius:9px;border:1px solid var(--line);background:#fff;color:#334155;font:700 12.5px 'Plus Jakarta Sans',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  .mn-acoes button:hover,.mn-acoes label:hover{background:#f1f5f9}
+  .mn-acoes .gg-b{border-color:#2563eb;color:#1d4ed8}
+  .mn-acoes .ts-b{border-color:var(--acc);color:var(--acc-d)}
+  .mn-acoes button:disabled{cursor:wait;opacity:.7}
+  .mn-cola{min-height:130px}
+  .mn-aviso{margin-top:12px;font-size:12.5px;font-weight:700;color:#b45309;background:#fef3c7;border-radius:9px;padding:8px 10px}
+  .mn-aviso.erro{color:#991b1b;background:#fee2e2}
+  .mn-tag{font-size:10.5px;font-weight:800;color:#5b21b6;background:#ede9fe;border-radius:6px;padding:1px 6px;margin-left:4px;vertical-align:1px}
+  @media (max-width:600px){ .mn-grade{grid-template-columns:1fr 1fr;gap:8px} }
+  @media (max-width:600px){
+    .gg-fundo{padding:0;align-items:stretch}
+    .gg{max-width:none;max-height:none;border-radius:0}
+    .gg-pe{flex-wrap:wrap;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+    .gg-pe .sel{flex-basis:100%}
+    .gg-pe button{flex:1}
+    .so-pc{display:none}
+  }
+  @media (min-width:601px){ .so-cel{display:none} }
+  .cor-info{padding:8px 10px 0;display:flex;flex-direction:column;gap:2px;flex:1}
+  .cor-cod{font-weight:800;font-size:14px;letter-spacing:.02em}
+  .cor-sub{font-size:11.5px;color:var(--mut)}
+  .add{margin:8px 10px 10px;height:36px;border-radius:9px;border:0;background:var(--acc);color:#fff;font:700 13px 'Plus Jakarta Sans',sans-serif;cursor:pointer}
+  .add:hover{background:var(--acc-d)}
+  .cor.sel .add{background:var(--acc-l);color:var(--acc-d)}
+
+  /* painel das selecionadas */
+  .painel{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  @media (min-width:1024px){ .painel{position:sticky;top:84px;max-height:calc(100vh - 100px);display:flex;flex-direction:column} }
+  .painel-cab{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+  .painel-cab b{font-size:15px}
+  .badge{background:var(--acc);color:#fff;border-radius:999px;font-size:12px;font-weight:800;padding:2px 9px}
+  .limpar{margin-left:auto;background:none;border:0;color:var(--mut);font:600 12.5px 'Plus Jakarta Sans',sans-serif;cursor:pointer}
+  .limpar:hover{color:var(--red)}
+  .lista{overflow:auto;padding:6px 0}
+  .lista .nada{padding:22px 16px;color:var(--mut);font-size:13px;text-align:center}
+  .item{display:grid;grid-template-columns:56px 1fr 28px;gap:10px;padding:10px 14px;border-bottom:1px solid #f1f5f9;align-items:start}
+  .item:last-child{border-bottom:0}
+  .item img,.item .ph{width:56px;height:56px;border-radius:8px;object-fit:contain;background:#f8fafc;border:1px solid var(--line)}
+  .item .t1{font-weight:700;font-size:13.5px}
+  .item .t2{font-size:12px;color:var(--mut);margin:1px 0 6px}
+  .item input{width:100%;height:32px;border:1px solid var(--line);border-radius:8px;padding:0 9px;font:500 13px 'Plus Jakarta Sans',sans-serif;outline:none}
+  .item input:focus{border-color:var(--acc)}
+  .tirar{width:28px;height:28px;border-radius:8px;border:0;background:none;color:#94a3b8;cursor:pointer;font-size:18px;line-height:1}
+  .tirar:hover{background:#fee2e2;color:var(--red)}
+  .painel-pe{padding:12px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--mut)}
+  .salvar{width:100%;height:44px;border-radius:10px;border:0;background:var(--acc);color:#fff;font:700 14px 'Plus Jakarta Sans',sans-serif;margin-bottom:8px;cursor:pointer}
+  .salvar:hover{background:var(--acc-d)}
+  .salvar:disabled{background:#cbd5e1;cursor:not-allowed}
+  .msg{font-size:12.5px;line-height:1.4}
+  .msg.ok{color:var(--acc-d);font-weight:600}
+  .msg.erro{color:var(--red);font-weight:600}
+
+  .campos{display:grid;grid-template-columns:72px 1fr;gap:6px 8px;margin-top:6px;align-items:end}
+  .campos .campo:first-child{grid-column:1 / -1}
+  .tam{width:max-content}
+  .campo label{display:block;font-size:10.5px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+  .tam{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;height:32px}
+  .tam button{border:0;background:#fff;font:700 12px 'Plus Jakarta Sans',sans-serif;color:var(--mut);padding:0 9px;cursor:pointer;white-space:nowrap}
+  .tam button+button{border-left:1px solid var(--line)}
+  .tam button.on{background:var(--acc);color:#fff}
+  .item.rep{background:#fef2f2}
+  .aviso{font-size:11.5px;color:var(--red);font-weight:700;margin-top:6px}
+
+  .em-linha{font-size:10.5px;font-weight:800;color:#991b1b;background:#fee2e2;border-radius:6px;padding:2px 6px;align-self:flex-start;margin-top:3px}
+  .cols{font-size:10.5px;color:#94a3b8;font-weight:600;margin-top:2px}
+  .cor.bloq .foto{opacity:.55;filter:grayscale(.4)}
+  .add:disabled{background:#f1f5f9;color:#94a3b8;cursor:not-allowed;border:1px solid var(--line)}
+  .no-est{font-size:10.5px;font-weight:800;color:#92400e;background:#fef3c7;border-radius:6px;padding:2px 6px;align-self:flex-start;margin-top:3px}
+  .estado{font-size:12.5px;color:var(--mut);margin:4px 2px 0}
+</style>
+</head>
+<body>
+<header class="topo">
+  <div class="topo-in">
+    <a class="portal-btn" href="../index.html" aria-label="Voltar ao Portal">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      Portal
+    </a>
+    <div class="titulo"><b>Amostras · Cadastro</b><span>Busca no nosso banco de produtos</span></div>
+    <a class="ver-est" href="estoque.html">Ver estoque</a>
+  </div>
+</header>
+
+<div class="busca-wrap">
+  <div class="busca">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+    <input id="q" type="search" inputmode="search" autocomplete="off" spellcheck="false"
+           placeholder="Artigo ou modelo, cor">
+    <button class="esc" id="esc" type="button" hidden>Esc · limpar</button>
+  </div>
+  <p class="dica" id="dica">Carregando o banco de produtos…</p>
+  <p class="estado" id="estado">Lendo o estoque de amostras…</p>
+</div>
+
+<main class="corpo">
+  <section id="resultados">
+    <div class="vazio"><b>Comece pelo artigo</b>Digite pelo menos 3 números do artigo (ex.: 43340469) ou parte do nome (ex.: trilha).<br>Para filtrar a cor, use vírgula: <b style="display:inline;font-size:inherit">trilha, crem</b></div>
+  </section>
+
+  <aside class="painel">
+    <div class="painel-cab"><b>Para cadastrar</b><span class="badge" id="nSel">0</span><button class="limpar" id="limpar" type="button">Limpar tudo</button></div>
+    <div class="lista" id="lista"></div>
+    <div class="painel-pe">
+      <button class="salvar" id="salvar" type="button" disabled>Salvar no estoque</button>
+      <div class="msg" id="msg">Tamanho: masculino 40, feminino 35.</div>
+    </div>
+  </aside>
+</main>
+
+<div class="zoom" id="zoom" role="dialog" aria-modal="true" aria-label="Foto ampliada">
+  <button class="fechar" type="button" aria-label="Fechar">×</button>
+  <img id="zImg" alt="">
+  <div class="zi"><p id="zT1"></p><p id="zT2"></p></div>
+</div>
+
+<div class="gg-fundo" id="mn" role="dialog" aria-modal="true" aria-labelledby="mnT">
+  <div class="gg">
+    <div class="gg-cab">
+      <div class="t"><b id="mnT">Cadastrar à mão</b><button class="gg-x" id="mnX" type="button" aria-label="Fechar">×</button></div>
+      <div class="s">Para produto ou cor que não está no nosso banco nem no Catálogo Digital.</div>
+    </div>
+    <div class="gg-corpo">
+      <div class="mn-grade">
+        <div class="mn-campo"><label for="mnA">Artigo <i>*</i></label><input id="mnA" autocomplete="off" spellcheck="false" placeholder="43485332"></div>
+        <div class="mn-campo"><label for="mnC">Cor (código) <i>*</i></label><input id="mnC" autocomplete="off" spellcheck="false" placeholder="RYLMLT"></div>
+        <div class="mn-campo mn-todo"><label for="mnN">Modelo <i>*</i></label><input id="mnN" autocomplete="off" spellcheck="false" placeholder="CORRE TRILHA 2"></div>
+        <div class="mn-campo mn-todo"><label for="mnDc">Descrição da cor</label><input id="mnDc" class="livre" autocomplete="off" placeholder="Royal Multi"></div>
+        <div class="mn-campo mn-todo"><label>Tipo</label><div class="mn-gen" id="mnY">
+          <button type="button" data-y="" class="on">Calçado</button><button type="button" data-y="A">Acessório</button><button type="button" data-y="C">Confecção</button></div></div>
+        <div class="mn-campo mn-todo"><label>Gênero <i>*</i></label><div class="mn-gen" id="mnG">
+          <button type="button" data-g="Masculino">Masculino</button><button type="button" data-g="Feminino">Feminino</button><button type="button" data-g="Unissex">Unissex</button></div></div>
+        <div class="mn-campo"><label for="mnP">Preço</label><input id="mnP" class="livre" inputmode="decimal" autocomplete="off" placeholder="0,00"></div>
+      </div>
+      <div class="mn-foto-tit">Foto <span class="op">(opcional, mas ajuda a vender)</span></div>
+      <div class="mn-acoes">
+        <label for="mnArq">📁 Escolher arquivo<input id="mnArq" type="file" accept="image/*" hidden></label>
+        <button type="button" class="ts-b" id="mnTS">Buscar no Trade Squash</button>
+        <button type="button" class="gg-b" id="mnGoogle">Buscar no Google</button>
+        <button type="button" id="mnSemFoto" hidden>Remover foto</button>
+      </div>
+      <div class="gg-cola mn-cola" id="mnCola" tabindex="0" contenteditable="true" spellcheck="false" aria-label="Cole ou arraste a foto aqui"></div>
+      <div id="mnAviso"></div>
+    </div>
+    <div class="gg-pe"><span class="sel" id="mnSel">Os campos com * são obrigatórios.</span><button type="button" id="mnN2">Cancelar</button><button type="button" class="gg-ok" id="mnOk">Adicionar à lista</button></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="pergunta.js"></script>
+<script src="foto.js"></script>
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const q = $('#q'), esc = $('#esc'), res = $('#resultados'), dica = $('#dica');
+  const WORKER_URL = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
+  // mesmo token de escrita que o admin e o dispo usam
+  const ADMIN_TOKEN = '1b489c97-7bc7-466a-a675-f559e1226371d9bea53d-a920-4059-a31c-6bc0b6d8c4c8';
+  const CHAVE = 'amostras.rascunho.v2';
+  const TAM = { M: '40', F: '35' };
+  let banco = [], porArtigo = new Map();
+  let estoque = null;            // null = ainda não leu / falhou
+  let sel = [];
+  try { sel = JSON.parse(localStorage.getItem(CHAVE) || '[]'); } catch (e) { sel = []; }
+
+  const id = it => it.a + '|' + it.c;
+  const so = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+  const brl = v => v ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
+  // foto recém-trazida do Trade Squash: o GitHub Pages leva ~1 min para publicar,
+  // então ela é lida direto do repositório até o banco ser gerado de novo
+  const RAW = 'https://raw.githubusercontent.com/cms-representacoes/apps-oly/main/Catalogo/';
+  // a foto nova vale pelo que está na pasta Catalogo, não por memória do navegador
+  try { localStorage.removeItem('amostras.fotosTS.v1'); } catch (e) {}
+  const tsEstado = {};          // "artigo|cor" -> 'buscando' | 'nao' | texto de erro
+  const V2 = 'https://cms-representacoes.github.io/apps-oly-v2/imagens_olympikus/';   // fotos do Catálogo Digital
+  const LUPA = '<span class="lupa"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4M11 8v6M8 11h6"/></svg></span>';
+  const fotoSrc = it => it.pv ? it.pv : it.uf ? it.uf : it.f ? (it.ts ? RAW + it.f : '../Catalogo/' + (it.m ? 'mini/' : '') + it.f) : it.u ? V2 + it.u : '';
+  // em linha = a cor está na coleção 1S27 do Catálogo Digital; não pode virar amostra
+  const COL_LINHA = '1S27';
+  const emLinha = it => (it.k || []).includes(COL_LINHA);
+  const esc_ = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const tamPadrao = g => /^fem/i.test(g || '') ? TAM.F : TAM.M;   // unissex e masculino = 40
+  // tamanho pelo tipo: acessório (y "A") é U, confecção ("C") é M; calçado segue o gênero
+  const tamDe = (y, g) => y === 'A' ? 'U' : y === 'C' ? 'M' : tamPadrao(g);
+  const ROT_TIPO = { A: 'Acessório', C: 'Confecção' };
+  // pelo nome, quando nenhuma fonte disse o tipo (mesma lista do gerador do banco)
+  const PAL_CONF = ['CALCA', 'CALÇA', 'CAMISETA', 'CAMISA', 'BLUSA', 'TOP', 'SHORT', 'BERMUDA', 'JAQUETA', 'MOLETOM', 'REGATA', 'LEGGING', 'CROPPED', 'T-SHIRT', 'TSHIRT', 'POLO', 'VESTIDO', 'SAIA', 'MACAQUINHO', 'CORTA VENTO', 'AGASALHO', 'CONJUNTO'];
+  const PAL_ACC = ['MEIA', 'BONE', 'BONÉ', 'MOCHILA', 'BOLSA', 'BAG', 'VISEIRA', 'GARRAFA', 'SQUEEZE', 'MUNHEQUEIRA', 'TESTEIRA', 'LUVA', 'NECESSAIRE', 'SACOLA', 'POCHETE', 'TOALHA', 'HEADBAND', 'GORRO', 'CARTEIRA', 'TRIPACK', 'KIT MEIA'];
+  function tipoNome(nome) {
+    const n = ' ' + String(nome || '').toUpperCase() + ' ';
+    if (PAL_ACC.some(p => n.includes(' ' + p))) return 'A';
+    if (PAL_CONF.some(p => n.includes(' ' + p))) return 'C';
+    return '';
+  }
+  // cor sem tipo herda das outras cores do artigo; na falta, adivinha pelo nome
+  function completarTipos() {
+    for (const g of porArtigo.values()) {
+      const y0 = (g.cores.find(x => x.y) || {}).y || '';
+      for (const it of g.cores) if (!it.y) { const y = y0 || tipoNome(it.n || g.nome); if (y) it.y = y; }
+    }
+  }
+  const tipoDoArtigo = a => { const g = porArtigo.get(a); return g ? ((g.cores.find(x => x.y) || {}).y || tipoNome(g.nome)) : ''; };
+
+  function guardar() { try { localStorage.setItem(CHAVE, JSON.stringify(sel.map(({ pv, ...x }) => x))); } catch (e) {} }
+
+  // tamanhos já no estoque para um artigo+cor
+  function noEstoque(a, c) {
+    if (!estoque) return [];
+    return estoque.filter(e => e.artigo === a && so(e.cor) === so(c)).map(e => e.tamanho || '?');
+  }
+  const jaTem = s => noEstoque(s.a, s.c).includes(s.t);
+
+  function imgTag(it, cls) {
+    const src = fotoSrc(it);
+    if (!src) return cls === 'item' ? '<div class="ph"></div>' : semFoto(it);
+    if (!it.f) return `<img loading="lazy" alt="" src="${esc_(src)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'sem-foto',textContent:'Sem foto'}))">`;
+    const grande = '../Catalogo/' + it.f;
+    return `${it.ts && cls !== 'item' ? '<span class="ts-ok">Foto nova</span>' : ''}<img loading="lazy" alt="" src="${esc_(src)}" onerror="if(this.src.indexOf('/mini/')>-1){this.src='${esc_(grande)}'}else if(this.src.indexOf('raw.githubusercontent')<0){this.src='${esc_(RAW + it.f)}'}else{this.replaceWith(Object.assign(document.createElement('div'),{className:'sem-foto',textContent:'Sem foto'}))}">`;
+  }
+
+  // cartão sem foto: oferece a busca no Trade Squash
+  function semFoto(it) {
+    const st = tsEstado[id(it)];
+    const ico = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>';
+    if (st === 'buscando' || st === 'gravando') return `<div class="sem-foto-box">${ico}<button class="bt-ts" type="button" disabled><span class="gira"></span>${st === 'gravando' ? 'Gravando…' : 'Buscando…'}</button></div>`;
+    if (st === 'nao' || st === 'recusada') return `<div class="sem-foto-box">${ico}<span class="ts-nao">${st === 'nao' ? 'Não achei no Trade Squash' : 'Foto do Trade Squash recusada'}</span><button class="bt-ts bt-gg" type="button" data-foto="${esc_(id(it))}">Google ou arquivo</button></div>`;
+    const aviso = st ? `<span class="ts-nao">${esc_(st)}</span>` : '<span class="sem-foto">Sem foto no banco</span>';
+    return `<div class="sem-foto-box">${ico}${aviso}<button class="bt-ts" type="button" data-ts="${esc_(id(it))}">${st ? 'Tentar de novo' : 'Buscar no Trade Squash'}</button></div>`;
+  }
+
+  function buscar() {
+    const bruto = q.value.trim();
+    esc.hidden = !bruto;
+    // "artigo ou nome, cor": o que vem depois da vírgula filtra as cores
+    const vg = bruto.indexOf(',');
+    const t = (vg > -1 ? bruto.slice(0, vg) : bruto).trim();
+    const fc = vg > -1 ? so(bruto.slice(vg + 1)) : '';
+    const casaCor = it => !fc || so(it.c).includes(fc);
+    if (!t) {
+      res.innerHTML = `<div class="vazio"><b>Comece pelo artigo</b>Digite pelo menos 3 números do artigo (ex.: 43340469) ou parte do nome (ex.: trilha).<br>Para filtrar a cor, use vírgula: <b style="display:inline;font-size:inherit">trilha, crem</b></div>`;
+      return;
+    }
+    const soNum = /^\d+$/.test(t);
+    if ((soNum && t.length < 3) || (!soNum && t.length < 2)) {
+      res.innerHTML = `<div class="vazio">Continue digitando…</div>`;
+      return;
+    }
+    const nt = norm(t);
+    const artigos = [];
+    for (const [a, itens] of porArtigo) {
+      if ((soNum ? a.includes(t) : (norm(itens.nome).includes(nt) || (nt.length >= 3 && a.includes(nt)))) && itens.cores.some(casaCor)) artigos.push(a);
+    }
+    if (soNum) artigos.sort((x, y) => (y.startsWith(t) - x.startsWith(t)) || x.localeCompare(y));
+    else artigos.sort((x, y) => porArtigo.get(x).nome.localeCompare(porArtigo.get(y).nome) || x.localeCompare(y));
+
+    if (!artigos.length) {
+      // se o artigo existe e só a cor falta, o cadastro à mão já vem com ele preenchido
+      const soArt = fc ? [...porArtigo.keys()].filter(a => soNum ? a === t : a === t.toUpperCase()) : [];
+      const corDigitada = bruto.slice(vg + 1).trim();
+      const pre = soArt.length === 1 ? { a: soArt[0], n: porArtigo.get(soArt[0]).nome, c: corDigitada }
+                : fc ? { a: /^[A-Za-z0-9]{5,12}$/.test(t) && /\d/.test(t) ? t : '', n: /\d/.test(t) ? '' : t, c: corDigitada }
+                : (/^[A-Za-z0-9]{5,12}$/.test(t) && /\d/.test(t)) ? { a: t } : { n: t };
+      preManual = pre;
+      res.innerHTML = (fc
+        ? `<div class="vazio"><b>Nenhuma cor "${esc_(corDigitada)}" em "${esc_(t)}"</b>Confira a cor ou apague o que vem depois da vírgula para ver todas.`
+        : `<div class="vazio"><b>Não achei "${esc_(t)}" no nosso banco</b>Confira o artigo ou tente pelo nome do modelo.`)
+        + `<br>Se o produto não existe no cadastro, dá para lançar à mão.<br><button class="bt-man" type="button" data-manual="busca">+ Cadastrar à mão</button></div>`;
+      return;
+    }
+    const LIM = 30;
+    const marcados = new Set(sel.map(s => s.id));
+    let html = '';
+    for (const a of artigos.slice(0, LIM)) {
+      const g = porArtigo.get(a);
+      const cores = g.cores.filter(casaCor);
+      html += `<div class="grupo"><div class="grupo-cab"><span class="art">${a}</span><span class="nome">${esc_(g.nome || 'Sem nome no cadastro')}</span><span class="qtd">${fc ? `${cores.length} de ${g.cores.length}` : cores.length} ${g.cores.length === 1 ? 'cor' : 'cores'}</span><button class="outra-cor" type="button" data-outra="${esc_(a)}" title="Lançar à mão uma cor deste artigo que não está aqui">+ Cor que não está aqui</button></div><div class="cores">`;
+      for (const it of cores) {
+        const on = marcados.has(id(it));
+        const sub = [it.g, brl(it.p)].filter(Boolean).join(' · ');
+        const tams = noEstoque(it.a, it.c);
+        const bloq = emLinha(it);
+        html += `<div class="cor${on ? ' sel' : ''}${bloq ? ' bloq' : ''}" data-id="${esc_(id(it))}">
+          <div class="foto${fotoSrc(it) ? ' zoomavel' : ''}" ${fotoSrc(it) ? `data-zoom="${esc_(id(it))}" title="Ampliar"` : ''}>${imgTag(it)}${fotoSrc(it) ? LUPA : ''}</div>
+          <div class="cor-info"><span class="cor-cod">${esc_(it.c)}</span><span class="cor-sub">${esc_(sub) || '&nbsp;'}</span>
+          ${(it.k || []).length ? `<span class="cols">Coleção ${esc_(it.k.join(' · '))}</span>` : ''}
+          ${bloq ? `<span class="em-linha">Em linha · ${COL_LINHA}</span>` : ''}
+          ${tams.length ? `<span class="no-est">No estoque · ${esc_(tams.join(', '))}</span>` : ''}</div>
+          ${bloq ? `<button class="add" type="button" disabled title="Produto em linha na ${COL_LINHA}: não pode ser vendido como amostra">🔒 Não vende</button>`
+                 : `<button class="add" type="button">${on ? '✓ Adicionada' : '+ Adicionar'}</button>`}
+        </div>`;
+      }
+      html += `</div></div>`;
+    }
+    if (artigos.length > LIM) html += `<div class="vazio">Mais ${artigos.length - LIM} artigos. Digite mais para afinar a busca.</div>`;
+    res.innerHTML = html;
+  }
+
+  function desenharLista() {
+    $('#nSel').textContent = sel.length;
+    $('#salvar').disabled = !sel.length || !estoque;
+    const lista = $('#lista');
+    if (!sel.length) { lista.innerHTML = '<div class="nada">Nenhuma amostra ainda.<br>Busque um artigo e toque em <b>+ Adicionar</b> na cor.</div>'; return; }
+    lista.innerHTML = sel.map((s, i) => {
+      const linha = emLinha(s);
+      const rep = jaTem(s) || linha;
+      return `<div class="item${rep ? ' rep' : ''}" data-i="${i}">
+        ${imgTag(s, 'item')}
+        <div><div class="t1">${esc_(s.a)} · ${esc_(s.c)}${s.man ? '<span class="mn-tag">à mão</span>' : ''}</div><div class="t2">${esc_(s.n || 'Sem nome no cadastro')}${s.g ? ' · ' + esc_(s.g) : ''}</div>
+          <input type="text" data-campo="dc" placeholder="Descrição da cor (ex.: Creme Multi)" value="${esc_(s.dc || '')}">
+          <div class="campos">
+            <div class="campo"><label>Tamanho</label>${s.y ? `<div class="tam"><button type="button" class="on" disabled title="${ROT_TIPO[s.y]}: tamanho único">${ROT_TIPO[s.y]} · ${s.t}</button></div>` : `<div class="tam">
+              <button type="button" data-tam="${TAM.M}" class="${s.t === TAM.M ? 'on' : ''}">Masc 40</button>
+              <button type="button" data-tam="${TAM.F}" class="${s.t === TAM.F ? 'on' : ''}">Fem 35</button></div>`}</div>
+            <div class="campo"><label>Qtd</label><input type="number" min="1" step="1" inputmode="numeric" data-campo="qt" value="${esc_(s.qt || 1)}"></div>
+            <div class="campo"><label>Preço</label><input type="text" inputmode="decimal" data-campo="pr" value="${esc_(s.pr ?? '')}" placeholder="0,00"></div>
+          </div>
+          ${linha ? `<div class="aviso">Em linha na ${COL_LINHA}: não pode virar amostra. Não será gravada.</div>`
+                  : rep ? `<div class="aviso">Já está no estoque nesse tamanho. Não será gravada.</div>` : ''}
+        </div>
+        <button class="tirar" type="button" title="Tirar da lista" aria-label="Tirar da lista">×</button>
+      </div>`;
+    }).join('');
+  }
+
+  function alternar(idCor) {
+    const i = sel.findIndex(s => s.id === idCor);
+    if (i > -1) sel.splice(i, 1);
+    else {
+      const [a, c] = idCor.split('|');
+      const it = porArtigo.get(a).cores.find(x => x.c === c);
+      if (emLinha(it)) return;   // trava: produto em linha não vira amostra
+      sel.push({ id: idCor, a: it.a, c: it.c, n: porArtigo.get(a).nome, f: it.f, m: it.m, ts: it.ts, u: it.u, k: it.k, g: it.g || '',
+                 y: it.y || '', dc: '', t: tamDe(it.y, it.g), qt: 1, pr: it.p ? it.p.toFixed(2).replace('.', ',') : '' });
+    }
+    guardar(); desenharLista(); buscar(); msg('');
+  }
+
+  function msg(t, tipo) {
+    const m = $('#msg');
+    m.textContent = t || 'Tamanho: masculino 40, feminino 35.';
+    m.className = 'msg' + (tipo ? ' ' + tipo : '');
+  }
+
+  // ── Trade Squash: procura a foto da cor e sobe para a pasta Catalogo ──
+  // Usa a mesma ação do admin das Disponibilidades. Tenta Olympikus e, se não
+  // achar, Under Armour.
+  async function buscarTS(idCor) {
+    const [a, c] = idCor.split('|');
+    const it = porArtigo.get(a)?.cores.find(x => x.c === c); if (!it) return;
+    tsEstado[idCor] = 'buscando'; buscar();
+    const r = await previaTS(a, c);
+    if (!r.foto) { tsEstado[idCor] = r.erro ? 'Não deu para buscar: ' + r.erro : 'nao'; buscar(); return; }
+    const quer = await perguntar({
+      titulo: 'Foto do Trade Squash', imagem: r.foto,
+      texto: `Achei esta foto para ${a} · ${c}${porArtigo.get(a).nome ? ' (' + porArtigo.get(a).nome + ')' : ''}. É ela? Quer adicionar ao banco de imagens?`,
+      ok: 'Adicionar ao banco', cancelar: 'Não é essa' });
+    if (!quer) { tsEstado[idCor] = 'recusada'; buscar(); return; }
+    tsEstado[idCor] = 'gravando'; buscar();
+    try {
+      const d = await worker({ action: 'salvarImagemCatalogo', artigo: a, cor: c, base64: r.foto }, true);
+      aplicarFoto(it, d.nome, r.foto);
+    } catch (e) { tsEstado[idCor] = 'Não deu para gravar: ' + e.message; buscar(); }
+  }
+
+  // Trade Squash sem gravar e conversão de foto: ficam em foto.js (o estoque usa igual)
+  const previaTS = (a, c) => FotoAmostra.previaTS(worker, a, c);
+  const paraJpeg = src => FotoAmostra.paraJpeg(src);
+  let preManual = {};   // o que a busca sem resultado já sabe (artigo, modelo, cor)
+
+  // cartão sem foto, depois do Trade Squash: Google, arquivo, colar ou link
+  async function fotoCartao(idCor) {
+    const [a, c] = idCor.split('|');
+    const it = porArtigo.get(a)?.cores.find(x => x.c === c); if (!it) return;
+    const r = await FotoAmostra.escolher({ artigo: a, cor: c, nome: porArtigo.get(a).nome || '', worker });
+    if (!r) return;
+    tsEstado[idCor] = 'gravando'; buscar();
+    try {
+      const corpo = { action: 'salvarImagemCatalogo', artigo: a, cor: c };
+      if (r.b64) corpo.base64 = r.b64; else corpo.url = r.url;
+      aplicarFoto(it, (await worker(corpo, true)).nome, r.b64 || r.url);
+    } catch (e) { tsEstado[idCor] = 'Não deu para gravar: ' + e.message; buscar(); }
+  }
+
+  // foto nova gravada na pasta Catalogo: vale para o cartão e para a lista
+  // pv = a própria foto escolhida, mostrada até o site publicar a nova (o GitHub guarda cópia por até 5 min)
+  function aplicarFoto(it, nome, pv) {
+    const idCor = id(it);
+    if (pv) it.pv = pv;
+    delete tsEstado[idCor];
+    Object.assign(it, { f: nome, m: 0, ts: 1 });
+    for (const s of sel) if (s.id === idCor) Object.assign(s, { f: nome, m: 0, ts: 1, pv: it.pv });
+    guardar(); desenharLista(); buscar();
+  }
+
+  // ── Zoom da foto do cartão (lupa) ──
+  const zoom = $('#zoom');
+  // foto grande: a escolhida agora, a do link, a do nosso banco ou a do Catálogo Digital
+  const fotoGrande = it => it.pv || it.uf || (it.f ? (it.ts ? RAW + it.f : '../Catalogo/' + it.f) : it.u ? V2 + it.u : '');
+  function abrirZoom(idCor) {
+    const [a, c] = idCor.split('|');
+    const it = porArtigo.get(a)?.cores.find(x => x.c === c); if (!it) return;
+    const img = $('#zImg');
+    img.onerror = function () { this.onerror = null; if (it.f && !it.ts) this.src = RAW + it.f; };
+    img.src = fotoGrande(it);
+    $('#zT1').textContent = `${porArtigo.get(a).nome || 'Sem nome no cadastro'}`;
+    $('#zT2').textContent = [a, c, it.g, brl(it.p), (it.k || []).length ? 'Coleção ' + it.k.join(' · ') : ''].filter(Boolean).join(' · ');
+    zoom.classList.add('show');
+  }
+  const fecharZoom = () => { zoom.classList.remove('show'); $('#zImg').removeAttribute('src'); };
+  zoom.addEventListener('click', e => { if (e.target !== $('#zImg')) fecharZoom(); });
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && zoom.classList.contains('show')) { e.preventDefault(); e.stopImmediatePropagation(); fecharZoom(); }
+  }, true);
+
+  // ── Cadastro à mão: produto (ou cor) que não existe em nenhum cadastro ──
+  const mnEl = $('#mn'), mnCola = $('#mnCola');
+  const mn = { g: '', y: '', foto: null, salvando: false };
+  const MN_VAZIA = `<b>Cole ou arraste a foto aqui</b><span class="so-pc">Clique aqui e aperte <kbd>Ctrl</kbd> + <kbd>V</kbd></span><span class="so-cel">Toque e segure aqui e escolha Colar</span>`;
+  const artOk = a => /^[A-Z0-9]{5,12}$/.test(a) && /\d/.test(a);
+  function abrirManual(pre) {
+    $('#mnA').value = String(pre.a || '').toUpperCase();
+    $('#mnN').value = String(pre.n || '').toUpperCase();
+    $('#mnC').value = String(pre.c || '').toUpperCase();
+    $('#mnDc').value = ''; $('#mnP').value = '';
+    Object.assign(mn, { g: '', foto: null, salvando: false });
+    mnEl.querySelectorAll('#mnG button').forEach(b => b.classList.remove('on'));
+    mn.y = tipoDoArtigo(String(pre.a || '').toUpperCase()) || tipoNome(pre.n); mn.yMexido = false;
+    mnEl.querySelectorAll('#mnY button').forEach(b => b.classList.toggle('on', b.dataset.y === mn.y));
+    mnEl.querySelectorAll('input').forEach(i => i.classList.remove('ruim'));
+    mnFoto(null); mnAvisar(''); mnPe('Os campos com * são obrigatórios.');
+    mnEl.classList.add('show'); document.body.style.overflow = 'hidden';
+    setTimeout(() => ($('#mnA').value ? ($('#mnN').value ? ($('#mnC').value ? $('#mnDc') : $('#mnC')) : $('#mnN')) : $('#mnA')).focus(), 50);
+    conferirManual();
+  }
+  function fecharManual() {
+    if (mn.salvando) return;
+    mnEl.classList.remove('show'); document.body.style.overflow = '';
+  }
+  function mnPe(t, tipo) { const el = $('#mnSel'); el.textContent = t; el.className = 'sel' + (tipo ? ' ' + tipo : ''); }
+  function mnAvisar(t, erro) { $('#mnAviso').innerHTML = t ? `<div class="mn-aviso${erro ? ' erro' : ''}">${t}</div>` : ''; }
+  function mnFoto(f, info) {
+    mn.foto = f;
+    $('#mnSemFoto').hidden = !f;
+    if (!f) { mnCola.innerHTML = MN_VAZIA; return; }
+    mnCola.innerHTML = '';
+    const im = document.createElement('img'); im.alt = ''; im.referrerPolicy = 'no-referrer'; im.src = f.b64 || f.url;
+    im.onerror = () => { mnFoto(null); mnAvisar('Esse link não abriu como imagem. Copie a imagem em si ou outro link.', true); };
+    mnCola.appendChild(im);
+    mnPe(`Foto pronta${info ? ' · ' + info : ''}.`, 'ok');
+  }
+  async function mnArquivo(file) {
+    if (!file || !/^image\//.test(file.type)) { mnAvisar('Isso não é uma imagem.', true); return; }
+    const url = URL.createObjectURL(file);
+    try { const j = await paraJpeg(url); mnFoto({ b64: j.b64 }, `${j.w}×${j.h}`); mnAvisar(''); }
+    catch (e) { mnAvisar('Não consegui ler essa imagem.', true); }
+    finally { URL.revokeObjectURL(url); }
+  }
+  async function mnLink(link) {
+    link = String(link || '').trim();
+    try { const u = new URL(link); const real = u.searchParams.get('imgurl') || u.searchParams.get('mediaurl'); if (real) link = real; } catch (e) {}
+    if (!/^(https?:|data:image\/)/i.test(link)) { mnAvisar('Isso não parece uma imagem nem o link de uma.', true); return; }
+    try { const j = await paraJpeg(link); mnFoto({ b64: j.b64 }, `${j.w}×${j.h}`); }
+    catch (e) { mnFoto({ url: link }, new URL(link).hostname.replace(/^www\./, '')); }
+    mnAvisar('');
+  }
+  // avisa na hora se o artigo+cor já existe no banco (aí é pela busca) ou se está em linha
+  function conferirManual() {
+    const a = $('#mnA').value.trim().toUpperCase(), c = $('#mnC').value.trim().toUpperCase();
+    if (!a) return mnAvisar('');
+    const g = porArtigo.get(a);
+    if (g && c) {
+      const it = g.cores.find(x => so(x.c) === so(c));
+      if (it && emLinha(it)) return mnAvisar(`A cor ${esc_(it.c)} está em linha na ${COL_LINHA}: não pode virar amostra.`, true);
+      if (it) return mnAvisar(`Essa cor já existe no banco (${esc_(it.a)} · ${esc_(it.c)}). Feche e adicione pela busca.`, true);
+    }
+    if (g && !$('#mnN').value.trim()) $('#mnN').value = g.nome || '';
+    // artigo conhecido: o tipo vem dele, até a pessoa escolher outro
+    if (g && !mn.yMexido) { mn.y = tipoDoArtigo(a); mnEl.querySelectorAll('#mnY button').forEach(x => x.classList.toggle('on', x.dataset.y === mn.y)); }
+    mnAvisar(g ? `O artigo ${esc_(a)} existe no banco (${esc_(g.nome || 'sem nome')}); esta cor entra à mão.` : '');
+  }
+  ['#mnA', '#mnC'].forEach(sel_ => $(sel_).addEventListener('input', conferirManual));
+  mnEl.querySelectorAll('#mnY button').forEach(b => b.addEventListener('click', () => {
+    mn.y = b.dataset.y; mn.yMexido = true; mnEl.querySelectorAll('#mnY button').forEach(x => x.classList.toggle('on', x === b));
+  }));
+  mnEl.querySelectorAll('#mnG button').forEach(b => b.addEventListener('click', () => {
+    mn.g = b.dataset.g; mnEl.querySelectorAll('#mnG button').forEach(x => x.classList.toggle('on', x === b));
+  }));
+  $('#mnArq').addEventListener('change', e => { mnArquivo(e.target.files[0]); e.target.value = ''; });
+  $('#mnSemFoto').addEventListener('click', () => { mnFoto(null); mnPe('Os campos com * são obrigatórios.'); });
+  $('#mnTS').addEventListener('click', async () => {
+    const a = $('#mnA').value.trim().toUpperCase(), c = $('#mnC').value.trim().toUpperCase();
+    if (!artOk(a) || !c) { mnAvisar('Preencha o artigo e a cor antes de buscar no Trade Squash.', true); return; }
+    const bt = $('#mnTS'); bt.disabled = true; bt.innerHTML = '<span class="gira"></span>Buscando…';
+    const r = await previaTS(a, c);
+    bt.disabled = false; bt.textContent = 'Buscar no Trade Squash';
+    if (!r.foto) { mnAvisar(r.erro ? 'Não deu para buscar no Trade Squash: ' + esc_(r.erro) : 'Não achei no Trade Squash. Tente o Google ou escolha um arquivo.', !!r.erro); return; }
+    const quer = await perguntar({
+      titulo: 'Foto do Trade Squash', imagem: r.foto,
+      texto: `Achei esta foto para ${a} · ${c}. É ela? Quer usar no cadastro?`,
+      ok: 'Usar esta foto', cancelar: 'Não é essa' });
+    if (quer) { mnFoto({ b64: r.foto }, 'Trade Squash'); mnAvisar(''); }
+    else mnAvisar('Foto do Trade Squash recusada. Tente o Google ou escolha um arquivo.');
+  });
+  $('#mnGoogle').addEventListener('click', () => {
+    const termo = ['tênis Olympikus', $('#mnN').value, $('#mnA').value].join(' ').replace(/\s+/g, ' ').trim();
+    window.open('https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(termo), '_blank', 'noopener');
+    setTimeout(() => mnCola.focus(), 300);
+  });
+  mnEl.addEventListener('paste', e => {
+    if (!mnEl.classList.contains('show') || mn.salvando) return;
+    const dt = e.clipboardData; if (!dt) return;
+    const arq = [...dt.items].find(i => i.kind === 'file' && i.type.startsWith('image/'));
+    if (arq) { e.preventDefault(); mnArquivo(arq.getAsFile()); return; }
+    if (e.target !== mnCola) return;   // nos campos de texto, colar é texto
+    e.preventDefault();
+    const html = dt.getData('text/html'); const m = html && html.match(/<img[^>]+src="([^"]+)"/i);
+    const txt = (m && m[1].replace(/&amp;/g, '&')) || dt.getData('text/plain');
+    if (txt) mnLink(txt);
+  });
+  mnCola.addEventListener('beforeinput', e => { if (e.inputType !== 'insertFromPaste') e.preventDefault(); });
+  mnCola.addEventListener('drop', e => {
+    e.preventDefault(); mnCola.classList.remove('arrasta');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) return mnArquivo(f);
+    const u = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+    if (u) mnLink(u);
+  });
+  mnCola.addEventListener('dragover', e => { e.preventDefault(); mnCola.classList.add('arrasta'); });
+  mnCola.addEventListener('dragleave', () => mnCola.classList.remove('arrasta'));
+  $('#mnX').addEventListener('click', fecharManual);
+  $('#mnN2').addEventListener('click', fecharManual);
+  mnEl.addEventListener('click', e => { if (e.target === mnEl) fecharManual(); });
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && mnEl.classList.contains('show') && !document.querySelector('.pq-fundo')) { e.preventDefault(); e.stopImmediatePropagation(); fecharManual(); }
+  }, true);
+
+  $('#mnOk').addEventListener('click', async () => {
+    if (mn.salvando) return;
+    const a = $('#mnA').value.trim().toUpperCase(), c = $('#mnC').value.trim().toUpperCase(), n = $('#mnN').value.trim().toUpperCase();
+    const faltam = [];
+    $('#mnA').classList.toggle('ruim', !artOk(a)); if (!artOk(a)) faltam.push('artigo (5 a 12 letras/números)');
+    $('#mnC').classList.toggle('ruim', !c); if (!c) faltam.push('cor');
+    $('#mnN').classList.toggle('ruim', !n); if (!n) faltam.push('modelo');
+    if (!mn.g) faltam.push('gênero');
+    if (faltam.length) { mnPe('Falta: ' + faltam.join(', ') + '.', 'erro'); return; }
+    const g = porArtigo.get(a);
+    const ex = g && g.cores.find(x => so(x.c) === so(c));
+    if (ex) { conferirManual(); mnPe('Essa cor já existe no banco.', 'erro'); return; }
+    const idCor = a + '|' + c;
+    if (sel.some(x => x.id === idCor)) { mnPe('Essa cor já está na lista para cadastrar.', 'erro'); return; }
+    let f = '';
+    if (mn.foto) {
+      mn.salvando = true; $('#mnOk').disabled = true; $('#mnOk').textContent = 'Gravando a foto…'; mnPe('Gravando a foto no banco de imagens…');
+      try {
+        const corpo = { action: 'salvarImagemCatalogo', artigo: a, cor: c };
+        if (mn.foto.b64) corpo.base64 = mn.foto.b64; else corpo.url = mn.foto.url;
+        f = (await worker(corpo, true)).nome;
+      } catch (e) {
+        mn.salvando = false; $('#mnOk').disabled = false; $('#mnOk').textContent = 'Adicionar à lista';
+        mnPe('Não deu para gravar a foto: ' + e.message + ' Remova a foto ou tente outra.', 'erro'); return;
+      }
+      mn.salvando = false; $('#mnOk').disabled = false; $('#mnOk').textContent = 'Adicionar à lista';
+    }
+    sel.push({ id: idCor, a, c, n, f, m: 0, ts: f ? 1 : 0, g: mn.g, man: 1, y: mn.y || '',
+               dc: $('#mnDc').value.trim(), t: tamDe(mn.y, mn.g), qt: 1, pr: $('#mnP').value.trim() });
+    guardar(); fecharManual(); desenharLista(); buscar();
+    msg(`${a} · ${c} lançada à mão. Confira tamanho e quantidade e salve no estoque.`, 'ok');
+  });
+
+  res.addEventListener('click', e => {
+    const t = e.target.closest('[data-ts]'); if (t) return buscarTS(t.dataset.ts);
+    const z = e.target.closest('[data-zoom]'); if (z) return abrirZoom(z.dataset.zoom);
+    const g = e.target.closest('[data-foto]'); if (g) return fotoCartao(g.dataset.foto);
+    if (e.target.closest('[data-manual]')) return abrirManual(preManual);
+    const oc = e.target.closest('[data-outra]');
+    if (oc) return abrirManual({ a: oc.dataset.outra, n: porArtigo.get(oc.dataset.outra)?.nome || '' });
+    const b = e.target.closest('.add'); if (!b) return;
+    alternar(b.closest('.cor').dataset.id);
+  });
+  $('#lista').addEventListener('click', e => {
+    const item = e.target.closest('.item'); if (!item) return;
+    const i = +item.dataset.i;
+    if (e.target.closest('.tirar')) { sel.splice(i, 1); guardar(); desenharLista(); buscar(); return; }
+    const bt = e.target.closest('[data-tam]');
+    if (bt) { sel[i].t = bt.dataset.tam; guardar(); desenharLista(); }
+  });
+  $('#lista').addEventListener('input', e => {
+    const c = e.target.dataset.campo; if (!c) return;
+    sel[+e.target.closest('.item').dataset.i][c] = e.target.value; guardar();
+  });
+  $('#limpar').addEventListener('click', async () => {
+    if (!sel.length) return;
+    const ok = await perguntar({
+      titulo: 'Limpar a lista?', texto: 'As amostras saem só desta lista de cadastro. O que já está no estoque continua lá.',
+      detalhe: `${sel.length} amostra${sel.length > 1 ? 's' : ''} na lista`, ok: 'Limpar lista', perigo: true });
+    if (!ok) return;
+    sel = []; guardar(); desenharLista(); buscar(); msg('');
+  });
+
+  async function worker(body, admin) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (admin) headers['X-Admin-Token'] = ADMIN_TOKEN;
+    const r = await fetch(WORKER_URL, { method: 'PATCH', headers, body: JSON.stringify(body) });
+    const d = await r.json().catch(() => null);
+    if (!r.ok || d == null || d.success === false) throw new Error((d && d.error) || ('HTTP ' + r.status));
+    return d;
+  }
+
+  // cor que está no estoque mas não no banco (lançada à mão) vira cartão na busca
+  function juntarDoEstoque() {
+    if (!banco.length || !estoque) return;
+    for (const e of estoque) {
+      const a = String(e.artigo || '').toUpperCase(), c = String(e.cor || '').toUpperCase();
+      if (!a || !c) continue;
+      let g = porArtigo.get(a);
+      if (g && g.cores.some(x => so(x.c) === so(c))) continue;
+      const it = { a, c, n: e.descricao || '', g: e.genero || '', p: e.preco || 0, man: 1 };
+      const foto = String(e.foto || '');
+      if (/^https?:/.test(foto)) it.uf = foto; else if (foto) Object.assign(it, { f: foto, m: 0, ts: 1 });
+      banco.push(it);
+      if (!g) { g = { nome: it.n, cores: [] }; porArtigo.set(a, g); }
+      if (!g.nome && it.n) g.nome = it.n;
+      g.cores.push(it);
+    }
+  }
+
+  // ── Catálogo Digital ao vivo: coleções e cores novas sem precisar rodar o gerador ──
+  const V2_BASE = 'https://cms-representacoes.github.io/apps-oly-v2/';
+  let catalogoVivo = false;
+  // mesma regra do gerador: ACC/MEIA acessório, V&A confecção, FTW/CHI calçado
+  function tipoCat(cat, tam) {
+    cat = String(cat || '').toUpperCase(); tam = String(tam || '').toUpperCase();
+    if (cat === 'ACC' || cat === 'MEIA') return 'A';
+    if (cat === 'V&A') return 'C';
+    if (cat === 'FTW' || cat === 'CHI') return '';
+    if (tam === 'U') return 'A';
+    if (tam.includes('P') && tam.includes('M')) return 'C';
+    return '';
+  }
+  async function lerCatalogoVivo() {
+    if (!window.XLSX) return;
+    const vivo = new Map();
+    for (const arq of ['Produtos.xlsx', 'produtos_ua.xlsx']) {
+      const r = await fetch(V2_BASE + arq + '?t=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) throw new Error(arq + ' ' + r.status);
+      const wb = XLSX.read(await r.arrayBuffer(), { type: 'array' });
+      for (const aba of wb.SheetNames) {
+        for (const linha of XLSX.utils.sheet_to_json(wb.Sheets[aba], { defval: '' })) {
+          const v = {}; for (const k in linha) v[k.trim().toUpperCase()] = linha[k];
+          const a = String(v['CODIGO'] ?? '').trim().toUpperCase().replace(/\.0$/, '');
+          const c = String(v['COR'] ?? '').trim().toUpperCase();
+          if (!/^[A-Z0-9]{5,12}$/.test(a) || !/\d/.test(a) || !c) continue;
+          const key = a + '|' + so(c);
+          let e = vivo.get(key);
+          if (!e) { e = { a, c, n: String(v['PRODUTO'] || '').trim().toUpperCase(), g: String(v['GÊNERO'] || '').trim(), p: parseFloat(v['PREÇO']) || 0, img: String(v['IMAGEM'] || '').trim(), y: tipoCat(v['CATEGORIA'], v['TAM']), k: new Set() }; vivo.set(key, e); }
+          const col = String(v['COLEÇÃO'] || '').trim().toUpperCase();
+          if (/^[12]S\d\d$/.test(col)) e.k.add(col);
+        }
+      }
+    }
+    if (!vivo.size) return;
+    // a coleção de cada cor passa a ser a do catálogo de agora
+    for (const it of banco) {
+      const key = it.a + '|' + so(it.c), e = vivo.get(key);
+      if (e) { it.k = [...e.k].sort(); if (!it.n && e.n) it.n = e.n; if (!it.y && e.y) it.y = e.y; vivo.delete(key); }
+      else delete it.k;
+    }
+    // cores que entraram no catálogo depois do banco gerado
+    for (const e of vivo.values()) {
+      const it = { a: e.a, c: e.c, n: e.n, g: e.g ? e.g[0].toUpperCase() + e.g.slice(1).toLowerCase() : '', p: e.p, k: [...e.k].sort() };
+      if (e.y) it.y = e.y;
+      if (e.img) it.u = e.img + '.jpg';
+      banco.push(it);
+      let g = porArtigo.get(e.a);
+      if (!g) { g = { nome: e.n, cores: [] }; porArtigo.set(e.a, g); }
+      if (!g.nome && e.n) g.nome = e.n;
+      g.cores.push(it);
+    }
+    for (const g of porArtigo.values()) if (!g.nome) g.nome = (g.cores.find(x => x.n) || {}).n || '';
+    completarTipos();
+    for (const s of sel) { const it = porArtigo.get(s.a)?.cores.find(x => x.c === s.c); if (it) s.k = it.k; }
+    catalogoVivo = true;
+    dica.textContent = `${porArtigo.size.toLocaleString('pt-BR')} artigos e ${banco.length.toLocaleString('pt-BR')} cores no banco · Catálogo Digital lido agora. Vírgula filtra a cor; Esc apaga a busca.`;
+    desenharLista(); buscar();
+  }
+
+  async function lerEstoque() {
+    const est = $('#estado');
+    try {
+      const d = await worker({ action: 'getAmostras' });
+      if (!Array.isArray(d)) throw new Error('o Worker ainda não conhece o estoque de amostras');
+      estoque = d;
+      juntarDoEstoque();
+      const pares = d.reduce((s, x) => s + (x.quantidade || 1), 0);
+      est.textContent = `Estoque de amostras: ${d.length} ${d.length === 1 ? 'item' : 'itens'}, ${pares} ${pares === 1 ? 'par' : 'pares'}.`;
+    } catch (e) {
+      estoque = null;
+      est.textContent = 'Não consegui ler o estoque de amostras (' + e.message + '). Sem ele não dá para salvar.';
+    }
+    desenharLista(); buscar();
+  }
+
+  $('#salvar').addEventListener('click', async () => {
+    const enviar = sel.filter(s => !jaTem(s) && !emLinha(s));
+    if (!enviar.length) { msg('Todas da lista já estão no estoque. Nada para gravar.', 'erro'); return; }
+    const b = $('#salvar'); b.disabled = true; b.textContent = 'Salvando…'; msg('');
+    try {
+      const r = await worker({ action: 'addAmostras', data: enviar.map(s => ({
+        artigo: s.a, descricao: s.n, cor: s.c, descricaoCor: (s.dc || '').trim(), genero: s.g,
+        tamanho: s.t, quantidade: Math.max(1, parseInt(s.qt, 10) || 1),
+        preco: parseFloat(String(s.pr || '').replace(/\./g, '').replace(',', '.')) || 0, foto: s.f || (s.u ? V2 + s.u : '')
+      })) }, true);
+      const gravadas = new Set((r.adicionadas || []).map(x => x.artigo + '|' + so(x.cor) + '|' + x.tamanho));
+      sel = sel.filter(s => !gravadas.has(s.a + '|' + so(s.c) + '|' + s.t));
+      guardar();
+      await lerEstoque();
+      const nRep = (r.repetidas || []).length;
+      msg(`${gravadas.size} ${gravadas.size === 1 ? 'amostra gravada' : 'amostras gravadas'} no estoque.` +
+          (nRep ? ` ${nRep} já estava${nRep === 1 ? '' : 'm'} lá e ficou de fora.` : ''), nRep ? 'erro' : 'ok');
+    } catch (e) {
+      msg('Não deu para salvar: ' + e.message, 'erro');
+    } finally {
+      b.textContent = 'Salvar no estoque'; desenharLista();
+    }
+  });
+
+  let tm;
+  q.addEventListener('input', () => { clearTimeout(tm); tm = setTimeout(buscar, 120); });
+  const limparBusca = () => { q.value = ''; buscar(); q.focus(); };
+  // Esc apaga o que foi digitado, de qualquer lugar da tela
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.preventDefault(); limparBusca(); }
+  });
+  esc.addEventListener('click', limparBusca);
+
+  // Cor sem foto no banco.json: confere no repositório se alguém já trouxe a foto
+  // (Trade Squash, Google ou upload) depois que o banco foi gerado. São poucas.
+  function procurarFotosNovas() {
+    for (const it of banco) {
+      if (it.f || it.u || it.uf) continue;
+      const nome = `${it.a}_${String(it.c).toUpperCase().replace(/[\/\-\s.]+/g, '_')}.jpg`;
+      const img = new Image();
+      img.onload = () => {
+        Object.assign(it, { f: nome, m: 0, ts: 1 });
+        for (const s of sel) if (s.id === id(it)) Object.assign(s, { f: nome, m: 0, ts: 1 });
+        desenharLista(); buscar();
+      };
+      img.src = RAW + nome + '?v=' + Date.now();   // sem cache: foto apagada não volta
+    }
+  }
+
+  fetch('banco.json', { cache: 'no-cache' }).then(r => r.json()).then(d => {
+    banco = d;
+    for (const it of banco) {
+      if (!porArtigo.has(it.a)) porArtigo.set(it.a, { nome: '', cores: [] });
+      const g = porArtigo.get(it.a);
+      g.cores.push(it);
+      if (!g.nome && it.n) g.nome = it.n;
+    }
+    completarTipos();
+    // rascunho guardado antes: atualiza coleção e foto pelo banco de agora
+    for (const s of sel) {
+      const it = porArtigo.get(s.a)?.cores.find(x => x.c === s.c);
+      if (it) { Object.assign(s, { k: it.k, u: it.u, f: s.f || it.f, m: s.m || it.m }); if (it.y && !s.y) Object.assign(s, { y: it.y, t: tamDe(it.y, s.g) }); }
+    }
+    dica.textContent = `${porArtigo.size.toLocaleString('pt-BR')} artigos e ${banco.length.toLocaleString('pt-BR')} cores no banco. Vírgula filtra a cor; Esc apaga a busca.`;
+    desenharLista(); buscar(); q.focus();
+    lerEstoque();
+    procurarFotosNovas();
+    lerCatalogoVivo().catch(e => { dica.textContent += ` (Catálogo Digital não abriu agora: ${e.message}; a trava usa o banco gerado.)`; });
+  }).catch(() => { dica.textContent = 'Não consegui carregar o banco de produtos.'; });
+})();
+</script>
+</body>
+</html>

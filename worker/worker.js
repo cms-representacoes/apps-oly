@@ -54,7 +54,14 @@ export default {
       "uacFichas",
       "tsDiagnostico",
       "tsInspecionarLogin",
-      "saveExclusivos"
+      "saveExclusivos",
+      "addAmostras",
+      "updateAmostra",
+      "removeAmostra",
+      "tsPreviaImagem",
+      "venderAmostra",
+      "desfazerVendaAmostra",
+      "salvarImagemCatalogo"
     ]);
 
     function requireAdmin(action) {
@@ -112,7 +119,12 @@ export default {
     const GITHUB_CAMPANHAS     = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/campanhas.json`;
     // Cancelamentos de lote da DISPO: o que a fábrica tirou, e quando
     const GITHUB_CANC_DISPO    = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/cancelamentos-dispo.json`;
-    const GITHUB_PREPOSTOS     = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/prepostos.json`;
+    // Estoque de amostras fora de linha (Catálogo de Amostras)
+    const GITHUB_AMOSTRAS      = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/amostras/estoque.json`;
+    const GITHUB_AMOSTRAS_VENDAS = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/amostras/vendas.json`;
+    // cores em linha (1S27 do Catálogo Digital), geradas pelo amostras/gerar_banco.py
+    const GITHUB_AMOSTRAS_LINHA = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/amostras/em-linha.json`;
+    const GITHUB_PREPOSTOS     =`https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/prepostos.json`;
     // Histórico de pedidos do Catálogo Digital — 1 arquivo por comissionista
     const GITHUB_CAT_HIST_BASE = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/catalogo-historico`;
     // Rascunhos de pedido do Catálogo Digital — 1 arquivo por comissionista
@@ -341,7 +353,24 @@ export default {
 
     // Passos 1-2 e 4-6 do commit via Git Data API, reutilizável tanto para texto quanto para
     // binário — recebe um blobSha já pronto em vez de criar o blob internamente.
+    // O GitHub às vezes recusa o último passo (atualizar a ponta do branch) com
+    // 500, ou com 409/422 quando outro commit entrou no meio (os robôs gravam o
+    // dia todo). Nesses casos refaz a partir da ponta nova, até 3 vezes.
     async function gitCommitBlob(owner, repo, branch, path, blobSha, message) {
+      let ultimo;
+      for (let tentativa = 0; tentativa < 3; tentativa++) {
+        try {
+          return await gitCommitBlobUmaVez(owner, repo, branch, path, blobSha, message);
+        } catch (e) {
+          ultimo = e;
+          if (!e || !e.repetir) throw e;
+          await new Promise(r => setTimeout(r, 500 * (tentativa + 1)));
+        }
+      }
+      throw ultimo;
+    }
+
+    async function gitCommitBlobUmaVez(owner, repo, branch, path, blobSha, message) {
       const cleanBranch = String(branch || "main").trim();
       const refUrl = `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(cleanBranch)}`;
       const refRes = await fetch(refUrl, { headers: githubHeaders });
@@ -365,7 +394,11 @@ export default {
         headers: { ...githubHeaders, "Content-Type": "application/json" },
         body: JSON.stringify({ message, tree: treeSha, parents: [parentCommitSha] })
       });
-      if (!newCommitRes.ok) throw new Error(`Git commit (create) falhou (${newCommitRes.status}): ${await newCommitRes.text()}`);
+      if (!newCommitRes.ok) {
+        const erro = new Error(`Git commit (create) falhou (${newCommitRes.status}): ${await newCommitRes.text()}`);
+        erro.repetir = newCommitRes.status >= 500;
+        throw erro;
+      }
       const newCommitSha = (await newCommitRes.json()).sha;
 
       const updateRefRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${encodeURIComponent(cleanBranch)}`, {
@@ -373,8 +406,52 @@ export default {
         headers: { ...githubHeaders, "Content-Type": "application/json" },
         body: JSON.stringify({ sha: newCommitSha })
       });
-      if (!updateRefRes.ok) throw new Error(`Git ref (update) falhou (${updateRefRes.status}): ${await updateRefRes.text()}`);
+      if (!updateRefRes.ok) {
+        const erro = new Error(`Git ref (update) falhou (${updateRefRes.status}): ${await updateRefRes.text()}`);
+        erro.repetir = updateRefRes.status === 409 || updateRefRes.status === 422 || updateRefRes.status >= 500;
+        throw erro;
+      }
       return newCommitSha;
+    }
+
+    // Vários arquivos num commit só: ou entram todos, ou nenhum.
+    // arquivos: [{ path, conteudo }] (conteudo já em texto). Repete como o gitCommitBlob.
+    async function gitCommitArquivos(owner, repo, branch, arquivos, message) {
+      const blobs = [];
+      for (const a of arquivos) blobs.push({ path: a.path, sha: await gitCreateBlob(owner, repo, a.conteudo) });
+      const cleanBranch = String(branch || "main").trim();
+      let ultimo;
+      for (let tentativa = 0; tentativa < 3; tentativa++) {
+        try {
+          const refRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(cleanBranch)}`, { headers: githubHeaders });
+          if (!refRes.ok) throw new Error(`Git ref falhou (${refRes.status})`);
+          const pai = (await refRes.json()).object.sha;
+          const cRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/commits/${pai}`, { headers: githubHeaders });
+          if (!cRes.ok) throw new Error(`Git commit (get) falhou (${cRes.status})`);
+          const base = (await cRes.json()).tree.sha;
+          const tRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees`, {
+            method: "POST", headers: { ...githubHeaders, "Content-Type": "application/json" },
+            body: JSON.stringify({ base_tree: base, tree: blobs.map(b => ({ path: b.path, mode: "100644", type: "blob", sha: b.sha })) })
+          });
+          if (!tRes.ok) throw new Error(`Git tree falhou (${tRes.status})`);
+          const nRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/commits`, {
+            method: "POST", headers: { ...githubHeaders, "Content-Type": "application/json" },
+            body: JSON.stringify({ message, tree: (await tRes.json()).sha, parents: [pai] })
+          });
+          if (!nRes.ok) { const e = new Error(`Git commit (create) falhou (${nRes.status})`); e.repetir = nRes.status >= 500; throw e; }
+          const novo = (await nRes.json()).sha;
+          const uRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${encodeURIComponent(cleanBranch)}`, {
+            method: "PATCH", headers: { ...githubHeaders, "Content-Type": "application/json" }, body: JSON.stringify({ sha: novo })
+          });
+          if (!uRes.ok) { const e = new Error(`Git ref (update) falhou (${uRes.status})`); e.repetir = uRes.status === 409 || uRes.status === 422 || uRes.status >= 500; throw e; }
+          return novo;
+        } catch (e) {
+          ultimo = e;
+          if (!e || !e.repetir) throw e;
+          await new Promise(r => setTimeout(r, 500 * (tentativa + 1)));
+        }
+      }
+      throw ultimo;
     }
 
     async function gitCommitFile(owner, repo, branch, path, contentStr, message) {
@@ -1511,6 +1588,248 @@ export default {
           const { sha } = await getFile(GITHUB_CAMPANHAS);
           const lista = Array.isArray(body.data) ? body.data : [];
           await saveFile(GITHUB_CAMPANHAS, lista, sha, "update campanhas");
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // ── TRADE SQUASH: só mostra a foto, não grava ─────────────────────
+        // { action:"tsPreviaImagem", marca:"oly"|"ua", artigo, cor }
+        //   → { success, achou:true, base64:"data:image/jpeg;base64,..." } ou { success, achou:false, motivo }
+        // As Amostras mostram a foto e perguntam antes; quem grava depois é o
+        // salvarImagemCatalogo (com o base64 que veio daqui).
+        if (body.action === "tsPreviaImagem") {
+          const tenant = TS_TENANTS[String(body.marca || "oly").toLowerCase()];
+          const artigo = String(body.artigo || "").trim();
+          const cor = String(body.cor || "").trim();
+          if (!tenant || !artigo || !cor) {
+            return new Response(JSON.stringify({ success: false, error: "Marca, artigo ou cor inválido." }), { status: 400, headers: corsHeaders });
+          }
+          const nada = motivo => new Response(JSON.stringify({ success: true, achou: false, motivo }), { status: 200, headers: corsHeaders });
+          for (let tentativa = 0; tentativa < 2; tentativa++) {
+            try {
+              const sessao = await tsSessao(tenant, tentativa > 0);
+              const matches = await tsBuscar(sessao, artigo, cor);
+              if (!matches.length || !matches[0].redirect) return nada("Nenhum produto casou com artigo + cor");
+              const urlImg = await tsUrlImagem(sessao, matches[0].redirect, artigo);
+              if (!urlImg) return nada("Produto sem imagem no Trade Squash");
+              const ir = await fetch(urlImg, { headers: { "User-Agent": TS_UA_HEADER, Referer: sessao.showcase } });
+              const tipo = ir.headers.get("Content-Type") || "";
+              if (!ir.ok || !/image/i.test(tipo)) return nada(`Download falhou (${ir.status})`);
+              const buf = await ir.arrayBuffer();
+              if (buf.byteLength < 2048) return nada("Imagem suspeita (menos de 2 KB)");
+              return new Response(JSON.stringify({
+                success: true, achou: true, base64: `data:${tipo.split(";")[0]};base64,${tsBase64(buf)}`
+              }), { status: 200, headers: corsHeaders });
+            } catch (e) {
+              const msg = String((e && e.message) || e);
+              if (msg === "SESSAO_EXPIRADA" && tentativa === 0) { globalThis.__TS_SESSAO = null; continue; }
+              return new Response(JSON.stringify({ success: false, error: "Trade Squash: " + msg }), { status: 200, headers: corsHeaders });
+            }
+          }
+        }
+
+        // { action:"salvarImagemCatalogo", artigo, cor, url? , base64? }
+        // Baixa a imagem (url) ou recebe o arquivo (base64, para o upload) e grava
+        // em Catalogo/<artigo>_<cor>.jpg, o mesmo nome que as outras telas leem.
+        if (body.action === "salvarImagemCatalogo") {
+          const artigo = String(body.artigo || "").trim();
+          const cor = String(body.cor || "").trim();
+          if (!artigo || !cor) {
+            return new Response(JSON.stringify({ success: false, error: "Artigo ou cor vazio." }), { status: 400, headers: corsHeaders });
+          }
+          let b64 = "";
+          if (body.base64) {
+            b64 = String(body.base64).replace(/^data:[^,]*,/, "");
+          } else if (/^https?:\/\//i.test(String(body.url || ""))) {
+            const ir = await fetch(String(body.url), {
+              headers: { "User-Agent": TS_UA_HEADER, "Accept": "image/avif,image/webp,image/*,*/*;q=0.8" },
+              redirect: "follow"
+            });
+            if (!ir.ok) {
+              return new Response(JSON.stringify({ success: false, error: `O site da foto respondeu ${ir.status}. Escolha outra.` }),
+                { status: 200, headers: corsHeaders });
+            }
+            const tipo = ir.headers.get("Content-Type") || "";
+            if (!/image/i.test(tipo)) {
+              return new Response(JSON.stringify({ success: false, error: "O link não é uma imagem. Escolha outra." }),
+                { status: 200, headers: corsHeaders });
+            }
+            b64 = tsBase64(await ir.arrayBuffer());
+          } else {
+            return new Response(JSON.stringify({ success: false, error: "Falta a imagem (url ou arquivo)." }), { status: 400, headers: corsHeaders });
+          }
+          const bytes = Math.floor(b64.length * 3 / 4);
+          if (bytes < 2048) {
+            return new Response(JSON.stringify({ success: false, error: "Imagem pequena demais (menos de 2 KB)." }), { status: 200, headers: corsHeaders });
+          }
+          if (bytes > 8 * 1024 * 1024) {
+            return new Response(JSON.stringify({ success: false, error: "Imagem grande demais (mais de 8 MB)." }), { status: 200, headers: corsHeaders });
+          }
+          const nome = tsNomeArquivo(artigo, cor);
+          const blobSha = await gitCreateBlobFromBase64(env.GITHUB_OWNER, env.GITHUB_REPO, b64);
+          await gitCommitBlob(env.GITHUB_OWNER, env.GITHUB_REPO, env.GITHUB_BRANCH || "main", `Catalogo/${nome}`, blobSha,
+            `amostras: imagem ${body.base64 ? "enviada" : "da web"} — ${nome}`);
+          return new Response(JSON.stringify({ success: true, nome }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"getAmostras" → estoque de amostras fora de linha
+        // (data/amostras/estoque.json). Público: só leitura.
+        if (body.action === "getAmostras") {
+          const { content } = await getFile(GITHUB_AMOSTRAS);
+          const lista = Array.isArray(content) ? content : [];
+          return new Response(JSON.stringify(lista), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"addAmostras" → acrescenta amostras ao estoque
+        // (write, exige admin). Lê o arquivo na hora e recusa a que já existe
+        // com o mesmo artigo + cor + tamanho, para duas telas abertas não
+        // gravarem a mesma amostra duas vezes. Devolve o que entrou e o que
+        // ficou de fora por já estar lá.
+        if (body.action === "addAmostras" && Array.isArray(body.data)) {
+          const { content, sha } = await getFile(GITHUB_AMOSTRAS);
+          const lista = Array.isArray(content) ? content : [];
+          const chaveAm = a => [a.artigo, a.cor, a.tamanho]
+            .map(v => String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, "")).join("|");
+          const existentes = new Set(lista.map(chaveAm));
+          // trava: cor em linha não vira amostra (sem a lista, segue a tela)
+          const soAm = v => String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+          let linha = new Set();
+          try {
+            const { content: lc } = await getFile(GITHUB_AMOSTRAS_LINHA);
+            if (lc && Array.isArray(lc.cores)) linha = new Set(lc.cores);
+          } catch (e) { /* lista indisponível: não trava aqui */ }
+          const agora = new Date().toISOString();
+          const adicionadas = [], repetidas = [], emLinha = [];
+          for (const a of body.data) {
+            if (!a || !a.artigo || !a.cor) continue;
+            if (linha.has(soAm(a.artigo) + "|" + soAm(a.cor))) { emLinha.push(a); continue; }
+            const k = chaveAm(a);
+            if (existentes.has(k)) { repetidas.push(a); continue; }
+            existentes.add(k);
+            adicionadas.push({
+              id: crypto.randomUUID(),
+              artigo: String(a.artigo).trim(),
+              descricao: String(a.descricao || "").trim(),
+              cor: String(a.cor).trim().toUpperCase(),
+              descricaoCor: String(a.descricaoCor || "").trim(),
+              genero: String(a.genero || "").trim(),
+              tamanho: String(a.tamanho || "").trim(),
+              quantidade: Math.max(1, parseInt(a.quantidade, 10) || 1),
+              preco: Number(a.preco) || 0,
+              foto: String(a.foto || "").trim(),
+              cadastradoEm: agora
+            });
+          }
+          if (adicionadas.length) {
+            await saveFile(GITHUB_AMOSTRAS, lista.concat(adicionadas), sha,
+              `amostras: +${adicionadas.length} no estoque`);
+          }
+          return new Response(JSON.stringify({ success: true, adicionadas, repetidas, emLinha }),
+            { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"updateAmostra" → ajusta tamanho, quantidade, preço,
+        // descrição da cor e/ou foto de
+        // uma amostra pelo id (write, exige admin). Recusa trocar para um
+        // tamanho que já existe no mesmo artigo + cor.
+        if (body.action === "updateAmostra" && body.id) {
+          const { content, sha } = await getFile(GITHUB_AMOSTRAS);
+          const lista = Array.isArray(content) ? content : [];
+          const am = lista.find(a => a.id === body.id);
+          if (!am) return new Response(JSON.stringify({ success: false, error: "Amostra não encontrada. Atualize a tela." }), { status: 404, headers: corsHeaders });
+          const so = v => String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+          if (body.tamanho !== undefined) {
+            const tam = String(body.tamanho).trim();
+            const outra = lista.find(a => a.id !== am.id && a.artigo === am.artigo && so(a.cor) === so(am.cor) && so(a.tamanho) === so(tam));
+            if (outra) return new Response(JSON.stringify({ success: false, error: `Já existe ${am.descricao} ${am.cor} no tamanho ${tam}.` }), { status: 409, headers: corsHeaders });
+            am.tamanho = tam;
+          }
+          if (body.quantidade !== undefined) am.quantidade = Math.max(1, parseInt(body.quantidade, 10) || 1);
+          if (body.preco !== undefined) am.preco = Math.max(0, Number(body.preco) || 0);
+          if (body.descricaoCor !== undefined) am.descricaoCor = String(body.descricaoCor || "").trim();
+          if (body.foto !== undefined) am.foto = String(body.foto || "").trim();
+          am.alteradoEm = new Date().toISOString();
+          await saveFile(GITHUB_AMOSTRAS, lista, sha, `amostras: ajuste ${am.artigo} ${am.cor}`);
+          return new Response(JSON.stringify({ success: true, amostra: am }), { status: 200, headers: corsHeaders });
+        }
+
+        // ── VENDAS DE AMOSTRAS ────────────────────────────────────────────
+        // getVendasAmostras (público): data/amostras/vendas.json
+        if (body.action === "getVendasAmostras") {
+          const { content } = await getFile(GITHUB_AMOSTRAS_VENDAS);
+          return new Response(JSON.stringify(Array.isArray(content) ? content : []), { status: 200, headers: corsHeaders });
+        }
+
+        // venderAmostra { id, quantidade, comprador, pagamento:"pix"|"dinheiro"|"cartao", valor }
+        // Baixa do estoque (ou tira, se vendeu tudo) e registra a venda no MESMO commit.
+        if (body.action === "venderAmostra" && body.id) {
+          const PAGTOS = ["pix", "dinheiro", "cartao"];
+          const comprador = String(body.comprador || "").trim();
+          const pagamento = String(body.pagamento || "").toLowerCase();
+          if (!comprador || !PAGTOS.includes(pagamento)) {
+            return new Response(JSON.stringify({ success: false, error: "Falta o comprador ou a forma de pagamento." }), { status: 400, headers: corsHeaders });
+          }
+          const { content: ce } = await getFile(GITHUB_AMOSTRAS);
+          const estoque = Array.isArray(ce) ? ce : [];
+          const am = estoque.find(a => a.id === body.id);
+          if (!am) return new Response(JSON.stringify({ success: false, error: "Essa amostra não está mais no estoque. Atualize a tela." }), { status: 404, headers: corsHeaders });
+          const tem = Math.max(1, parseInt(am.quantidade, 10) || 1);
+          const qtd = Math.max(1, parseInt(body.quantidade, 10) || 1);
+          if (qtd > tem) return new Response(JSON.stringify({ success: false, error: `Só tem ${tem} par(es) dessa amostra.` }), { status: 409, headers: corsHeaders });
+          const valor = Math.max(0, Math.round((Number(body.valor) || 0) * 100) / 100);
+          const { content: cv } = await getFile(GITHUB_AMOSTRAS_VENDAS);
+          const vendas = Array.isArray(cv) ? cv : [];
+          const venda = {
+            id: crypto.randomUUID(), amostraId: am.id,
+            artigo: am.artigo, descricao: am.descricao, cor: am.cor, descricaoCor: am.descricaoCor || "",
+            genero: am.genero || "", tamanho: am.tamanho, foto: am.foto || "",
+            quantidade: qtd, precoUnit: Number(am.preco) || 0, valor,
+            comprador, pagamento, vendidoEm: new Date().toISOString()
+          };
+          vendas.push(venda);
+          const saiu = qtd >= tem;
+          const novoEstoque = saiu ? estoque.filter(a => a.id !== am.id)
+                                   : estoque.map(a => a.id === am.id ? { ...a, quantidade: tem - qtd, alteradoEm: venda.vendidoEm } : a);
+          const { path: pEst } = parseRepoUrl(GITHUB_AMOSTRAS), { path: pVen } = parseRepoUrl(GITHUB_AMOSTRAS_VENDAS);
+          await gitCommitArquivos(env.GITHUB_OWNER, env.GITHUB_REPO, env.GITHUB_BRANCH || "main", [
+            { path: pEst, conteudo: JSON.stringify(novoEstoque, null, 2) },
+            { path: pVen, conteudo: JSON.stringify(vendas, null, 2) }
+          ], `amostras: venda ${am.artigo} ${am.cor} (${qtd}) para ${comprador}`);
+          return new Response(JSON.stringify({ success: true, venda, saiuDoEstoque: saiu }), { status: 200, headers: corsHeaders });
+        }
+
+        // desfazerVendaAmostra { vendaId } → a venda sai do registro e os pares
+        // voltam para o estoque (somando na amostra, se ela ainda existir).
+        if (body.action === "desfazerVendaAmostra" && body.vendaId) {
+          const { content: cv } = await getFile(GITHUB_AMOSTRAS_VENDAS);
+          const vendas = Array.isArray(cv) ? cv : [];
+          const v = vendas.find(x => x.id === body.vendaId);
+          if (!v) return new Response(JSON.stringify({ success: true, jaNaoExistia: true }), { status: 200, headers: corsHeaders });
+          const { content: ce } = await getFile(GITHUB_AMOSTRAS);
+          const estoque = Array.isArray(ce) ? ce : [];
+          const agora = new Date().toISOString();
+          const am = estoque.find(a => a.id === v.amostraId);
+          if (am) { am.quantidade = (parseInt(am.quantidade, 10) || 0) + v.quantidade; am.alteradoEm = agora; }
+          else estoque.push({
+            id: v.amostraId || crypto.randomUUID(), artigo: v.artigo, descricao: v.descricao, cor: v.cor,
+            descricaoCor: v.descricaoCor, genero: v.genero, tamanho: v.tamanho, quantidade: v.quantidade,
+            preco: v.precoUnit, foto: v.foto, cadastradoEm: agora, voltouDeVenda: v.id
+          });
+          const { path: pEst } = parseRepoUrl(GITHUB_AMOSTRAS), { path: pVen } = parseRepoUrl(GITHUB_AMOSTRAS_VENDAS);
+          await gitCommitArquivos(env.GITHUB_OWNER, env.GITHUB_REPO, env.GITHUB_BRANCH || "main", [
+            { path: pEst, conteudo: JSON.stringify(estoque, null, 2) },
+            { path: pVen, conteudo: JSON.stringify(vendas.filter(x => x.id !== v.id), null, 2) }
+          ], `amostras: venda desfeita ${v.artigo} ${v.cor} (${v.quantidade})`);
+          return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
+        }
+
+        // PATCH com action:"removeAmostra" → tira uma amostra do estoque pelo id
+        // (write, exige admin).
+        if (body.action === "removeAmostra" && body.id) {
+          const { content, sha } = await getFile(GITHUB_AMOSTRAS);
+          const lista = Array.isArray(content) ? content : [];
+          const am = lista.find(a => a.id === body.id);
+          if (!am) return new Response(JSON.stringify({ success: true, jaNaoExistia: true }), { status: 200, headers: corsHeaders });
+          await saveFile(GITHUB_AMOSTRAS, lista.filter(a => a.id !== body.id), sha, `amostras: removida ${am.artigo} ${am.cor}`);
           return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
         }
 

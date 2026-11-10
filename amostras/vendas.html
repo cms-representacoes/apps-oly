@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Amostras · Vendas</title>
+<meta name="theme-color" content="#0f172a">
+<link rel="icon" href="../icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f1f5f9; --card:#fff; --card2:#f8fafc; --ink:#0f172a; --mut:#64748b; --line:#e2e8f0; --line2:#cbd5e1;
+    --top:#0f172a; --acc:#0d9488; --acc-d:#0f766e; --acc-l:#ccfbf1; --ven:#16a34a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+
+  .topo{background:var(--top);color:#f1f5f9;position:sticky;top:0;z-index:20}
+  .topo-in{max-width:1100px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:14px}
+  .portal-btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px 0 10px;border-radius:999px;background:#fff;border:1px solid #E2E8F0;color:#475569;font:700 14px 'Plus Jakarta Sans',sans-serif;text-decoration:none;flex:none}
+  .portal-btn:hover{background:#f8fafc}
+  .titulo{display:flex;flex-direction:column;line-height:1.15;min-width:0;flex:1}
+  .titulo b{font-size:17px;font-weight:800;letter-spacing:-.01em}
+  .titulo span{font-size:12px;color:#94a3b8}
+  .btn-est{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:10px;background:var(--acc);color:#fff;font:700 13.5px 'Plus Jakarta Sans',sans-serif;text-decoration:none;flex:none}
+  .btn-est:hover{background:var(--acc-d)}
+  @media (max-width:480px){ .titulo span{display:none} .titulo b{font-size:16px} }
+
+  .wrap{max-width:1100px;margin:0 auto;padding:16px}
+
+  .periodo{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;height:40px;margin-bottom:12px;width:max-content;max-width:100%}
+  .periodo button{border:0;background:none;font:700 13px 'Plus Jakarta Sans',sans-serif;color:var(--mut);padding:0 14px;cursor:pointer;white-space:nowrap}
+  .periodo button+button{border-left:1px solid var(--line)}
+  .periodo button.on{background:var(--ink);color:#fff}
+  @media (max-width:480px){ .periodo{width:100%} .periodo button{flex:1;padding:0 6px} }
+
+  .resumo{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .kpi span{display:block;font-size:11.5px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+  .kpi b{display:block;font-size:22px;font-weight:800;margin-top:2px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .kpi.destaque b{color:var(--ven)}
+  @media (max-width:640px){ .resumo{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px} .kpi{padding:10px} .kpi b{font-size:18px} }
+
+  .pags{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}
+  .pag{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;text-align:left;font:inherit;color:inherit}
+  .pag:hover{border-color:var(--line2)}
+  .pag.on{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+  .pag .ic{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:none;font-weight:800;font-size:13px}
+  .pag .t{display:flex;flex-direction:column;min-width:0}
+  .pag .t span{font-size:12px;color:var(--mut);font-weight:700}
+  .pag .t b{font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .pag .t small{font-size:11.5px;color:var(--mut)}
+  .ic.pix{background:#ccfbf1;color:#0f766e}
+  .ic.dinheiro{background:#dcfce7;color:#15803d}
+  .ic.cartao{background:#e0e7ff;color:#4338ca}
+  @media (max-width:640px){ .pags{gap:6px} .pag{flex-direction:column;align-items:flex-start;gap:6px;padding:10px} .pag .t b{font-size:13.5px} }
+
+  .busca{position:relative;margin-bottom:12px}
+  .busca svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--mut);pointer-events:none}
+  .busca input{width:100%;height:46px;border-radius:12px;border:2px solid var(--line);background:#fff;padding:0 88px 0 42px;font:600 15px 'Plus Jakarta Sans',sans-serif;color:var(--ink);outline:none}
+  .busca input:focus{border-color:var(--acc);box-shadow:0 0 0 4px rgba(13,148,136,.15)}
+  .busca input::placeholder{color:#94a3b8;font-weight:500}
+  .esc{position:absolute;right:10px;top:50%;transform:translateY(-50%);font:700 11px 'Plus Jakarta Sans',sans-serif;color:var(--mut);background:#f1f5f9;border:1px solid var(--line);border-radius:6px;padding:4px 8px;cursor:pointer}
+  .esc[hidden]{display:none}
+
+  .lista{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .cab,.linha{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 100px 110px 60px 110px 40px;gap:12px;align-items:center;padding:9px 14px}
+  .cab{background:var(--card2);border-bottom:1px solid var(--line);font-size:11px;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;padding-top:10px;padding-bottom:10px}
+  .n{text-align:right}
+  .linha{border-bottom:1px solid #f1f5f9}
+  .linha:last-child{border-bottom:0}
+  .linha.salvando{opacity:.55;pointer-events:none}
+  .prod{display:flex;align-items:center;gap:12px;min-width:0}
+  .thumb{width:54px;height:54px;border-radius:9px;background:var(--card2);object-fit:cover;border:1px solid var(--line);display:block;flex:none}
+  .thumb-fb{width:54px;height:54px;border-radius:9px;background:var(--card2);border:1px dashed var(--line2);display:none;align-items:center;justify-content:center;color:#94a3b8;flex:none}
+  .thumb.failed{display:none}
+  .thumb.failed + .thumb-fb{display:flex}
+  .info{min-width:0}
+  .nome{font-size:14px;font-weight:700;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .meta{font-size:12.5px;color:var(--mut);margin:2px 0 0}
+  .meta b{color:#334155}
+  .comp{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tag{display:inline-block;font-size:12px;font-weight:800;border-radius:7px;padding:3px 9px}
+  .tag.pix{background:#ccfbf1;color:#0f766e}
+  .tag.dinheiro{background:#dcfce7;color:#15803d}
+  .tag.cartao{background:#e0e7ff;color:#4338ca}
+  .data{font-size:13px;color:#334155;font-variant-numeric:tabular-nums}
+  .data small{display:block;color:var(--mut);font-size:11.5px}
+  .num{font-weight:700;font-variant-numeric:tabular-nums;font-size:14px}
+  .valor{font-weight:800;color:var(--ven)}
+  .desf{width:30px;height:30px;border-radius:8px;border:0;background:none;color:#94a3b8;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+  .desf:hover{background:#fef3c7;color:#b45309}
+  .rot{display:none}
+  @media (max-width:760px){
+    .cab{display:none}
+    .linha{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"p x" "c v" "d d";row-gap:6px;padding:12px 10px 12px 14px}
+    .linha .prod{grid-area:p}
+    .linha .ac{grid-area:x;align-self:start}
+    .linha .cp{grid-area:c;display:flex;align-items:center;gap:8px;min-width:0}
+    .linha .vl{grid-area:v}
+    .linha .dt{grid-area:d;font-size:12px;color:var(--mut)}
+    .data small{display:inline;font-size:12px}
+    .linha .pg,.linha .qt{display:none}
+    .rot{display:inline}
+    .nome{white-space:normal}
+  }
+
+  .vazio{padding:32px 20px;text-align:center;color:var(--mut);font-size:14px}
+  .vazio b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
+  .estado{font-size:12.5px;color:var(--mut);margin:10px 2px 0}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#0f172a;color:#fff;font-size:13.5px;font-weight:600;padding:10px 16px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:60;max-width:calc(100% - 32px);display:none}
+  .toast.erro{background:#b91c1c}
+  .toast.show{display:block}
+</style>
+</head>
+<body>
+<header class="topo">
+  <div class="topo-in">
+    <a class="portal-btn" href="../index.html" aria-label="Voltar ao Portal">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      Portal
+    </a>
+    <div class="titulo"><b>Amostras · Vendas</b><span>Acompanhamento das amostras vendidas</span></div>
+    <a class="btn-est" href="estoque.html">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
+      Estoque
+    </a>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="periodo" id="periodo">
+    <button type="button" data-p="hoje">Hoje</button>
+    <button type="button" data-p="mes" class="on">Este mês</button>
+    <button type="button" data-p="ant">Mês passado</button>
+    <button type="button" data-p="tudo">Tudo</button>
+  </div>
+
+  <div class="resumo">
+    <div class="kpi"><span>Vendas</span><b id="kVendas">–</b></div>
+    <div class="kpi"><span>Pares</span><b id="kPares">–</b></div>
+    <div class="kpi destaque"><span>Faturado</span><b id="kTotal">–</b></div>
+    <div class="kpi"><span>Ticket médio</span><b id="kTicket">–</b></div>
+  </div>
+
+  <div class="pags" id="pags"></div>
+
+  <div class="busca">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+    <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Buscar por comprador, modelo, artigo ou cor">
+    <button class="esc" id="esc" type="button" hidden>Esc · limpar</button>
+  </div>
+
+  <div class="lista">
+    <div class="cab"><span>Produto</span><span>Comprador</span><span>Pagamento</span><span>Data</span><span class="n">Pares</span><span class="n">Valor</span><span></span></div>
+    <div id="linhas"><div class="vazio">Carregando as vendas…</div></div>
+  </div>
+  <p class="estado" id="estado"></p>
+  <div class="toast" id="toast"></div>
+</main>
+
+<script src="pergunta.js"></script>
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const WORKER_URL = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
+  // mesmo token de escrita que o cadastro e o estoque usam
+  const ADMIN_TOKEN = '1b489c97-7bc7-466a-a675-f559e1226371d9bea53d-a920-4059-a31c-6bc0b6d8c4c8';
+  const RAW = 'https://raw.githubusercontent.com/cms-representacoes/apps-oly/main/Catalogo/';
+  const PAG = { pix: 'Pix', dinheiro: 'Dinheiro', cartao: 'Cartão' };
+  const q = $('#q'), esc = $('#esc');
+  let vendas = [], periodo = 'mes', filtroPag = '';
+
+  async function worker(body, admin) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (admin) headers['X-Admin-Token'] = ADMIN_TOKEN;
+    const r = await fetch(WORKER_URL, { method: 'PATCH', headers, body: JSON.stringify(body) });
+    const d = await r.json().catch(() => null);
+    if (!r.ok || d == null || d.success === false) throw new Error((d && d.error) || ('HTTP ' + r.status));
+    return d;
+  }
+  let tmToast;
+  function toast(t, erro) {
+    const el = $('#toast'); el.textContent = t; el.className = 'toast show' + (erro ? ' erro' : '');
+    clearTimeout(tmToast); tmToast = setTimeout(() => el.classList.remove('show'), erro ? 5000 : 2800);
+  }
+  const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+  const brl = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const h = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const rotTam = t => t === '35' ? 'Fem 35' : t === '40' ? 'Masc 40' : t === 'U' ? 'Tam. U' : t === 'M' ? 'Tam. M' : (t || '');
+  const nomeFoto = v => v.foto || `${String(v.artigo || '').toUpperCase()}_${String(v.cor || '').toUpperCase().replace(/[\/\-\s.]+/g, '_')}.jpg`;
+  const ICON_IMG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg>';
+  const ICON_DESF = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg>';
+
+  function thumb(v) {
+    const f = nomeFoto(v);
+    if (/^https?:/.test(f)) return `<img class="thumb" src="${h(f)}" alt="" loading="lazy" onerror="this.classList.add('failed')"><div class="thumb-fb">${ICON_IMG}</div>`;
+    const erro = `if(!this.dataset.g){this.dataset.g=1;this.src='../Catalogo/${h(f)}'}else if(!this.dataset.r){this.dataset.r=1;this.src='${RAW}${h(f)}'}else{this.classList.add('failed')}`;
+    return `<img class="thumb" src="../Catalogo/mini/${h(f)}" alt="" loading="lazy" onerror="${erro}"><div class="thumb-fb">${ICON_IMG}</div>`;
+  }
+
+  // período: hoje, este mês, mês passado ou tudo (pela data da venda, no horário daqui)
+  function noPeriodo(v) {
+    if (periodo === 'tudo') return true;
+    const d = new Date(v.vendidoEm), hj = new Date();
+    if (periodo === 'hoje') return d.toDateString() === hj.toDateString();
+    const ref = periodo === 'mes' ? hj : new Date(hj.getFullYear(), hj.getMonth() - 1, 1);
+    return d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth();
+  }
+  const dataBR = iso => { const d = new Date(iso); return { dia: d.toLocaleDateString('pt-BR'), hora: d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) }; };
+
+  function desenhar() {
+    esc.hidden = !q.value;
+    const t = norm(q.value.trim());
+    const doPeriodo = vendas.filter(noPeriodo);
+    // resumo por forma de pagamento (do período, antes do filtro de pagamento e da busca)
+    $('#pags').innerHTML = Object.entries(PAG).map(([k, rot]) => {
+      const vs = doPeriodo.filter(v => v.pagamento === k);
+      const tot = vs.reduce((s, v) => s + (v.valor || 0), 0);
+      return `<button type="button" class="pag${filtroPag === k ? ' on' : ''}" data-pag="${k}" title="Filtrar por ${rot}">
+        <span class="ic ${k}">${k === 'pix' ? 'PIX' : k === 'dinheiro' ? 'R$' : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg>'}</span>
+        <span class="t"><span>${rot}</span><b>${brl(tot)}</b><small>${vs.length} ${vs.length === 1 ? 'venda' : 'vendas'}</small></span></button>`;
+    }).join('');
+
+    const vis = doPeriodo.filter(v => (!filtroPag || v.pagamento === filtroPag) &&
+      (!t || norm([v.comprador, v.descricao, v.artigo, v.cor, v.descricaoCor].join(' ')).includes(t)));
+    const pares = vis.reduce((s, v) => s + (v.quantidade || 1), 0);
+    const total = vis.reduce((s, v) => s + (v.valor || 0), 0);
+    $('#kVendas').textContent = vis.length;
+    $('#kPares').textContent = pares;
+    $('#kTotal').textContent = brl(total);
+    $('#kTicket').textContent = vis.length ? brl(total / vis.length) : '–';
+
+    if (!vendas.length) { $('#linhas').innerHTML = '<div class="vazio"><b>Nenhuma venda ainda</b>As vendas feitas pelo botão Vender do estoque aparecem aqui.</div>'; return; }
+    if (!vis.length) { $('#linhas').innerHTML = '<div class="vazio"><b>Nada neste filtro</b>Troque o período, tire o filtro de pagamento ou apague a busca.</div>'; return; }
+    $('#linhas').innerHTML = vis.map(v => {
+      const d = dataBR(v.vendidoEm);
+      return `<div class="linha" data-id="${h(v.id)}">
+        <div class="prod">${thumb(v)}<div class="info"><p class="nome">${h(v.descricao || 'Sem nome')}</p>
+          <p class="meta">${h(v.artigo)} · <b>${h(v.cor)}</b>${v.descricaoCor ? ' · ' + h(v.descricaoCor) : ''}${v.tamanho ? ' · ' + h(rotTam(v.tamanho)) : ''}</p></div></div>
+        <div class="cp"><span class="comp">${h(v.comprador)}</span><span class="rot tag ${h(v.pagamento)}">${h(PAG[v.pagamento] || v.pagamento)}</span></div>
+        <div class="pg"><span class="tag ${h(v.pagamento)}">${h(PAG[v.pagamento] || v.pagamento)}</span></div>
+        <div class="dt data">${d.dia} <small>${d.hora}<span class="rot"> · ${v.quantidade || 1} ${(v.quantidade || 1) > 1 ? 'pares' : 'par'}</span></small></div>
+        <div class="qt n num">${v.quantidade || 1}</div>
+        <div class="vl n num valor">${brl(v.valor)}</div>
+        <div class="ac"><button class="desf" type="button" data-desf="${h(v.id)}" title="Desfazer venda (volta para o estoque)" aria-label="Desfazer venda">${ICON_DESF}</button></div>
+      </div>`;
+    }).join('');
+  }
+
+  async function desfazer(id) {
+    const v = vendas.find(x => x.id === id); if (!v) return;
+    const ok = await perguntar({
+      titulo: 'Desfazer esta venda?', texto: 'A venda sai do registro e os pares voltam para o estoque.',
+      detalhe: `${v.descricao} · ${v.cor} · ${v.quantidade || 1} ${(v.quantidade || 1) > 1 ? 'pares' : 'par'}`,
+      sub: `${v.comprador} · ${PAG[v.pagamento] || v.pagamento} · ${brl(v.valor)} · ${dataBR(v.vendidoEm).dia}`,
+      ok: 'Desfazer venda', perigo: true });
+    if (!ok) return;
+    document.querySelector(`.linha[data-id="${CSS.escape(id)}"]`)?.classList.add('salvando');
+    try {
+      await worker({ action: 'desfazerVendaAmostra', vendaId: id }, true);
+      vendas = vendas.filter(x => x.id !== id); desenhar();
+      toast('Venda desfeita. Os pares voltaram para o estoque.');
+    } catch (e) {
+      document.querySelector(`.linha[data-id="${CSS.escape(id)}"]`)?.classList.remove('salvando');
+      toast('Não deu para desfazer: ' + e.message, true);
+    }
+  }
+
+  $('#periodo').addEventListener('click', e => {
+    const b = e.target.closest('[data-p]'); if (!b) return;
+    periodo = b.dataset.p;
+    document.querySelectorAll('#periodo button').forEach(x => x.classList.toggle('on', x === b));
+    desenhar();
+  });
+  $('#pags').addEventListener('click', e => {
+    const b = e.target.closest('[data-pag]'); if (!b) return;
+    filtroPag = filtroPag === b.dataset.pag ? '' : b.dataset.pag; desenhar();
+  });
+  $('#linhas').addEventListener('click', e => { const b = e.target.closest('[data-desf]'); if (b) desfazer(b.dataset.desf); });
+  q.addEventListener('input', desenhar);
+  const limpar = () => { q.value = ''; desenhar(); q.focus(); };
+  esc.addEventListener('click', limpar);
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || document.querySelector('.pq-fundo')) return;
+    e.preventDefault(); limpar();
+  });
+
+  worker({ action: 'getVendasAmostras' })
+    .then(d => {
+      if (!Array.isArray(d)) throw new Error('o Worker ainda não conhece as vendas de amostras');
+      vendas = d.slice().sort((a, b) => String(b.vendidoEm).localeCompare(String(a.vendidoEm)));
+      $('#estado').textContent = 'Atualizado agora.';
+      desenhar();
+    })
+    .catch(e => { $('#linhas').innerHTML = `<div class="vazio"><b>Não consegui ler as vendas</b>${h(e.message)}</div>`; });
+})();
+</script>
+</body>
+</html>
