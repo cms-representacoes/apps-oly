@@ -1087,9 +1087,9 @@
     })();
   </script>
 <div class="fab-stack">
-  <!-- CMS STORE: amostras fora de linha. Só o DEV enxerga enquanto está em teste
-       (classe dev-only); para soltar, é só tirar a classe e o hidden. -->
-  <a href="amostras/estoque.html" id="fabStore" hidden class="fab-store dev-only" title="CMS STORE · amostras fora de linha" aria-label="CMS STORE">
+  <!-- CMS STORE: amostras fora de linha. Só a CMS e o DEV enxergam (ver
+       aplicarSessao); prepostos não usam o admin. -->
+  <a href="amostras/estoque.html" id="fabStore" hidden class="fab-store"title="CMS STORE · amostras fora de linha" aria-label="CMS STORE">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
       <path d="M3 9l1.6-5h14.8L21 9"/>
       <path d="M3 9h18v1.5a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0z"/>
@@ -1669,6 +1669,7 @@
       carregarCartaCampanha(null);
       Array.prototype.forEach.call(adminEls, function(el){ el.hidden = true; });
       Array.prototype.forEach.call(devEls, function(el){ el.hidden = true; });
+      document.getElementById('fabStore').hidden = true;
       return;
     }
 
@@ -1686,6 +1687,9 @@
     // A fila do que está em obra é só de quem desenvolve.
     var ehDev = String(session.nome || '').trim().toUpperCase() === 'MARCOS (DEV)';
     Array.prototype.forEach.call(devEls, function(el){ el.hidden = !ehDev; });
+    // CMS STORE: só a CMS (quem opera o estoque) e o DEV.
+    var ehCmsLogin = String(session.nome || '').trim().toUpperCase() === 'CMS';
+    document.getElementById('fabStore').hidden = !(ehCmsLogin || ehDev);
     medirFabs();   // o botao da vitrine entra e sai da fila
   }
 
