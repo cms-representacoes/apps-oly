@@ -615,6 +615,20 @@
     setTimeout(() => $('#vlNome').focus(), 50);
   });
   const compVl = Comprovante.campo($('#vlComp'), { ativo: () => vlEl.classList.contains('show') });
+  // venda sem comprovante pode, mas só depois de a pessoa confirmar
+  let perguntandoComp = false;
+  async function semComprovante(n) {
+    if (perguntandoComp) return false;   // clique duplo não abre duas perguntas
+    perguntandoComp = true;
+    try {
+      return await perguntar({
+        titulo: 'Vender sem comprovante?',
+        texto: (n > 1 ? `Nenhum comprovante de pagamento foi anexado a estas ${n} vendas.` : 'Nenhum comprovante de pagamento foi anexado a esta venda.') +
+          ' Se ele chegar depois, dá para anexar na tela de Vendas, pelo clipe da venda.',
+        ok: 'Vender sem comprovante', cancelar: 'Voltar e anexar'
+      });
+    } finally { perguntandoComp = false; }
+  }
   const fecharVl = () => { if (vl.salvando) return; vlEl.classList.remove('show'); document.body.style.overflow = ''; };
   $('#vlPag').addEventListener('click', e => {
     const b = e.target.closest('[data-pag]'); if (!b) return;
@@ -647,6 +661,7 @@
     if (!vl.pag) { falta.push('a forma de pagamento'); $('#vlPag').classList.add('ruim'); }
     if (itens.some(i => !(i.valor >= 0))) falta.push('valores válidos (ex.: 499,99)');
     if (falta.length) { $('#vlMsg').textContent = 'Falta ' + falta.join(' e ') + '.'; return; }
+    if (!compVl.valor() && !(await semComprovante(itens.length))) return;
     vl.salvando = true; $('#vlOk').disabled = true; $('#vlOk').textContent = 'Registrando…'; $('#vlMsg').textContent = '';
     try {
       const comprovante = compVl.valor();
@@ -715,6 +730,7 @@
     if (!(valor >= 0)) falta.push('um valor válido (ex.: 499,99)');
     if (falta.length) { $('#vdMsg').textContent = 'Falta ' + falta.join(' e ') + '.'; return; }
     const qtd = +$('#vdQt').value || 1;
+    if (!compVd.valor() && !(await semComprovante(1))) return;
     vd.salvando = true; $('#vdOk').disabled = true; $('#vdOk').textContent = 'Registrando…'; $('#vdMsg').textContent = '';
     try {
       const comprovante = compVd.valor();
