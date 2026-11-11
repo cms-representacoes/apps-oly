@@ -558,7 +558,7 @@ body::before{
       <div class="aba-sub">
         <button class="on" id="abaRepasses" type="button" onclick="setAba('repasses')">Repasses</button>
         <button class="hidden" id="abaCampanhas" type="button" onclick="setAba('campanha')">Campanhas<span class="conta hidden" id="abaConta">0</span></button>
-        <button class="hidden" id="abaStore" type="button" onclick="setAba('store')">CMS Store</button>
+        <button class="hidden" id="abaStore" type="button" onclick="setAba('store')">CMS Store<span class="conta hidden" id="abaContaStore">0</span></button>
       </div>
     </div>
     <span class="updated" id="headerSub">Carregando...</span>
@@ -1089,6 +1089,7 @@ function setAba(a){
   marca('abaStore', a === 'store');
 
   if(a === 'store') renderStore();
+  pintarNovasVendas();   // entrar na aba apaga a bolinha; sair dela traz de volta o que vier
 }
 
 /* ── CAMPANHAS: todas na aba, uma abaixo da outra ───────────────────────────
@@ -1588,6 +1589,48 @@ async function carregarVendasStore(){
   if(DEMO_STORE) VENDAS_STORE = vendasDeMentira();
   const aba = document.getElementById('abaStore');
   if(aba) aba.classList.remove('hidden');   // a aba existe mesmo sem venda nenhuma
+  pintarNovasVendas();
+}
+
+/* ── VENDA NOVA ────────────────────────────────────────────────────────────
+   A bolinha na aba, igual a das campanhas, so que aqui ela conta o que ele
+   ainda NAO viu. Mesma ideia do selo de novidade do Portal: o "ja visto"
+   mora neste aparelho, e ha uma janela de tres dias — venda de semana
+   passada nao e novidade, mesmo que ninguem tenha aberto a aba.
+
+   Quem abre a aba marca as vendas como vistas, e a bolinha some. Se ele ja
+   estiver COM a aba aberta quando uma venda entrar, ela ja nasce vista: a
+   venda esta na tela dele. */
+const LS_VENDAS_VISTAS = 'pulse_vendas_vistas_v1';
+const VENDA_NOVA_DIAS = 3;
+
+function vendasDaJanela(){
+  const limite = Date.now() - VENDA_NOVA_DIAS * UM_DIA;
+  return VENDAS_STORE.filter(v => new Date(v.vendidoEm || 0).getTime() >= limite);
+}
+
+function vendasNovas(){
+  const recentes = vendasDaJanela();
+  let vistas = null;
+  try{ vistas = JSON.parse(localStorage.getItem(LS_VENDAS_VISTAS) || 'null'); }catch(_){}
+  // sem registro nenhum, tudo o que esta na janela conta como novo
+  if(!Array.isArray(vistas)) return recentes;
+  return recentes.filter(v => !vistas.includes(v.id));
+}
+
+function marcarVendasVistas(){
+  // guarda so os ids da janela: a lista nao cresce para sempre
+  try{ localStorage.setItem(LS_VENDAS_VISTAS,
+    JSON.stringify(vendasDaJanela().map(v => v.id))); }catch(_){}
+}
+
+function pintarNovasVendas(){
+  const selo = document.getElementById('abaContaStore');
+  if(!selo) return;
+  if(ABA_ATUAL === 'store'){ marcarVendasVistas(); selo.classList.add('hidden'); return; }
+  const n = vendasNovas().length;
+  selo.textContent = n;
+  selo.classList.toggle('hidden', !n);
 }
 
 /* ── modo de demonstracao ──────────────────────────────────────────────────
