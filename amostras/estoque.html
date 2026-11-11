@@ -308,6 +308,7 @@
         <div class="vd-pag" id="vlPag"><button type="button" data-pag="pix">Pix</button><button type="button" data-pag="dinheiro">Dinheiro</button><button type="button" data-pag="cartao">Cartão</button></div></div>
       <div class="vd-campo"><label>Produtos e valores</label><div class="vl-lista" id="vlLista"></div></div>
       <div class="vl-total"><span>Total da venda</span><b id="vlTotal">R$ 0,00</b></div>
+      <div class="vd-campo"><label>Comprovante de pagamento</label><div id="vlComp"></div></div>
     </div>
     <div class="vd-pe"><span class="msg" id="vlMsg"></span><button type="button" id="vlN">Cancelar</button><button type="button" class="ok" id="vlOk">Confirmar venda</button></div>
   </div>
@@ -324,6 +325,7 @@
         <div class="vd-campo"><label for="vdQt">Pares</label><select id="vdQt"></select></div>
         <div class="vd-campo"><label for="vdVal">Valor da venda</label><input id="vdVal" inputmode="decimal" autocomplete="off" placeholder="0,00"></div>
       </div>
+      <div class="vd-campo"><label>Comprovante de pagamento</label><div id="vdComp"></div></div>
     </div>
     <div class="vd-pe"><span class="msg" id="vdMsg"></span><button type="button" id="vdN">Cancelar</button><button type="button" class="ok" id="vdOk">Confirmar venda</button></div>
   </div>
@@ -338,6 +340,7 @@
 
 <script src="pergunta.js"></script>
 <script src="foto.js"></script>
+<script src="comprovante.js"></script>
 <script>
 (() => {
   const $ = s => document.querySelector(s);
@@ -594,11 +597,12 @@
         <div class="vl-cmp">${tem > 1 ? `<select data-vl-qt aria-label="Pares">${Array.from({ length: tem }, (_, i) => `<option value="${i + 1}">${i + 1} ${i ? 'pares' : 'par'}</option>`).join('')}</select>` : ''}
           <input data-vl-val inputmode="decimal" value="${fmt(a.preco || 0)}" aria-label="Valor"></div></div>`;
     }).join('');
-    vlSomar();
+    vlSomar(); compVl.limpar();
     $('#vlMsg').textContent = ''; $('#vlOk').disabled = false; $('#vlOk').textContent = 'Confirmar venda';
     vlEl.classList.add('show'); document.body.style.overflow = 'hidden';
     setTimeout(() => $('#vlNome').focus(), 50);
   });
+  const compVl = Comprovante.campo($('#vlComp'), { ativo: () => vlEl.classList.contains('show') });
   const fecharVl = () => { if (vl.salvando) return; vlEl.classList.remove('show'); document.body.style.overflow = ''; };
   $('#vlPag').addEventListener('click', e => {
     const b = e.target.closest('[data-pag]'); if (!b) return;
@@ -633,12 +637,13 @@
     if (falta.length) { $('#vlMsg').textContent = 'Falta ' + falta.join(' e ') + '.'; return; }
     vl.salvando = true; $('#vlOk').disabled = true; $('#vlOk').textContent = 'Registrando…'; $('#vlMsg').textContent = '';
     try {
-      const r = await worker({ action: 'venderAmostras', itens, comprador, pagamento: vl.pag }, true);
+      const comprovante = compVl.valor();
+      const r = await worker({ action: 'venderAmostras', itens, comprador, pagamento: vl.pag, ...(comprovante && { comprovante }) }, true);
       vl.salvando = false; fecharVl();
       const saiu = new Set(r.saiuDoEstoque || []);
       for (const i of itens) { const a = estoque.find(x => x.id === i.id); if (a && !saiu.has(a.id)) a.quantidade = (a.quantidade || 1) - i.quantidade; }
       estoque = estoque.filter(a => !saiu.has(a.id)); marcados.clear(); desenhar();
-      toast(`${itens.length === 1 ? 'Venda registrada' : itens.length + ' vendas registradas'} para ${comprador}. Estão na tela de Vendas.`);
+      toast(`${itens.length === 1 ? 'Venda registrada' : itens.length + ' vendas registradas'} para ${comprador}${comprovante ? ', com comprovante' : ''}. Estão na tela de Vendas.`);
     } catch (e) {
       vl.salvando = false; $('#vlOk').disabled = false; $('#vlOk').textContent = 'Confirmar venda';
       $('#vlMsg').textContent = 'Não deu para registrar: ' + e.message;
@@ -666,11 +671,13 @@
     $('#vdQt').innerHTML = Array.from({ length: tem }, (_, i) => `<option value="${i + 1}">${i + 1} ${i ? 'pares' : 'par'}</option>`).join('');
     $('#vdQt').disabled = tem === 1;
     $('#vdVal').value = fmt(x.preco || 0);
+    compVd.limpar();
     $('#vdMsg').textContent = '';
     $('#vdOk').disabled = false; $('#vdOk').textContent = 'Confirmar venda';
     vdEl.classList.add('show'); document.body.style.overflow = 'hidden';
     setTimeout(() => $('#vdNome').focus(), 50);
   }
+  const compVd = Comprovante.campo($('#vdComp'), { ativo: () => vdEl.classList.contains('show') });
   function fecharVenda() { if (vd.salvando) return; vdEl.classList.remove('show'); document.body.style.overflow = ''; }
   $('#vdPag').addEventListener('click', e => {
     const b = e.target.closest('[data-pag]'); if (!b) return;
@@ -698,12 +705,13 @@
     const qtd = +$('#vdQt').value || 1;
     vd.salvando = true; $('#vdOk').disabled = true; $('#vdOk').textContent = 'Registrando…'; $('#vdMsg').textContent = '';
     try {
-      const r = await worker({ action: 'venderAmostra', id: x.id, quantidade: qtd, comprador, pagamento: vd.pag, valor }, true);
+      const comprovante = compVd.valor();
+      const r = await worker({ action: 'venderAmostra', id: x.id, quantidade: qtd, comprador, pagamento: vd.pag, valor, ...(comprovante && { comprovante }) }, true);
       vd.salvando = false; fecharVenda();
       if (r.saiuDoEstoque) estoque = estoque.filter(a => a.id !== x.id);
       else x.quantidade = (x.quantidade || 1) - qtd;
       desenhar();
-      toast(`Venda registrada: ${x.descricao} ${x.cor} para ${comprador}. Está na tela de Vendas.`);
+      toast(`Venda registrada: ${x.descricao} ${x.cor} para ${comprador}${comprovante ? ', com comprovante' : ''}. Está na tela de Vendas.`);
     } catch (e) {
       vd.salvando = false; $('#vdOk').disabled = false; $('#vdOk').textContent = 'Confirmar venda';
       $('#vdMsg').textContent = 'Não deu para registrar: ' + e.message;

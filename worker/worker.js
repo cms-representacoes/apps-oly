@@ -64,7 +64,10 @@ export default {
       "saveAmostrasConfig",
       "removeAmostras",
       "desfazerVendaAmostra",
-      "salvarImagemCatalogo"
+      "salvarImagemCatalogo",
+      "anexarComprovante",
+      "verComprovante",
+      "removerComprovante"
     ]);
 
     function requireAdmin(action) {
@@ -1779,6 +1782,57 @@ export default {
           return new Response(JSON.stringify({ success: true, whatsapp, atende }), { status: 200, headers: corsHeaders });
         }
 
+        // ── COMPROVANTES DE PAGAMENTO DAS AMOSTRAS ────────────────────────
+        // O repositório é público, então o arquivo NÃO vai para o GitHub: fica no
+        // KV (SACOLAS), na chave "comprovante:<lote ou id da venda>". No vendas.json
+        // a venda só ganha o aviso { tipo, nome, em }. Ler exige o X-Admin-Token.
+        const COMP_TIPOS = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+        const chaveComp = v => "comprovante:" + (v.lote || v.id);
+        const respComp = (d, status = 200) => new Response(JSON.stringify(d), { status, headers: corsHeaders });
+        // devolve { meta } ou { erro }
+        function validarComprovante(c) {
+          if (!env.SACOLAS) return { erro: "O Worker está sem o armazenamento de comprovantes (KV SACOLAS)." };
+          const m = String((c && c.dados) || "").match(/^data:([\w/+.-]+);base64,([A-Za-z0-9+/=]+)$/);
+          if (!m || !COMP_TIPOS.includes(m[1])) return { erro: "O comprovante precisa ser imagem (JPG, PNG) ou PDF." };
+          if (m[2].length > 8 * 1024 * 1024) return { erro: "Comprovante grande demais (máximo 6 MB)." };
+          return { meta: { tipo: m[1], nome: String(c.nome || "comprovante").slice(0, 80), em: new Date().toISOString() } };
+        }
+        const gravarComprovante = (chave, meta, dados) => env.SACOLAS.put(chave, JSON.stringify({ ...meta, dados }));
+
+        // anexarComprovante { vendaId, comprovante:{ dados:dataURL, nome } } → vale para o lote inteiro
+        // removerComprovante { vendaId }
+        if ((body.action === "anexarComprovante" || body.action === "removerComprovante") && body.vendaId) {
+          const { content: cv, sha } = await getFile(GITHUB_AMOSTRAS_VENDAS);
+          const vendas = Array.isArray(cv) ? cv : [];
+          const v = vendas.find(x => x.id === body.vendaId);
+          if (!v) return respComp({ success: false, error: "Essa venda não está mais no registro. Atualize a tela." }, 404);
+          const chave = chaveComp(v);
+          const doLote = vendas.filter(x => chaveComp(x) === chave);
+          if (body.action === "removerComprovante") {
+            if (env.SACOLAS) await env.SACOLAS.delete(chave);
+            doLote.forEach(x => { delete x.comprovante; });
+            await saveFile(GITHUB_AMOSTRAS_VENDAS, vendas, sha, `amostras: comprovante removido (${v.comprador})`);
+            return respComp({ success: true, vendas: doLote.map(x => x.id) });
+          }
+          const ck = validarComprovante(body.comprovante);
+          if (ck.erro) return respComp({ success: false, error: ck.erro }, 400);
+          await gravarComprovante(chave, ck.meta, body.comprovante.dados);
+          doLote.forEach(x => { x.comprovante = ck.meta; });
+          await saveFile(GITHUB_AMOSTRAS_VENDAS, vendas, sha, `amostras: comprovante de ${v.comprador}`);
+          return respComp({ success: true, comprovante: ck.meta, vendas: doLote.map(x => x.id) });
+        }
+
+        // verComprovante { vendaId } → { tipo, nome, em, dados }
+        if (body.action === "verComprovante" && body.vendaId) {
+          if (!env.SACOLAS) return respComp({ success: false, error: "O Worker está sem o armazenamento de comprovantes (KV SACOLAS)." }, 500);
+          const { content: cv } = await getFile(GITHUB_AMOSTRAS_VENDAS);
+          const v = (Array.isArray(cv) ? cv : []).find(x => x.id === body.vendaId);
+          if (!v) return respComp({ success: false, error: "Essa venda não está mais no registro." }, 404);
+          const c = await env.SACOLAS.get(chaveComp(v), { type: "json" });
+          if (!c) return respComp({ success: false, error: "Esta venda não tem comprovante guardado." }, 404);
+          return respComp({ success: true, ...c });
+        }
+
         // ── VENDAS DE AMOSTRAS ────────────────────────────────────────────
         // getVendasAmostras (público): data/amostras/vendas.json
         if (body.action === "getVendasAmostras") {
@@ -1803,6 +1857,8 @@ export default {
           const qtd = Math.max(1, parseInt(body.quantidade, 10) || 1);
           if (qtd > tem) return new Response(JSON.stringify({ success: false, error: `Só tem ${tem} par(es) dessa amostra.` }), { status: 409, headers: corsHeaders });
           const valor = Math.max(0, Math.round((Number(body.valor) || 0) * 100) / 100);
+          const ck = body.comprovante ? validarComprovante(body.comprovante) : null;
+          if (ck && ck.erro) return respComp({ success: false, error: ck.erro }, 400);
           const { content: cv } = await getFile(GITHUB_AMOSTRAS_VENDAS);
           const vendas = Array.isArray(cv) ? cv : [];
           const venda = {
@@ -1812,15 +1868,18 @@ export default {
             quantidade: qtd, precoUnit: Number(am.preco) || 0, valor,
             comprador, pagamento, vendidoEm: new Date().toISOString()
           };
+          if (ck) { venda.comprovante = ck.meta; await gravarComprovante(chaveComp(venda), ck.meta, body.comprovante.dados); }
           vendas.push(venda);
           const saiu = qtd >= tem;
           const novoEstoque = saiu ? estoque.filter(a => a.id !== am.id)
                                    : estoque.map(a => a.id === am.id ? { ...a, quantidade: tem - qtd, alteradoEm: venda.vendidoEm } : a);
           const { path: pEst } = parseRepoUrl(GITHUB_AMOSTRAS), { path: pVen } = parseRepoUrl(GITHUB_AMOSTRAS_VENDAS);
-          await gitCommitArquivos(env.GITHUB_OWNER, env.GITHUB_REPO, env.GITHUB_BRANCH || "main", [
-            { path: pEst, conteudo: JSON.stringify(novoEstoque, null, 2) },
-            { path: pVen, conteudo: JSON.stringify(vendas, null, 2) }
-          ], `amostras: venda ${am.artigo} ${am.cor} (${qtd}) para ${comprador}`);
+          try {
+            await gitCommitArquivos(env.GITHUB_OWNER, env.GITHUB_REPO, env.GITHUB_BRANCH || "main", [
+              { path: pEst, conteudo: JSON.stringify(novoEstoque, null, 2) },
+              { path: pVen, conteudo: JSON.stringify(vendas, null, 2) }
+            ], `amostras: venda ${am.artigo} ${am.cor} (${qtd}) para ${comprador}`);
+          } catch (e) { if (ck) await env.SACOLAS.delete(chaveComp(venda)); throw e; }
           return new Response(JSON.stringify({ success: true, venda, saiuDoEstoque: saiu }), { status: 200, headers: corsHeaders });
         }
 
@@ -1834,6 +1893,8 @@ export default {
           if (!comprador || !PAGTOS.includes(pagamento)) {
             return new Response(JSON.stringify({ success: false, error: "Falta o comprador ou a forma de pagamento." }), { status: 400, headers: corsHeaders });
           }
+          const ck = body.comprovante ? validarComprovante(body.comprovante) : null;
+          if (ck && ck.erro) return respComp({ success: false, error: ck.erro }, 400);
           const { content: ce } = await getFile(GITHUB_AMOSTRAS);
           let estoque = Array.isArray(ce) ? ce : [];
           const { content: cv } = await getFile(GITHUB_AMOSTRAS_VENDAS);
@@ -1854,15 +1915,19 @@ export default {
               valor: Math.max(0, Math.round((Number(it.valor) || 0) * 100) / 100),
               comprador, pagamento, vendidoEm: agora
             };
+            if (ck) venda.comprovante = ck.meta;
             vendas.push(venda); feitas.push(venda);
             if (qtd >= tem) { estoque = estoque.filter(a => a.id !== am.id); saiu.push(am.id); }
             else estoque = estoque.map(a => a.id === am.id ? { ...a, quantidade: tem - qtd, alteradoEm: agora } : a);
           }
           const { path: pEst } = parseRepoUrl(GITHUB_AMOSTRAS), { path: pVen } = parseRepoUrl(GITHUB_AMOSTRAS_VENDAS);
-          await gitCommitArquivos(env.GITHUB_OWNER, env.GITHUB_REPO, env.GITHUB_BRANCH || "main", [
-            { path: pEst, conteudo: JSON.stringify(estoque, null, 2) },
-            { path: pVen, conteudo: JSON.stringify(vendas, null, 2) }
-          ], `amostras: venda de ${feitas.length} amostra(s) para ${comprador}`);
+          if (ck) await gravarComprovante("comprovante:" + lote, ck.meta, body.comprovante.dados);
+          try {
+            await gitCommitArquivos(env.GITHUB_OWNER, env.GITHUB_REPO, env.GITHUB_BRANCH || "main", [
+              { path: pEst, conteudo: JSON.stringify(estoque, null, 2) },
+              { path: pVen, conteudo: JSON.stringify(vendas, null, 2) }
+            ], `amostras: venda de ${feitas.length} amostra(s) para ${comprador}`);
+          } catch (e) { if (ck) await env.SACOLAS.delete("comprovante:" + lote); throw e; }
           return new Response(JSON.stringify({ success: true, vendas: feitas, saiuDoEstoque: saiu }), { status: 200, headers: corsHeaders });
         }
 
@@ -1899,6 +1964,10 @@ export default {
             { path: pEst, conteudo: JSON.stringify(estoque, null, 2) },
             { path: pVen, conteudo: JSON.stringify(vendas.filter(x => x.id !== v.id), null, 2) }
           ], `amostras: venda desfeita ${v.artigo} ${v.cor} (${v.quantidade})`);
+          // o comprovante só sai quando não sobra nenhuma venda do mesmo lote
+          if (v.comprovante && env.SACOLAS && !vendas.some(x => x.id !== v.id && chaveComp(x) === chaveComp(v))) {
+            await env.SACOLAS.delete(chaveComp(v));
+          }
           return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
         }
 

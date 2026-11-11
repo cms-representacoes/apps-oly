@@ -67,7 +67,7 @@
   .esc[hidden]{display:none}
 
   .lista{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-  .cab,.linha{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 100px 110px 60px 110px 40px;gap:12px;align-items:center;padding:9px 14px}
+  .cab,.linha{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 100px 110px 60px 110px 76px;gap:12px;align-items:center;padding:9px 14px}
   .cab{background:var(--card2);border-bottom:1px solid var(--line);font-size:11px;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;padding-top:10px;padding-bottom:10px}
   .n{text-align:right}
   .linha{border-bottom:1px solid #f1f5f9}
@@ -93,6 +93,19 @@
   .valor{font-weight:800;color:var(--ven)}
   .desf{width:30px;height:30px;border-radius:8px;border:0;background:none;color:#94a3b8;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
   .desf:hover{background:#fef3c7;color:#b45309}
+  .ac{display:flex;justify-content:flex-end;gap:4px}
+  .cmp{width:30px;height:30px;border-radius:8px;border:1px dashed var(--line2);background:none;color:#94a3b8;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;position:relative}
+  .cmp:hover{border-color:var(--acc);color:var(--acc-d);background:#f0fdfa}
+  .cmp.tem{border:0;background:var(--acc-l);color:var(--acc-d)}
+  .cmp.tem:hover{background:#99f6e4}
+  .cmp:not(.tem)::after{content:'+';position:absolute;right:1px;top:-2px;font:800 11px 'Plus Jakarta Sans',sans-serif}
+  .linha-topo{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  .linha-topo .periodo{margin-bottom:0}
+  .semcp{height:40px;border-radius:10px;border:1px solid var(--line);background:#fff;font:700 13px 'Plus Jakarta Sans',sans-serif;color:var(--mut);padding:0 14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+  .semcp b{font-size:11.5px;background:#fef3c7;color:#b45309;border-radius:999px;padding:1px 8px}
+  .semcp.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  .semcp.on b{background:#fbbf24;color:#1a1407}
+  @media (max-width:480px){ .semcp{width:100%;justify-content:center} }
   .rot{display:none}
   @media (max-width:900px){
     .cab{display:none}
@@ -130,11 +143,14 @@
 </header>
 
 <main class="wrap">
+  <div class="linha-topo">
   <div class="periodo" id="periodo">
     <button type="button" data-p="hoje">Hoje</button>
     <button type="button" data-p="mes" class="on">Este mês</button>
     <button type="button" data-p="ant">Mês passado</button>
     <button type="button" data-p="tudo">Tudo</button>
+  </div>
+  <button type="button" class="semcp" id="semcp" title="Mostrar só as vendas sem comprovante">Sem comprovante <b id="semcpN">0</b></button>
   </div>
 
   <div class="resumo">
@@ -161,6 +177,7 @@
 </main>
 
 <script src="pergunta.js"></script>
+<script src="comprovante.js"></script>
 <script>
 (() => {
   const $ = s => document.querySelector(s);
@@ -170,7 +187,9 @@
   const RAW = 'https://raw.githubusercontent.com/cms-representacoes/apps-oly/main/Catalogo/';
   const PAG = { pix: 'Pix', dinheiro: 'Dinheiro', cartao: 'Cartão' };
   const q = $('#q'), esc = $('#esc');
-  let vendas = [], periodo = 'mes', filtroPag = '';
+  let vendas = [], periodo = 'mes', filtroPag = '', soSemComp = false;
+  const lote = v => v.lote || v.id;
+  const doLote = v => vendas.filter(x => lote(x) === lote(v));
 
   async function worker(body, admin) {
     const headers = { 'Content-Type': 'application/json' };
@@ -223,7 +242,10 @@
         <span class="t"><span>${rot}</span><b>${brl(tot)}</b><small>${vs.length} ${vs.length === 1 ? 'venda' : 'vendas'}</small></span></button>`;
     }).join('');
 
-    const vis = doPeriodo.filter(v => (!filtroPag || v.pagamento === filtroPag) &&
+    const semComp = doPeriodo.filter(v => !v.comprovante).length;
+    $('#semcpN').textContent = semComp;
+    $('#semcp').classList.toggle('on', soSemComp);
+    const vis = doPeriodo.filter(v => (!filtroPag || v.pagamento === filtroPag) && (!soSemComp || !v.comprovante) &&
       (!t || norm([v.comprador, v.descricao, v.artigo, v.cor, v.descricaoCor].join(' ')).includes(t)));
     const pares = vis.reduce((s, v) => s + (v.quantidade || 1), 0);
     const total = vis.reduce((s, v) => s + (v.valor || 0), 0);
@@ -244,7 +266,7 @@
         <div class="dt data">${d.dia} <small>${d.hora}<span class="rot"> · ${v.quantidade || 1} ${(v.quantidade || 1) > 1 ? 'pares' : 'par'}</span></small></div>
         <div class="qt n num">${v.quantidade || 1}</div>
         <div class="vl n num valor">${brl(v.valor)}</div>
-        <div class="ac"><button class="desf" type="button" data-desf="${h(v.id)}" title="Desfazer venda (volta para o estoque)" aria-label="Desfazer venda">${ICON_DESF}</button></div>
+        <div class="ac"><button class="cmp${v.comprovante ? ' tem' : ''}" type="button" data-cmp="${h(v.id)}" title="${v.comprovante ? 'Ver comprovante' : 'Anexar comprovante'}" aria-label="${v.comprovante ? 'Ver comprovante' : 'Anexar comprovante'}">${Comprovante.ICON_CLIP}</button><button class="desf" type="button" data-desf="${h(v.id)}" title="Desfazer venda (volta para o estoque)" aria-label="Desfazer venda">${ICON_DESF}</button></div>
       </div>`;
     }).join('');
   }
@@ -278,12 +300,43 @@
     const b = e.target.closest('[data-pag]'); if (!b) return;
     filtroPag = filtroPag === b.dataset.pag ? '' : b.dataset.pag; desenhar();
   });
-  $('#linhas').addEventListener('click', e => { const b = e.target.closest('[data-desf]'); if (b) desfazer(b.dataset.desf); });
+  $('#linhas').addEventListener('click', e => {
+    const b = e.target.closest('[data-desf]'); if (b) return desfazer(b.dataset.desf);
+    const c = e.target.closest('[data-cmp]'); if (c) comprovante(c.dataset.cmp);
+  });
+  $('#semcp').addEventListener('click', () => { soSemComp = !soSemComp; desenhar(); });
+
+  // comprovante: o da venda em lote vale para todas as vendas do mesmo comprador naquele momento
+  const aplicarComp = (meta, ids) => {
+    const set = new Set(ids || []);
+    vendas.forEach(x => { if (set.has(x.id)) { if (meta) x.comprovante = meta; else delete x.comprovante; } });
+    desenhar();
+  };
+  async function comprovante(id) {
+    const v = vendas.find(x => x.id === id); if (!v) return;
+    const n = doLote(v).length;
+    if (v.comprovante) return Comprovante.ver({ venda: v, worker, qtdLote: n, aoMudar: (m, ids) => {
+      aplicarComp(m, ids); toast(m ? 'Comprovante trocado.' : 'Comprovante removido.');
+    } });
+    let arq;
+    try { arq = await Comprovante.escolher(); } catch (e) { return toast(e.message, true); }
+    if (!arq) return;
+    const linhas = doLote(v).map(x => document.querySelector(`.linha[data-id="${CSS.escape(x.id)}"]`)).filter(Boolean);
+    linhas.forEach(l => l.classList.add('salvando'));
+    try {
+      const r = await worker({ action: 'anexarComprovante', vendaId: id, comprovante: { dados: arq.dados, nome: arq.nome } }, true);
+      aplicarComp(r.comprovante, r.vendas);
+      toast(n > 1 ? `Comprovante anexado às ${n} vendas de ${v.comprador}.` : `Comprovante anexado à venda de ${v.comprador}.`);
+    } catch (e) {
+      linhas.forEach(l => l.classList.remove('salvando'));
+      toast('Não deu para anexar: ' + e.message, true);
+    }
+  }
   q.addEventListener('input', desenhar);
   const limpar = () => { q.value = ''; desenhar(); q.focus(); };
   esc.addEventListener('click', limpar);
   document.addEventListener('keydown', e => {
-    if (e.key !== 'Escape' || document.querySelector('.pq-fundo')) return;
+    if (e.key !== 'Escape' || document.querySelector('.pq-fundo') || document.querySelector('.cpv.show')) return;
     e.preventDefault(); limpar();
   });
 
