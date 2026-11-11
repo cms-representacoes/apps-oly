@@ -1616,7 +1616,20 @@ export default {
             try {
               const sessao = await tsSessao(tenant, tentativa > 0);
               const matches = await tsBuscar(sessao, artigo, cor);
-              if (!matches.length || !matches[0].redirect) return nada("Nenhum produto casou com artigo + cor");
+              if (!matches.length || !matches[0].redirect) {
+                // A UA usa outros códigos de cor (ex.: nosso SCSCBK x BKBKMP lá).
+                // Sem a cor exata, devolve as cores que o artigo tem no Trade
+                // Squash, para a pessoa escolher olhando a foto.
+                const todas = await tsBuscar(sessao, artigo, "");
+                const artN = tsSolto(artigo), vistas = new Set(), cores = [];
+                for (const p of todas) {
+                  const c = tsSolto(tsChaveSemTamanho(String((p && p.sku) || ""))).replace(artN, "");
+                  if (!c || vistas.has(c) || !p.redirect) continue;
+                  vistas.add(c);
+                  cores.push({ cor: c, sku: p.sku, nome: String(p.name || p.title || p.label || p.description || "").slice(0, 80) });
+                }
+                return new Response(JSON.stringify({ success: true, achou: false, motivo: "Nenhum produto casou com artigo + cor", cores: cores.slice(0, 24) }), { status: 200, headers: corsHeaders });
+              }
               const urlImg = await tsUrlImagem(sessao, matches[0].redirect, artigo);
               if (!urlImg) return nada("Produto sem imagem no Trade Squash");
               const ir = await fetch(urlImg, { headers: { "User-Agent": TS_UA_HEADER, Referer: sessao.showcase } });

@@ -516,19 +516,16 @@
   }
 
   // ── Trade Squash: procura a foto da cor e sobe para a pasta Catalogo ──
-  // Usa a mesma ação do admin das Disponibilidades. Tenta Olympikus e, se não
-  // achar, Under Armour.
+  // Usa a mesma ação do admin das Disponibilidades. Procura primeiro na marca do
+  // artigo (7 dígitos = UA); sem a cor exata, deixa escolher entre as cores de lá.
   async function buscarTS(idCor) {
     const [a, c] = idCor.split('|');
     const it = porArtigo.get(a)?.cores.find(x => x.c === c); if (!it) return;
     tsEstado[idCor] = 'buscando'; buscar();
-    const r = await previaTS(a, c);
-    if (!r.foto) { tsEstado[idCor] = r.erro ? 'Não deu para buscar: ' + r.erro : 'nao'; buscar(); return; }
-    const quer = await perguntar({
-      titulo: 'Foto do Trade Squash', imagem: r.foto,
-      texto: `Achei esta foto para ${a} · ${c}${porArtigo.get(a).nome ? ' (' + porArtigo.get(a).nome + ')' : ''}. É ela? Quer adicionar ao banco de imagens?`,
-      ok: 'Adicionar ao banco', cancelar: 'Não é essa' });
-    if (!quer) { tsEstado[idCor] = 'recusada'; buscar(); return; }
+    const r = await FotoAmostra.trazerTS({ worker, artigo: a, cor: c, nome: porArtigo.get(a).nome || '', ok: 'Adicionar ao banco' });
+    if (r.erro) { tsEstado[idCor] = 'Não deu para buscar: ' + r.erro; buscar(); return; }
+    if (r.nao) { tsEstado[idCor] = 'nao'; buscar(); return; }
+    if (!r.foto) { tsEstado[idCor] = 'recusada'; buscar(); return; }
     tsEstado[idCor] = 'gravando'; buscar();
     try {
       const d = await worker({ action: 'salvarImagemCatalogo', artigo: a, cor: c, base64: r.foto }, true);
@@ -665,18 +662,15 @@
     const a = $('#mnA').value.trim().toUpperCase(), c = $('#mnC').value.trim().toUpperCase();
     if (!artOk(a) || !c) { mnAvisar('Preencha o artigo e a cor antes de buscar no Trade Squash.', true); return; }
     const bt = $('#mnTS'); bt.disabled = true; bt.innerHTML = '<span class="gira"></span>Buscando…';
-    const r = await previaTS(a, c);
+    const r = await FotoAmostra.trazerTS({ worker, artigo: a, cor: c, nome: $('#mnN').value.trim() });
     bt.disabled = false; bt.textContent = 'Buscar no Trade Squash';
-    if (!r.foto) { mnAvisar(r.erro ? 'Não deu para buscar no Trade Squash: ' + esc_(r.erro) : 'Não achei no Trade Squash. Tente o Google ou escolha um arquivo.', !!r.erro); return; }
-    const quer = await perguntar({
-      titulo: 'Foto do Trade Squash', imagem: r.foto,
-      texto: `Achei esta foto para ${a} · ${c}. É ela? Quer usar no cadastro?`,
-      ok: 'Usar esta foto', cancelar: 'Não é essa' });
-    if (quer) { mnFoto({ b64: r.foto }, 'Trade Squash'); mnAvisar(''); }
+    if (r.erro) { mnAvisar('Não deu para buscar no Trade Squash: ' + esc_(r.erro), true); return; }
+    if (r.nao) { mnAvisar('Não achei no Trade Squash. Tente o Google ou escolha um arquivo.'); return; }
+    if (r.foto) { mnFoto({ b64: r.foto }, 'Trade Squash · ' + FotoAmostra.MARCAS[r.marca].nome); mnAvisar(''); }
     else mnAvisar('Foto do Trade Squash recusada. Tente o Google ou escolha um arquivo.');
   });
   $('#mnGoogle').addEventListener('click', () => {
-    const termo = ['tênis Olympikus', $('#mnN').value, $('#mnA').value].join(' ').replace(/\s+/g, ' ').trim();
+    const termo = [FotoAmostra.MARCAS[FotoAmostra.marcaDe($('#mnA').value)].nome, $('#mnN').value, $('#mnA').value].join(' ').replace(/\s+/g, ' ').trim();
     window.open('https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(termo), '_blank', 'noopener');
     setTimeout(() => mnCola.focus(), 300);
   });

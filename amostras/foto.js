@@ -36,6 +36,15 @@
   .fa-pe .fa-ok{border:0;background:#0d9488;color:#fff}
   .fa-pe .fa-ok:disabled{background:#cbd5e1;cursor:not-allowed}
   .fa-cel{display:none}
+  .ts-fundo{z-index:98}
+  .ts-marca{display:inline-block;font-style:normal;font-size:11px;font-weight:800;color:#fff;border-radius:999px;padding:2px 9px;margin-left:6px;vertical-align:2px}
+  .ts-txt{font-size:13.5px;color:#334155;margin:0 0 10px;line-height:1.45}
+  .ts-cores{display:flex;flex-wrap:wrap;gap:6px}
+  .ts-cores button{height:36px;padding:0 12px;border-radius:999px;border:1px solid #e2e8f0;background:#fff;color:#334155;font:700 13px 'Plus Jakarta Sans',sans-serif;cursor:pointer}
+  .ts-cores button:hover{border-color:#0d9488;color:#0f766e}
+  .ts-cores button.on{background:#0d9488;border-color:#0d9488;color:#fff}
+  .ts-ver{cursor:default;min-height:220px}
+  .ts-ver img{max-height:320px}
   @media (max-width:600px){
     .fa-fundo{padding:0;align-items:stretch}
     .fa{max-width:none;max-height:none;border-radius:0}
@@ -71,16 +80,76 @@
     });
   }
 
-  // procura no Trade Squash (Olympikus e, se não achar, Under Armour) sem gravar
+  // marca pelo artigo (a mesma regra da loja): 7 dígitos é Under Armour
+  const MARCAS = { oly: { nome: 'Olympikus', cor: '#2c39e2' }, ua: { nome: 'Under Armour', cor: '#111' } };
+  const marcaDe = a => /^\d{7}$/.test(String(a || '').trim()) ? 'ua' : 'oly';
+
+  // procura no Trade Squash sem gravar: primeiro na marca do artigo, depois na outra.
+  // → { foto, marca } | { cores:[{cor,sku,nome}], marca } (achou o artigo, não a cor) | { erro }
   async function previaTS(worker, artigo, cor) {
+    const m1 = marcaDe(artigo), ordem = [m1, m1 === 'ua' ? 'oly' : 'ua'];
     let erro = '';
-    for (const marca of ['oly', 'ua']) {
+    for (const marca of ordem) {
       try {
         const d = await worker({ action: 'tsPreviaImagem', marca, artigo, cor }, true);
-        if (d.achou && d.base64) return { foto: d.base64 };
+        if (d.achou && d.base64) return { foto: d.base64, marca };
+        if (d.cores && d.cores.length) return { cores: d.cores, marca };   // o artigo é desta marca
       } catch (e) { erro = e.message; }
     }
     return { erro };
+  }
+
+  // Busca + janela de confirmação. Se a cor exata não existir lá (comum na UA),
+  // mostra as cores do artigo no Trade Squash para a pessoa escolher pela foto.
+  // → { foto, marca } | { recusou:true } | { nao:true } | { erro }
+  async function trazerTS({ worker, artigo, cor, nome = '', ok = 'Usar esta foto' }) {
+    const r = await previaTS(worker, artigo, cor);
+    if (!r.foto && !r.cores) return r.erro ? { erro: r.erro } : { nao: true };
+    const mc = MARCAS[r.marca];
+    return new Promise(resolve => {
+      const f = document.createElement('div');
+      f.className = 'fa-fundo ts-fundo';
+      const sub = [artigo, cor, nome].filter(Boolean).join(' · ');
+      f.innerHTML = `<div class="fa" role="dialog" aria-modal="true" aria-label="Foto do Trade Squash">
+        <div class="fa-cab"><div><b>Foto do Trade Squash <i class="ts-marca" style="background:${mc.cor}">${mc.nome}</i></b><span>${esc(sub)}</span></div><button class="fa-x" type="button" aria-label="Fechar">×</button></div>
+        <div class="fa-corpo">
+          ${r.cores ? `<p class="ts-txt">Não achei a cor <b>${esc(cor)}</b> no Trade Squash da ${mc.nome}: lá as cores têm outros códigos. Este artigo tem estas cores lá; toque numa para ver a foto.</p>
+            <div class="ts-cores">${r.cores.map(c => `<button type="button" data-cor="${esc(c.cor)}" title="${esc(c.nome || c.sku)}">${esc(c.cor)}</button>`).join('')}</div>` : ''}
+          <div class="fa-cola ts-ver">${r.foto ? '' : '<span>Escolha uma cor acima.</span>'}</div>
+          ${r.cores ? `<p class="fa-dica">A foto escolhida fica guardada com a nossa cor (<b>${esc(cor)}</b>).</p>` : ''}
+        </div>
+        <div class="fa-pe"><span class="fa-sel"></span><button type="button" class="fa-nao">${r.foto ? 'Não é essa' : 'Nenhuma é essa'}</button><button type="button" class="fa-ok" disabled>${esc(ok)}</button></div>
+      </div>`;
+      document.body.appendChild(f);
+      const $ = s => f.querySelector(s);
+      const ver = $('.ts-ver'), btOk = $('.fa-ok');
+      let foto = null, pedido = 0;
+      const pe = (t, tipo) => { const el = $('.fa-sel'); el.textContent = t; el.className = 'fa-sel' + (tipo ? ' ' + tipo : ''); btOk.disabled = !foto; };
+      const mostrar = (b64, txt) => { foto = b64; ver.innerHTML = ''; const im = document.createElement('img'); im.alt = ''; im.src = b64; ver.appendChild(im); pe(txt, 'ok'); };
+      if (r.foto) mostrar(r.foto, `Achei a cor ${cor} na ${mc.nome}. É ela?`);
+      else pe(`${r.cores.length} ${r.cores.length === 1 ? 'cor' : 'cores'} deste artigo no Trade Squash.`);
+
+      const ac = $('.ts-cores');
+      if (ac) ac.addEventListener('click', async e => {
+        const b = e.target.closest('[data-cor]'); if (!b) return;
+        ac.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+        const n = ++pedido; foto = null;
+        ver.innerHTML = '<span class="fa-gira"></span>'; pe(`Abrindo a cor ${b.dataset.cor}…`);
+        try {
+          const d = await worker({ action: 'tsPreviaImagem', marca: r.marca, artigo, cor: b.dataset.cor }, true);
+          if (n !== pedido) return;   // clicou em outra enquanto carregava
+          if (d.achou && d.base64) mostrar(d.base64, `Cor ${b.dataset.cor} do Trade Squash. É a da amostra?`);
+          else { ver.innerHTML = '<span>Essa cor está sem foto no Trade Squash.</span>'; pe('Tente outra cor.', 'erro'); }
+        } catch (er) { if (n === pedido) { ver.innerHTML = ''; pe('Não deu para abrir: ' + er.message, 'erro'); } }
+      });
+      const fim = v => { window.removeEventListener('keydown', tecla, true); f.remove(); resolve(v); };
+      const tecla = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); fim({ recusou: true }); } };
+      window.addEventListener('keydown', tecla, true);
+      $('.fa-x').addEventListener('click', () => fim({ recusou: true }));
+      $('.fa-nao').addEventListener('click', () => fim({ recusou: true }));
+      f.addEventListener('click', e => { if (e.target === f) fim({ recusou: true }); });
+      btOk.addEventListener('click', () => { if (foto) fim({ foto, marca: r.marca }); });
+    });
   }
 
   function escolher({ artigo = '', cor = '', nome = '', worker, titulo = 'Foto da amostra' } = {}) {
@@ -145,13 +214,15 @@
       btTs.addEventListener('click', async () => {
         if (!artigo || !cor || !worker) { pe('Sem artigo e cor não dá para buscar no Trade Squash.', 'erro'); return; }
         btTs.disabled = true; btTs.innerHTML = '<span class="fa-gira"></span>Buscando…';
-        const r = await previaTS(worker, artigo, cor);
+        const r = await trazerTS({ worker, artigo, cor, nome });
         btTs.disabled = false; btTs.textContent = 'Buscar no Trade Squash';
-        if (r.foto) mostrar({ b64: r.foto }, 'Achei no Trade Squash');
-        else pe(r.erro ? 'Não deu para buscar no Trade Squash: ' + r.erro : 'Não achei no Trade Squash. Tente o Google ou um arquivo.', r.erro ? 'erro' : '');
+        if (r.foto) mostrar({ b64: r.foto }, 'Do Trade Squash · ' + MARCAS[r.marca].nome);
+        else if (r.erro) pe('Não deu para buscar no Trade Squash: ' + r.erro, 'erro');
+        else if (r.nao) pe('Não achei no Trade Squash. Tente o Google ou um arquivo.');
+        else pe('Foto do Trade Squash recusada. Tente o Google ou um arquivo.');
       });
       $('.gg').addEventListener('click', () => {
-        const termo = ['tênis Olympikus', nome, artigo].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+        const termo = [MARCAS[marcaDe(artigo)].nome, nome, artigo].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
         window.open('https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(termo), '_blank', 'noopener');
         pe('Copie a foto certa no Google e volte aqui para colar.');
         setTimeout(() => cola.focus(), 300);
@@ -185,5 +256,5 @@
     });
   }
 
-  window.FotoAmostra = { escolher, paraJpeg, previaTS };
+  window.FotoAmostra = { escolher, paraJpeg, previaTS, trazerTS, marcaDe, MARCAS };
 })();
