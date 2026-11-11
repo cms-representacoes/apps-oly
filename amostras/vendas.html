@@ -58,7 +58,19 @@
   .ic.cartao{background:#e0e7ff;color:#4338ca}
   @media (max-width:640px){ .pags{gap:6px} .pag{flex-direction:column;align-items:flex-start;gap:6px;padding:10px} .pag .t b{font-size:13.5px} }
 
-  .busca{position:relative;margin-bottom:12px}
+  .ferramentas{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  .busca{position:relative;flex:0 1 340px;min-width:220px}
+  .ferramentas .chips{margin-left:auto}
+  .chips{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;height:46px}
+  .chips button{border:0;background:none;font:700 13px 'Plus Jakarta Sans',sans-serif;color:var(--mut);padding:0 16px;cursor:pointer;white-space:nowrap}
+  .chips button+button{border-left:1px solid var(--line)}
+  .chips button.on{background:var(--acc);color:#fff}
+  .chips button.m-oly.on{background:#2c39e2;color:#fff}
+  .chips button.m-ua.on{background:#111;color:#fff}
+  @media (max-width:760px){
+    .busca{flex:1 1 100%} .ferramentas .chips{margin-left:0;width:100%}
+    .chips button{flex:1}
+  }
   .busca svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--mut);pointer-events:none}
   .busca input{width:100%;height:46px;border-radius:12px;border:2px solid var(--line);background:#fff;padding:0 88px 0 42px;font:600 15px 'Plus Jakarta Sans',sans-serif;color:var(--ink);outline:none}
   .busca input:focus{border-color:var(--acc);box-shadow:0 0 0 4px rgba(13,148,136,.15)}
@@ -162,10 +174,17 @@
 
   <div class="pags" id="pags"></div>
 
+  <div class="ferramentas">
   <div class="busca">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-    <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Buscar por comprador, modelo, artigo ou cor">
+    <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Comprador, modelo ou cor">
     <button class="esc" id="esc" type="button" hidden>Esc · limpar</button>
+  </div>
+  <div class="chips" id="marcas">
+    <button type="button" data-m="" class="on">Todas</button>
+    <button type="button" data-m="oly" class="m-oly" title="Só Olympikus">Oly</button>
+    <button type="button" data-m="ua" class="m-ua" title="Só Under Armour">UA</button>
+  </div>
   </div>
 
   <div class="lista">
@@ -187,7 +206,8 @@
   const RAW = 'https://raw.githubusercontent.com/cms-representacoes/apps-oly/main/Catalogo/';
   const PAG = { pix: 'Pix', dinheiro: 'Dinheiro', cartao: 'Cartão' };
   const q = $('#q'), esc = $('#esc');
-  let vendas = [], periodo = 'mes', filtroPag = '', soSemComp = false;
+  let vendas = [], periodo = 'mes', filtroPag = '', soSemComp = false, filtroMarca = '';
+  const marcaDe = x => /^\d{7}$/.test(String(x.artigo || '').trim()) ? 'ua' : 'oly';
   const lote = v => v.lote || v.id;
   const doLote = v => vendas.filter(x => lote(x) === lote(v));
 
@@ -232,7 +252,7 @@
   function desenhar() {
     esc.hidden = !q.value;
     const t = norm(q.value.trim());
-    const doPeriodo = vendas.filter(noPeriodo);
+    const doPeriodo = vendas.filter(v => noPeriodo(v) && (!filtroMarca || marcaDe(v) === filtroMarca));
     // resumo por forma de pagamento (do período, antes do filtro de pagamento e da busca)
     $('#pags').innerHTML = Object.entries(PAG).map(([k, rot]) => {
       const vs = doPeriodo.filter(v => v.pagamento === k);
@@ -305,6 +325,12 @@
     const c = e.target.closest('[data-cmp]'); if (c) comprovante(c.dataset.cmp);
   });
   $('#semcp').addEventListener('click', () => { soSemComp = !soSemComp; desenhar(); });
+  $('#marcas').addEventListener('click', e => {
+    const b = e.target.closest('[data-m]'); if (!b) return;
+    filtroMarca = b.dataset.m;
+    document.querySelectorAll('#marcas button').forEach(x => x.classList.toggle('on', x === b));
+    desenhar();
+  });
 
   // comprovante: o da venda em lote vale para todas as vendas do mesmo comprador naquele momento
   const aplicarComp = (meta, ids) => {

@@ -83,7 +83,9 @@
   @media (max-width:480px){ .kpi{padding:10px} .kpi b{font-size:17px;white-space:nowrap} .resumo{grid-template-columns:.7fr .7fr 1.3fr;gap:8px} }
 
   .ferramentas{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
-  .busca{position:relative;flex:1 1 280px}
+  .busca{position:relative;flex:0 1 340px;min-width:220px}
+  .ferramentas .chips{margin-left:auto}
+  @media (max-width:760px){ .busca{flex:1 1 100%} .ferramentas .chips{margin-left:0} }
   .busca svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--mut);pointer-events:none}
   .busca input{width:100%;height:46px;border-radius:12px;border:2px solid var(--line);background:#fff;padding:0 88px 0 42px;font:600 15px 'Plus Jakarta Sans',sans-serif;color:var(--ink);outline:none}
   .busca input:focus{border-color:var(--acc);box-shadow:0 0 0 4px rgba(13,148,136,.15)}
@@ -103,6 +105,12 @@
     .chips button+button{border-left:1px solid var(--line)}
     .chips button.on{border-color:var(--acc)}
   }
+  /* marca: Oly e UA ligam e desligam (fora do Todos de tamanho) */
+  .chips .div-m{width:0;border-left:2px solid var(--line2,#cbd5e1);margin:8px 2px;padding:0;flex:none}
+  .chips button.m-oly.on{background:#2c39e2;color:#fff}
+  .chips button.m-ua.on{background:#111;color:#fff}
+  .chips .div-m + button{border-left:0}
+  @media (max-width:760px){ .chips .div-m{margin:6px 2px} .chips button.m-oly.on{border-color:#2c39e2} .chips button.m-ua.on{border-color:#111} }
 
   /* lista no jeito da Detalhada: miniatura com lupa + dados na linha */
   .lista{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
@@ -257,7 +265,7 @@
   <div class="ferramentas">
     <div class="busca">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-      <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Buscar por artigo, modelo ou cor">
+      <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Artigo, modelo ou cor">
       <button class="esc" id="esc" type="button" hidden>Esc · limpar</button>
     </div>
     <div class="chips" id="chips">
@@ -266,6 +274,9 @@
       <button type="button" data-t="35">Fem 35</button>
       <button type="button" data-t="U">Acessórios</button>
       <button type="button" data-t="M">Confecção</button>
+      <span class="div-m" aria-hidden="true"></span>
+      <button type="button" data-m="oly" class="m-oly" title="Só Olympikus">Oly</button>
+      <button type="button" data-m="ua" class="m-ua" title="Só Under Armour">UA</button>
     </div>
   </div>
 
@@ -348,7 +359,8 @@
   const q = $('#q'), esc = $('#esc');
   // mesmo token de escrita que o cadastro, o admin e o dispo usam
   const ADMIN_TOKEN = '1b489c97-7bc7-466a-a675-f559e1226371d9bea53d-a920-4059-a31c-6bc0b6d8c4c8';
-  let estoque = [], filtroTam = '';
+  let estoque = [], filtroTam = '', filtroMarca = '';
+  const marcaDe = x => /^\d{7}$/.test(String(x.artigo || '').trim()) ? 'ua' : 'oly';
   const marcados = new Set();   // ids selecionados para vender ou excluir juntos
   let visiveis = [];            // ids que a lista mostra agora (para "selecionar todos")
   let ed = null;   // { id, campo: 'tam' | 'qt' | 'pr' | 'dc' } — célula em edição
@@ -439,7 +451,7 @@
     esc.hidden = !q.value;
     const vis = estoque
       .map((x, i) => ({ x, i }))
-      .filter(({ x }) => (!filtroTam || x.tamanho === filtroTam) &&
+      .filter(({ x }) => (!filtroTam || x.tamanho === filtroTam) && (!filtroMarca || marcaDe(x) === filtroMarca) &&
         (!t || norm([x.artigo, x.descricao, x.cor, x.descricaoCor].join(' ')).includes(t)));
 
     const pares = vis.reduce((s, { x }) => s + (x.quantidade || 1), 0);
@@ -459,7 +471,7 @@
     const sep = (rot, n) => `<div class="sep-lista">${rot}<small>${n}</small></div>`;
     $('#linhas').innerHTML =
       (doTopo.length ? sep('Selecionados', doTopo.length) + doTopo.map(linha).join('') : '') +
-      (doTopo.length ? sep(t || filtroTam ? 'Resultado da busca' : 'Demais amostras', resto.length) : '') +
+      (doTopo.length ? sep(t || filtroTam || filtroMarca ? 'Resultado da busca' : 'Demais amostras', resto.length) : '') +
       (resto.length ? resto.map(linha).join('') : (doTopo.length ? '<div class="vazio">Nada mais nesta busca.</div>' : ''));
     atualizarLote();
     const foco = document.querySelector('.ed-qt,.ed-pr,.ed-dc'); if (foco) { foco.focus(); foco.select(); }
@@ -854,8 +866,10 @@
   });
   $('#chips').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
-    filtroTam = b.dataset.t;
-    document.querySelectorAll('#chips button').forEach(x => x.classList.toggle('on', x === b));
+    if (b.dataset.m) filtroMarca = filtroMarca === b.dataset.m ? '' : b.dataset.m;   // clicar de novo desliga
+    else { filtroTam = b.dataset.t; if (!filtroTam) filtroMarca = ''; }                // Todos limpa tudo
+    document.querySelectorAll('#chips [data-t]').forEach(x => x.classList.toggle('on', x.dataset.t === filtroTam));
+    document.querySelectorAll('#chips [data-m]').forEach(x => x.classList.toggle('on', x.dataset.m === filtroMarca));
     desenhar();
   });
 
