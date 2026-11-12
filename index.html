@@ -48,14 +48,16 @@
     @media (min-width:1024px){ .portal-card{ border-radius:22px; padding:18px 20px; min-height:136px; } }
     .portal-card:active{ transform:scale(.98); }
 
-    /* A ordem muda de uma tela para a outra, e só nestes dois: no desktop,
-       Catálogo e Detalhada dividem a segunda linha, com o Catálogo à
-       esquerda; no celular, em coluna única, a Detalhada vem antes. O DOM
-       segue a ordem do desktop e aqui só se trocam os dois. */
+    /* A ordem muda de uma tela para a outra: no desktop, Catálogo e
+       Detalhada dividem a segunda linha, com o Catálogo à esquerda; no
+       celular, em coluna única, a Detalhada vem antes. O DOM segue a ordem
+       do desktop e aqui só se trocam os de baixo.
+       O Repasses entrou nesta lista no lugar do Showroom: os dois trocaram
+       de posição, e no celular a troca precisa valer também. */
     @media (max-width:639px){
       .card-detalhada{ order:1; }
       .card-catalogo{ order:2; }
-      .card-showroom{ order:3; }
+      .card-repasse{ order:3; }
       .card-disp{ order:4; }
     }
     .resumo-pill{
@@ -104,7 +106,7 @@
     @media (min-width:640px){ .portal-card-tag{ font-size:11px; padding:5px 11px; margin-bottom:10px; } }
     .portal-card-title{ font-size:16px;font-weight:800;color:#fff;line-height:1.15; margin-bottom:4px;letter-spacing:-.02em; }
     /* O selo de novidade entra na linha do nome: no canto do card ele caia
-       em cima do botão Resumo, que a CMS vê no Repasses. */
+       em cima do botão Resumo, que a CMS vê no Showroom. */
     .portal-card-title:has(> .pc-novos:not([hidden])){ flex-wrap:wrap; }
     @media (min-width:640px){ .portal-card-title{ font-size:17px; } }
     @media (min-width:1024px){ .portal-card-title{ font-size:18px; } }
@@ -124,6 +126,11 @@
       animation:pcNovosPulso 2.4s ease-in-out infinite;
     }
     .pc-novos[hidden]{ display:none !important; }
+    /* Sobre o azul do Repasses o verde saltava sozinho; o Showroom começa
+       em verde-escuro (#0E6B47) e o selo encostava em 2:1 de contraste —
+       quase camuflado. Um fio claro em volta o recorta do fundo. É outline,
+       não box-shadow: o pulso sobrescreve a sombra a cada quadro. */
+    .card-showroom .pc-novos{ outline:1.5px solid rgba(255,255,255,.55); }
     .pc-novos svg{ width:11px; height:11px; flex:none; }
     @keyframes pcNovosPulso{
       0%, 100%{ transform:scale(1);    box-shadow:0 6px 18px -6px rgba(22,163,74,.9); }
@@ -625,7 +632,7 @@
       body{ padding-bottom:86px; }
     }
     /* Sem a etiqueta o título subiu, e a pílula "Resumo" ocupa o canto
-       superior direito do card de Repasses. */
+       superior direito do card do Showroom. */
     .portal-card-title{ padding-right:96px; display:flex; align-items:center; gap:10px; }
     /* O ícone herda a cor da própria etiqueta que existia antes, então cada
        card mantém sua identidade. Seletor com 2 classes para vencer o
@@ -799,17 +806,18 @@
         </div>
       </a>
 
-      <a href="https://cms-representacoes.github.io/apps-oly/repasses/" class="portal-card card-repasse focus-ring">
+      <a href="https://cms-representacoes.github.io/apps-oly/vitrine/" class="portal-card card-showroom focus-ring">
         <span id="resumoRepassesBtn" class="resumo-pill admin-only" hidden
           onclick="event.preventDefault(); event.stopPropagation(); window.location.href='https://cms-representacoes.github.io/apps-oly/admin/dashboard.html';">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>
           Resumo
         </span>
-        <div class="portal-card-title"><span class="pc-ico tag-repasse"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg></span><span class="pc-nome">Repasses</span><span class="pc-novos" id="novosRepasse" hidden><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.2 5.8L20 10l-5.8 2.2L12 18l-2.2-5.8L4 10l5.8-2.2L12 2z"/></svg><span class="pc-novos-txt"></span></span></div>
-        <div class="portal-card-desc text-blue-200">Faça pedidos do estoque em repasse.</div>
-        <div class="portal-card-cta text-blue-300">
+        <div class="portal-card-title"><span class="pc-ico tag-showroom"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg></span><span class="pc-nome">Showroom</span><span class="pc-novos" id="novosRepasse" hidden><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.2 5.8L20 10l-5.8 2.2L12 18l-2.2-5.8L4 10l5.8-2.2L12 2z"/></svg><span class="pc-novos-txt"></span></span></div>
+        <div class="portal-card-desc">Pronta entrega, repasse e produção num lugar só. Monte a sacola e mande o pedido.</div>
+        <div class="portal-card-cta">
           Acessar
           <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          <span class="pc-quando" id="quandoShowroom" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="pc-quando-txt"></span></span>
         </div>
       </a>
 
@@ -832,13 +840,12 @@
         </div>
       </a>
 
-      <a href="https://cms-representacoes.github.io/apps-oly/vitrine/" class="portal-card card-showroom focus-ring">
-        <div class="portal-card-title"><span class="pc-ico tag-showroom"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg></span><span class="pc-nome">Showroom</span></div>
-        <div class="portal-card-desc">Pronta entrega, repasse e produção num lugar só. Monte a sacola e mande o pedido.</div>
-        <div class="portal-card-cta">
+      <a href="https://cms-representacoes.github.io/apps-oly/repasses/" class="portal-card card-repasse focus-ring">
+        <div class="portal-card-title"><span class="pc-ico tag-repasse"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg></span><span class="pc-nome">Repasses</span></div>
+        <div class="portal-card-desc text-blue-200">Faça pedidos do estoque em repasse.</div>
+        <div class="portal-card-cta text-blue-300">
           Acessar
           <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          <span class="pc-quando" id="quandoShowroom" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="pc-quando-txt"></span></span>
         </div>
       </a>
 
@@ -1187,21 +1194,21 @@
       return null;
     }
     document.addEventListener('click', function(e){
-      var a = e.target.closest && e.target.closest('a[href]');
-      if(a){
-        var alvo = local(a.href);
-        if(alvo){ e.preventDefault(); e.stopPropagation(); location.href = alvo; return; }
+      /* Vence o elemento mais INTERNO. A pílula "Resumo" mora dentro do card
+         do Showroom e navega por onclick: olhando o <a> primeiro, o clique
+         nela abria a vitrine e o onclick nem chegava a rodar. Como isto aqui
+         é captura, o stopPropagation da própria pílula não tinha como
+         impedir — ela só roda depois. */
+      var el = e.target.closest && e.target.closest('a[href],[onclick]');
+      if(!el) return;
+      var u = '', oc = el.getAttribute && el.getAttribute('onclick');
+      if(oc){
+        var m = String(oc).match(/https:\/\/cms-representacoes\.github\.io\/[^'"\s]+/);
+        if(m) u = m[0];
       }
-      // cartões que navegam por onclick, não por href
-      var el = e.target.closest && e.target.closest('[onclick]');
-      if(el){
-        var m = String(el.getAttribute('onclick') || '')
-          .match(/https:\/\/cms-representacoes\.github\.io\/[^'"\s]+/);
-        if(m){
-          var destino = local(m[0]);
-          if(destino){ e.preventDefault(); e.stopPropagation(); location.href = destino; }
-        }
-      }
+      if(!u && el.tagName === 'A') u = el.href;
+      var destino = u && local(u);
+      if(destino){ e.preventDefault(); e.stopPropagation(); location.href = destino; }
     }, true);
     var abrir = window.open;
     window.open = function(u){
