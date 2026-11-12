@@ -168,6 +168,11 @@ export default {
     const GITHUB_DETALHADA      = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/detalhada.json`;
     const GITHUB_DETALHADA_INFO = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/detalhada-info.json`;
     const GITHUB_CLI_FANTASIA   = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/clientes-fantasia.json`;
+    // Carteira em aberto por cliente, derivada da detalhada na publicação
+    // diária. Existe para a tela de repasse poder avisar "esse cliente já tem
+    // esse par chegando" sem baixar os 5 MB da base: aqui são ~700 KB, e só o
+    // que serve para essa conferência.
+    const GITHUB_CARTEIRA_ABERTA = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/carteira-aberta.json`;
     // Grade da carteira CORRE — planilha importada pela tela de admin da
     // Detalhada. Não é diária: entra quando a CMS resolve atualizar. Guarda a
     // planilha inteira (todas as colunas), porque o envio à fábrica vai
@@ -2559,6 +2564,86 @@ export default {
                 `clientes: nome fantasia (${Object.keys(clientes).length})`);
             }
           } catch (_) { /* conveniência do catálogo; não bloqueia a publicação */ }
+
+          // Carteira em aberto por cliente, para o aviso de produto duplicado
+          // nas telas de repasse (js/carteira.js). Mesma ideia do arquivo de
+          // nome fantasia: a tela não pode baixar a base inteira para fazer
+          // uma pergunta pequena. Aqui fica o que o cliente tem por faturar e
+          // o que saiu para ele nos últimos 90 dias.
+          try {
+            const JANELA = 90;
+            // posição de cada campo na linha compacta da detalhada
+            const _CLI = 1, _REF = 5, _COR = 6, _GCI = 7, _PREV = 10, _CART = 11, _FAT = 12, _DFAT = 13;
+            const hoje = Number(base.dataDia || 0);
+            const dRef = base.dic.ref || [], dCor = base.dic.cor || [], dCli = base.dic.cli || [];
+            const refs = [], iRef = new Map(), cores = [], iCor = new Map();
+            const idxRef = j => {
+              const par = dRef[j] || ["", ""];
+              const k = String(par[0] ?? "").trim() + "|" + String(par[1] ?? "").trim();
+              let i = iRef.get(k);
+              if (i === undefined) { i = refs.length; iRef.set(k, i); refs.push([String(par[0] ?? "").trim(), String(par[1] ?? "").trim()]); }
+              return i;
+            };
+            const idxCor = j => {
+              const c = String(dCor[j] ?? "").trim().toUpperCase();
+              let i = iCor.get(c);
+              if (i === undefined) { i = cores.length; iCor.set(c, i); cores.push(c); }
+              return i;
+            };
+            // Mesma encomenda partida por faixa ou filial vira várias linhas;
+            // para quem lê o aviso é uma só, então os pares somam.
+            const cart = new Map(), fat = new Map();
+            const junta = (destino, cli, ir, ic, gci, dia, pares) => {
+              let mapa = destino.get(cli);
+              if (!mapa) destino.set(cli, mapa = new Map());
+              const k = `${ir}|${ic}|${gci}|${dia}`;
+              mapa.set(k, (mapa.get(k) || 0) + pares);
+            };
+            for (const r of base.l) {
+              const par = dCli[r[_CLI]];
+              const cli = String((par && par[0]) ?? "").trim();
+              if (!cli) continue;
+              const pCart = Number(r[_CART] || 0);
+              if (pCart > 0) {
+                junta(cart, cli, idxRef(r[_REF]), idxCor(r[_COR]), Number(r[_GCI] || 0),
+                      Number(r[_PREV] == null ? -1 : r[_PREV]), pCart);
+              }
+              const pFat = Number(r[_FAT] || 0);
+              const dFat = Number(r[_DFAT] == null ? -1 : r[_DFAT]);
+              if (pFat > 0 && dFat > 0 && hoje - dFat >= 0 && hoje - dFat <= JANELA) {
+                junta(fat, cli, idxRef(r[_REF]), idxCor(r[_COR]), Number(r[_GCI] || 0), dFat, pFat);
+              }
+            }
+            // da mais próxima de faturar para a mais distante: é a ordem em que
+            // o vendedor quer ler
+            const desdobra = destino => {
+              const out = {};
+              for (const [cli, mapa] of destino) {
+                const linhas = [];
+                for (const [k, pares] of mapa) {
+                  const [ir, ic, gci, dia] = k.split("|").map(Number);
+                  linhas.push([ir, ic, gci, dia, pares]);
+                }
+                linhas.sort((a, b) => b[3] - a[3]);
+                out[cli] = linhas;
+              }
+              return out;
+            };
+            const { sha: shaCart } = await getFile(GITHUB_CARTEIRA_ABERTA);
+            await saveFile(GITHUB_CARTEIRA_ABERTA, {
+              v: 1,
+              gerado: base.gerado || payload.publicadoEm,
+              origem: base.origem || "",
+              dataDia: hoje,
+              janela: JANELA,
+              ref: refs, cor: cores,
+              cart: desdobra(cart), fat: desdobra(fat)
+            }, shaCart, `carteira aberta: ${cart.size} clientes`, true);
+          } catch (e) {
+            // Aviso das telas de repasse; sem ele o repasse continua saindo.
+            // Não derruba a publicação da base, que é o que importa aqui.
+            console.log("carteira-aberta nao foi gerada:", e && e.message);
+          }
 
           return new Response(JSON.stringify({ success: true, ...info }),
             { status: 200, headers: corsHeaders });
