@@ -2250,9 +2250,12 @@ const linkPdf = (url, nome, rotulo) => cartaoArquivo({ url, nome, rotulo });
 const baixarJa = () => {};
 const geraPdf = () => temExtensaoEbm() || !!APP.roboPdf;
 async function olharRobo() {
-  try { const r = await fetch(BOLETOS_URL + '/ping', { signal: AbortSignal.timeout(1500) }); const j = await r.json(); APP.roboPdf = !!j.pedido; APP.roboDispo = !!j.disponivel; }
-  catch (_) { APP.roboPdf = false; APP.roboDispo = false; }
+  try { const r = await fetch(BOLETOS_URL + '/ping', { signal: AbortSignal.timeout(1500) }); const j = await r.json(); APP.roboNoAr = !!j.ok; APP.roboPdf = !!j.pedido; APP.roboDispo = !!j.disponivel; }
+  catch (_) { APP.roboNoAr = false; APP.roboPdf = false; APP.roboDispo = false; }
 }
+// O que se diz quando o serviço do EBM (no computador do escritório) não responde: sem "é um teste",
+// e com o caminho que resolve hoje. O serviço liga sozinho ao entrar no Windows (tarefa "Boletos para o Agente").
+const ROBO_FORA = 'A busca no EBM roda no computador do escritório, e ele não respondeu agora (pode estar desligado ou reiniciando). Tente de novo em alguns minutos; se for urgente, peça para a Débora.';
 function agPedido(a) {
   const D = APP.dic, X = indices(), p = prepAtivo();
   const nf = soNumero(a.nf), gci = soNumero(a.gci), oc = norm(a.oc);
@@ -2460,7 +2463,7 @@ function cartaoDae(cod, notas) {
 }
 async function agDae(a) {
   await olharRobo();
-  if (!APP.roboPdf) return { texto: 'O DAE ainda só sai pelo computador do escritório, com o serviço ligado. Diga isso ao vendedor: por enquanto, o pedido é com a Débora.' };
+  if (!APP.roboPdf) return { texto: ROBO_FORA + ' Diga isso ao vendedor (é sobre o DAE).' };
   const D = APP.dic, X = indices(), p = prepAtivo(), nf = soNumero(a.nf);
   const notasDe = rs => { const m = new Map(); for (const r of rs) if (r[C.NF] && r[C.FAT] > 0 && r[C.DFAT] >= 0) { const k = String(r[C.NF]); if (!m.has(k) || r[C.DFAT] < m.get(k).dia) m.set(k, { nf: k, dia: r[C.DFAT], iso: isoDoDia(r[C.DFAT]), data: dataDe(r[C.DFAT]) }); } return [...m.values()].sort((x, y) => y.dia - x.dia); };
   let cartoes = [], opcoes = null;
@@ -3402,6 +3405,9 @@ async function agBoleto(a) {
   const D = APP.dic, X = indices(), p = prepAtivo();
   const meus = p < 0 ? null : new Set([...APP.L.filter(r => r[C.PREP] === p).map(r => r[C.CLI]), ...soCadDele()]);
   if (!a.cliente) return { erro: 'De qual cliente? Pergunte ao vendedor.' };
+  // Sem o serviço no ar, nem mostra o botão de buscar: ofereceria uma busca que vai falhar.
+  await olharRobo();
+  if (!APP.roboNoAr) return { texto: ROBO_FORA + ' Diga isso ao vendedor com essas palavras, em tom tranquilo; não mostre cartão nem botão.' };
   const r = agFiltro(meus ? X.cli.filter(x => meus.has(x.i)) : X.cli, String(a.cliente), 'cliente', i => D.cli[i][1]);
   if (r.erro) return { erro: r.erro };
   // Mais de uma loja (filiais com o mesmo nome, ou nomes parecidos): mostra
@@ -3433,7 +3439,7 @@ async function buscarBoletos({ codigos, de, ate }) {
     clearTimeout(t);
     resp = await f.json();
   } catch (e) {
-    return { erro: 'A busca de boletos ainda é um teste e só funciona no computador do escritório, com o "Boletos para o agente" ligado.' };
+    return { erro: ROBO_FORA };
   }
   if (!resp.ok) return { erro: resp.erro || 'O robô de boletos falhou.' };
   const rows = [], linhas = [], links = [];
