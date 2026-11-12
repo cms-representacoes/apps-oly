@@ -9448,7 +9448,10 @@ async function enviarRepasse(op = {}){
         codigo: l.cod,
         cor: l.row.cor,
         produto: l.nome || l.it.nome || l.cod,
-        pares: l.amount * l.pack
+        pares: l.amount * l.pack,
+        // a miniatura que o card já usa: o nome do arquivo nem sempre é
+        // referência_COR, então vale mandar a que a vitrine resolveu
+        imagem: fotoMini({ imagem: l.it && l.it.imagem, artigo: l.cod, cor: l.row.cor })
       }))
     });
     if(resp === 'revisar'){ liberado(btn); return; }

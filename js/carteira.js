@@ -40,6 +40,7 @@
   const DIAS_BASE_VELHA = 4;
 
   let CAMINHO = '../data/';
+  const PASTA_FOTOS = '../Catalogo/';   // a mesma do Showroom e do Repasses
   let base = null;         // o arquivo, como veio
   let indice = null;       // cliente → { cart:Map(ref→linhas), fat:Map(ref→linhas) }
   let baixando = null;     // promessa em voo, para dois envios não baixarem duas vezes
@@ -137,8 +138,9 @@
     for (const it of itens || []) {
       const k = chave(it.codigo) + '|' + chave(it.cor);
       const ja = juntos.get(k);
-      if (ja) ja.pares += Number(it.pares || 0);
-      else juntos.set(k, { codigo: it.codigo, cor: it.cor, produto: it.produto || it.nome, pares: Number(it.pares || 0) });
+      if (ja) { ja.pares += Number(it.pares || 0); ja.imagem = ja.imagem || it.imagem; }
+      else juntos.set(k, { codigo: it.codigo, cor: it.cor, produto: it.produto || it.nome,
+                           pares: Number(it.pares || 0), imagem: it.imagem || '' });
     }
 
     for (const it of juntos.values()) {
@@ -151,6 +153,7 @@
         produto: it.produto || it.nome || ref,
         codigo: ref,
         cor,
+        imagem: it.imagem || '',
         pares: Number(it.pares || 0),
         cart: cart.filter(x => x.cor === cor),
         fat: fat.filter(x => x.cor === cor),
@@ -187,8 +190,18 @@
   .cav-intro{margin:0 0 12px;font-size:13.5px;line-height:1.5;color:#475569}
   .cav-item{border:1px solid #e2e8f0;border-radius:14px;padding:12px 14px;margin-bottom:10px}
   .cav-item + .cav-rodape-ctx{margin-top:14px}
+  /* Foto à esquerda: o vendedor reconhece o par pela imagem antes de ler o
+     código. Sem foto publicada, a coluna some em vez de deixar buraco. */
+  .cav-cab{display:flex;gap:11px;align-items:flex-start}
+  .cav-cab > div{min-width:0;flex:1}
+  .cav-foto{width:60px;height:60px;flex:none;border-radius:10px;border:1px solid #e2e8f0;
+    background:#f8fafc;object-fit:contain;padding:2px}
+  .cav-foto.cav-sem{display:none}
   .cav-nome{margin:0;font-size:14.5px;font-weight:800;line-height:1.3}
   .cav-nome span{font-weight:700;color:#64748b}
+  .cav-dup{display:inline-block;margin:5px 0 0;font-size:10.5px;font-weight:800;
+    letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:999px;
+    background:#fee2e2;color:#b91c1c}
   .cav-rep{margin:3px 0 0;font-size:12px;font-weight:700;color:#0d9488}
   .cav-linhas{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
   .cav-linhas li{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;font-size:12.5px;
@@ -222,6 +235,7 @@
     .cav-tit{font-size:16.5px}
     .cav-corpo{padding:12px 15px 4px}
     .cav-item{padding:11px 12px}
+    .cav-foto{width:50px;height:50px}
     .cav-pe{padding:12px 15px calc(14px + env(safe-area-inset-bottom))}
     .cav-bts{flex-direction:column-reverse}
     .cav-bts button{width:100%;height:46px}
@@ -290,13 +304,32 @@
       (sobra ? ` · <small>e ${nf(sobra)} ${sobra === 1 ? 'outra cor' : 'outras cores'}</small>` : '') + '</p>';
   }
 
+  /* A foto sai da mesma pasta do catálogo que as duas telas já usam. Quem
+     chama pode mandar a URL pronta (a vitrine tem a miniatura de 420 px);
+     sem ela, o nome do arquivo é referência_COR. Se não existir nenhuma das
+     duas, a coluna some — melhor isso que o quadrado quebrado. */
+  const corArquivo = c => chave(c).replace(/[\/\\\s-]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+  function fotoHtml(a) {
+    const nome = a.codigo + (a.cor ? '_' + corArquivo(a.cor) : '');
+    const cheia = PASTA_FOTOS + encodeURIComponent(nome + '.jpg');
+    const src = a.imagem || PASTA_FOTOS + 'mini/' + encodeURIComponent(nome + '.jpg');
+    return `<img class="cav-foto" alt="" loading="lazy" src="${esc(src)}" data-cheia="${esc(cheia)}"
+      onerror="if(this.dataset.cheia&&this.src!==this.dataset.cheia){this.src=this.dataset.cheia;}else{this.classList.add('cav-sem');}">`;
+  }
+
   function corpoHtml(res) {
     const itens = res.alertas.map(a => {
-      const outras = outrasHtml(a.outrasCart, 'Outras cores em carteira') +
-                     outrasHtml(a.outrasFat, 'Outras cores já faturadas');
+      const outras = outrasHtml(a.outrasCart, 'Parecido (outra cor), em carteira') +
+                     outrasHtml(a.outrasFat, 'Parecido (outra cor), já faturado');
       return `<article class="cav-item">
-        <p class="cav-nome">${esc(a.produto)} <span>· ${esc(a.cor)}</span></p>
-        ${a.pares ? `<p class="cav-rep">neste repasse: ${nf(a.pares)} ${a.pares === 1 ? 'par' : 'pares'}</p>` : ''}
+        <div class="cav-cab">
+          ${fotoHtml(a)}
+          <div>
+            <p class="cav-nome">${esc(a.produto)} <span>· ${esc(a.cor)}</span></p>
+            <p class="cav-dup">Duplicado · mesma cor</p>
+            ${a.pares ? `<p class="cav-rep">neste repasse: ${nf(a.pares)} ${a.pares === 1 ? 'par' : 'pares'}</p>` : ''}
+          </div>
+        </div>
         <ul class="cav-linhas">
           ${blocoHtml(a.cart, 'cart')}
           ${blocoHtml(a.fat, 'fat')}
@@ -308,7 +341,7 @@
     // Os demais itens do repasse que o cliente tem só em outra cor: não são
     // duplicidade, mas quem está decidindo o repasse quer ver.
     const ctx = res.contexto.length
-      ? `<div class="cav-rodape-ctx"><b>Do mesmo repasse, o cliente já tem em outras cores:</b><br>` +
+      ? `<div class="cav-rodape-ctx"><b>Parecido, não duplicado — do mesmo repasse, o cliente já tem em outra cor:</b><br>` +
         res.contexto.map(c => `${esc(c.produto)} — ` +
           [...c.outrasCart, ...c.outrasFat].map(x => `${esc(x.cor)} <small>(${esc(diaCurto(x.dia))})</small>`).join(' · ')
         ).join('<br>') + '</div>'
@@ -332,13 +365,13 @@
         <div class="cav-ico">${ICO}</div>
         <div>
           <p class="cav-chapeu">Confira antes de enviar</p>
-          <h2 class="cav-tit" id="cav-tit">${n === 1 ? 'O cliente já tem este produto' : `O cliente já tem ${nf(n)} destes produtos`}</h2>
+          <h2 class="cav-tit" id="cav-tit">${n === 1 ? 'Produto duplicado' : `${nf(n)} produtos duplicados`}</h2>
           <p class="cav-sub">Cliente ${esc(cliente)}</p>
         </div>
       </header>
       <div class="cav-corpo">
-        <p class="cav-intro">${n === 1 ? 'Este par já está' : 'Estes pares já estão'} na carteira do cliente ou saíram para ele
-          nos últimos ${esc((base && base.janela) || 90)} dias. Enviar o repasse pode fazer a loja receber o mesmo produto duas vezes.</p>
+        <p class="cav-intro">Mesmo artigo e <b>mesma cor</b> do que ${n === 1 ? 'já está' : 'já estão'} na carteira do cliente
+          ou saiu para ele nos últimos ${esc((base && base.janela) || 90)} dias. Enviando assim, a loja recebe o mesmo par duas vezes.</p>
         ${corpoHtml(res)}
       </div>
       <footer class="cav-pe">
