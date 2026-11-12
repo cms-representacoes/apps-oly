@@ -9,6 +9,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="../js/campanhas.js?v=1"></script>
+  <!-- Aviso de carteira: antes de enviar, confere se o cliente já tem o par
+       chegando pelo pedido normal. Mesmo módulo que o Showroom usa. -->
+  <script src="../js/carteira.js?v=1"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
@@ -4908,7 +4911,8 @@ function validateCheckout(){
   return true;
 }
 async function submitOrder(options = {}){
-  const { skipConflictPrompt=false, skipDuplicateCheck=false } = options;
+  const { skipConflictPrompt=false, skipDuplicateCheck=false,
+          carteiraConferida=false, carteiraAvisada=false } = options;
   if(!validateCheckout()) return;
   const submitBtn = $('btnSubmitOrder');
   submitBtn.disabled = true;
@@ -4957,6 +4961,21 @@ async function submitOrder(options = {}){
       throw new Error('Nenhum item com saldo disponível permaneceu na sacola.');
     }
 
+    // ── O CLIENTE JÁ TEM ESSES PARES? ─────────────────────────────────────
+    // A detecção abaixo só olha os outros repasses. O que o cliente comprou
+    // pelo pedido normal, no EBM, ela não vê — e era daí que vinha o produto
+    // duplicado na loja. Esta conferência é contra a carteira da Detalhada
+    // (js/carteira.js): avisa, mostra GCI e data, e deixa o vendedor decidir.
+    let avisoCarteira = !!carteiraAvisada;
+    if(!carteiraConferida && window.CarteiraAviso){
+      const resposta = await CarteiraAviso.conferir({
+        cliente: clienteCodigo,
+        itens: items.map(i => ({ codigo:i.codigo, cor:i.cor, produto:i.produto, pares:i.totalUnits }))
+      });
+      if(resposta === 'revisar') return;      // o `finally` devolve o botão
+      avisoCarteira = resposta === 'enviar';
+    }
+
     // ── DETECÇÃO DE DUPLICATAS ────────────────────────────────────────────
     if(!skipDuplicateCheck){
       const duplicates = detectDuplicates(clienteCodigo, items);
@@ -4965,8 +4984,10 @@ async function submitOrder(options = {}){
         submitBtn.disabled = false;
         submitBtn.classList.remove('opacity-60','cursor-not-allowed');
         openDuplicateModal(duplicates, ()=>{
-          // Usuário confirmou enviar mesmo assim
-          submitOrder({ skipConflictPrompt, skipDuplicateCheck: true });
+          // Usuário confirmou enviar mesmo assim. A carteira já foi conferida
+          // nesta tentativa: perguntar de novo só cansaria o vendedor.
+          submitOrder({ skipConflictPrompt, skipDuplicateCheck: true,
+                        carteiraConferida: true, carteiraAvisada: avisoCarteira });
         });
         return;
       }
@@ -4983,6 +5004,10 @@ async function submitOrder(options = {}){
       status: 'Pendente',
       archived: false,
       isDuplicate,
+      // O vendedor viu o aviso de carteira e mandou mesmo assim. Fica no
+      // pedido para o admin saber que a decisão foi tomada com a informação
+      // na frente, e não por descuido.
+      avisoCarteira,
       preposto,
       clienteCodigo,
       clienteNome: clienteNome || '',

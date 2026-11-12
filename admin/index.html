@@ -2265,6 +2265,9 @@ function normalizeOrder(rawOrder){
   order.solicitacao = normalizeSolicitacao(order.solicitacao);
   order.archived = Boolean(order.archived);
   order.isDuplicate = Boolean(order.isDuplicate);
+  // O vendedor viu o aviso de que o cliente já tinha o par em carteira e
+  // mandou mesmo assim. Pedido antigo não tem o campo: vira false.
+  order.avisoCarteira = Boolean(order.avisoCarteira);
   order.createdAt = order.createdAt || order.updatedAt || new Date().toISOString();
   order.updatedAt = order.updatedAt || order.createdAt;
 
@@ -2687,6 +2690,7 @@ function renderList(){
               ${nItems > 1 ? `<span style="font-size:11px;font-weight:700;background:var(--muted-soft);color:var(--muted);border-radius:999px;padding:2px 9px;flex-shrink:0">${nItems} produtos</span>` : ''}
               ${chipSol}
               ${order.isDuplicate ? `<span style="font-size:11px;font-weight:700;background:var(--warning-soft);color:var(--warning);border-radius:999px;padding:2px 9px;flex-shrink:0">⚠ Duplicata</span>` : ''}
+              ${order.avisoCarteira ? `<span title="O cliente já tinha esse produto na carteira (ou recebeu nos últimos 90 dias) e o vendedor enviou mesmo assim" style="font-size:11px;font-weight:700;background:var(--warning-soft);color:var(--warning);border-radius:999px;padding:2px 9px;flex-shrink:0;cursor:help">⚠ Já em carteira</span>` : ''}
               ${(order.history||[]).some(h=>h.label==='Antecipado') ? `<span style="font-size:11px;font-weight:700;background:#EEEDFE;color:#3C3489;border-radius:999px;padding:2px 9px;flex-shrink:0">↑ Antecipado</span>` : ''}
               ${chipAlt}
               ${fatMudou ? `<span title="Prev. Faturamento: ${safeHtml(fatMudouTitle)}" style="font-size:11px;font-weight:700;background:var(--warning-soft);color:var(--warning);border-radius:999px;padding:2px 9px;flex-shrink:0;cursor:help"><i class="fa-solid fa-triangle-exclamation" style="font-size:9px"></i> Faturamento atualizado</span>` : ''}

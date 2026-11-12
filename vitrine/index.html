@@ -11,6 +11,9 @@
 <script src="../js/campanhas.js"></script>
 <!-- o que está disponível (estoque, repasse, produção): a mesma conta aqui e no Nexo -->
 <script src="../js/disponivel.js"></script>
+<!-- aviso de carteira: antes de enviar o repasse, confere se o cliente já tem
+     o par chegando pelo pedido normal. Mesmo módulo que o Repasses usa. -->
+<script src="../js/carteira.js"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
 <style>
 /* ═══════════════════════════════════════════════════════════════════
@@ -9429,6 +9432,29 @@ async function enviarRepasse(op = {}){
     }
   }
 
+  // ── 2b) o cliente já tem esses pares chegando? ──
+  // A conferência de cima só vê os outros repasses. O que o cliente comprou
+  // pelo pedido normal, no EBM, ela não vê — e era daí que vinha o produto
+  // duplicado na loja. Aqui a conferência é contra a carteira da Detalhada
+  // (js/carteira.js): mostra GCI e data de faturamento, e quem decide é o
+  // vendedor. Fica depois das duas de cima de propósito: só pergunta sobre o
+  // que realmente vai embora.
+  let avisoCarteira = false;
+  if(window.CarteiraAviso){
+    passo(btn, 'Conferindo a carteira…');
+    const resp = await CarteiraAviso.conferir({
+      cliente,
+      itens: vao.map(l => ({
+        codigo: l.cod,
+        cor: l.row.cor,
+        produto: l.nome || l.it.nome || l.cod,
+        pares: l.amount * l.pack
+      }))
+    });
+    if(resp === 'revisar'){ liberado(btn); return; }
+    avisoCarteira = resp === 'enviar';
+  }
+
   // ── 3) o pedido, no formato do Repasses ──
   const nomeVend = (PREPOSTOS_REP.find(([c]) => c === preposto) || [preposto, ''])[1];
   const achado = CLI.lista.find(c => String(c.codigo).trim() === cliente);
@@ -9454,6 +9480,9 @@ async function enviarRepasse(op = {}){
     status: 'Pendente',
     archived: false,
     isDuplicate: !!op.aceitouDuplicata,
+    // Viu o aviso de carteira e mandou mesmo assim: o admin precisa saber que
+    // a decisão foi tomada com a informação na frente.
+    avisoCarteira,
     preposto: { codigo: preposto, nome: nomeVend },
     clienteCodigo: cliente,
     clienteNome: achado ? String(achado.nome || '').trim() : '',
