@@ -141,7 +141,12 @@ window.DISPONIVEL = (() => {
         k, artigo:norm(artigo), cor:String(cor||'').trim().toUpperCase(),
         nome:'', marca:'', pdv:0, categoria:'', genero:'', imagem:'', fabrica:'',
         sub:'', faixa:'', camp:[], chega:[], campanhas:[],
-        pronta:null, repasse:null, meta:null
+        pronta:null, repasse:null, meta:null,
+        // null = ainda nao se sabe. So vira true se TODAS as linhas de
+        // disponibilidade deste artigo+cor forem fora de linha: um produto
+        // com qualquer parte viva nao e oportunidade, e a mesma regra do
+        // desempate por fabrica feito na importacao.
+        foraDeLinha:null
       });
       return mapa.get(k);
     };
@@ -154,6 +159,8 @@ window.DISPONIVEL = (() => {
       // buraco branco no lugar da imagem, porque o arquivo nao existe mesmo.
       if(i._aguardandoImagem || i._oculto) continue;
       const o = pega(i.artigo, i.cor);
+      o.foraDeLinha = (o.foraDeLinha === null) ? !!i.foraDeLinha
+                                               : (o.foraDeLinha && !!i.foraDeLinha);
       o.nome      = o.nome      || String(i.descricao || '').trim();
       o.marca     = o.marca     || String(i.marca || '').toLowerCase();
       o.pdv       = o.pdv       || Number(i.pdv || 0);

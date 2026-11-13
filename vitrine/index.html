@@ -246,6 +246,9 @@ button{font:inherit}
 .seg .on.o-est {background:linear-gradient(145deg,#159C68,var(--pronta) 60%,#0A4F35)}
 .seg .on.o-rep {background:linear-gradient(145deg,var(--marca-claro),var(--repasse) 55%,var(--marca-escuro));color:var(--sobre-marca)}
 .seg .on.o-pro {background:linear-gradient(145deg,#A05FD8,var(--plano) 55%,#5B1F92)}
+/* Fora de linha em âmbar: fica fora das três cores de origem de propósito,
+   porque não é uma origem — é a condição do produto. */
+.seg .on.o-fora{background:linear-gradient(145deg,#F0B429,#B45309 55%,#7C3D12)}
 
 .cat{display:flex;gap:5px;flex-wrap:nowrap}
 .cat button{border:1px dashed var(--linha-forte);background:none;color:var(--fraco);
@@ -4134,7 +4137,7 @@ let FAIXAS = {};
 function filtrosDaUrl(){
   const q = new URLSearchParams(location.search);
   const origem = (q.get('origem') || '').trim().toLowerCase();
-  if(['tudo', 'pronta', 'repasse', 'meta'].includes(origem)) STATE.origem = origem;
+  if(['tudo', 'pronta', 'repasse', 'meta', 'fora'].includes(origem)) STATE.origem = origem;
   const cat = (q.get('categoria') || '').trim().toUpperCase();
   if(CATEGORIAS.some(([id]) => id === cat)) STATE.categoria = cat;
   const faixa = (q.get('faixa') || '').trim().toUpperCase();
@@ -4210,6 +4213,10 @@ function temOrigem(o, q){
   if(q === 'pronta')  return !!o.pronta;
   if(q === 'repasse') return !!o.repasse;
   if(q === 'meta')    return !!o.meta;
+  // Fora de linha não é uma origem: o produto encerrado continua sendo
+  // estoque ou produção. É um recorte que atravessa as três, e por isso
+  // entra aqui como mais uma escolha da mesma fila.
+  if(q === 'fora')    return !!o.foraDeLinha;
   return true;
 }
 const MAX_TERMOS = 3;
@@ -4343,9 +4350,10 @@ function pintarFiltros(){
     ['repasse','Repasse', o => o.repasse],
     ['pronta','Estoque', o => o.pronta],
     ['meta','Produção', o => o.meta],
+    ['fora','Fora de linha', o => o.foraDeLinha],
     ['tudo','Tudo', () => true]
   ];
-  const CLS = { tudo:'o-tudo', pronta:'o-est', repasse:'o-rep', meta:'o-pro' };
+  const CLS = { tudo:'o-tudo', pronta:'o-est', repasse:'o-rep', meta:'o-pro', fora:'o-fora' };
   $('segOrigem').innerHTML = orig.map(([id, rot, f]) => {
     const n = conta(f);
     const ativo = STATE.origem === id;
@@ -7941,7 +7949,7 @@ async function gerarCatalogoPdf(){
    lote de repasse) e o "Chega em". Com algum deles ligado, a planilha segue
    o filtro linha a linha — senão, filtrar Forecast trazia junto o estoque e
    a produção do mesmo tênis. */
-const ROT_ORIGEM = { pronta:'Estoque', repasse:'Repasse', meta:'Produção' };
+const ROT_ORIGEM = { pronta:'Estoque', repasse:'Repasse', meta:'Produção', fora:'Fora de linha' };
 function filtroDeLinha(){
   const partes = [];
   if(STATE.origem && STATE.origem !== 'tudo') partes.push(ROT_ORIGEM[STATE.origem]);
@@ -7950,7 +7958,11 @@ function filtroDeLinha(){
   return partes.length ? partes.join(' · ') : '';
 }
 function linhaPassa(origem, alvo){
-  if(STATE.origem && STATE.origem !== 'tudo' && STATE.origem !== origem) return false;
+  // "Fora de linha" não é origem de linha nenhuma: o produto encerrado
+  // continua saindo do estoque ou da produção. Comparar aqui zeraria a
+  // planilha inteira — o recorte já foi aplicado lá atrás, no produto.
+  if(STATE.origem && STATE.origem !== 'tudo' && STATE.origem !== 'fora'
+     && STATE.origem !== origem) return false;
   // ação é coisa de lote de repasse: estoque e produção não têm selo
   if(STATE.sel.selo.size){
     if(origem !== 'repasse' || !alvo || !alvo.rateado || !STATE.sel.selo.has(alvo.selo)) return false;
