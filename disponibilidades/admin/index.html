@@ -95,6 +95,11 @@
     /* Chip empresa */
     .chip-ua{ background:#1a1a2e; color:#60a5fa; border:1px solid #1e3a5f; border-radius:999px; padding:2px 8px; font-size:10px; font-weight:700; }
     .chip-oly{ background:#1a2e1a; color:#4ade80; border:1px solid #14532d; border-radius:999px; padding:2px 8px; font-size:10px; font-weight:700; }
+    /* Selo do fora de linha: âmbar, o mesmo tom do aviso na barra de
+       filtros, para o olho ligar a aba ao que vê na linha. */
+    .chip-fora{ display:inline-block; margin-left:4px; font-size:9px; font-weight:800;
+      letter-spacing:.04em; padding:1px 5px; border-radius:999px;
+      background:#fef3c7; color:#92400e; border:1px solid #fde68a }
 
     /* Toast */
     .toast-wrap{ position:fixed; top:18px; right:18px; display:flex; flex-direction:column; gap:10px; z-index:9999; pointer-events:none; }
@@ -606,6 +611,23 @@
     </button>
     <button class="filter-pill" data-filter="ocultos" onclick="setFilter('ocultos')" aria-label="Ocultos" data-tip="Ocultos — itens que você escondeu da vitrine do vendedor">
       <i class="fa-solid fa-eye-slash text-xs"></i> <span id="badgeOcultos" class="text-[10px] font-extrabold bg-slate-200 text-slate-700 rounded-full px-1.5 py-0.5 hidden">0</span>
+    </button>
+
+    <span class="filtro-sep" aria-hidden="true"></span>
+
+    <!-- Recorte por situacao do produto. Ao contrario das pills de marca e de
+         status, estas NAO sao excludentes com o resto: somam-se ao filtro ativo,
+         para dar "fora de linha + sem imagem" num clique - que e o caminho de
+         quem vai cacar as fotos que faltam. -->
+    <button id="pillEmLinha" class="filter-pill" onclick="setRecorteLinha('linha')"
+            data-tip="Só a coleção viva — o que o showroom já mostra hoje">
+      Em linha <span id="badgeEmLinha" class="text-[10px] font-extrabold bg-slate-200 text-slate-700 rounded-full px-1.5 py-0.5">0</span>
+    </button>
+    <button id="pillForaLinha" class="filter-pill" onclick="setRecorteLinha('fora')"
+            data-tip="Só o que saiu de linha e ainda tem saldo — a oportunidade"
+            style="border-color:#fbbf24;color:#92400e">
+      <i class="fa-solid fa-tag text-[10px]"></i> Fora de linha
+      <span id="badgeForaLinha" class="text-[10px] font-extrabold bg-amber-200 text-amber-900 rounded-full px-1.5 py-0.5">0</span>
     </button>
 
     <span class="filtro-sep" aria-hidden="true"></span>
@@ -1443,6 +1465,7 @@ function roboFim(estado, dados){
 // Números que o log do script mostra — e pelos quais dá para desconfiar de uma
 // rodada torta antes de ir olhar a vitrine.
 let _roboSemImagem = [];   // o que ficou de fora por nao ter foto
+let _conflitoLinha = [];   // em linha numa fabrica, fora de linha em outra
 
 function roboResumo(listaFinal, prontos, aguardando, descartados){
   const a = (typeof _analise !== 'undefined' && _analise) ? _analise : null;
@@ -1453,6 +1476,8 @@ function roboResumo(listaFinal, prontos, aguardando, descartados){
     baseDepois: listaFinal.length,
     prontos, aguardandoImagem: aguardando, descartados,
     semImagem: _roboSemImagem,
+    foraDeLinha: listaFinal.filter(i => i && i.foraDeLinha).length,
+    conflitoLinha: _conflitoLinha.length,
     buckets: a ? Object.keys(a.buckets).reduce((o,k) => (o[k] = a.buckets[k].length, o), {}) : {}
   };
 }
@@ -1531,6 +1556,7 @@ const STATE = {
   filtrados: [],   // resultado de applyFilters (usado pelo export)
   ocultos: new Set(),
   filtro: 'todos',
+  recorteLinha: '',  // '' | 'linha' | 'fora' — convive com o filtro acima
   search: '',
   imgHist: {},     // mapa "artigo|cor" → nome da imagem (histórico persistente)
   imgChecks: new Map(), // mapa "artigo|cor" → "has" | "miss" | "checking"
@@ -2624,7 +2650,17 @@ function isOculto(item){ return STATE.ocultos.has(ocultarKey(item)); }
 
 function setFilter(f){
   STATE.filtro = f;
-  document.querySelectorAll('.filter-pill').forEach(b => b.classList.toggle('active', b.dataset.filter === f));
+  document.querySelectorAll('.filter-pill[data-filter]').forEach(b => b.classList.toggle('active', b.dataset.filter === f));
+  applyFilters();
+}
+
+// Em linha / Fora de linha: um recorte à parte, que convive com o filtro de
+// marca e de status. Clicar na aba já ativa desliga o recorte e volta a mostrar
+// os dois mundos juntos — não há uma terceira pill só para dizer "tudo".
+function setRecorteLinha(qual){
+  STATE.recorteLinha = (STATE.recorteLinha === qual) ? '' : qual;
+  $('pillEmLinha')?.classList.toggle('active', STATE.recorteLinha === 'linha');
+  $('pillForaLinha')?.classList.toggle('active', STATE.recorteLinha === 'fora');
   applyFilters();
 }
 
@@ -2635,7 +2671,12 @@ function applyFilters(){
   const fGen = $('filterGenero')?.value || '';
   const fLinha = $('filterLinha')?.value || '';
 
+  const rec = STATE.recorteLinha || '';
   const filtrados = STATE.itens.filter(item => {
+    // O recorte vem primeiro e vale para todas as outras pills: a de ocultos
+    // inclusive, senão "fora de linha" perderia o sentido ali dentro.
+    if(rec === 'fora'  && !item.foraDeLinha) return false;
+    if(rec === 'linha' &&  item.foraDeLinha) return false;
     if(f === 'ocultos') return isOculto(item);
     if(isOculto(item)) return false;
     if(f === 'aguardando') return !!item._aguardandoImagem;
@@ -2664,6 +2705,13 @@ function applyFilters(){
   const oc    = STATE.itens.filter(i => isOculto(i));
   const semImg = todos.filter(i => !i.imagem && STATE.imgChecks.get(imgCheckKey(i)) !== 'has');
   const aguardando = todos.filter(i => !!i._aguardandoImagem);
+
+  // Os dois contadores ignoram o recorte ativo: eles dizem quanto existe de
+  // cada lado, não quanto está à vista — senão o número do lado oposto zeraria
+  // assim que a aba fosse clicada.
+  const nFora  = todos.filter(i => i.foraDeLinha).length;
+  if($('badgeForaLinha')) $('badgeForaLinha').textContent = nFora;
+  if($('badgeEmLinha'))   $('badgeEmLinha').textContent   = todos.length - nFora;
 
   if($('badgeTodos')) $('badgeTodos').textContent = todos.length;
   if($('badgeUA'))    $('badgeUA').textContent    = ua.length;
@@ -3173,7 +3221,7 @@ function renderTable(itens){
     const isSel = STATE.selecionados.has(key);
     return `<tr class="${oculto?'oculto':''} ${isSel?'row-selected':''}" data-row-key="${safeHtml(key)}">
       <td class="td-bulk" style="width:32px;text-align:center;padding-left:14px"><input type="checkbox" ${isSel?'checked':''} onchange="bulkToggleItem('${safeHtml(key)}',this.checked)" style="accent-color:var(--accent);cursor:pointer" onclick="event.stopPropagation()"></td>
-      <td data-col="marca">${marcaChip}</td>
+      <td data-col="marca">${marcaChip}${item.foraDeLinha ? '<span class="chip-fora" title="Saiu de linha — oportunidade">FORA</span>' : ''}</td>
       <td data-col="prevFat" class="font-semibold text-xs whitespace-nowrap" style="color:var(--muted)">${safeHtml(item.prevFat||'—')}</td>
       <td data-col="empresa" class="text-xs" style="color:var(--muted)">${safeHtml(item.empresa||'—')}</td>
       <td data-col="artigo" class="font-extrabold text-xs" style="color:var(--brand)">${safeHtml(item.artigo||'—')}</td>
@@ -4606,8 +4654,10 @@ function detectarTipoProduto(item){
 // Aplica as regras e classifica
 // Retorna: { bucket, motivo, faixaIdeal, presentes, faltantes }
 function classificarGrade(item){
-  // 0) EXCLUSIVO (DTC, ML, DTC+ML) — bucket próprio, não vai pra vitrine
-  if(item._exclusivo){
+  // 0) EXCLUSIVO (DTC, ML, DTC+ML) — bucket próprio, não vai pra vitrine.
+  // Fora de linha passa reto: o canal exclusivo reservava o produto para a
+  // venda direta, e produto encerrado não está mais reservado para ninguém.
+  if(item._exclusivo && !item.foraDeLinha){
     return { bucket:'exclusivo', motivo:`Canal exclusivo: ${item._exclusivo}`, tipo:'exclusivo', canal: item._exclusivo };
   }
 
@@ -4807,6 +4857,14 @@ function detectarDoNome(fileName){
   // linha a linha, durante a importação — não do nome do arquivo.
   const ehProntaEntrega = /\bPRONTA\b/.test(nome);
 
+  // FORA DE LINHA: o relatório do EBM não tem coluna dizendo se o produto
+  // ainda está em linha — isso é só um filtro da tela de lá. Por isso o robô
+  // baixa a mesma janela duas vezes e marca a segunda no NOME do arquivo
+  // ("PRONTA_ENTREGA_FORA", "2_QUINZ_DEZEMBRO_FORA"). Aqui o nome vira dado.
+  // Atenção: aqui o nome já veio normalizado lá em cima — underscore virou
+  // espaço, então "PRONTA_ENTREGA_FORA" chega como "PRONTA ENTREGA FORA".
+  const foraDeLinha = /\bFORA\b/.test(nome);
+
   // Detecta TIPO 2S26 (coleção meta produtiva)
   // Padrões: "2 QUINZ AGOSTO", "2QUINZ", "QUINZ", "2S26"
   const ehMeta = /\b(QUINZ|2S\d+|\d+S\d+)\b/.test(nome);
@@ -4833,7 +4891,7 @@ function detectarDoNome(fileName){
   // Ex: "1 QUINZ DEZEMBRO" → "1Q_DEZ" · "2 QUINZ AGOSTO" → "2Q_AGO"
   const quinzena = ehMeta ? parseQuinzena(nome) : '';
 
-  return { marca, categoria, ehMeta, ehProntaEntrega, quinzena };
+  return { marca, categoria, ehMeta, ehProntaEntrega, quinzena, foraDeLinha };
 }
 
 // Detecta se a primeira linha do XLSX é título mesclado e pula
@@ -4898,6 +4956,9 @@ function pedirConfigImportacao(arquivos){
           categoria: a.detec.categoria,
           ehMeta:  a.detec.ehMeta,
           ehProntaEntrega: a.detec.ehProntaEntrega,
+          // Sem esta linha a marca morre aqui: o objeto e remontado campo a
+          // campo, entao o que nao for copiado some antes de virar item.
+          foraDeLinha: a.detec.foraDeLinha,
           quinzena: a.detec.quinzena || ''
         }))
       });
@@ -5034,6 +5095,7 @@ function pedirConfigImportacao(arquivos){
           categoria,
           ehMeta,
           ehProntaEntrega: a.detec.ehProntaEntrega,
+          foraDeLinha: a.detec.foraDeLinha,
           quinzena: a.detec.quinzena || ''
         };
       });
@@ -5115,6 +5177,7 @@ async function processarXlsxMulti(fileList){
   const todos = [];                                  // [{item, origem}]
   const mapaXlsx = new Map();                        // chave → primeira origem
   const duplicadosXlsx = [];                         // duplicados ENTRE arquivos
+  _conflitoLinha = [];                               // em linha numa fábrica, fora em outra
   const arquivosInfo = [];                           // [{nome, qtd}]
   _cruzadosTabEsp = 0;
 
@@ -5123,7 +5186,7 @@ async function processarXlsxMulti(fileList){
     let qtdArquivo = 0;
     let _semMarcaDetectada = 0;
     // Pega a config detectada deste arquivo
-    const cfgArq = cfgPorNome.get(file.name) || { marca:'OLY', categoria:'', ehMeta:false, quinzena:'' };
+    const cfgArq = cfgPorNome.get(file.name) || { marca:'OLY', categoria:'', ehMeta:false, quinzena:'', foraDeLinha:false };
     try{
       const buf = await file.arrayBuffer();
       const wb  = XLSX.read(buf, { type:'array' });
@@ -5181,7 +5244,13 @@ async function processarXlsxMulti(fileList){
         // Resgata PDV do dados_produtos.json (especialmente útil pra 2S26 sem preço)
         if(resgatarPdv(item)) _pdvsResgatados++;
 
-        // Marca como exclusivo (DTC, ML, DTC+ML) — esses NÃO vão pra vitrine
+        // De qual passada este item veio. Vai junto até o JSON publicado:
+        // é o que a vitrine lê para montar a faixa de oportunidade.
+        item.foraDeLinha = !!cfgArq.foraDeLinha;
+
+        // Marca como exclusivo (DTC, ML, DTC+ML) — esses NÃO vão pra vitrine.
+        // Exceção: produto fora de linha entra mesmo sendo DTC. O canal direto
+        // também já não tem o que vender, então a reserva perdeu a razão de ser.
         if(marcarExclusivo(item)) _produtosExclusivos++;
 
         // Chave COM TIPO: estoque vs 2S26 do mesmo ARTIGO|COR são entidades distintas
@@ -5201,6 +5270,21 @@ async function processarXlsxMulti(fileList){
             ant.quinzenas = { ...(ant.quinzenas||{}), ...(item.quinzenas||{}) };
             // Mantém o totalGeral mais alto (pra exibição rápida do "principal")
             if(item.totalGeral > ant.totalGeral) ant.totalGeral = item.totalGeral;
+          } else if(ant && (!!ant.foraDeLinha) !== (!!item.foraDeLinha)){
+            // EM LINHA x FORA DE LINHA, mesmo artigo e cor. Não é engano: o
+            // EBM decide isso por FÁBRICA, e o mesmo tênis pode estar vivo
+            // numa e encerrado na outra — na rodada de 13/11 eram 61 casos,
+            // todos VULSP contra VDIST, a distribuição carregando o resíduo.
+            // Quem está em linha ganha: o produto não é oportunidade, está
+            // sendo produzido. Sem isto, a ordem dos arquivos decidiria, e o
+            // mesmo produto apareceria ora normal, ora com selo de ponta.
+            const vivo = ant.foraDeLinha ? item : ant;
+            const outro = ant.foraDeLinha ? ant : item;
+            vivo.foraDeLinha = false;
+            if(idx >= 0) todos[idx] = { item: vivo, origem: vivo === ant ? mapaXlsx.get(k) : file.name };
+            _conflitoLinha.push({ artigo: item.artigo, cor: item.cor,
+                                  descricao: item.descricao,
+                                  pares: Number(outro.totalGeral || 0) });
           } else {
             // Comportamento normal: duplicado real (avisa, sobrescreve)
             duplicadosXlsx.push({
