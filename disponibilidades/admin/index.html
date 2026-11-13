@@ -4776,7 +4776,74 @@ function temImagemAtual(item){
 
 // Verifica TODAS as imagens dos itens em paralelo (HEAD no GitHub Pages)
 // Atualiza STATE.imgChecks com 'has' ou 'miss' pra cada chave
+// O índice de imagens: TODOS os nomes de foto do catálogo, de uma vez.
+//
+// Antes esta tela perguntava ao servidor, produto por produto, se a foto
+// existia — 9.238 requisições numa rodada de quatro arquivos, doze minutos de
+// ampulheta. A pasta inteira cabe em duas chamadas à API do GitHub (uma para
+// achar a pasta, outra para listá-la), e aí a resposta de cada produto é uma
+// consulta em memória.
+//
+// Devolve um Set com os nomes sem extensão em MAIÚSCULAS, ou null se não deu —
+// e aí quem chamou volta ao método antigo, que continua inteiro logo abaixo.
+const GH_API = 'https://api.github.com/repos/cms-representacoes/apps-oly';
+let _indiceImagens = null;      // Set | null
+let _indiceImagensTentado = false;
+
+async function carregarIndiceImagens(){
+  if(_indiceImagensTentado) return _indiceImagens;
+  _indiceImagensTentado = true;
+  try{
+    const r1 = await fetch(`${GH_API}/git/trees/main`);
+    if(!r1.ok) throw new Error('árvore: ' + r1.status);
+    const t1 = await r1.json();
+    const pasta = (t1.tree || []).find(x => x.path === 'Catalogo' && x.type === 'tree');
+    if(!pasta) throw new Error('pasta Catalogo não encontrada');
+
+    const r2 = await fetch(`${GH_API}/git/trees/${pasta.sha}`);
+    if(!r2.ok) throw new Error('listagem: ' + r2.status);
+    const t2 = await r2.json();
+    // Truncado = a pasta passou do limite da API e a lista veio pela metade.
+    // Um índice incompleto marcaria produtos COM foto como "sem foto" e os
+    // tiraria da vitrine — por isso, truncou, não serve: volta para o HEAD.
+    if(t2.truncated) throw new Error('listagem truncada');
+
+    const nomes = new Set();
+    for(const x of (t2.tree || [])){
+      if(x.type !== 'blob') continue;
+      const m = String(x.path).match(/^(.+)\.jpg$/i);   // a tela só usa .jpg
+      if(m) nomes.add(m[1].toUpperCase());
+    }
+    if(!nomes.size) throw new Error('nenhuma imagem listada');
+    _indiceImagens = nomes;
+    console.log(`[imagens] índice carregado: ${nomes.size} fotos`);
+  }catch(e){
+    console.warn('[imagens] índice indisponível, voltando à verificação uma a uma:', e.message);
+    _indiceImagens = null;
+  }
+  return _indiceImagens;
+}
+
 async function verificarImagensImport(itens, onProgress){
+  const indice = await carregarIndiceImagens();
+
+  if(indice){
+    let done = 0;
+    for(const item of itens){
+      const k = `${String(item.artigo||'').toUpperCase()}|${String(item.cor||'').toUpperCase()}`;
+      if(!STATE.imgChecks?.get(k)){
+        const nome = getProductImageName(item);
+        STATE.imgChecks?.set(k, nome && indice.has(String(nome).toUpperCase()) ? 'has' : 'miss');
+      }
+      done++;
+      // Sem rede no meio, o laço voa: avisar a cada item só faria a barra
+      // repintar 9 mil vezes. De 500 em 500 o número continua andando à vista.
+      if(onProgress && (done % 500 === 0 || done === itens.length)) onProgress(done, itens.length);
+    }
+    return;
+  }
+
+  // Sem índice: o caminho de sempre, uma pergunta por produto.
   const BATCH = 12;
   let done = 0;
   for(let i = 0; i < itens.length; i += BATCH){
