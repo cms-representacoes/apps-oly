@@ -4599,6 +4599,10 @@ const SALDO_MIN = 5;
 // Piso de unidades para acessórios/meias entrarem no import.
 // Abaixo disso o item cai em "crítico" e não vem marcado por padrão.
 const ACESSORIO_MIN = 12;
+// Mínimo de pares para um CALÇADO de meta produtiva entrar na vitrine. Só
+// calçado: é nele que a grade manda e que um punhado de pares não serve.
+const META_PISO_CALCADO = 24;
+const META_PISO_CALCADO_TIPOS = new Set(['TENIS', 'CHINELO']);
 
 // Detecta o "tipo" de produto pelo padrão da grade
 // Retorna: 'calcado_masc' | 'calcado_fem' | 'chinelo' | 'confeccao' | 'acessorio' | 'outro'
@@ -4675,6 +4679,16 @@ function classificarGrade(item){
     const totalQuinz = Object.values(qs).reduce((s,v) => s + (Number(v)||0), 0);
     const cont = Object.keys(qs).length;
     if(totalQuinz > 0){
+      // Piso só para calçado. Meta produtiva não tem grade, então a régua de
+      // tamanhos centrais não alcança estes itens — e sem piso entrava "MARTE
+      // INFANTIL, 1 par", que o vendedor abre e descobre que não monta caixa.
+      // Vestuário, meia e acessório ficam de fora da regra de propósito: boné
+      // e meia não vêm em caixa de 12, e 8 unidades ali é produto vendável.
+      if(META_PISO_CALCADO_TIPOS.has(String(item.categoriaProduto||'').toUpperCase())
+         && totalQuinz < META_PISO_CALCADO){
+        return { bucket:'critico', tipo,
+                 motivo:`Só ${totalQuinz} par(es) — abaixo do mínimo de ${META_PISO_CALCADO}` };
+      }
       return { bucket:'completo', motivo:`${cont} quinzena(s) · ${totalQuinz.toLocaleString('pt-BR')} pares`, tipo };
     }
     return { bucket:'critico', motivo:'Sem meta produtiva informada', tipo };
