@@ -102,7 +102,9 @@
   // Busca + janela de confirmação. Se a cor exata não existir lá (comum na UA),
   // mostra as cores do artigo no Trade Squash para a pessoa escolher pela foto.
   // → { foto, marca } | { recusou:true } | { nao:true } | { erro }
-  async function trazerTS({ worker, artigo, cor, nome = '', ok = 'Usar esta foto' }) {
+  // `pergunta` fecha a frase da cor escolhida à mão; o gerador de Encomendas usa
+  // a mesma janela e não fala em amostra
+  async function trazerTS({ worker, artigo, cor, nome = '', ok = 'Usar esta foto', pergunta = 'É a da amostra?' }) {
     const r = await previaTS(worker, artigo, cor);
     if (!r.foto && !r.cores) return r.erro ? { erro: r.erro } : { nao: true };
     const mc = MARCAS[r.marca];
@@ -138,7 +140,7 @@
         try {
           const d = await worker({ action: 'tsPreviaImagem', marca: r.marca, artigo, cor: b.dataset.cor }, true);
           if (n !== pedido) return;   // clicou em outra enquanto carregava
-          if (d.achou && d.base64) mostrar(d.base64, `Cor ${b.dataset.cor} do Trade Squash. É a da amostra?`);
+          if (d.achou && d.base64) mostrar(d.base64, `Cor ${b.dataset.cor} do Trade Squash. ${pergunta}`);
           else { ver.innerHTML = '<span>Essa cor está sem foto no Trade Squash.</span>'; pe('Tente outra cor.', 'erro'); }
         } catch (er) { if (n === pedido) { ver.innerHTML = ''; pe('Não deu para abrir: ' + er.message, 'erro'); } }
       });
@@ -152,7 +154,7 @@
     });
   }
 
-  function escolher({ artigo = '', cor = '', nome = '', worker, titulo = 'Foto da amostra' } = {}) {
+  function escolher({ artigo = '', cor = '', nome = '', worker, titulo = 'Foto da amostra', pergunta } = {}) {
     return new Promise(resolve => {
       const VAZIA = `<b>Cole ou arraste a foto aqui</b><span class="fa-pc">Clique aqui e aperte <kbd>Ctrl</kbd> + <kbd>V</kbd></span><span class="fa-cel">Toque e segure aqui e escolha Colar</span>`;
       const f = document.createElement('div');
@@ -214,7 +216,7 @@
       btTs.addEventListener('click', async () => {
         if (!artigo || !cor || !worker) { pe('Sem artigo e cor não dá para buscar no Trade Squash.', 'erro'); return; }
         btTs.disabled = true; btTs.innerHTML = '<span class="fa-gira"></span>Buscando…';
-        const r = await trazerTS({ worker, artigo, cor, nome });
+        const r = await trazerTS({ worker, artigo, cor, nome, ...(pergunta ? { pergunta } : {}) });
         btTs.disabled = false; btTs.textContent = 'Buscar no Trade Squash';
         if (r.foto) mostrar({ b64: r.foto }, 'Do Trade Squash · ' + MARCAS[r.marca].nome);
         else if (r.erro) pe('Não deu para buscar no Trade Squash: ' + r.erro, 'erro');
