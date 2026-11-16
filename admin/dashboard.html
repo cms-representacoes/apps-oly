@@ -557,6 +557,7 @@ body::before{
     <div style="flex:1;min-width:0">
       <div class="aba-sub">
         <button class="on" id="abaRepasses" type="button" onclick="setAba('repasses')">Repasses</button>
+        <button class="hidden" id="abaColecao" type="button" onclick="setAba('colecao')">1S27<span class="conta hidden" id="abaContaColecao">0</span></button>
         <button class="hidden" id="abaCampanhas" type="button" onclick="setAba('campanha')">Campanhas<span class="conta hidden" id="abaConta">0</span></button>
         <button class="hidden" id="abaStore" type="button" onclick="setAba('store')">CMS Store<span class="conta hidden" id="abaContaStore">0</span></button>
       </div>
@@ -850,6 +851,7 @@ async function loadAll(){
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 function render(){
+  montarAbaColecao();
   // nao ha mais seletor: a aba mostra a lista inteira, e ela se remonta a cada render
   if(CAMPANHAS_LISTA.length) renderCampanha();
   if(CANCELAMENTOS.length) renderCancelamentos();
@@ -861,12 +863,12 @@ function render(){
   // Conta o periodo inteiro, para bater com o ranking logo abaixo. Antes so
   // contava aprovados e marcava zero num dia com 444 pares pedidos — duas
   // verdades diferentes na mesma tela.
-  const paresTotal=vivos.reduce((s,o)=>s+pares(o),0);
+  const paresTotal=vivos.reduce((s,o)=>s+paresNoEscopo(o),0);
   document.getElementById('kAprovPares').textContent=fmt(paresTotal);
 
   // Saldo em estoque (todos os pedidos, não só o período — é foto do agora)
   const maps = buildDispoMaps();
-  const saldoTotal=STATE.dispoRows.reduce((s,r)=>{
+  const saldoTotal=linhasDoEscopo().reduce((s,r)=>{
     const { p, a } = reservaDoLote(r, maps);
     return s+Math.max(0,Number(r.saldo||0)-p-a);
   },0);
@@ -1062,19 +1064,39 @@ async function carregarCampanhasDash(){
    Abre sempre em Repasses: a campanha é uma visita, não o ponto de partida. */
 let ABA_ATUAL = 'repasses';
 
+/* ── Repasse comum × bolsão da coleção ────────────────────────────────
+   O bolsão da 1S27 entrou pela mesma porta do repasse, mas não é repasse:
+   é a cota que a fábrica reservou ao escritório. Somados, davam um número
+   só que não dizia de quê — e este é o painel que o diretor lê todo dia.
+   Agora cada aba responde pelo seu, e a soma de Repasses + 1S27 é o total
+   da casa.
+   O recorte é por LOTE e por ITEM, nunca por pedido: o vendedor pode pôr
+   bolsão e repasse comum na mesma sacola, e aí cada par conta na sua aba.
+   Pedido feito antes de 16/11/2026 não tem o campo, então conta como
+   repasse comum - que é o que ele era. */
+const ehColecao = x => !!String(x && x.colecao || '').trim();
+const noEscopo  = x => ABA_ATUAL === 'colecao' ? ehColecao(x) : !ehColecao(x);
+// as linhas da DISPO que pertencem à aba aberta
+const linhasDoEscopo = () => (STATE.dispoRows || []).filter(noEscopo);
+// os pares de um pedido que pertencem à aba aberta (o misto entra pela parte)
+const paresNoEscopo = o => (o.items || [])
+  .filter(noEscopo).reduce((s, i) => s + getItemUnits(i), 0);
+
 function setAba(a){
   ABA_ATUAL = a;
   const liga = (id, esconder) => {
     const el = document.getElementById(id);
     if(el) el.classList.toggle('hidden', esconder);
   };
-  liga('telaRepasses', a !== 'repasses');
+  // a aba 1S27 é a MESMA tela de Repasses, com outro recorte dos dados:
+  // duas telas separadas acabariam discordando uma da outra com o tempo
+  liga('telaRepasses', a !== 'repasses' && a !== 'colecao');
   liga('telaCampanha', a !== 'campanha');
   liga('telaStore',    a !== 'store');
 
   /* a fita de periodos vale para o repasse e para as vendas da Store — as
      duas coisas tem data. Nao vale para a campanha, que tem janela propria. */
-  const semFita = (a === 'campanha');
+  const semFita = (a === 'campanha');   // o bolsão tem data como o repasse
   liga('fitaPeriodo', semFita);
   liga('fitaCampanha', !semFita);
   liga('headerSub', semFita);
@@ -1085,11 +1107,39 @@ function setAba(a){
     if(el) el.classList.toggle('on', on);
   };
   marca('abaRepasses', a === 'repasses');
+  marca('abaColecao', a === 'colecao');
   marca('abaCampanhas', a === 'campanha');
   marca('abaStore', a === 'store');
 
+  if(a === 'repasses' || a === 'colecao') render();   // o recorte mudou
   if(a === 'store') renderStore();
   pintarNovasVendas();   // entrar na aba apaga a bolinha; sair dela traz de volta o que vier
+}
+
+/* A aba 1S27 só existe enquanto houver bolsão na base: quando a cota
+   acabar, ela some sozinha e ninguém precisa lembrar de tirá-la. O número
+   ao lado é quantos LOTES da coleção ainda têm saldo - é o que resta para
+   distribuir, não o que já foi. */
+function montarAbaColecao(){
+  const aba   = document.getElementById('abaColecao');
+  const conta = document.getElementById('abaContaColecao');
+  if(!aba) return;
+  const linhas = (STATE.dispoRows || []).filter(ehColecao);
+  if(!linhas.length){
+    aba.classList.add('hidden');
+    if(ABA_ATUAL === 'colecao') setAba('repasses');   // a aba sumiu debaixo dele
+    return;
+  }
+  aba.classList.remove('hidden');
+  if(conta){
+    const maps = buildDispoMaps();
+    const comSaldo = linhas.filter(r => {
+      const { p, a } = reservaDoLote(r, maps);
+      return Number(r.saldo||0) - p - a > 0;
+    }).length;
+    conta.textContent = comSaldo;
+    conta.classList.toggle('hidden', !comSaldo);
+  }
 }
 
 /* ── CAMPANHAS: todas na aba, uma abaixo da outra ───────────────────────────
@@ -1212,7 +1262,7 @@ function htmlCampanha(c){
 // ── RANKING DE VENDEDORES ───────────────────────────────────────────────────
 function buildSaldoLookup(maps){
   const lookup=new Map(); // "produto|cor" normalizado → saldoReal
-  for(const r of STATE.dispoRows){
+  for(const r of linhasDoEscopo()){
     const { p, a } = reservaDoLote(r, maps);
     const saldoReal=Number(r.saldo||0)-p-a;
     const prodKey=`${String(r.produto||'').trim().toUpperCase()}|${String(r.cor||'').trim().toUpperCase()}`;
@@ -1233,10 +1283,16 @@ function renderRanking(orders){
     const e=map.get(nome);
     const st=canonicalStatus(o.status);
     if(st==='Cancelado'){ e.canc++; continue; } // cancelado não conta no ranking
+    /* Pedido misto: entra na aba pela PARTE que é dela. Se nenhum par do
+       pedido pertence a esta aba, ele não é pedido desta aba e nem o
+       contador de pedidos sobe - senão o vendedor apareceria no ranking do
+       bolsão com 0 pares só por ter vendido repasse comum. */
+    const u=paresNoEscopo(o);
+    if(!u) continue;
     e.pedidos++;
     if(st==='Aprovado') e.aprov++;
     else e.pend++;
-    e.pares+=(o.items||[]).reduce((s,i)=>s+getItemUnits(i),0);
+    e.pares+=u;
   }
   for(const p of PREPOSTOS){ if(!map.has(p)) map.set(p,{pares:0,pedidos:0,aprov:0,pend:0,canc:0}); }
   const sorted=[...map.entries()].sort((a,b)=>b[1].pares-a[1].pares);
@@ -1330,6 +1386,7 @@ function renderProdutosRanking(aprovOrders, saldoLookup){
   const map=new Map();
   for(const o of aprovOrders){
     for(const item of (o.items||[])){
+      if(!noEscopo(item)) continue;        // cada par no ranking da sua aba
       const produto=String(item.produto||'').trim();
       if(!produto) continue;
       const cor=String(item.cor||'').trim();
@@ -1378,7 +1435,7 @@ let dispoExpandido = false;
 let dispoSortAtual = 'qtd_desc';
 
 function renderDispo(maps){
-  const porCor=STATE.dispoRows.map(r=>{
+  const porCor=linhasDoEscopo().map(r=>{
     const { p, a } = reservaDoLote(r, maps);
     const saldoReal=Number(r.saldo||0)-p-a;
     return{
@@ -1486,7 +1543,7 @@ function renderPrazo(){
     if(st==='Cancelado') continue;
     for(const item of (o.items||[])){ gciComPedido.add(String(item.gci||item.codigo||'').trim()); }
   }
-  const semPedido=STATE.dispoRows.filter(r=>{
+  const semPedido=linhasDoEscopo().filter(r=>{
     const gci=String(r.gci||'').trim();
     const cod=String(r.codigo||'').trim();
     return !gciComPedido.has(gci) && !gciComPedido.has(cod);

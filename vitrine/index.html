@@ -90,9 +90,12 @@ button{font:inherit}
 .rola-seta:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
 .rola-seta[hidden]{display:none}
 .rola-seta.esq{left:-6px}
-.rola-seta.dir{right:-6px}
-/* no celular o dedo já rola: as setas só atrapalhariam */
-@media(max-width:860px){ .rola-seta{display:none !important} }
+.rola-seta.dir{right:calc(var(--acoes-w, 0px) + 4px)}
+/* na tela de toque o dedo já rola: as setas só atrapalhariam. O critério
+   era a largura (≤860px), mas isso tirava a seta de uma JANELA estreita no
+   computador, onde não há dedo nenhum e três origens ficavam fora sem aviso.
+   Agora o critério é ter ponteiro, que é o que de fato importa. */
+@media(hover:none){ .rola-seta{display:none !important} }
 /* textura premium: gradiente + brilho no topo + sombra da própria cor */
 .selo-cms{
   width:32px;height:32px;border-radius:10px;flex:none;
@@ -131,7 +134,12 @@ button{font:inherit}
 .tit .upd{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--tenue);
   line-height:1.1;margin-top:1px;white-space:nowrap}
 .tit .upd[hidden]{display:none}
-.tit .upd svg{flex:none;width:9px;height:9px}
+.tit .upd svg{flex:none;width:11px;height:11px}
+/* O relógio já diz "atualizado": a palavra saiu do chip e ficou só a hora.
+   Ela continua no texto para quem usa leitor de tela: o ícone sozinho não
+   fala. A dica do mouse já vinha pronta do JS, com data e hora exatas. */
+.tit .upd .pal{position:absolute;width:1px;height:1px;margin:-1px;padding:0;
+  overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
 /* Na faixa entre o cabecalho e a grade, alinhada a margem dos cards: fica no
    caminho dos olhos antes do primeiro produto, sem disputar o cabecalho. */
 /* flex: como bloco comum, a caixa de linha do inline-flex somava um descida
@@ -171,19 +179,21 @@ button{font:inherit}
 .busca .x:hover{color:var(--tinta);background:var(--linha)}
 .busca .x[hidden]{display:none}
 .busca .lupa:focus-visible,.busca .x:focus-visible{outline:2px solid var(--marca);outline-offset:-2px;border-radius:999px}
-/* Aberta, a busca precisa da largura que o titulo ocupa. */
-.topo-l1:has(.busca.aberta) .tit{display:none}
-@media(min-width:768px) and (max-width:1099px){
-  .topo-l1:has(.busca.aberta) .linha2{display:none}
-}
-@media(max-width:767px){
-  .topo-l1:has(.busca.aberta) .btn-filtro,
-  .topo-l1:has(.busca.aberta) .btn-sacola,
-  .topo-l1:has(.busca.aberta) .btn-pedidos,
-  .topo-l1:has(.busca.aberta) .btn-respostas,
-  .topo-l1:has(.busca.aberta) #linkPortal{display:none}
-}
-@media(max-width:520px){ .topo-l1:has(.busca.aberta) .selo-cms{display:none} }
+/* As regras de "busca aberta no cabeçalho" saíram em 16/11/2026: a busca
+   deixou de morar lá. Aberta, ela agora toma a largura na linha dos chips,
+   que tem espaço de sobra e não precisa esconder ninguém para isso. */
+
+/* ── o nome do preposto, como chip ──────────────────────────────────────
+   Na linha dos chips ele é uma pílula de uma linha só: o nome e, ao lado,
+   a hora da base. No cabeçalho eram duas linhas empilhadas, que é o que
+   fazia o bloco custar 108px. */
+.mt-topo .tit{display:inline-flex;align-items:center;gap:8px;flex:none;min-width:0;
+  border:1px solid var(--linha);background:var(--carta);border-radius:999px;padding:5px 13px}
+.mt-topo .tit b{display:inline;font-size:11px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.09em;line-height:1.1}
+.mt-topo .tit .upd{margin-top:0}
+.mt-topo .busca{flex:none}
+.mt-topo .busca.aberta{flex:1 1 240px;min-width:160px}
 
 .linha2{display:flex;align-items:center;gap:10px;flex:0 1 auto;min-width:0;
   margin-left:auto;overflow-x:auto;scrollbar-width:none;padding:1px 0}
@@ -192,6 +202,12 @@ button{font:inherit}
 .topo-acoes{display:flex;align-items:center;gap:9px;flex:0 1 auto;min-width:0;
   overflow-x:auto;scrollbar-width:none;padding:1px 0}
 .topo-acoes::-webkit-scrollbar{display:none}
+/* Presas à direita: a partir do tablet elas mantêm a largura inteira e quem
+   cede espaço é o trilho dos filtros. No celular (≤767px) continuam como
+   antes, encolhendo e rolando por dentro, senão não caberiam na linha. */
+@media(min-width:768px){
+  .topo-l1 > .topo-acoes{ flex:none; overflow:visible }
+}
 .topo-acoes > *{flex:none}
 .linha2::-webkit-scrollbar{display:none}
 /* ── um trilho só ──
@@ -1797,18 +1813,15 @@ body{ font-family:'Plus Jakarta Sans', Inter, system-ui, -apple-system, 'Segoe U
    tablet que os dois botões amarelos ficavam lado a lado sem nome, que é o
    que esta mudança veio resolver. */
 .risco{ background:var(--linha-forte); margin:6px 2px; }
-/* ── as categorias saem da fita no tablet e no celular ──
-   Tênis, Chinelos, Vestuário, Acessórios e Meias custavam uns 330px de uma
-   fila que não cabia, e empurravam para fora justamente os botões de ação.
-   Lá elas passam a morar dentro do painel de Filtros, como primeira seção.
-   No computador a fila inteira cabe, então nada muda: continuam no topo,
-   a um clique, e o painel não repete o que já está à vista. */
-@media(max-width:1099px){
-  #catFiltros,#riscoCat{ display:none !important; }
-}
-@media(min-width:1100px){
-  .pn-corpo .so-estreito{ display:none; }
-}
+/* ── as categorias moram no painel de Filtros, em qualquer largura ──
+   Tênis, Chinelos, Vestuário, Acessórios e Meias custavam 364px de uma fila
+   que não cabia, e empurravam para fora justamente os botões de ação. Até
+   16/11/2026 elas só saíam da barra abaixo de 1100px - e isso era pior que
+   tirá-las sempre: o MESMO filtro mudava de lugar conforme o tamanho da
+   janela, e quem trabalhava nas duas larguras procurava num lugar o que
+   estava no outro. Agora é um lugar só. Medido em 16/11: tirá-las fez a
+   seta de rolagem sumir em 1366px, que é o notebook da casa. */
+#catFiltros,#riscoCat{ display:none !important; }
 /* ── ações × escolhas ──
    Pílula redonda é escolher o que ver (origens e categorias). Os botões que
    abrem alguma coisa — busca, Filtros, avisos, pedidos, sacola, voltar —
@@ -1906,7 +1919,8 @@ body{ font-family:'Plus Jakarta Sans', Inter, system-ui, -apple-system, 'Segoe U
   .topo-rolo > .topo-acoes::after{ content:''; position:absolute; top:-3px; bottom:-3px;
     left:-22px; width:22px; pointer-events:none;
     background:linear-gradient(90deg, transparent, var(--carta)); }
-  .rola-seta.dir{ right:calc(var(--acoes-w, 0px) + 4px); }
+  /* (o recuo da seta saiu daqui para fora da media query: as ações estão
+     presas à direita em qualquer largura) */
   /* Busca aberta: o campo toma a largura e o trilho para de rolar, então o
      bloco de botões não tem mais onde se prender e era a sacola que caía
      fora. Enquanto se digita, os três voltam a ser só ícone — a mesma
@@ -2621,7 +2635,7 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
         <path d="M8 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-2"/>
         <rect x="8" y="2" width="8" height="4" rx="1"/>
         <path d="M8 11h8M8 16h5"/></svg>
-      <span>Meus pedidos</span>
+      <span>Pedidos</span>
     </button>
     <button class="icone btn-sacola" id="btnSacolaTopo" title="Abrir a sacola"
             aria-label="Abrir a sacola" onclick="abrirSacola()">
@@ -4487,7 +4501,7 @@ function ordemOpcoes(id, itens){
 
 /* A categoria é escolha única, não marcação múltipla como os outros grupos:
    clicar na que já está ligada desliga, igual à pílula do topo. */
-const catNoPainel = () => matchMedia('(max-width:1099px)').matches;
+const catNoPainel = () => true;   // sempre no painel — ver o CSS de #catFiltros
 
 function secaoCategoria(){
   const daMarcaAtual = STATE.produtos.filter(daMarca);
@@ -10072,21 +10086,45 @@ function arrumarTopo(){
   const l1 = $('topoL1'), rolo = $('topoRolo'), tit = $('titTopo');
   const filtros = $('linha2'), acoes = $('topoAcoes'), busca = $('busca'), voltar = $('linkPortal');
   if(!l1 || !rolo) return;
+  /* As AÇÕES ficam fora do trilho, presas à direita, em qualquer largura.
+     Até 16/11/2026 elas rolavam junto com os filtros, e como a fila se enche
+     da esquerda para a direita o corte caía sempre nelas: numa janela de
+     900px sumiam Sacola, Pedidos, busca e Portal - o que ele mais usa - e
+     ficavam à vista os filtros, que ele usa de vez em quando. Agora só o
+     filtro rola; o que fecha o pedido não sai da tela. */
+  /* O nome do preposto e a busca moram na linha dos chips (ver poeChips).
+     Eles custavam ~190px do trilho, e com eles lá dentro as pílulas de
+     origem - o filtro principal - é que passavam a rolar para fora. */
   if(_mqEstreito.matches){
-    acoes.insertBefore(busca, voltar);
-    rolo.append(tit);
     if(_mqTablet.matches) rolo.append(filtros);
-    rolo.append(acoes);
-    l1.append(rolo);
+    l1.append(rolo, acoes);
     if(!_mqTablet.matches) l1.append(filtros);
   }else{
-    // computador: a mesma fila única do tablet — nome, busca, origens,
-    // categorias e botões rolam juntos; só o selo e a marca ficam parados
-    rolo.append(tit, busca, filtros, acoes);
-    l1.append(rolo);
+    rolo.append(filtros);
+    l1.append(rolo, acoes);
   }
   poeLimparNoLugar();
 }
+/* ── o nome e a busca viram chips ─────────────────────────────────────
+   A linha dos chips (Metas, Campanhas, Reativar) era condicional: sem meta,
+   sem campanha e sem cliente para reativar, ela não existia. Passando a
+   carregar o nome e a busca, ela tem de aparecer SEMPRE - senão, para esse
+   vendedor, a busca sumiria da tela.
+   Ordem pedida por ele: o nome primeiro, à esquerda de tudo; o que é novo
+   depois entra atrás do que já existia. */
+function poeChips(){
+  const linha = document.querySelector('.mt-topo');
+  const barra = $('mtBarra'), tit = $('titTopo'), busca = $('busca');
+  if(!linha || !barra) return;
+  if(tit && tit.parentElement !== linha) linha.prepend(tit);
+  const reat = $('chipReat');
+  if(busca && busca.parentElement !== linha){
+    if(reat) reat.after(busca); else linha.append(busca);
+  }
+  barra.hidden = false;
+}
+poeChips();
+
 arrumarTopo();
 _mqEstreito.addEventListener('change', arrumarTopo);
 // esmaece a ponta da fila só quando ainda há botão para a direita
@@ -10105,8 +10143,14 @@ _mqEstreito.addEventListener('change', arrumarTopo);
   const podeRolar = () => rolo.scrollWidth > rolo.clientWidth + 2;
   const arrumarSetas = () => {
     if(!esq || !dir) return;
-    const estreito = matchMedia('(max-width:860px)').matches;
-    const sobra = podeRolar() && !estreito;
+    /* As setas valiam só acima de 860px: até 16/11/2026 o trilho era a barra
+       inteira, e no celular elas cobririam botão. Hoje ele só tem as pílulas
+       de origem, e numa janela de 768px três delas ficavam fora SEM nada
+       avisar - dava para arrastar, mas nada dizia que havia mais. Na tela de
+       toque continuam fora: lá o arrasto é o gesto natural e a seta só
+       roubaria espaço. */
+    const toque = matchMedia('(hover:none)').matches;
+    const sobra = podeRolar() && !toque;
     esq.hidden = !sobra || rolo.scrollLeft <= 2;
     dir.hidden = !sobra || rolo.scrollLeft + rolo.clientWidth >= rolo.scrollWidth - 2;
   };
@@ -10122,8 +10166,12 @@ _mqEstreito.addEventListener('change', arrumarTopo);
   const acoes = $('topoAcoes'), l1 = $('topoL1');
   const medirAcoes = () => {
     if(!acoes || !l1) return;
-    const preso = acoes.parentElement === rolo && matchMedia('(min-width:1100px)').matches;
-    l1.style.setProperty('--acoes-w', preso ? acoes.offsetWidth + 'px' : '0px');
+    /* O bloco de ações ficou PRESO À DIREITA da linha (16/11/2026), fora do
+       trilho. A seta da direita mora na borda da linha, então sem este
+       recuo ela cobriria o Portal. Vale em qualquer largura agora, não só
+       acima de 1100px, porque as ações estão sempre fora do trilho. */
+    const naLinha = acoes.parentElement === l1;
+    l1.style.setProperty('--acoes-w', naLinha ? acoes.offsetWidth + 'px' : '0px');
   };
   medirAcoes();
   addEventListener('resize', medirAcoes);
