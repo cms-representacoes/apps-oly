@@ -6,7 +6,14 @@ export default {
       "https://cms-representacoes.github.io",
       "https://marcosrep-cms.workers.dev",
       "http://localhost:3000",
-      "http://127.0.0.1:5500"
+      "http://127.0.0.1:5500",
+      // O ambiente serve dois repositórios em portas diferentes: a 5500 é o
+      // apps-oly e a 5504 é o apps-oly-v2 (Detalhada, RFV, catálogo). Sem a
+      // 5504 aqui, tudo que grava a partir dessas telas morre num "Failed to
+      // fetch" que não diz o motivo.
+      "http://127.0.0.1:5504",
+      "http://localhost:5500",
+      "http://localhost:5504"
     ];
     const origin = request.headers.get("Origin") || "";
     const isAllowedOrigin = ALLOWED_ORIGINS.includes(origin);
@@ -47,6 +54,7 @@ export default {
       "limparHistoricoMatriz",
       "uploadMatrizImagem",
       "clearPedidosHistorico",
+      "deletePedidosHistorico",
       "tsBuscarImagens",
       "tsFicha",
       "tsFichas",
@@ -160,6 +168,11 @@ export default {
     const GITHUB_PERFORMANCE = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/performance.json`;
     // Relatório RFV (Recência · Frequência · Valor) — dados publicados
     const GITHUB_RFV = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/rfv.json`;
+    // Resumo por líder (tier e classificação ABC), que a tela do RFV manda
+    // pronto, e a base de clientes montada a partir dele.
+    const GITHUB_RFV_LIDERES = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/rfv-lideres.json`;
+    const GITHUB_CLI_RESUMO = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/clientes-base.json`;
+    const GITHUB_CLI_GTM = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/clientes-gtm.json`;
     // Estoque Virtual — Matriz Esportes (lojas + itens reportados por cada loja + pendentes de cadastro)
     const GITHUB_MATRIZ = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/matriz_estoque.json`;
     // Detalhada por preposto — base publicada pelo script diário (CMS_DETALHADA_GERAL)
@@ -2645,6 +2658,92 @@ export default {
             console.log("carteira-aberta nao foi gerada:", e && e.message);
           }
 
+          /* Base de clientes: um registro por LOJA, que é o código com que o
+             repasse acontece, carregando o líder da rede e, vindo dele, o tier
+             e a classificação ABC.
+
+             A ponte loja→líder é o COD. COMER da própria Detalhada; o tier e o
+             ABC vêm do resumo que a tela do RFV publica. Medido em 12/11/2026:
+             928 lojas, todas com líder, 906 com tier. O que vem do GTM —
+             cluster, metas, endereço — é opcional e entra por importação. */
+          try {
+            const _CLI = 1, _COMER = 15, _PREP = 0;
+            /* getFile JÁ devolve o conteúdo convertido em objeto. O
+               JSON.parse que estava aqui recebia um objeto, virava a string
+               "[object Object]" e estourava — o erro caía no catch mudo abaixo,
+               a lista ficava vazia e TODA a base era regravada sem tier, por
+               cima da boa. Aconteceu em 14 e 15/11/2026: 928 lojas com 915
+               tiers viraram 928 com zero. */
+            let lideres = {};
+            let rfvFalhou = false;
+            try {
+              const f = await getFile(GITHUB_RFV_LIDERES);
+              lideres = (f.content && f.content.lideres) || {};
+              if (!Object.keys(lideres).length) rfvFalhou = true;
+            } catch (e) {
+              rfvFalhou = true;
+              console.log("rfv-lideres nao veio:", e && e.message);
+            }
+            let doGtm = {};
+            try {
+              const g = await getFile(GITHUB_CLI_GTM);
+              doGtm = (g.content && g.content.lideres) || {};
+            } catch (e) { /* o GTM só existe depois de uma importação */ }
+
+            const lojas = new Map();
+            for (const l of base.l) {
+              const c = base.dic.cli[l[_CLI]];
+              if (!c) continue;
+              const cod = String(c[0]).trim();
+              if (!cod) continue;
+              const r = lojas.get(cod) || { nome: String(c[1] || "").trim(), lider: "", prep: "" };
+              if (!r.lider) {
+                const comer = String(base.dic.comer[l[_COMER]] || "").trim();
+                if (comer) r.lider = comer;
+              }
+              if (!r.prep) {
+                const prep = String(base.dic.prep[l[_PREP]] || "").trim();
+                if (prep) r.prep = prep;
+              }
+              lojas.set(cod, r);
+            }
+
+            const clientes = {};
+            let comTier = 0;
+            for (const [cod, r] of lojas) {
+              const L = lideres[r.lider] || {};
+              const G = doGtm[r.lider] || {};
+              if (L.canal) comTier++;
+              const reg = {
+                nome: r.nome, prep: r.prep, lider: r.lider,
+                liderNome: L.nome || "", tier: L.canal || "", abc: L.abc || "",
+                cidade: L.cidade || G.cidade || "", uf: L.uf || G.uf || "",
+              };
+              if (G.cluster) reg.cluster = G.cluster;
+              if (G.canalLoja) reg.canalLoja = G.canalLoja;
+              if (G.metas) reg.metas = G.metas;
+              clientes[cod] = reg;
+            }
+            /* Trava: sem os líderes do RFV a base sai inteira sem tier, e
+               gravá-la apagaria o que já estava certo. Nesse caso é melhor
+               manter a de ontem — a Detalhada muda pouco de um dia para o
+               outro, o tier não muda quase nunca, e uma base sem tier quebra
+               a segmentação nas telas que dependem dela. */
+            const anterior = await getFile(GITHUB_CLI_RESUMO);
+            const tinhaTier = (anterior.content && anterior.content.comTier) || 0;
+            if (rfvFalhou && comTier === 0 && tinhaTier > 0) {
+              console.log(`clientes-base NAO regravada: o RFV nao veio e a base `
+                + `perderia ${tinhaTier} tier(s).`);
+            } else {
+              await saveFile(GITHUB_CLI_RESUMO, {
+                v: 1, gerado: new Date().toISOString(),
+                lojas: lojas.size, comTier, clientes,
+              }, anterior.sha, `clientes: ${lojas.size} lojas, ${comTier} com tier`, true);
+            }
+          } catch (e) {
+            console.log("clientes-base nao foi gerada:", e && e.message);
+          }
+
           return new Response(JSON.stringify({ success: true, ...info }),
             { status: 200, headers: corsHeaders });
         }
@@ -3429,6 +3528,53 @@ export default {
           return new Response(JSON.stringify({ success: true, cleared: totalAntes }), { status: 200, headers: corsHeaders });
         }
 
+        /* PATCH action:"deletePedidosHistorico" + comissionista + ids[] → apaga
+           SÓ os pedidos escolhidos. Nasceu para substituir o "Limpar tudo", que
+           levava o histórico inteiro num clique. Mesmo cuidado do irmão acima:
+           backup primeiro, e se o backup falhar nada é apagado. */
+        if (body.action === "deletePedidosHistorico" && body.comissionista && Array.isArray(body.ids)) {
+          const safeId = String(body.comissionista).replace(/[^a-zA-Z0-9_-]/g, "");
+          if (!safeId) {
+            return new Response(JSON.stringify({ success: false, error: "Comissionista inválido" }), { status: 400, headers: corsHeaders });
+          }
+          const alvos = new Set(body.ids.map(x => String(x)));
+          if (!alvos.size) {
+            return new Response(JSON.stringify({ success: false, error: "Nenhum pedido informado" }), { status: 400, headers: corsHeaders });
+          }
+          const url = `${GITHUB_CAT_HIST_BASE}/${safeId}.json`;
+          let sha = null;
+          let listaAtual = [];
+          try {
+            const r = await getFile(url);
+            sha = r.sha || null;
+            listaAtual = Array.isArray(r.content) ? r.content : [];
+          } catch (_) {
+            return new Response(JSON.stringify({ success: false, error: "Histórico não encontrado" }), { status: 404, headers: corsHeaders });
+          }
+          const restantes = listaAtual.filter(p => !alvos.has(String(p && p.id)));
+          const removidos = listaAtual.length - restantes.length;
+          if (removidos === 0) {
+            // Nada casou: devolve sem gravar, para não criar backup à toa nem
+            // reescrever o arquivo com o mesmo conteúdo.
+            return new Response(JSON.stringify({ success: true, removed: 0, remaining: listaAtual.length }), { status: 200, headers: corsHeaders });
+          }
+          // O backup guarda só o que vai sair — é o que serve para repor.
+          try {
+            const saindo = listaAtual.filter(p => alvos.has(String(p && p.id)));
+            const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+            const backupUrl = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/backups/catalogo-historico/${safeId}_apagados_${stamp}_${removidos}itens.json`;
+            await saveFile(backupUrl, saindo, null, `backup de ${removidos} pedido(s) apagado(s) - ${safeId}`);
+          } catch (bkErr) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: "Falha ao criar backup. Nada foi apagado.",
+              detail: String(bkErr && bkErr.message || bkErr)
+            }), { status: 500, headers: corsHeaders });
+          }
+          await saveFile(url, restantes, sha, `apaga ${removidos} pedido(s) do historico - ${safeId}`);
+          return new Response(JSON.stringify({ success: true, removed: removidos, remaining: restantes.length }), { status: 200, headers: corsHeaders });
+        }
+
         // ── RASCUNHOS DE PEDIDO ──────────────────────────────────────────
         // getRascunhos + comissionista → retorna array de rascunhos
         if (body.action === "getRascunhos" && body.comissionista) {
@@ -3618,12 +3764,39 @@ export default {
           }
         }
 
+        /* PATCH action:"saveClientesGtm" → guarda o que só o GTM tem (cluster,
+           3YP, rua/shopping, endereço e metas por categoria), por líder. Tier e
+           score não entram aqui: esses vêm do RFV e se atualizam sozinhos. O
+           arquivo é lido na hora de montar a base de clientes e sobrevive às
+           gerações automáticas. */
+        if (body.action === "saveClientesGtm" && body.data && typeof body.data === "object") {
+          const lideres = body.data.lideres;
+          if (!lideres || typeof lideres !== "object") {
+            return new Response(JSON.stringify({ success: false, error: "sem lideres" }), { status: 400, headers: corsHeaders });
+          }
+          const { sha } = await getFile(GITHUB_CLI_GTM);
+          const payload = { v: 1, gerado: new Date().toISOString(), lideres };
+          await saveFile(GITHUB_CLI_GTM, payload, sha, `gtm: ${Object.keys(lideres).length} lideres`, true);
+          return new Response(JSON.stringify({ success: true, lideres: Object.keys(lideres).length, gerado: payload.gerado }), { status: 200, headers: corsHeaders });
+        }
+
         // PATCH action:"saveRfv" + data:{...} → grava os dados do RFV (sem senha, como o performance).
         // O objeto 'data' é gravado como está (o front decide o formato: arquivos crus, dataset processado, etc.)
         if (body.action === "saveRfv" && body.data && typeof body.data === "object") {
           const { sha } = await getFile(GITHUB_RFV);
           const payload = { ...body.data, updatedAt: new Date().toISOString() };
           await saveFile(GITHUB_RFV, payload, sha, "update rfv");
+          // O resumo por líder vira arquivo próprio: 30 KB em vez dos 5 MB das
+          // planilhas, e é dele que a base de clientes tira tier e score. Falhar
+          // aqui não pode derrubar a publicação do RFV.
+          if (body.data.lideres && typeof body.data.lideres === "object") {
+            try {
+              const { sha: shaL } = await getFile(GITHUB_RFV_LIDERES);
+              await saveFile(GITHUB_RFV_LIDERES,
+                { v: 1, gerado: payload.updatedAt, lideres: body.data.lideres },
+                shaL, `rfv: ${Object.keys(body.data.lideres).length} líderes`, true);
+            } catch (e) { console.log("rfv-lideres não foi gravado:", e && e.message); }
+          }
           return new Response(JSON.stringify({ success: true, updatedAt: payload.updatedAt }), { status: 200, headers: corsHeaders });
         }
         // ── ESTOQUE VIRTUAL · MATRIZ ESPORTES ──────────────────────────────────

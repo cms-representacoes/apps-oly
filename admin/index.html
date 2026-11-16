@@ -869,6 +869,29 @@
               </div>
             </div>
 
+            <!-- Card Clientes — a base monta sozinha; o GTM entra por aqui -->
+            <div class="rounded-[28px] border border-slate-200 bg-white shadow-card p-5">
+              <div class="w-9 h-9 rounded-xl bg-teal-50 flex items-center justify-center mb-3">
+                <i class="fa-solid fa-store text-teal-600 text-sm"></i>
+              </div>
+              <div class="text-sm font-extrabold mb-1">Clientes</div>
+              <div class="text-xs text-slate-500 mb-4">Tier e score vêm do RFV todo dia, sozinhos. O GTM acrescenta cluster, metas e endereço — e é exportação manual.</div>
+              <div class="border-t border-slate-100 pt-4 flex flex-col gap-2">
+                <button onclick="abrirImportarGtm()"
+                  class="focus-ring w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-teal-50 hover:border-teal-200 transition-colors text-left">
+                  <div class="w-7 h-7 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-upload text-teal-600 text-xs"></i>
+                  </div>
+                  <div>
+                    <div class="text-xs font-bold text-slate-800">Importar GTM (lideres.xlsx)</div>
+                    <div class="text-[11px] text-slate-500">Exportação da tela de Líderes do GTM Online</div>
+                  </div>
+                  <i class="fa-solid fa-chevron-right text-slate-300 text-xs ml-auto"></i>
+                </button>
+                <div id="gtmResumoCard" class="text-[11px] text-slate-400 px-1"></div>
+              </div>
+            </div>
+
             <!-- Card Produtos -->
             <div class="rounded-[28px] border border-slate-200 bg-white shadow-card p-5">
               <div class="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center mb-3">
@@ -1140,6 +1163,36 @@
   </div>
 
   <!-- ── MODAL IMPORTAR PRODUTOS ────────────────────────────────────────────── -->
+  <!-- ── MODAL IMPORTAR GTM ─────────────────────────────────────────────────── -->
+  <div id="modalImportarGtm" class="hidden fixed inset-0 z-[150] bg-slate-950/45 p-4 flex items-start justify-center overflow-y-auto">
+    <div class="rounded-[28px] bg-white border border-slate-200 shadow-card w-full max-w-2xl my-8 p-6">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Configurações › Clientes</div>
+          <div class="text-xl font-extrabold">Importar o GTM</div>
+        </div>
+        <button onclick="fecharImportarGtm()" class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-500 hover:bg-slate-100">
+          <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+      </div>
+
+      <div class="text-xs text-slate-500 mb-4 leading-relaxed">
+        No GTM Online, abra <b>Líderes</b>, escolha a marca e clique em <b>Exportar</b>. O arquivo
+        <code class="bg-slate-100 px-1 rounded">lideres.xlsx</code> traz cluster, 3YP, rua ou shopping,
+        endereço e as metas por categoria. Tier e score não vêm daqui — esses o RFV já dá, e são atualizados sozinhos.
+      </div>
+
+      <div id="gtmUploadArea" class="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center mb-4 cursor-pointer hover:border-teal-300 hover:bg-teal-50 transition-colors" onclick="$('inputGtmXlsx').click()">
+        <i class="fa-solid fa-upload text-slate-300 text-3xl mb-3 block"></i>
+        <div class="text-sm font-bold text-slate-600">Clique para selecionar o lideres.xlsx</div>
+        <div class="text-xs text-slate-400 mt-1">ou arraste o arquivo aqui</div>
+        <input type="file" id="inputGtmXlsx" accept=".xlsx,.xls" class="hidden" onchange="processarGtmXlsx(this.files[0])">
+      </div>
+
+      <div id="gtmPreview" class="hidden"></div>
+    </div>
+  </div>
+
   <div id="modalImportarProdutos" class="hidden fixed inset-0 z-[150] bg-slate-950/45 p-4 flex items-start justify-center overflow-y-auto">
     <div class="rounded-[28px] bg-white border border-slate-200 shadow-card w-full max-w-4xl my-8 p-6">
       <div class="flex items-center justify-between mb-5">
@@ -4350,7 +4403,20 @@ async function confirmarImportarDispo(){
   try{
     const subsNums = new Set(_dispoConflitos.filter(c=>c.acao==='substituir').map(c=>String(c.atual.num)));
     const base = _dispoJsonAtual.filter(r => !subsNums.has(String(r.num)));
-    const adicionar = [..._dispoNovos, ..._dispoConflitos.filter(c=>c.acao==='incluir'||c.acao==='substituir').map(c=>c.xlsx)];
+    // O que o lote sabe de si e a planilha não traz — de qual cliente veio, a
+    // família, a linha do tempo — tem de sobreviver à substituição. Sem isto,
+    // uma importação apagaria a origem de todo lote que ela toca.
+    const GUARDAR = ['origem','origemNome','fam','eventos'];
+    const porNum = new Map(_dispoJsonAtual.map(r => [String(r.num), r]));
+    const herdar = (nova) => {
+      const velha = porNum.get(String(nova && nova.num));
+      if(!velha) return nova;
+      const extra = {};
+      for(const c of GUARDAR) if(velha[c] !== undefined && nova[c] === undefined) extra[c] = velha[c];
+      return Object.keys(extra).length ? { ...nova, ...extra } : nova;
+    };
+    const adicionar = [..._dispoNovos, ..._dispoConflitos.filter(c=>c.acao==='incluir'||c.acao==='substituir').map(c=>c.xlsx)]
+      .map(herdar);
     // _dataTexto e _dataAviso servem só para conferir na tela
     const semMarcas = ({ _dataTexto, _dataAviso, ...r }) => r;
     const listaFinal = [...base, ...adicionar.map(semMarcas)];
@@ -4376,6 +4442,116 @@ async function confirmarImportarDispo(){
 let _produtosJsonAtual = [];
 let _produtosNovos = [];
 let _produtosConflitos = [];
+
+/* ── GTM: o que o RFV não tem ───────────────────────────────────────────────
+   A exportação de Líderes do GTM Online traz uma linha por líder e marca.
+   Interessa a da marca que o cliente compra de nós, e só as colunas que o RFV
+   não dá: cluster, 3YP, se é rua ou shopping, endereço e as metas por
+   categoria. Tier e score continuam vindo do RFV, que se atualiza sozinho.  */
+let _gtmLido = null;
+
+function abrirImportarGtm(){
+  _gtmLido = null;
+  $('gtmPreview').classList.add('hidden');
+  $('gtmPreview').innerHTML = '';
+  $('modalImportarGtm').classList.remove('hidden');
+}
+function fecharImportarGtm(){ $('modalImportarGtm').classList.add('hidden'); }
+
+async function processarGtmXlsx(file){
+  if(!file) return;
+  showToast('Lendo o arquivo…', 'info');
+  try{
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type:'array' });
+    const m = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, defval:'', raw:false });
+    if(!m.length) throw new Error('planilha vazia');
+    const cab = m[0].map(c => String(c).trim());
+    const col = n => cab.indexOf(n);
+    const iCod = col('Código');
+    if(iCod < 0) throw new Error('não achei a coluna "Código" — esse arquivo é o da tela de Líderes?');
+
+    const txt = (l, i) => (i >= 0 && l[i] != null ? String(l[i]).trim() : '');
+    const tier = l => ['Tier 1_Best','Tier 2_Better','Tier 3_Good'].find(t => txt(l, col(t))) || '';
+    const canalLoja = l => txt(l, col('Rua')) ? 'Rua' : (txt(l, col('Shopping')) ? 'Shopping' : '');
+    // as metas por categoria, só da marca Olympikus
+    const metasDe = l => {
+      const m2 = {};
+      for(const c of cab){
+        if(!/^Olympikus - /.test(c)) continue;
+        const v = Number(txt(l, col(c)) || 0);
+        if(v > 0) m2[c.replace('Olympikus - ', '').toLowerCase()] = v;
+      }
+      return Object.keys(m2).length ? m2 : null;
+    };
+
+    const lideres = {};
+    let linhas = 0, marcas = new Set();
+    for(const l of m.slice(1)){
+      const cod = txt(l, iCod);
+      if(!cod) continue;
+      const marca = txt(l, col('Marca')).toUpperCase();
+      marcas.add(marca || '—');
+      if(marca && marca !== 'OLYMPIKUS') continue;     // uma linha por marca; vale a nossa
+      linhas++;
+      const reg = {
+        nome: txt(l, col('Fantasia (Lider)')), razao: txt(l, col('Razão Social')),
+        cidade: txt(l, col('Cidade')), uf: txt(l, col('Estado')),
+        endereco: txt(l, col('Endereço')),
+        cluster: txt(l, col('Cluster')), tier3yp: txt(l, col('3yp')),
+        tierGtm: tier(l), canalLoja: canalLoja(l),
+        portas: txt(l, col('Portas')), portasFoto: txt(l, col('Portas com Foto')),
+        regional: txt(l, col('Regional')), representante: txt(l, col('Representante')),
+        vendedor: txt(l, col('Vendedor')),
+      };
+      const metas = metasDe(l);
+      if(metas) reg.metas = metas;
+      lideres[cod] = reg;
+    }
+    if(!linhas) throw new Error('nenhuma linha da marca Olympikus neste arquivo');
+    _gtmLido = lideres;
+
+    const comCluster = Object.values(lideres).filter(r => r.cluster).length;
+    const comMetas = Object.values(lideres).filter(r => r.metas).length;
+    $('gtmPreview').innerHTML = `
+      <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 mb-4">
+        <div class="text-sm font-extrabold text-slate-800 mb-1">${formatInt(linhas)} líderes da Olympikus</div>
+        <div class="text-xs text-slate-500 leading-relaxed">
+          ${formatInt(comCluster)} com cluster · ${formatInt(comMetas)} com metas por categoria<br>
+          O arquivo trazia as marcas: ${[...marcas].join(', ')}
+        </div>
+      </div>
+      <div class="flex gap-2 justify-end">
+        <button onclick="fecharImportarGtm()" class="focus-ring rounded-full border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50">Cancelar</button>
+        <button id="btnConfirmarGtm" onclick="confirmarImportarGtm()" class="focus-ring rounded-full px-5 py-2.5 text-sm font-extrabold text-white" style="background:linear-gradient(135deg,#2dd4bf,#0d9488)">
+          <i class="fa-solid fa-check text-xs"></i> Gravar
+        </button>
+      </div>`;
+    $('gtmPreview').classList.remove('hidden');
+  }catch(e){
+    console.error(e);
+    showToast('Não deu para ler: ' + (e.message || e), 'error');
+  }
+}
+
+async function confirmarImportarGtm(){
+  if(!_gtmLido) return;
+  const bt = $('btnConfirmarGtm');
+  if(bt){ bt.disabled = true; bt.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gravando…'; }
+  try{
+    const r = await fetch(WORKER_URL, { method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'saveClientesGtm', data:{ lideres:_gtmLido } }) });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if(!j.success) throw new Error(j.error || 'erro ao gravar');
+    showToast(`GTM gravado: ${formatInt(Object.keys(_gtmLido).length)} líderes. Entra na base na próxima publicação da Detalhada.`, 'success');
+    fecharImportarGtm();
+  }catch(e){
+    console.error(e);
+    showToast('Não deu para gravar: ' + (e.message || e), 'error');
+    if(bt){ bt.disabled = false; bt.innerHTML = '<i class="fa-solid fa-check text-xs"></i> Gravar'; }
+  }
+}
 
 function abrirImportarProdutos(){ $('modalImportarProdutos').classList.remove('hidden'); }
 function fecharModalProdutos(){

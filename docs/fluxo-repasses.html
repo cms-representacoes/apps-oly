@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fluxo do Repasse</title>
+<!-- Mapa do caminho que uma encomenda faz até virar repasse, e de onde cada
+     peça mora hoje. Vai sendo atualizado conforme o projeto anda: o estado de
+     cada caixa (pronto / parcial / a construir / sai de cena) é a parte viva
+     do documento. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap">
+<style>
+  :root{
+    --tinta:#0f172a; --fraco:#64748b; --linha:#e2e8f0; --fundo:#f6f8f7;
+    --agua:#0d9488; --agua-claro:#f0fdfa; --ambar:#b45309; --ambar-claro:#fffbeb;
+    --azul:#1d4ed8; --azul-claro:#eff6ff; --cinza:#94a3b8;
+  }
+  *{ box-sizing:border-box }
+  body{ margin:0; padding:26px 18px 70px; background:var(--fundo); color:var(--tinta);
+    font:600 15px/1.5 'Plus Jakarta Sans',system-ui,sans-serif }
+  main{ max-width:1080px; margin:0 auto }
+  h1{ font-size:24px; font-weight:800; margin:0 0 4px; letter-spacing:-.02em }
+  .sub{ margin:0 0 6px; color:var(--fraco); font-size:13.5px }
+  .atualizado{ margin:0 0 22px; font-size:12px; font-weight:700; color:var(--agua) }
+
+  /* legenda: estado dito também em palavra, nunca só na cor */
+  .legenda{ display:flex; flex-wrap:wrap; gap:8px; margin:0 0 24px }
+  .tag{ font-size:11px; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
+    padding:4px 10px; border-radius:999px; border:1px solid }
+  .t-ok{ background:var(--agua-claro); color:var(--agua); border-color:#99f6e4 }
+  .t-meio{ background:var(--ambar-claro); color:var(--ambar); border-color:#fde68a }
+  .t-novo{ background:var(--azul-claro); color:var(--azul); border-color:#bfdbfe; border-style:dashed }
+  .t-fora{ background:#f8fafc; color:var(--cinza); border-color:var(--linha) }
+
+  /* a obra parou: o aviso vem antes de tudo, senão alguém retoma sem saber */
+  .standby{ border:1px solid #fde68a; background:var(--ambar-claro); border-radius:14px;
+    padding:14px 16px; margin:0 0 22px }
+  .standby-tit{ margin:0 0 6px; font-size:13px; font-weight:800; color:var(--ambar);
+    letter-spacing:.02em; text-transform:uppercase }
+  .standby-txt{ margin:0 0 8px; font-size:13.5px; line-height:1.55; color:var(--tinta) }
+  .standby-txt:last-child{ margin-bottom:0 }
+  .standby code{ font-size:12.5px; background:#fff; border:1px solid #fde68a;
+    border-radius:5px; padding:1px 5px }
+
+  /* o que já caiu continua na lista, riscado da cor do aviso: some o item,
+     some também a lembrança de que já foi dúvida */
+  li.resolvido{ color:var(--fraco); font-size:13px }
+  li.resolvido b{ color:var(--agua) }
+
+  .etapa{ margin:0 0 10px }
+  .etapa-cab{ display:flex; align-items:baseline; gap:10px; margin:0 0 10px }
+  .etapa-n{ width:26px; height:26px; flex:none; border-radius:9px; background:var(--tinta);
+    color:#fff; font-size:12.5px; font-weight:800; display:flex; align-items:center; justify-content:center }
+  .etapa-tit{ font-size:16px; font-weight:800; margin:0 }
+  .etapa-quem{ font-size:12.5px; font-weight:700; color:var(--fraco) }
+
+  .caixas{ display:grid; grid-template-columns:repeat(auto-fit,minmax(235px,1fr)); gap:10px }
+  .cx{ background:#fff; border:1px solid var(--linha); border-radius:16px; padding:13px 14px }
+  .cx.novo{ border-style:dashed; border-color:#bfdbfe; background:#fcfeff }
+  .cx.fora{ background:#f8fafc; border-style:dotted }
+  .cx h3{ margin:0 0 3px; font-size:14px; font-weight:800; line-height:1.25 }
+  .cx .onde{ margin:0 0 7px; font-size:11.5px; font-weight:700; color:var(--fraco);
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace }
+  .cx p{ margin:7px 0 0; font-size:12.5px; font-weight:600; color:#475569; line-height:1.45 }
+  .cx.fora h3{ color:var(--cinza) }
+
+  .seta{ text-align:center; color:#cbd5e1; font-size:19px; line-height:1; margin:4px 0 10px }
+
+  .bloco{ background:#fff; border:1px solid var(--linha); border-radius:18px;
+    padding:16px 18px; margin:26px 0 0 }
+  .bloco h2{ font-size:12.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--fraco); margin:0 0 10px }
+  .bloco ul{ margin:0; padding-left:18px }
+  .bloco li{ font-size:13.5px; font-weight:600; color:#334155; margin-bottom:6px; line-height:1.5 }
+  .bloco li b{ color:var(--tinta); font-weight:800 }
+  .aberto{ border-color:#fde68a; background:var(--ambar-claro) }
+  .aberto h2{ color:var(--ambar) }
+
+  @media (max-width:560px){
+    body{ padding:20px 14px 60px }
+    h1{ font-size:20px }
+    .caixas{ grid-template-columns:1fr }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Fluxo do Repasse</h1>
+  <p class="sub">Da decisão do Caio até o par sair para a loja — e onde cada peça mora hoje.</p>
+  <p class="atualizado">Atualizado em 13/11/2026 · etapas 1 a 4 prontas e testadas · obra em pausa</p>
+
+  <div class="standby">
+    <p class="standby-tit">Em pausa até a reunião</p>
+    <p class="standby-txt">Parado em 13/11/2026 por decisão do Marcos. Na semana de 17 a 21/11 há uma
+      reunião para definir se <b>a parte que hoje é da fábrica passa a ser do escritório</b>. Saber
+      isso antes evita construir a etapa 5 duas vezes: se o escopo mudar, a exportação para o robô
+      muda com ele. Nada aqui se retoma até esse resultado chegar.</p>
+    <p class="standby-txt">O que está construído continua funcionando no ambiente e <b>não foi
+      commitado</b> — o commit é um só, no fim. Cuidado com <code>git stash</code> na árvore suja.</p>
+  </div>
+
+  <div class="legenda">
+    <span class="tag t-ok">Pronto</span>
+    <span class="tag t-meio">Existe, mas pela planilha</span>
+    <span class="tag t-novo">A construir</span>
+    <span class="tag t-fora">Sai de cena</span>
+  </div>
+
+  <!-- 1 -->
+  <section class="etapa">
+    <div class="etapa-cab"><span class="etapa-n">1</span>
+      <h2 class="etapa-tit">A decisão</h2><span class="etapa-quem">Caio, diretor</span></div>
+    <div class="caixas">
+      <article class="cx">
+        <span class="tag t-ok">Pronto</span>
+        <h3>Consulta o produto na Detalhada</h3>
+        <p class="onde">apps-oly-v2/detalhada</p>
+        <p>Vê a carteira e decide que aquela encomenda vai para repasse. Avisa o Chris.</p>
+      </article>
+    </div>
+  </section>
+  <div class="seta">↓</div>
+
+  <!-- 2 -->
+  <section class="etapa">
+    <div class="etapa-cab"><span class="etapa-n">2</span>
+      <h2 class="etapa-tit">O lote nasce</h2><span class="etapa-quem">Chris</span></div>
+    <div class="caixas">
+      <article class="cx fora">
+        <span class="tag t-fora">Sai de cena</span>
+        <h3>Digita a encomenda na planilha</h3>
+        <p class="onde">BASE ATUAL DOS REPASSEES.xlsm</p>
+        <p>Hoje ele exporta um Excel do sistema e cola. É daqui que nasce o CÓD REPASSE — e é o passo que o projeto elimina.</p>
+      </article>
+      <article class="cx">
+        <span class="tag t-ok">Pronto</span>
+        <h3>Ação "Repassar" na encomenda</h3>
+        <p class="onde">detalhada · ação OFERTA</p>
+        <p>Já existe: pergunta quantos pares vão (o resto fica na carteira), tira a encomenda da lista principal e a manda ao escritório, com quem mandou e quando.</p>
+      </article>
+      <article class="cx">
+        <span class="tag t-ok">Pronto</span>
+        <h3>O escritório recebe a oferta</h3>
+        <p class="onde">admin/index.html</p>
+        <p>O elo que falta. Hoje a oferta fica do lado da Detalhada e o admin não sabe que ela existe. Chega como notificação, junto com os pedidos novos.</p>
+      </article>
+      <article class="cx">
+        <span class="tag t-ok">Pronto</span>
+        <h3>Modal do lote: buscar e inserir</h3>
+        <p class="onde">admin · extensão · robô</p>
+        <p>Mostra o que a Detalhada já sabe, busca no EBM o que falta e o Chris confere antes de inserir. A encomenda costuma ter mais de um artigo: cada um numa linha, com foto e saldo, e ele marca os que vão. EBM fora do ar: preenche à mão ou deixa esperando.</p>
+      </article>
+      <article class="cx fora">
+        <span class="tag t-fora">Sai de cena</span>
+        <h3>Importar DISPO.xlsx</h3>
+        <p class="onde">admin › Configurações › DISPO</p>
+        <p>A importação em lote deixa de ser o caminho principal quando o lote passa a nascer no sistema.</p>
+      </article>
+    </div>
+  </section>
+  <div class="seta">↓</div>
+
+  <!-- 3 -->
+  <section class="etapa">
+    <div class="etapa-cab"><span class="etapa-n">3</span>
+      <h2 class="etapa-tit">O lote vive</h2><span class="etapa-quem">Chris, no admin</span></div>
+    <div class="caixas">
+      <article class="cx">
+        <span class="tag t-ok">Pronto</span>
+        <h3>Mudar a data de entrega</h3>
+        <p class="onde">admin › Ajustar prev. faturamento</p>
+        <p>Cola os números dos lotes, marca e aplica a data nova. Grava na DISPO e nos pedidos.</p>
+      </article>
+      <article class="cx">
+        <span class="tag t-ok">Pronto</span>
+        <h3>Devolver, cancelar ou excluir</h3>
+        <p class="onde">dispo.html · cancelamentos-dispo.json</p>
+        <p>O lote sai com registro de tudo — inclusive a exclusão, que antes não deixava rastro. Saiu o último lote da oferta, a encomenda volta sozinha para o cliente na Detalhada. Cada passo aparece numa janela de progresso.</p>
+      </article>
+      <article class="cx">
+        <span class="tag t-ok">Pronto</span>
+        <h3>De quem veio o lote</h3>
+        <p class="onde">dispo.html · campos origem e fam</p>
+        <p>Cliente de origem e família ficam no lote e aparecem sob o produto, na lista. Importação do XLSX não apaga mais.</p>
+      </article>
+      <article class="cx">
+        <span class="tag t-ok">Pronto</span>
+        <h3>A vida do lote</h3>
+        <p class="onde">detalhe do lote</p>
+        <p>Linha do tempo no detalhe: de onde veio, quem levou quanto, o que foi cancelado ou devolvido e quando. Falta o desmembramento, que ainda não existe no sistema.</p>
+      </article>
+      <article class="cx">
+        <span class="tag t-ok">Pronto</span>
+        <h3>Consumo por vendedor</h3>
+        <p class="onde">modal de rateio</p>
+        <p>Quanto cada preposto já levou, ao lado da cota — calculado dos pedidos, então nunca fica para trás.</p>
+      </article>
+    </div>
+  </section>
+  <div class="seta">↓</div>
+
+  <!-- 4 -->
+  <section class="etapa">
+    <div class="etapa-cab"><span class="etapa-n">4</span>
+      <h2 class="etapa-tit">Os prepostos tiram</h2><span class="etapa-quem">Jorge, Mariana, Rafael, Willame, Leandro</span></div>
+    <div class="caixas">
+      <article class="cx">
+        <span class="tag t-ok">Pronto</span>
+        <h3>Vitrine do Showroom</h3>
+        <p class="onde">vitrine/index.html</p>
+        <p>O lote aparece com saldo e grade. O vendedor monta a sacola e envia o repasse.</p>
+      </article>
+      <article class="cx">
+        <span class="tag t-ok">Pronto</span>
+        <h3>Aviso de produto duplicado</h3>
+        <p class="onde">js/carteira.js</p>
+        <p>Se o cliente já tem o par em carteira ou recebeu nos últimos 90 dias, a tela avisa antes de enviar.</p>
+      </article>
+      <article class="cx">
+        <span class="tag t-ok">Pronto</span>
+        <h3>Pedido no admin</h3>
+        <p class="onde">admin/index.html</p>
+        <p>Nasce Pendente e caminha para Aprovado ou Cancelado.</p>
+      </article>
+    </div>
+  </section>
+  <div class="seta">↓</div>
+
+  <!-- 5 -->
+  <section class="etapa">
+    <div class="etapa-cab"><span class="etapa-n">5</span>
+      <h2 class="etapa-tit">O fechamento</h2><span class="etapa-quem">Chris, no EBM</span></div>
+    <div class="caixas">
+      <article class="cx meio">
+        <span class="tag t-meio">Existe, mas pela planilha</span>
+        <h3>Lista de desmembramento</h3>
+        <p class="onde">aba BASE DE VENDAS</p>
+        <p>Cliente de destino, pares, EBM, referência, cor e grade. É o que o robô come.</p>
+      </article>
+      <article class="cx novo">
+        <span class="tag t-novo">A construir</span>
+        <h3>O sistema exporta essa lista</h3>
+        <p class="onde">admin → XLSX</p>
+        <p>Mesmas colunas que o CMS_DESMEMBRA já reconhece. Com isso a planilha deixa de ser preenchida à mão.</p>
+      </article>
+      <article class="cx">
+        <span class="tag t-ok">Pronto</span>
+        <h3>Robô desmembra no EBM</h3>
+        <p class="onde">CMS_DESMEMBRA · máquina do Chris</p>
+        <p>A encomenda mãe de 120 pares é anulada e nascem dez de 12. O robô nunca gera a encomenda: isso é do Chris.</p>
+      </article>
+    </div>
+  </section>
+
+  <div class="bloco">
+    <h2>Decisões tomadas</h2>
+    <ul>
+      <li>O lote <b>nasce da Detalhada</b>, pela encomenda que o Caio apontou.</li>
+      <li>O arquivo é o <b>Excel do EBM com dados completos</b> — é dele que vêm grade e EBM, que a Detalhada não tem.</li>
+      <li>A <b>conversão acontece dentro do admin</b>, no navegador.</li>
+      <li>Extensão e robô <b>moram na máquina do Chris</b>; instalação depois de prontos.</li>
+      <li>A planilha <b>vira saída</b>, nunca entrada: o sistema exporta no formato do CMS_DESMEMBRA.</li>
+      <li>Mudar data e devolver pares <b>já funcionam na tela</b> e ficam como estão.</li>
+      <li>Quem <b>dispara a busca é o Chris</b>, pelo modal — nada roda sozinho em segundo plano.</li>
+      <li><b>Nada chega à vitrine sem ele ver</b>: a conferência está no ato de inserir.</li>
+      <li>O repasse pode ser <b>parcial</b>: o lote nasce com os pares que a Detalhada perguntou, não com a encomenda inteira.</li>
+      <li>EBM fora do ar: ele <b>preenche à mão ou deixa esperando</b>, as duas saídas.</li>
+      <li>O lote nasce com o <b>saldo por tamanho</b> que vem do EBM, nunca com a quantidade encomendada.</li>
+      <li>Encomenda com vários artigos: <b>um por linha, com foto, e um marcar todos</b> — o Chris escolhe quais vão.</li>
+      <li>As fotos saem dos <b>dois bancos que já existem</b>: a miniatura do Catálogo, a foto grande, e por último o banco do catálogo digital.</li>
+      <li><b>Devolveu, volta sozinha.</b> Pronto e testado em 13/11: devolver ou excluir o último lote de uma oferta faz a encomenda voltar para o cliente na Detalhada, sem ninguém desmarcar nada. O lote sai da lista mas fica no histórico, e a busca pelo número conta o que houve.</li>
+      <li>O <b>CÓD REPASSE continua sequencial</b> e quem numera é o sistema: lê o maior que existe e soma um, sem repetir. Hoje vai em 471.</li>
+      <li><b>Virada limpa:</b> o que já está finalizado não vem junto; a planilha fica arquivada para consulta.</li>
+      <li>No EBM, a opção de Excel é <code>xls</code> — o relatório traz GCI, EBM, grade, faixa, saldo por tamanho, prazo, campanha e preço.</li>
+    </ul>
+  </div>
+
+  <div class="bloco aberto">
+    <h2>Em aberto</h2>
+    <ul>
+      <li><b>O que a reunião decidir sobre a fábrica</b> — é o que destrava o resto.</li>
+
+      <li><b>Onde mostrar o EBM na tabela</b> do Controle de Estoque. O dado já é gravado no lote e aparece
+        no modal de ofertas e na lista de lotes da encomenda, mas não no cabeçalho da tabela, onde o lugar é
+        do GCI. Ele é uma das cinco colunas obrigatórias do arquivo do robô.</li>
+
+      <li><b>As regras da família CORRE.</b></li>
+
+      <li class="resolvido"><b>Resolvido em 13/11:</b> as colunas do CMS_DESMEMBRA não precisam vir do Chris —
+        estão na skill do robô. Obrigatórias: COD CLIENTE, EBM, QTD PARES, REFERENCIA, COR, mais os tamanhos
+        28 a 48 com a grade de <i>uma</i> caixa. A vitrine só deixa pedir caixa fechada, então a validação do
+        robô nunca reprova um arquivo nosso.</li>
+    </ul>
+  </div>
+</main>
+</body>
+</html>

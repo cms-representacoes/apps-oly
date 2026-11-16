@@ -133,6 +133,9 @@
       #dispoHeader > div:first-child::-webkit-scrollbar{ display:none; }
       #dispoHeader .hdr-dir{ flex-wrap:nowrap; flex:0 0 auto; }
       #dispoHeader .hdr-dir > *{ flex:0 0 auto; }
+      /* Na fileira que rola de lado, o meio não estica: ele empurraria os
+         botões para fora da tela em vez de caber. */
+      #dispoHeader .hdr-meio{ flex:0 0 auto; }
       #filterPills{ flex-wrap:nowrap; overflow-x:auto; min-width:0; scrollbar-width:none; -ms-overflow-style:none; }
       #filterPills::-webkit-scrollbar{ display:none; }
       #filterPills > *{ flex:0 0 auto; }
@@ -821,8 +824,9 @@
             <span class="text-lg font-extrabold text-slate-900">Estoque</span>
           </div>
 
-          <!-- Busca encostada nos botões, à direita; o resto mora em "mais opções" -->
-          <div class="hdr-dir flex flex-wrap items-center justify-end gap-2">
+          <!-- Números e busca à esquerda, encostados no nome da tela; os botões
+               ficam todos juntos na direita, com espaço para crescer. -->
+          <div class="hdr-meio flex items-center gap-2 flex-1 min-w-0">
             <div class="kpi-saldo" id="kpiSaldo" title="Soma dos itens que aparecem na tabela — acompanha a busca e os filtros">
               <span class="k"><span class="l">Dispo</span><span class="v" id="kpiSaldoDispo">—</span></span>
               <span class="sep"></span>
@@ -838,6 +842,17 @@
                 <i class="fa-solid fa-xmark text-xs"></i>
               </button>
             </div>
+          </div>
+
+          <div class="hdr-dir flex flex-wrap items-center justify-end gap-2">
+            <!-- Encomendas que a Detalhada mandou para repasse: o botão fica
+                 sempre aqui; o número só aparece quando há o que fazer. -->
+            <button id="btnOfertasDispo" onclick="abrirOfertas()" title="Encomendas mandadas para repasse na Detalhada, esperando virar lote"
+              class="focus-ring relative h-9 w-9 rounded-full flex items-center justify-center text-white transition-transform hover:-translate-y-0.5"
+              style="background:linear-gradient(135deg,#2dd4bf,#0d9488);box-shadow:0 4px 14px rgba(13,148,136,.35)">
+              <i class="fa-solid fa-inbox text-sm"></i>
+              <span id="badgeOfertasDispo" class="hidden absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white">0</span>
+            </button>
 
             <button id="btnCampanhas" onclick="abrirCampanhas()" title="Campanhas de incentivo — prêmio por par repassado"
               class="focus-ring relative h-9 w-9 rounded-full flex items-center justify-center text-white transition-transform hover:-translate-y-0.5"
@@ -917,9 +932,16 @@
         <!-- Filter pills + count -->
         <div id="barraFiltros" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
           <div class="flex flex-wrap gap-2" id="filterPills">
-            <button class="filter-pill active" data-filter="all">Todos</button>
-            <button class="filter-pill" data-filter="com-pedido">
-              <i class="fa-solid fa-circle-dot text-[var(--brand)] mr-1"></i>Com pedidos
+            <!-- A fila encolheu em 16/11/2026. Saiu "Com pedidos", que era a
+                 soma de Pendentes e Aprovados, e saiu "Finalizados", que com
+                 308 de 322 lotes virou quase o mesmo conjunto de Esgotados.
+                 "Críticos" virou "Esgotados": mesma regra, nome que diz o que
+                 é. E "Todos" virou "A distribuir", porque deixou de mostrar
+                 tudo - mostra o que ainda tem par para dar, que é o trabalho
+                 do dia. Em 16/11 isso era 14 de 322 linhas. -->
+            <button class="filter-pill active" data-filter="all"
+                    data-tip="Lotes que ainda têm saldo para distribuir">A distribuir
+              <span id="distribuirBadge" class="ml-1 hidden bg-slate-900 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
             </button>
             <button class="filter-pill" data-filter="pendente">
               <i class="fa-solid fa-circle text-amber-500 mr-1"></i>Pendentes
@@ -927,8 +949,10 @@
             <button class="filter-pill" data-filter="aprovado">
               <i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i>Aprovados
             </button>
-            <button class="filter-pill" data-filter="critico">
-              <i class="fa-solid fa-triangle-exclamation text-rose-500 mr-1 badge-ruptura"></i>Críticos
+            <button class="filter-pill" data-filter="esgotados" id="pillEsgotados"
+                    data-tip="Sem saldo para distribuir — selecione para arquivar">
+              <i class="fa-solid fa-triangle-exclamation text-rose-500 mr-1 badge-ruptura"></i>Esgotados
+              <span id="esgotadosBadge" class="ml-1 hidden bg-rose-600 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
             </button>
             <button class="filter-pill" data-filter="rateados" id="pillRateados" style="border-color:#ddd6fe;color:#6d28d9;background:#f5f3ff" data-tip="Lotes divididos por vendedor — abra para ver as cotas e o nome do selo">
               <i class="fa-solid fa-users mr-1"></i>Rateados <span id="rateadosBadge" class="ml-1 hidden bg-[#7c3aed] text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
@@ -936,8 +960,9 @@
             <button class="filter-pill" data-filter="ocultos" id="pillOcultos" style="border-color:#AFA9EC;color:#3C3489;background:#EEEDFE">
               <i class="fa-solid fa-eye-slash mr-1"></i>Ocultos <span id="ocultosBadge" class="ml-1 hidden bg-[#3C3489] text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
             </button>
-            <button class="filter-pill" data-filter="finalizados" id="pillFinalizados" style="border-color:#bbf7d0;color:#14532d;background:#dcfce7" data-tip="Produtos com saldo zerado e desmembramentos finalizados">
-              <i class="fa-solid fa-circle-check mr-1"></i>Finalizados <span id="finalizadosBadge" class="ml-1 hidden bg-[#14532d] text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
+            <!-- Arquivados fecha a fila: é consulta, não trabalho do dia. -->
+            <button class="filter-pill" data-filter="arquivados" id="pillArquivados" style="border-color:#e2e8f0;color:#475569;background:#f8fafc" data-tip="Saíram da lista mas continuam guardados — dá para desarquivar">
+              <i class="fa-solid fa-box-archive mr-1"></i>Arquivados <span id="arquivadosBadge" class="ml-1 hidden bg-slate-600 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
             </button>
             <!-- Ordenar fica junto das abas e rola com elas; a dica diz a ordem em uso -->
             <button id="btnOrdenar" onclick="toggleOrdenarMenu()" title="Ordenar a lista" class="btn-ordenar">
@@ -951,13 +976,27 @@
 
         <!-- EMPTY / LOADING -->
         <div id="dispoEmpty" class="hidden empty-state">
-          <i class="fa-solid fa-box-open"></i>
-          <p>Nenhum item encontrado para este filtro.</p>
+          <i class="fa-solid fa-box-open" id="dispoEmptyIcone"></i>
+          <p id="dispoEmptyTxt">Nenhum item encontrado para este filtro.</p>
+          <!-- Lote que saiu da DISPO ainda responde por si: quem procura o Nº
+               488 depois de ele ser excluído merece saber o que houve. Toma o
+               lugar do "nenhum item", em vez de aparecer solto embaixo dele. -->
+          <div id="dispoSumiu" class="hidden" style="margin:0 auto;max-width:460px;text-align:center;
+            background:#fffbeb;border:1px solid #fde68a;border-radius:16px;padding:16px 18px"></div>
         </div>
 
         <div id="dispoNotLoaded" class="empty-state">
           <i class="fa-solid fa-file-excel text-slate-300"></i>
           <p>Clique em <strong>Atualizar DISPO</strong> para carregar os dados de estoque.</p>
+        </div>
+
+        <!-- Encomendas que vieram da Detalhada esperando virar lote. Mesma
+             ideia da faixa das datas: aparece só quando há o que fazer, e já
+             traz o botão que resolve. -->
+        <div id="avisoOfertas" style="display:none;align-items:center;gap:12px;margin-bottom:10px;padding:11px 15px;border-radius:14px;background:#f0fdfa;border:1px solid #5eead4">
+          <i class="fa-solid fa-inbox" style="color:#0f766e;font-size:15px"></i>
+          <span id="avisoOfertasTxt" style="font-weight:700;color:#115e59;font-size:13px"></span>
+          <button onclick="abrirOfertas()" style="margin-left:auto;display:flex;align-items:center;gap:7px;background:#0d9488;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-arrow-right-to-bracket" style="font-size:12px"></i> Ver as encomendas</button>
         </div>
 
         <!-- Pedido com data mais velha que a da DISPO. Some sozinha quando
@@ -971,9 +1010,14 @@
         <!-- BARRA DE SELEÇÃO (excluir em lote) -->
         <div id="dispoBulkBar" style="display:none;align-items:center;gap:12px;margin-bottom:10px;padding:10px 14px;border-radius:14px;background:var(--brand-soft,#eef0fe);border:1px solid var(--line,#c7cdfb)">
           <span id="dispoBulkCount" style="font-weight:800;color:var(--brand,#3730a3);font-size:13px"></span>
-          <button onclick="cancelarSelecionadosDispo()" style="margin-left:auto;display:flex;align-items:center;gap:7px;background:var(--danger,#b91c1c);color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-ban" style="font-size:12px"></i> Cancelar selecionados</button>
+          <button onclick="cancelarSelecionadosDispo()" style="margin-left:auto;display:flex;align-items:center;gap:7px;background:#b45309;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-ban" style="font-size:12px"></i> Cancelar selecionados</button>
           <button onclick="relatorioDispo()" style="background:transparent;border:1px solid var(--line,#c7cdfb);color:var(--brand,#3730a3);border-radius:999px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer" title="Baixar o relatorio de cancelamentos"><i class="fa-solid fa-file-excel"></i> Relatorio</button>
           <button onclick="excluirSelecionadosDispo()" style="display:flex;align-items:center;gap:7px;background:#dc2626;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-trash-can" style="font-size:12px"></i> Excluir selecionados</button>
+          <!-- Cada um aparece só na sua aba: arquivar na dos Esgotados,
+               desarquivar na dos Arquivados. Fora delas não fazem sentido e
+               só dariam chance de erro. -->
+          <button id="btnArquivarSel" onclick="arquivarSelecionadosDispo()" style="display:none;align-items:center;gap:7px;background:#475569;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-box-archive" style="font-size:12px"></i> Arquivar selecionados</button>
+          <button id="btnDesarquivarSel" onclick="desarquivarSelecionadosDispo()" style="display:none;align-items:center;gap:7px;background:var(--brand,#3730a3);color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-box-open" style="font-size:12px"></i> Desarquivar</button>
           <button onclick="limparSelecaoDispo()" style="background:transparent;border:1px solid var(--line,#c7cdfb);color:var(--brand,#3730a3);border-radius:999px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer">Limpar</button>
         </div>
 
@@ -1387,7 +1431,15 @@ async function loadDispo(){
       const filial     = sanitizeDisplayText(String(row.filial || ''));
       const num        = sanitizeDisplayText(String(row.num || ''));
       const grade      = row.grade || {};
-      return { num, codigo, produto, cor, dataEntrega, saldo, pedidoMae, gci, ebm, filial, grade };
+      // De onde o lote veio, a família e a vida dele. Reconstruir a linha só
+      // com os campos antigos apagaria isso na gravação seguinte — o dado
+      // sumiria do servidor sem ninguém ter mandado.
+      const origem     = sanitizeDisplayText(String(row.origem || ''));
+      const origemNome = sanitizeDisplayText(String(row.origemNome || ''));
+      const fam        = sanitizeDisplayText(String(row.fam || ''));
+      const eventos    = Array.isArray(row.eventos) ? row.eventos : undefined;
+      return { num, codigo, produto, cor, dataEntrega, saldo, pedidoMae, gci, ebm, filial, grade,
+               origem, origemNome, fam, ...(eventos ? { eventos } : {}) };
     }).filter(row => row.codigo || row.produto);
 
     marcarBaseDispo(STATE.dispoRows.map(linhaDispo));
@@ -1398,6 +1450,9 @@ async function loadDispo(){
     }catch(e){ console.warn('Falha ao carregar rateio', e); }
     await carregarCampanhas();
     await carregarCancelamentos();
+    // O botão de atualizar também vai buscar o que a Detalhada mandou: para
+    // quem está na tela, "atualizar" é uma coisa só, não duas.
+    await carregarOfertas();
     await reaplicarEPersistir();
     _bannerShownThisLoad = false;
     $('dispoNotLoaded').classList.add('hidden');
@@ -1452,15 +1507,20 @@ function computeRows(){
       if(!q) return true;
       return textoDaLinha(row).includes(q);
     }
+    if(f === 'arquivados') return isArquivado(row);
     if(f === 'ocultos') return isOculto(row);
-    if(f === 'finalizados') return isDispoFinalizado(row);
+    // Arquivado só aparece na aba dele. Vale para TODAS as outras, inclusive
+    // a busca por Nº: quem arquivou tirou da vista de propósito.
+    if(isArquivado(row)) return false;
     if(isOculto(row)) return false;
     if(q && !textoDaLinha(row).includes(q)) return false;
-    if(f === 'com-pedido') return (row.pendente + row.aprovado) > 0;
     if(f === 'pendente') return row.pendente > 0;
     if(f === 'aprovado') return row.aprovado > 0;
-    if(f === 'critico') return row.saldoReal <= 0;
+    if(f === 'esgotados') return row.saldoReal <= 0;
     if(f === 'saldo-positivo') return row.saldoReal > 0;
+    // 'all' deixou de ser "tudo": é o que ainda tem par para distribuir.
+    // O resto está esgotado e só atrapalha quem procura o que dar.
+    if(f === 'all') return row.saldoReal > 0;
     return true;
   });
 }
@@ -1496,11 +1556,25 @@ function _confirmClose(val){
 }
 
 async function excluirDaDispoJson(row){
-  if(!(await uiConfirm({ title:'Excluir item', message:`Excluir "${row.produto} — ${row.cor}" (Nº ${row.num}) da DISPO?\nEssa ação não pode ser desfeita.`, okText:'Excluir', danger:true }))) return;
+  const veioDeOferta = !!chaveDaOferta(row);
+  if(!(await uiConfirm({ title:'Excluir item',
+      message:`Excluir "${row.produto} — ${row.cor}" (Nº ${row.num}) da DISPO?` +
+              (veioDeOferta ? `
+
+A encomenda volta para ${row.origemNome || row.origem} na Detalhada.` : '') +
+              `
+O lote sai da lista, mas fica registrado no histórico.`,
+      okText:'Excluir', danger:true }))) return;
+  abrirProgresso('Excluindo o lote…', 'guardando no histórico');
   try{
     // Remove da lista local
     const alvo = String(row.num ?? '').trim();
     const novaLista = STATE.dispoRows.filter(r => String(r.num ?? '').trim() !== alvo);
+
+    // O registro vai antes, pela mesma razão do cancelamento: sem ele, o que
+    // havia no lote se perde para sempre quando a linha sai.
+    try{ await gravarCancelamentos([...(STATE.cancelamentos || []), montarExclusao(row)]); }
+    catch(e){ console.warn('Não consegui registrar a exclusão.', e); }
 
     // Pelo mesmo caminho das outras gravações: assim a exclusão não arrasta
     // junto o que outra tela mudou nas linhas que ficaram.
@@ -1509,10 +1583,16 @@ async function excluirDaDispoJson(row){
     try{ await gravarDispo(); }
     catch(e){ STATE.dispoRows = antes; throw e; }
     renderDispo();
-    showToast(`"${row.produto}" removido da DISPO.`, 'success');
+    // Último lote daquela oferta? a encomenda volta a ser do cliente, sozinha.
+    if(veioDeOferta) passoProgresso('avisando a Detalhada');
+    const voltou = await desfazerOfertaDoLote(row, 'lote excluído');
+    if(voltou) await carregarOfertas();
+    concluirProgresso(true, 'Lote excluído', voltou
+      ? `A encomenda voltou para ${row.origemNome || row.origem} na Detalhada.`
+      : 'Ficou guardado no histórico — procure pelo número para consultar.');
   }catch(err){
     console.error(err);
-    showToast('Erro ao excluir. Tente novamente.', 'error');
+    concluirProgresso(false, 'Não deu para excluir', String(err && err.message || err));
   }
 }
 
@@ -1548,7 +1628,62 @@ function abrirEditarProduto(num){
   `).join('');
 
   montarBlocoCancelamento(row);
+  montarLinhaDoTempo(row);
   $('editarProdutoModal').style.display = 'flex';
+}
+
+/* A vida do lote numa lista só: de onde veio, quem levou e o que voltou.
+   Nada aqui é inventado — sai do próprio lote, dos pedidos e dos registros de
+   cancelamento. Lote antigo, criado antes disto existir, mostra só o que se
+   sabe dele. */
+function montarLinhaDoTempo(row){
+  const alvo = $('loteHistorico');
+  if(!alvo) return;
+  const quando = ms => {
+    if(!ms) return '';
+    const d = new Date(ms);
+    return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  };
+  const linhas = [];
+
+  for(const e of (row.eventos || [])){
+    linhas.push({ em:Number(e.em || 0), cor:'#0d9488', icone:'fa-plus',
+      txt:`<b>Lote criado</b>${e.nota ? ' — ' + safeHtml(e.nota) : ''}`, quem:e.por || '' });
+  }
+  if(!(row.eventos || []).length && (row.origemNome || row.origem)){
+    linhas.push({ em:0, cor:'#64748b', icone:'fa-arrow-turn-up',
+      txt:`Veio de <b>${safeHtml(row.origemNome || row.origem)}</b>`, quem:'' });
+  }
+
+  const levou = consumoPorVendedor(row.num);
+  for(const [quem, r] of levou){
+    linhas.push({ em:0, cor:'#1d4ed8', icone:'fa-cart-shopping',
+      txt:`<b>${safeHtml(quem)}</b> levou ${formatInt(r.pares)} ${r.pares === 1 ? 'par' : 'pares'} em ` +
+          `${r.pedidos.size} ${r.pedidos.size === 1 ? 'pedido' : 'pedidos'}` +
+          (r.pendentes ? ` · ${formatInt(r.pendentes)} ainda pendente${r.pendentes === 1 ? '' : 's'}` : ''), quem:'' });
+  }
+
+  for(const c of (STATE.cancelamentos || [])){
+    if(String(c.num) !== String(row.num)) continue;
+    const volta = typeof ehVolta === 'function' ? ehVolta(c) : (c.tipo === 'volta');
+    linhas.push({ em:Date.parse(c.em || '') || 0, cor: volta ? '#b45309' : '#b91c1c',
+      icone: volta ? 'fa-rotate-left' : 'fa-ban',
+      txt:`<b>${volta ? 'Devolvido ao cliente' : 'Cancelado'}</b> — ${formatInt(c.pares)} pares` +
+          (c.motivo && c.motivo !== 'Outro' ? ' · ' + safeHtml(c.motivo) : '') +
+          (c.desfeitoEm ? ' <i style="color:var(--muted)">(desfeito)</i>' : ''),
+      quem:c.por || '' });
+  }
+
+  if(!linhas.length){ alvo.innerHTML = ''; return; }
+  linhas.sort((a, b) => a.em - b.em);
+  alvo.innerHTML = `<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px">A vida deste lote</div>
+    <div style="display:flex;flex-direction:column;gap:7px">` + linhas.map(l =>
+      `<div style="display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--text);line-height:1.45">
+        <span style="width:17px;flex:none;text-align:center;color:${l.cor}"><i class="fa-solid ${l.icone}" style="font-size:11px"></i></span>
+        <span style="flex:1;min-width:0">${l.txt}
+          ${l.em || l.quem ? `<span style="color:var(--muted);font-weight:600">· ${safeHtml(l.quem)}${l.quem && l.em ? ' · ' : ''}${quando(l.em)}</span>` : ''}
+        </span>
+      </div>`).join('') + '</div>';
 }
 
 function fecharEditarProduto(){
@@ -1619,6 +1754,19 @@ function atualizarBulkBarDispo(){
   const cnt = document.getElementById('dispoBulkCount');
   if(cnt) cnt.textContent = `${n} selecionado${n!==1?'s':''}`;
   if(bar) bar.style.display = n > 0 ? 'flex' : 'none';
+  /* Arquivar vale em QUALQUER aba, não só na dos Esgotados. Era assim no
+     primeiro desenho e estava errado: o modal já avisa quando um selecionado
+     ainda tem saldo, e esse aviso só faz sentido se der para arquivar fora
+     dos esgotados — um produto que vai sair de linha, por exemplo, some da
+     vista antes de zerar. Na aba Arquivados o botão vira Desarquivar, que é
+     a única coisa que cabe ali. */
+  const naArquivados = STATE.activeFilter === 'arquivados';
+  const mostrar = (id, cond) => {
+    const b = document.getElementById(id);
+    if(b) b.style.display = cond ? 'flex' : 'none';
+  };
+  mostrar('btnArquivarSel', !naArquivados);
+  mostrar('btnDesarquivarSel', naArquivados);
   const all = document.getElementById('dispoCheckAll');
   if(all){
     const vis = Array.from(document.querySelectorAll('.dispo-chk'));
@@ -1632,25 +1780,158 @@ function limparSelecaoDispo(){
   document.querySelectorAll('.dispo-chk').forEach(c=>c.checked=false);
   atualizarBulkBarDispo();
 }
+/* Arquivar em lote. Ao contrário de excluir, aqui NADA sai da DISPO: o lote
+   continua inteiro, com saldo, grade e histórico. O que muda é que ele deixa
+   de aparecer na lista - e isso basta, porque o problema não era o lote
+   existir, era ele entulhar a tela de quem procura o que ainda dá para dar.
+   Em 16/11/2026 eram 306 esgotados contra 14 com saldo.
+   Uma gravação só para o lote inteiro: 306 chamadas ao Worker seriam 306
+   chances de parar no meio. */
+async function arquivarSelecionadosDispo(){
+  const nums = [..._dispoSelecionados];
+  if(!nums.length) return;
+  const sel = new Set(nums.map(String));
+  const linhas = (STATE.dispoRows || []).filter(r => sel.has(String(r.num || '')));
+  if(!linhas.length) return;
+  const comSaldo = linhas.filter(r => Number(r.saldoReal ?? r.saldo ?? 0) > 0);
+
+  if(!(await uiConfirm({
+      title: nums.length > 1 ? `Arquivar ${nums.length} lotes?` : 'Arquivar este lote?',
+      message: `${nums.length > 1 ? 'Eles saem' : 'Ele sai'} da lista, mas nada é apagado: `
+             + `o saldo, a grade e o histórico ficam como estão, e a encomenda da `
+             + `Detalhada não é tocada.
+`
+             + `Para ver de novo, use a aba Arquivados — dá para desarquivar a qualquer hora.`
+             + (comSaldo.length
+                 ? `
+
+Atenção: ${comSaldo.length} ${comSaldo.length === 1
+                     ? 'deles ainda tem saldo para distribuir' : 'deles ainda têm saldo para distribuir'}.`
+                 : ''),
+      okText: nums.length > 1 ? `Arquivar ${nums.length}` : 'Arquivar' }))) return;
+
+  abrirProgresso(nums.length > 1 ? `Arquivando ${nums.length} lotes…` : 'Arquivando o lote…',
+                 'guardando o registro');
+  try{
+    const agora = new Date().toISOString();
+    const quem = quemSou();
+    const registros = linhas.map(r => ({
+      id: 'a' + Date.now() + Math.random().toString(36).slice(2, 6),
+      tipo: 'arquivado',
+      chave: chaveArquivo(r),
+      num: String(r.num ?? ''), gci: String(r.gci ?? ''), ebm: String(r.ebm ?? ''),
+      codigo: String(r.codigo ?? ''), produto: r.produto || '', cor: r.cor || '',
+      origem: String(r.origem ?? ''), origemNome: r.origemNome || '',
+      saldoAntes: Number(r.saldo || 0), saldoDepois: Number(r.saldo || 0),
+      pares: 0, total: false,
+      motivo: Number(r.saldoReal ?? 0) > 0 ? 'Arquivado com saldo' : 'Esgotado',
+      por: quem, em: agora,
+    }));
+    await gravarCancelamentos([...(STATE.cancelamentos || []), ...registros]);
+    passoProgresso('tirando da lista');
+    recalcArquivados();
+    _dispoSelecionados.clear();
+    atualizarBulkBarDispo();
+    renderDispo();
+    atualizarBadgeFinalizados();
+    concluirProgresso(true,
+      nums.length > 1 ? `${nums.length} lotes arquivados` : 'Lote arquivado',
+      'Estão na aba Arquivados. Nada foi apagado.');
+  }catch(err){
+    console.error(err);
+    concluirProgresso(false, 'Não deu para arquivar', String(err && err.message || err));
+  }
+}
+
+/* Desarquivar é marcar o registro como desfeito - o mesmo caminho que o
+   desfazer dos cancelamentos já usa. O registro fica, com a data em que
+   saiu e a em que voltou. */
+// Um lote só, pelo botão da linha: reusa o caminho do lote, sem repetir regra.
+async function desarquivarUm(num){
+  _dispoSelecionados.clear();
+  _dispoSelecionados.add(String(num));
+  await desarquivarSelecionadosDispo();
+}
+
+async function desarquivarSelecionadosDispo(){
+  const nums = [..._dispoSelecionados];
+  if(!nums.length) return;
+  const sel = new Set(nums.map(String));
+  if(!(await uiConfirm({
+      title: nums.length > 1 ? `Desarquivar ${nums.length} lotes?` : 'Desarquivar este lote?',
+      message: `${nums.length > 1 ? 'Voltam' : 'Volta'} para a lista, na aba que combinar com o saldo.`,
+      okText: 'Desarquivar' }))) return;
+  abrirProgresso('Desarquivando…', 'devolvendo para a lista');
+  try{
+    const agora = new Date().toISOString();
+    const lista = (STATE.cancelamentos || []).map(c => {
+      if(c.tipo === 'arquivado' && !c.desfeitoEm && sel.has(String(c.num))){
+        return { ...c, desfeitoEm: agora, desfeitoPor: quemSou() };
+      }
+      return c;
+    });
+    await gravarCancelamentos(lista);
+    recalcArquivados();
+    _dispoSelecionados.clear();
+    atualizarBulkBarDispo();
+    renderDispo();
+    atualizarBadgeFinalizados();
+    concluirProgresso(true,
+      nums.length > 1 ? `${nums.length} lotes de volta` : 'Lote de volta', '');
+  }catch(err){
+    console.error(err);
+    concluirProgresso(false, 'Não deu para desarquivar', String(err && err.message || err));
+  }
+}
+
 async function excluirSelecionadosDispo(){
   const nums = [..._dispoSelecionados];
   if(!nums.length) return;
-  if(!(await uiConfirm({ title:'Excluir itens', message:`Excluir ${nums.length} ite${nums.length>1?'ns':'m'} da DISPO?\nEssa ação não pode ser desfeita.`, okText:'Excluir', danger:true }))) return;
+  const sel = new Set(nums.map(String));
+  // as linhas inteiras, antes de sumirem: é delas que saem o registro e a
+  // volta da encomenda à Detalhada
+  const linhas = (STATE.dispoRows || []).filter(r => sel.has(String(r.num || '')));
+  const deOferta = linhas.filter(r => chaveDaOferta(r));
+  if(!(await uiConfirm({ title:'Excluir itens',
+      message:`Excluir ${nums.length} ite${nums.length>1?'ns':'m'} da DISPO?` +
+              (deOferta.length ? `
+
+${deOferta.length === 1 ? 'A encomenda volta' : 'As encomendas voltam'} para a Detalhada.` : '') +
+              `
+Os lotes saem da lista, mas ficam registrados no histórico.`,
+      okText:'Excluir', danger:true }))) return;
+  abrirProgresso(nums.length > 1 ? `Excluindo ${nums.length} lotes…` : 'Excluindo o lote…', 'guardando no histórico');
   try{
-    const sel = new Set(nums.map(String));
     const novaLista = STATE.dispoRows.filter(r => !sel.has(String(r.num||'')));
     const antes = STATE.dispoRows;
+
+    try{ await gravarCancelamentos([...(STATE.cancelamentos || []), ...linhas.map(r => montarExclusao(r))]); }
+    catch(e){ console.warn('Não consegui registrar as exclusões.', e); }
+
+    passoProgresso('tirando da DISPO');
     STATE.dispoRows = novaLista;
     try{ await gravarDispo(); }
     catch(e){ STATE.dispoRows = antes; throw e; }
     _dispoSelecionados.clear();
+    atualizarBulkBarDispo();
     renderDispo();
-    showToast(`${nums.length} ite${nums.length>1?'ns':'m'} removido${nums.length>1?'s':''} da DISPO.`, 'success');
+    // uma de cada vez: a última de cada oferta é que faz a encomenda voltar
+    let voltaram = 0;
+    if(deOferta.length) passoProgresso('avisando a Detalhada');
+    for(const r of deOferta){ if(await desfazerOfertaDoLote(r, 'lote excluído')) voltaram++; }
+    if(voltaram) await carregarOfertas();
+    concluirProgresso(true,
+      nums.length > 1 ? `${nums.length} lotes excluídos` : 'Lote excluído',
+      voltaram
+        ? (voltaram === 1 ? 'A encomenda voltou para o cliente na Detalhada.'
+                          : `${voltaram} encomendas voltaram para os clientes na Detalhada.`)
+        : 'Ficou guardado no histórico — procure pelo número para consultar.');
   }catch(err){
     console.error(err);
-    showToast('Erro ao excluir. Tente novamente.', 'error');
+    concluirProgresso(false, 'Não deu para excluir', String(err && err.message || err));
   }
 }
+
 document.addEventListener('change', (e)=>{
   const t = e.target;
   if(!t) return;
@@ -1726,6 +2007,31 @@ async function carregarCancelamentos(){
 // os que ainda valem (desfeito deixa de contar, mas continua no histórico)
 const cancelamentosAtivos = () => (STATE.cancelamentos || []).filter(c => !c.desfeitoEm);
 
+/* ARQUIVAR — tirar da vista sem apagar nada.
+   Mora no mesmo arquivo dos cancelamentos, com tipo próprio, por três razões:
+   o registro já tem quem fez e quando, a "vida deste lote" passa a mostrar o
+   arquivamento sozinha, e desfazer já existe (basta marcar desfeitoEm).
+   Não é exclusão: o lote continua inteiro, a encomenda da Detalhada não é
+   tocada e o saldo não muda. */
+function chaveArquivo(row){
+  return [String(row.num ?? ''), String(row.gci ?? ''),
+          String(row.codigo ?? ''), String(row.cor ?? '')].join('|');
+}
+function setArquivados(){
+  const s = new Set();
+  for(const c of cancelamentosAtivos()){
+    if(c.tipo === 'arquivado') s.add(c.chave || String(c.num));
+  }
+  return s;
+}
+function isArquivado(row){
+  const s = STATE._arquivados || (STATE._arquivados = setArquivados());
+  return s.has(chaveArquivo(row)) || s.has(String(row.num ?? ''));
+}
+// Chamada sempre que a lista de cancelamentos muda: sem isso o conjunto
+// ficaria velho e um lote recém-arquivado continuaria aparecendo.
+function recalcArquivados(){ STATE._arquivados = setArquivados(); }
+
 function cancelamentosDoNum(num){
   const n = String(num ?? '').trim();
   return cancelamentosAtivos().filter(c => String(c.num) === n);
@@ -1748,9 +2054,48 @@ function caixasDaLinha(row){
 
 /* Reaplica na DISPO recém-carregada o que foi cancelado antes — ver o porquê
    no cabeçalho deste bloco. */
+/* A busca não achou nada: se o que foi digitado for o Nº de um lote que saiu
+   da DISPO, conta o que aconteceu com ele em vez de dizer só "nenhum item". */
+function contarComOQueSumiu(){
+  const caixa = $('dispoSumiu');
+  if(!caixa) return;
+  const termo = String(STATE.searchQuery || '').trim();
+  const txt = $('dispoEmptyTxt'), ico = $('dispoEmptyIcone');
+  caixa.classList.add('hidden');
+  if(txt) txt.style.display = '';
+  if(ico) ico.style.display = '';
+  if(!termo) return;
+  const achados = (STATE.cancelamentos || [])
+    .filter(c => String(c.num) === termo && (c.tipo === 'excluido' || c.total))
+    .sort((a, b) => String(b.em).localeCompare(String(a.em)));
+  if(!achados.length) return;
+  const c = achados[0];
+  const quando = new Date(c.em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit',
+    year:'numeric', hour:'2-digit', minute:'2-digit' });
+  const oque = c.tipo === 'excluido' ? 'excluído' : (ehVolta(c) ? 'devolvido ao cliente' : 'cancelado');
+  caixa.innerHTML = `<i class="fa-solid fa-box-archive" style="font-size:22px;color:#b45309"></i>
+    <div style="font-size:14px;font-weight:900;color:#78350f;margin-top:9px">
+      O lote Nº ${safeHtml(termo)} foi ${oque}</div>
+    <div style="font-size:12.5px;font-weight:700;color:#92400e;margin-top:6px;line-height:1.6">
+      ${safeHtml(c.produto || '—')} · ${safeHtml(c.cor || '—')} · GCI ${safeHtml(c.gci || '—')}<br>
+      ${formatInt(c.pares)} pares${c.origemNome ? ' · de ' + safeHtml(c.origemNome) : ''}
+    </div>
+    <div style="font-size:11.5px;font-weight:600;color:#a16207;margin-top:8px">
+      ${quando} · por ${safeHtml(c.por || '—')}${c.motivo ? ' · ' + safeHtml(c.motivo) : ''}
+    </div>`;
+  caixa.classList.remove('hidden');
+  // o cartão já diz tudo: o "nenhum item" ao lado só confunde
+  if(txt) txt.style.display = 'none';
+  if(ico) ico.style.display = 'none';
+}
+
 function aplicarCancelamentosNaDispo(){
   const porNum = new Map();
   for(const c of cancelamentosAtivos()){
+    // A exclusão mora no mesmo arquivo, mas é histórico, não desconto: a
+    // linha dela já saiu da DISPO. Descontar de novo zeraria um lote que
+    // voltasse pelo mesmo número numa importação futura.
+    if(c.tipo === 'excluido' || c.tipo === 'arquivado') continue;
     const n = String(c.num);
     if(!porNum.has(n)) porNum.set(n, []);
     porNum.get(n).push(c);
@@ -1958,7 +2303,7 @@ function relatorioCancelamentos(){
                'Motivo', 'Cliente de origem', 'Observação', 'Por', 'Situação'];
   const linhas = lista.map(c => [
     new Date(c.em).toLocaleString('pt-BR'),
-    ehVolta(c) ? 'Devolução' : 'Cancelamento',
+    c.tipo === 'excluido' ? 'Exclusão' : (ehVolta(c) ? 'Devolução' : 'Cancelamento'),
     c.num, c.gci, c.codigo, c.produto, c.cor, c.dataEntrega || '',
     Number(c.caixas || 0), Number(c.pares || 0), Number(c.saldoAntes || 0), Number(c.saldoDepois || 0),
     c.motivo || '', c.cliente || '', c.obs || '', c.por || '',
@@ -2152,10 +2497,15 @@ function pedidosComDataVelha(num){
   return achados;
 }
 
-/* A faixa amarela. Chamada a cada render, some sozinha quando zera. */
+/* A faixa amarela. Chamada a cada render, some sozinha quando zera.
+   Desligada a pedido dele em 12/11: estava concorrendo com o aviso das
+   encomendas no mesmo lugar da tela. O cálculo continua de pé — para trazer
+   a faixa de volta, basta ligar a chave. */
+const MOSTRAR_AVISO_DATAS = false;
 function pintarAvisoDatasVelhas(){
   const faixa = $('avisoDatasVelhas');
   if(!faixa) return;
+  if(!MOSTRAR_AVISO_DATAS){ faixa.style.display = 'none'; return; }
   const achados = pedidosComDataVelha();
   if(!achados.length){ faixa.style.display = 'none'; return; }
   const lotes = new Set(achados.map(a => a.num)).size;
@@ -2166,6 +2516,751 @@ function pintarAvisoDatasVelhas(){
     `· ${lotes} lote${lotes > 1 ? 's' : ''} · ${formatInt(pares)} pares`;
   faixa.style.display = 'flex';
 }
+
+/* ── Repasses a criar ───────────────────────────────────────────────────────
+   O diretor marca "Repassar" numa encomenda da Detalhada e manda ao
+   escritório. A Detalhada grava isso nas ações da carteira, no mesmo Worker
+   que esta tela já usa — aqui é só leitura.
+
+   Interessa o que está em três estados ao mesmo tempo: ação OFERTA, já
+   enviada ao escritório e ainda ABERTA. O que virou lote sai da lista
+   sozinho quando o status mudar.                                            */
+let _ofertas = [];
+let _produtosCache = null;
+
+const corDeArquivo = c => String(c || '').trim().toUpperCase()
+  .replace(/[\/\\\s-]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+
+/* As duas pastas de fotos que já existem: miniatura do Catálogo, foto grande,
+   e o banco do catálogo digital por último. Sem nenhuma, fica o lugar vazio —
+   melhor que sumir com o produto. */
+function fotosDoProduto(ref, cor){
+  const nome = encodeURIComponent(String(ref || '').trim() + (cor ? '_' + corDeArquivo(cor) : '') + '.jpg');
+  return [ `../Catalogo/mini/${nome}`, `../Catalogo/${nome}`,
+           `https://cms-representacoes.github.io/apps-oly-v2/imagens_olympikus/${nome}` ];
+}
+function proximaFoto(img){
+  let resto = [];
+  try{ resto = JSON.parse(img.dataset.fb || '[]'); }catch(_){ resto = []; }
+  if(resto.length){ img.src = resto[0]; img.dataset.fb = JSON.stringify(resto.slice(1)); }
+  else { img.onerror = null; img.removeAttribute('src'); img.style.opacity = '.35'; }
+}
+function nomeDoProduto(ref, cor){
+  const p = (_produtosCache || {})[String(ref).trim() + '|' + corDeArquivo(cor)];
+  return (p && p.nome) || '';
+}
+
+async function carregarOfertas(avisar){
+  try{
+    const r = await workerFetch({ method:'PATCH', body: JSON.stringify({ action:'getAcoesCarteira' }) });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    const acoes = (j && j.acoes) || {};
+    const vivas = [];
+    for(const [chave, reg] of Object.entries(acoes)){
+      if(!reg || reg.acao !== 'OFERTA') continue;
+      const rep = reg.repasse || {};
+      const of = rep.oferta || {};
+      if(of.status && of.status !== 'ABERTA') continue;    // já virou lote
+      vivas.push({ chave, gci:rep.gci || '', ref:rep.ref || '', cor:rep.cor || '',
+        origem:rep.origem || '', origemNome:rep.origemNome || '',
+        pares:Number(of.pares || 0), total:Number(of.total || 0), itens:Number(rep.itens || 1),
+        por:(rep.enviadoAdmin && rep.enviadoAdmin.por) || of.por || '',
+        // sem a marca de enviada, a oferta aparece assim mesmo, com aviso: a
+        // decisão já foi tomada na Detalhada, e esconder só gerava impasse
+        enviada: !!rep.enviadoAdmin,
+        em:Number((rep.enviadoAdmin && rep.enviadoAdmin.em) || of.em || 0) });
+    }
+    vivas.sort((a, b) => b.em - a.em);   // o que chegou por último aparece primeiro
+    _ofertas = vivas;
+    pintarAvisoOfertas();
+    if($('ofertasModal').style.display === 'flex') renderOfertas();
+    if(avisar) showToast(vivas.length
+      ? `${vivas.length} encomenda${vivas.length > 1 ? 's' : ''} esperando` : 'Nenhuma encomenda nova', 'info');
+  }catch(e){
+    console.warn('Não deu para ler as ofertas da Detalhada.', e);
+    if(avisar) showToast('Não deu para ler as encomendas agora.', 'error');
+  }
+}
+
+/* A faixa verde, do lado da amarela das datas: aparece só quando há o que
+   fazer e já traz o botão que resolve. */
+function pintarAvisoOfertas(){
+  // o botão do cabeçalho fica sempre; o número só quando há o que fazer
+  const b = $('badgeOfertasDispo');
+  if(b){
+    b.textContent = _ofertas.length;
+    b.classList.toggle('hidden', !_ofertas.length);
+  }
+  const faixa = $('avisoOfertas');
+  if(!faixa) return;
+  if(!_ofertas.length){ faixa.style.display = 'none'; return; }
+  const pares = _ofertas.reduce((t, o) => t + o.pares, 0);
+  const n = _ofertas.length;
+  const naoEnviadas = _ofertas.filter(o => !o.enviada).length;
+  $('avisoOfertasTxt').textContent =
+    `${n} encomenda${n > 1 ? 's' : ''} da Detalhada esperando para virar lote · ${formatInt(pares)} pares` +
+    (naoEnviadas ? ` · ${naoEnviadas} ainda não enviada${naoEnviadas > 1 ? 's' : ''} ao escritório` : '');
+  faixa.style.display = 'flex';
+}
+
+function quandoChegou(ms){
+  if(!ms) return '';
+  const h = Math.floor((Date.now() - ms) / 3600000);
+  if(h < 1) return 'agora há pouco';
+  if(h < 24) return `há ${h}h`;
+  const d = Math.floor(h / 24);
+  return d === 1 ? 'ontem' : `há ${d} dias`;
+}
+
+function renderOfertas(){
+  const alvo = $('ofertasLista');
+  if(!alvo) return;
+  const sub = $('ofertasSub');
+  if(sub) sub.textContent = _ofertas.length
+    ? `${_ofertas.length} esperando · ${formatInt(_ofertas.reduce((t,o)=>t+o.pares,0))} pares`
+    : '';
+  if(!_ofertas.length){
+    alvo.innerHTML = `<div style="border:1px solid var(--line);border-radius:16px;padding:28px;text-align:center;color:var(--muted)">
+      <i class="fa-solid fa-inbox" style="font-size:26px;opacity:.4;display:block;margin-bottom:10px"></i>
+      <div style="font-weight:800;font-size:13.5px;color:var(--text)">Nenhuma encomenda esperando</div>
+      <div style="font-size:12px;margin-top:3px">Quando alguém marcar "Repassar" na Detalhada e mandar ao escritório, aparece aqui.</div>
+    </div>`;
+    return;
+  }
+  alvo.innerHTML = _ofertas.map((o, i) => {
+    const fotos = fotosDoProduto(o.ref, o.cor);
+    const nome = nomeDoProduto(o.ref, o.cor);
+    const sobra = Math.max(0, o.total - o.pares);
+    return `<article style="display:flex;gap:13px;align-items:flex-start;border:1px solid var(--line);border-radius:18px;padding:13px 14px">
+      <img style="width:66px;height:66px;flex:none;border-radius:12px;border:1px solid var(--line);background:#f8fafc;object-fit:contain;padding:3px"
+        alt="" loading="lazy" src="${fotos[0]}" data-fb='${JSON.stringify(fotos.slice(1))}' onerror="proximaFoto(this)">
+      <div style="min-width:0;flex:1">
+        <div style="font-size:14.5px;font-weight:900;color:var(--text);line-height:1.25">
+          ${safeHtml(nome || o.ref)} <span style="font-weight:700;color:var(--muted)">· ${safeHtml(o.cor || '—')}</span>
+        </div>
+        <div style="font-size:11.5px;font-weight:700;color:var(--muted);margin-top:3px">
+          GCI ${safeHtml(o.gci || '—')} · de ${safeHtml(o.origemNome || o.origem || 'origem não informada')}
+          ${nome ? `· ${safeHtml(o.ref)}` : ''}
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+          <span style="background:#f0fdfa;border:1px solid #99f6e4;color:#0f766e;border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:800">
+            ${o.pares} ${o.pares === 1 ? 'par' : 'pares'} para repasse</span>
+          ${sobra ? `<span style="background:#f8fafc;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700">
+            ${sobra} ${sobra === 1 ? 'fica' : 'ficam'} com o cliente</span>` : ''}
+          ${o.itens > 1 ? `<span style="background:#f8fafc;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700">
+            GCI com ${o.itens} linhas</span>` : ''}
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);opacity:.8;margin-top:7px">
+          ${safeHtml(o.por || 'alguém')} ${o.enviada ? 'mandou' : 'marcou'} ${quandoChegou(o.em)}
+          ${o.enviada ? '' : `<span title="Marcada na Detalhada, mas ainda não enviada ao escritório"
+            style="margin-left:6px;background:#fffbeb;border:1px solid #fde68a;color:#b45309;
+            border-radius:999px;padding:2px 8px;font-size:10px;font-weight:800">ainda não enviada</span>`}</div>
+      </div>
+      <button onclick="criarLoteDaOferta(${i})" title="Buscar no EBM e criar o lote"
+        style="flex:none;background:#0d9488;color:#fff;border:0;border-radius:999px;height:44px;padding:0 17px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:7px">
+        <i class="fa-solid fa-arrow-right-to-bracket" style="font-size:12px"></i> Criar lote
+      </button>
+    </article>`;
+  }).join('');
+}
+
+function abrirOfertas(){
+  const m = $('ofertasModal');
+  if(!m) return;
+  m.style.display = 'flex';
+  renderOfertas();
+  if(!_produtosCache){
+    fetch('../data/dados_produtos.json', { cache:'no-cache' })
+      .then(r => r.ok ? r.json() : {})
+      .then(j => { _produtosCache = j || {}; renderOfertas(); })
+      .catch(() => { _produtosCache = {}; });
+  }
+}
+function fecharOfertas(){ const m = $('ofertasModal'); if(m) m.style.display = 'none'; }
+
+/* ── Do GCI ao lote ─────────────────────────────────────────────────────────
+   A Detalhada sabe o GCI, o cliente e os pares; não sabe a grade nem o número
+   EBM, que são justamente o que o lote precisa. Quem sabe é o EBM, e quem vai
+   buscar lá é a extensão — a mesma que a Detalhada usa para o PDF, agora
+   pedindo a planilha. Ela devolve o arquivo aqui mesmo, sem passar por pasta
+   de downloads.                                                             */
+
+function temExtensaoEbm(){
+  const d = document.documentElement.dataset;
+  return { tem: !!d.cmsEbm, versao: d.cmsEbm || '', planilha: d.cmsEbmXls === '1' };
+}
+
+/* Os passos que a extensão anuncia enquanto trabalha. A busca leva de dez
+   segundos a mais de um minuto, dependendo do EBM: barra sozinha não diz
+   nada, então a tela mostra em que pé está e há quanto tempo. */
+const PASSOS_EBM = [
+  { ch: /abrindo o ebm|entrando no ebm/i, txt: 'Abrindo o EBM' },
+  { ch: /filtro/i,                        txt: 'Procurando o GCI' },
+  { ch: /abrindo o pedido/i,              txt: 'Abrindo o pedido' },
+  { ch: /gerando/i,                       txt: 'Gerando a planilha' },
+  { ch: /salvando/i,                      txt: 'Baixando a planilha' },
+];
+const PASSO_LEITURA = PASSOS_EBM.length;      // o último é nosso: ler os artigos
+
+let _buscaEbm = null;   // { passo, inicio, timer, diario }
+
+/** Última linha do diário da extensão, no rodapé do progresso. */
+function anotarNoProgresso(texto){
+  if(!_buscaEbm) return;
+  _buscaEbm.diario = String(texto || '').replace(/^\d{2}:\d{2}:\d{2}\s+/, '');
+  const el = $('loteDiario');
+  if(el) el.textContent = _buscaEbm.diario;
+}
+
+function pintarPassos(passo){
+  const L = _buscaEbm;
+  if(!L) return;
+  L.passo = Math.max(L.passo, passo);
+  const seg = Math.round((Date.now() - L.inicio) / 1000);
+  const total = PASSOS_EBM.length + 1;
+  const feito = Math.min(L.passo, total);
+  const linhas = [...PASSOS_EBM.map(p => p.txt), 'Lendo os artigos'].map((t, i) => {
+    const estado = i < L.passo ? 'feito' : (i === L.passo ? 'agora' : 'espera');
+    const icone = estado === 'feito'
+      ? '<i class="fa-solid fa-circle-check" style="color:#0d9488"></i>'
+      : estado === 'agora'
+        ? '<i class="fa-solid fa-spinner fa-spin" style="color:#0d9488"></i>'
+        : '<i class="fa-regular fa-circle" style="color:#cbd5e1"></i>';
+    return `<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;
+      font-weight:${estado === 'agora' ? 800 : 600};
+      color:${estado === 'espera' ? 'var(--muted)' : 'var(--text)'};opacity:${estado === 'espera' ? .55 : 1}">
+      <span style="width:16px;text-align:center">${icone}</span>${t}</div>`;
+  }).join('');
+
+  pintarLote(`<div style="padding:6px 2px 2px">
+    <div style="height:6px;border-radius:999px;background:#e2e8f0;overflow:hidden;margin-bottom:16px">
+      <div style="height:100%;width:${Math.round(feito / total * 100)}%;background:linear-gradient(90deg,#2dd4bf,#0d9488);transition:width .35s"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:9px">${linhas}</div>
+    <div id="loteDiario" style="font-size:11px;color:var(--muted);opacity:.75;margin-top:14px;min-height:14px;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${safeHtml(L.diario || '')}</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:10px;padding-top:14px;border-top:1px solid var(--line)">
+      <span style="font-size:11.5px;font-weight:700;color:var(--muted)">${seg}s · a janela do EBM trabalha minimizada</span>
+      <button onclick="desistirDaBusca()" style="margin-left:auto;border:1px solid var(--line);background:transparent;
+        color:var(--muted);border-radius:999px;padding:8px 15px;font-weight:700;font-size:12.5px;cursor:pointer">Desistir</button>
+    </div>
+  </div>`);
+}
+
+function comecarPassos(){
+  _buscaEbm = { passo: 0, inicio: Date.now(), timer: null };
+  pintarPassos(0);
+  _buscaEbm.timer = setInterval(() => pintarPassos(_buscaEbm ? _buscaEbm.passo : 0), 1000);
+}
+function pararPassos(){
+  if(_buscaEbm && _buscaEbm.timer) clearInterval(_buscaEbm.timer);
+  _buscaEbm = null;
+}
+
+/** Desiste do trabalho em curso e libera a extensão para o próximo. */
+function desistirDaBusca(){
+  window.dispatchEvent(new CustomEvent('cms-ebm-cancelar'));
+  pararPassos();
+  fecharLoteModal();
+  showToast('Busca cancelada.', 'info');
+}
+
+/** Pede a encomenda ao EBM. Resolve com a planilha em base64. */
+function buscarEncomendaNoEbm(gci, nome){
+  return new Promise((ok, falhou) => {
+    const ext = temExtensaoEbm();
+    if(!ext.tem) return falhou(new Error('A extensão do EBM não está instalada neste navegador.'));
+    if(!ext.planilha) return falhou(new Error(`A extensão instalada (${ext.versao || 'antiga'}) ainda não sabe trazer planilha. Recarregue a extensão no Chrome.`));
+
+    const ouvir = ev => {
+      const d = (ev && ev.detail) || {};
+      if(d.tipo === 'progresso'){
+        const i = PASSOS_EBM.findIndex(p => p.ch.test(d.texto || ''));
+        if(i >= 0) pintarPassos(i);
+        return;
+      }
+      // A extensão também espelha o diário dela, linha a linha. Isso não é
+      // fim nem erro: vira o rodapé do progresso, que é onde se vê que algo
+      // está acontecendo quando um passo demora.
+      if(d.tipo === 'log'){ anotarNoProgresso(d.texto || ''); return; }
+      // Só o fim e o erro encerram; qualquer outro recado é ignorado.
+      if(d.tipo !== 'fim' && d.tipo !== 'erro') return;
+      window.removeEventListener('cms-ebm-resposta', ouvir);
+      if(d.tipo === 'fim'){
+        pintarPassos(PASSO_LEITURA);
+        if(d.conteudo) ok({ base64: d.conteudo, caminho: d.caminho || '' });
+        else ok({ base64: null, caminho: d.caminho || '' });   // baixou, mas não deu para ler
+      }else{
+        falhou(new Error(d.texto || 'A busca no EBM não terminou.'));
+      }
+    };
+    window.addEventListener('cms-ebm-resposta', ouvir);
+    window.dispatchEvent(new CustomEvent('cms-ebm-pdf', { detail:{
+      gcis: [String(gci)], status: 'A', formato: 'xls',
+      nomeArquivo: 'encomenda-' + String(gci) } }));
+  });
+}
+
+/* Lê o relatório "ClienteEncomenda" que o EBM exporta em planilha.
+
+   Não é tabela: é um formulário em blocos, com os rótulos numa linha e os
+   valores na de baixo, na mesma coluna. Cada item ocupa cinco linhas — artigo,
+   tamanhos, encomendada, preços e saldo. O que vale para o repasse é o SALDO:
+   o que ainda não foi faturado. */
+function lerEncomendaEbm(matriz){
+  const txt = (l, c) => {
+    const v = (matriz[l] || [])[c];
+    return v === null || v === undefined ? '' : String(v).trim();
+  };
+  const num = (l, c) => {
+    const n = Number(txt(l, c).replace(/\./g, '').replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+  };
+  function campo(rotulo){
+    const alvo = rotulo.toLowerCase().replace(/[.:\s]+$/, '');
+    for(let l = 0; l < Math.min(matriz.length, 14); l++){
+      const linha = matriz[l] || [];
+      for(let c = 0; c < linha.length; c++){
+        if(txt(l, c).toLowerCase().replace(/[.:\s]+$/, '') === alvo) return txt(l + 1, c);
+      }
+    }
+    return '';
+  }
+  const parCodigoNome = s => {
+    const m = String(s || '').match(/^\s*(\d+)\s*-\s*(.+)$/);
+    return m ? { codigo:m[1], nome:m[2].trim() } : { codigo:'', nome:String(s || '').trim() };
+  };
+
+  const cab = {
+    gci: campo('Enc.GCI'), ebm: campo('Enc.EBM'), tipo: campo('Tp.Enc.'),
+    empresa: campo('Empresa'),
+    cliente: parCodigoNome(campo('Cliente (Código - Razão Social)') || campo('Cliente')),
+    preposto: parCodigoNome(campo('PREPOSTO')),
+    campanha: campo('Campanha Comercial'), condPag: campo('Cond. Pag.'),
+    prazo: campo('Prazo'), prevFat: campo('Prev.'), tabela: campo('Tabela Preço'),
+  };
+
+  let ini = -1;
+  for(let l = 0; l < matriz.length; l++){
+    const linha = (matriz[l] || []).map(v => String(v || '').trim().toLowerCase());
+    if(linha.includes('artigo') && linha.includes('cor') && linha.includes('grade')){ ini = l; break; }
+  }
+  const itens = [];
+  if(ini >= 0){
+    const col = {};
+    (matriz[ini] || []).forEach((v, c) => { const t = String(v || '').trim().toLowerCase(); if(t) col[t] = c; });
+
+    for(let l = ini + 1; l < matriz.length; l++){
+      const artigoBruto = txt(l, col['artigo']);
+      if(!artigoBruto || !/\d/.test(artigoBruto)) continue;
+      const [ref, ...resto] = artigoBruto.split('/');
+      const item = {
+        n: txt(l, col['item']),
+        familia: txt(l, col['família'] !== undefined ? col['família'] : col['familia']),
+        artigo: ref.trim(), descricao: resto.join('/').trim(),
+        cor: txt(l, col['cor']), grade: txt(l, col['grade']), faixa: txt(l, col['faixa']),
+        tamanhos: [], encomendada: {}, saldo: {}, totalEncomendada: 0, totalSaldo: 0,
+      };
+      const colTam = {};
+      (matriz[l + 1] || []).forEach((v, c) => {
+        const t = String(v || '').trim();
+        if(t && /^[\d/]+$/.test(t)){ colTam[t] = c; item.tamanhos.push(t); }
+      });
+      for(let k = l + 2; k < matriz.length && item.tamanhos.length; k++){
+        const linha = (matriz[k] || []).map(v => String(v || '').trim());
+        const marca = linha.find(v => /^(encomendada|saldo)$/i.test(v));
+        if(!marca){
+          if(txt(k, col['artigo'])) break;            // começou outro item
+          continue;
+        }
+        const destino = /^saldo$/i.test(marca) ? 'saldo' : 'encomendada';
+        const lv = k + 1;
+        for(const t of item.tamanhos) item[destino][t] = num(lv, colTam[t]);
+        const vals = matriz[lv] || [];
+        const ultimaCol = Math.max(...Object.values(colTam));
+        for(let c = vals.length - 1; c > ultimaCol; c--){
+          if(String(vals[c] || '').trim()){
+            item[destino === 'saldo' ? 'totalSaldo' : 'totalEncomendada'] = num(lv, c);
+            break;
+          }
+        }
+        if(destino === 'saldo') break;
+      }
+      itens.push(item);
+    }
+  }
+  return { ...cab, itens };
+}
+
+/* "1232211 = 12" com faixa "38 - 44" vira {38:1,39:2,40:3,41:2,42:2,43:1,44:1}:
+   a composição de uma caixa, que é o que a DISPO guarda em `grade`. Quando os
+   dígitos não batem com os tamanhos, usa-se o que veio na encomenda dividido
+   pelo número de caixas — menos elegante e igualmente certo. */
+function gradeDaCaixa(item){
+  const m = String(item.grade || '').match(/^\s*(\d+)\s*=\s*(\d+)/);
+  const digitos = m ? m[1].split('').map(Number) : [];
+  const porCaixa = m ? Number(m[2]) : 0;
+  const g = {};
+  if(digitos.length && digitos.length === item.tamanhos.length){
+    item.tamanhos.forEach((t, i) => { if(digitos[i] > 0) g[t] = digitos[i]; });
+    return { grade:g, porCaixa: porCaixa || digitos.reduce((a, b) => a + b, 0) };
+  }
+  const caixas = porCaixa ? Math.round(item.totalEncomendada / porCaixa) : 0;
+  if(caixas > 0){
+    for(const t of item.tamanhos){
+      const v = Math.round((item.encomendada[t] || 0) / caixas);
+      if(v > 0) g[t] = v;
+    }
+  }
+  return { grade:g, porCaixa: porCaixa || Object.values(g).reduce((a, b) => a + b, 0) };
+}
+
+let _loteEmCurso = null;   // { oferta, encomenda, escolhidos:Set }
+
+async function criarLoteDaOferta(i){
+  const o = _ofertas[i];
+  if(!o) return;
+  if(_buscaEbm){ showToast('Já estou buscando uma encomenda; espere terminar.', 'info'); return; }
+  _loteEmCurso = { oferta:o, encomenda:null, escolhidos:new Set() };
+  abrirLoteModal();
+  comecarPassos();
+  try{
+    const r = await buscarEncomendaNoEbm(o.gci, o.origemNome);
+    pararPassos();
+    // O relatório do EBM é de uso único, então nem sempre dá para trazer o
+    // arquivo junto. Quando não dá, ele está salvo em disco e o Chris o
+    // aponta — um clique, e o resto segue igual.
+    if(!r.base64){ pedirArquivoDoLote(r.caminho); return; }
+    lerPlanilhaDoLote(bytesDeBase64(r.base64));
+  }catch(e){
+    pararPassos();
+    // "Já existe um PDF sendo gerado" é o caso mais comum: um trabalho
+    // anterior que empacou e segura a extensão pelos oito minutos do prazo.
+    // Em vez de só reclamar, a tela oferece o botão que desempaca.
+    const preso = /já existe/i.test(String(e.message || e));
+    pintarLote(`<div style="padding:20px;text-align:center">
+      <i class="fa-solid fa-triangle-exclamation" style="color:#b45309;font-size:22px"></i>
+      <div style="font-weight:800;margin-top:10px;color:var(--text);font-size:13.5px">
+        ${preso ? 'Tem uma busca anterior presa' : 'Não deu para buscar no EBM'}</div>
+      <div style="font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.5">
+        ${safeHtml(e.message || e)}${preso ? '<br>Isso acontece quando uma busca não terminou. Dá para encerrá-la e começar de novo.' : ''}</div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:center">
+        <button onclick="fecharLoteModal()" style="border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer">Fechar</button>
+        <button onclick="${preso ? `destravarEbm(${i})` : `criarLoteDaOferta(${i})`}" style="border:0;background:#0d9488;color:#fff;border-radius:999px;padding:9px 18px;font-weight:800;font-size:13px;cursor:pointer">
+          ${preso ? 'Encerrar e tentar de novo' : 'Tentar de novo'}</button>
+      </div></div>`);
+  }
+}
+
+function bytesDeBase64(b64){
+  const bin = atob(b64);
+  const buf = new Uint8Array(bin.length);
+  for(let k = 0; k < bin.length; k++) buf[k] = bin.charCodeAt(k);
+  return buf;
+}
+
+/** Lê a planilha da encomenda e monta a tela de conferência. */
+function lerPlanilhaDoLote(bytes){
+  const L = _loteEmCurso;
+  if(!L) return;
+  const wb = XLSX.read(bytes, { type:'array' });
+  const matriz = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, defval:null, raw:false });
+  const enc = lerEncomendaEbm(matriz);
+  if(!enc.itens.length) throw new Error('A planilha veio sem itens — confira o GCI no EBM.');
+  L.encomenda = enc;
+  // o artigo que a Detalhada apontou já vem marcado; os outros, não
+  const o = L.oferta;
+  enc.itens.forEach((it, k) => {
+    const mesmo = String(it.artigo).trim() === String(o.ref).trim() &&
+                  String(it.cor).trim().toUpperCase() === String(o.cor).trim().toUpperCase();
+    if(mesmo && it.totalSaldo > 0) L.escolhidos.add(k);
+  });
+  if(!L.escolhidos.size)
+    enc.itens.forEach((it, k) => { if(it.totalSaldo > 0) L.escolhidos.add(k); });
+  renderLote();
+}
+
+/** A planilha está no disco: o Chris aponta o arquivo e o fluxo continua. */
+function pedirArquivoDoLote(caminho){
+  const nome = String(caminho || '').split(/[\/]/).pop() || 'a planilha';
+  pintarLote(`<div style="padding:18px;text-align:center">
+    <i class="fa-solid fa-file-excel" style="color:#059669;font-size:26px"></i>
+    <div style="font-weight:800;margin-top:10px;color:var(--text);font-size:13.5px">A planilha foi baixada</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.55">
+      O EBM entrega o relatório uma vez só, então ela ficou na sua pasta de downloads:<br>
+      <b style="color:var(--text)">${safeHtml(nome)}</b><br>Aponte o arquivo para eu ler os artigos.</div>
+    <input type="file" id="arqLote" accept=".xls,.xlsx" style="display:none" onchange="arquivoDoLoteEscolhido(this)">
+    <div style="margin-top:16px;display:flex;gap:8px;justify-content:center">
+      <button onclick="fecharLoteModal()" style="border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer">Cancelar</button>
+      <button onclick="document.getElementById('arqLote').click()" style="border:0;background:#0d9488;color:#fff;border-radius:999px;height:44px;padding:0 20px;font-weight:800;font-size:13.5px;cursor:pointer">
+        <i class="fa-solid fa-folder-open" style="font-size:12px"></i> Escolher o arquivo</button>
+    </div></div>`);
+}
+
+function arquivoDoLoteEscolhido(input){
+  const f = input && input.files && input.files[0];
+  if(!f) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    try{ lerPlanilhaDoLote(new Uint8Array(fr.result)); }
+    catch(e){ showToast('Não consegui ler essa planilha: ' + (e.message || e), 'error'); }
+  };
+  fr.onerror = () => showToast('Não consegui abrir o arquivo.', 'error');
+  fr.readAsArrayBuffer(f);
+}
+
+/** Mata o trabalho preso na extensão e repete a busca. */
+function destravarEbm(i){
+  window.dispatchEvent(new CustomEvent('cms-ebm-cancelar'));
+  pintarLote('<div style="padding:26px;text-align:center;color:var(--muted);font-size:13px">' +
+    '<i class="fa-solid fa-spinner fa-spin"></i> Encerrando a busca anterior…</div>');
+  setTimeout(() => criarLoteDaOferta(i), 900);
+}
+
+function renderLote(){
+  const L = _loteEmCurso;
+  if(!L || !L.encomenda) return;
+  const e = L.encomenda, o = L.oferta;
+  const cab = `<div style="background:var(--brand-soft,#eef0fe);border:1px solid var(--line);border-radius:14px;padding:11px 14px;margin-bottom:12px;font-size:12px;font-weight:700;color:var(--text);line-height:1.6">
+    ${safeHtml(e.cliente.nome || o.origemNome)} <span style="color:var(--muted)">(${safeHtml(e.cliente.codigo || o.origem)})</span>
+    · GCI ${safeHtml(e.gci)} · EBM ${safeHtml(e.ebm)}<br>
+    <span style="color:var(--muted);font-weight:600">${safeHtml(e.tipo || '—')} · fatura em ${safeHtml(e.prevFat || '—')}
+    ${e.campanha ? ' · ' + safeHtml(e.campanha) : ''} · ${safeHtml(e.condPag || '')}</span>
+  </div>`;
+
+  const linhas = e.itens.map((it, k) => {
+    const { grade, porCaixa } = gradeDaCaixa(it);
+    const temSaldo = it.totalSaldo > 0;
+    const marcado = L.escolhidos.has(k);
+    const fotos = fotosDoProduto(it.artigo, it.cor);
+    const tamanhos = Object.entries(grade).map(([t, q]) => `${t}<small style="opacity:.6">×${q}</small>`).join(' · ');
+    return `<label style="display:flex;gap:12px;align-items:flex-start;border:1px solid ${marcado ? '#5eead4' : 'var(--line)'};
+        background:${marcado ? '#f0fdfa' : 'transparent'};border-radius:16px;padding:12px 13px;cursor:${temSaldo ? 'pointer' : 'not-allowed'};opacity:${temSaldo ? 1 : .5}">
+      <input type="checkbox" ${marcado ? 'checked' : ''} ${temSaldo ? '' : 'disabled'}
+        onchange="marcarItemLote(${k}, this.checked)" style="width:18px;height:18px;margin-top:3px;accent-color:#0d9488;flex:none">
+      <img style="width:54px;height:54px;flex:none;border-radius:10px;border:1px solid var(--line);background:#f8fafc;object-fit:contain;padding:2px"
+        alt="" loading="lazy" src="${fotos[0]}" data-fb='${JSON.stringify(fotos.slice(1))}' onerror="proximaFoto(this)">
+      <div style="min-width:0;flex:1">
+        <div style="font-size:13.5px;font-weight:900;color:var(--text)">
+          ${safeHtml(it.descricao || it.artigo)} <span style="color:var(--muted);font-weight:700">· ${safeHtml(it.cor)}</span>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-top:2px">
+          ${safeHtml(it.artigo)} · grade ${safeHtml(it.grade || '—')} · faixa ${safeHtml(it.faixa || '—')}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:5px">${tamanhos || 'sem grade lida'}</div>
+      </div>
+      <div style="text-align:right;flex:none">
+        <div style="font-size:15px;font-weight:900;color:${temSaldo ? '#0f766e' : 'var(--muted)'}">${formatInt(it.totalSaldo)}</div>
+        <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">
+          ${temSaldo ? 'pares de saldo' : 'sem saldo'}</div>
+        ${it.totalEncomendada !== it.totalSaldo
+          ? `<div style="font-size:10.5px;color:var(--muted);margin-top:3px">de ${formatInt(it.totalEncomendada)} encomendados</div>` : ''}
+      </div>
+    </label>`;
+  }).join('');
+
+  const n = L.escolhidos.size;
+  const pares = [...L.escolhidos].reduce((t, k) => t + e.itens[k].totalSaldo, 0);
+  const aviso = (n === 1 && pares !== o.pares)
+    ? `<div style="font-size:11.5px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:8px 11px;margin-bottom:10px">
+         A Detalhada ofertou ${formatInt(o.pares)} pares e o EBM mostra ${formatInt(pares)} de saldo. O lote nasce com o saldo.</div>` : '';
+
+  pintarLote(cab + `<div style="display:flex;flex-direction:column;gap:9px">${linhas}</div>` +
+    `<div style="border-top:1px solid var(--line);margin-top:14px;padding-top:13px">${aviso}
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:12.5px;font-weight:700;color:var(--muted)">
+          ${n ? `${n} artigo${n > 1 ? 's' : ''} · ${formatInt(pares)} pares` : 'Nenhum artigo marcado'}</span>
+        <button onclick="fecharLoteModal()" style="margin-left:auto;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer">Cancelar</button>
+        <button id="btnCriarLote" onclick="inserirLotes()" ${n ? '' : 'disabled'}
+          style="border:0;background:${n ? '#0d9488' : '#cbd5e1'};color:#fff;border-radius:999px;height:44px;padding:0 20px;font-weight:800;font-size:13.5px;cursor:${n ? 'pointer' : 'not-allowed'}">
+          <i class="fa-solid fa-plus" style="font-size:12px"></i> Criar ${n > 1 ? n + ' lotes' : 'o lote'}</button>
+      </div></div>`);
+}
+
+function marcarItemLote(k, ligado){
+  if(!_loteEmCurso) return;
+  if(ligado) _loteEmCurso.escolhidos.add(k); else _loteEmCurso.escolhidos.delete(k);
+  renderLote();
+}
+
+/** Grava os lotes escolhidos na DISPO e fecha a oferta. */
+async function inserirLotes(){
+  const L = _loteEmCurso;
+  if(!L || !L.encomenda || !L.escolhidos.size) return;
+  const bt = $('btnCriarLote');
+  if(bt){ bt.disabled = true; bt.textContent = 'Criando…'; }
+  try{
+    const e = L.encomenda, o = L.oferta;
+    // O número é a identidade do lote e continua a sequência que a planilha
+    // começou: o maior que existe, mais um.
+    let proximo = (STATE.dispoRows || []).reduce((m, r) => {
+      const n = parseInt(String(r.num || '').trim(), 10);
+      return Number.isFinite(n) && n > m ? n : m;
+    }, 0);
+
+    const novas = [];
+    for(const k of [...L.escolhidos].sort((a, b) => a - b)){
+      const it = e.itens[k];
+      const { grade } = gradeDaCaixa(it);
+      novas.push({
+        num: String(++proximo), ebm: e.ebm, gci: e.gci, filial: '',
+        codigo: it.artigo, produto: it.descricao || it.artigo, cor: it.cor,
+        dataEntrega: e.prevFat || '',
+        pedidoMae: /m[ãa]e/i.test(e.tipo || '') ? 'PEDIDO MAE' : '',
+        saldo: it.totalSaldo, grade,
+        // de onde veio e o que já aconteceu com ele
+        origem: e.cliente.codigo || o.origem || '',
+        origemNome: e.cliente.nome || o.origemNome || '',
+        fam: it.familia || '',
+        eventos: [{ o:'criado', em: Date.now(), por:'ESCRITÓRIO',
+                    nota: `da encomenda ${e.gci} de ${e.cliente.nome || o.origemNome || 'cliente'}` }],
+      });
+    }
+    STATE.dispoRows = [...(STATE.dispoRows || []), ...novas];
+    await gravarDispo();
+
+    // A oferta sai da fila: o escritório já fez o que tinha de fazer.
+    await fecharOferta(o, novas.map(n => n.num));
+
+    fecharLoteModal();
+    showToast(novas.length > 1
+      ? `${novas.length} lotes criados: Nº ${novas.map(n => n.num).join(', ')}`
+      : `Lote Nº ${novas[0].num} criado com ${formatInt(novas[0].saldo)} pares.`, 'success');
+    await carregarOfertas();
+    renderDispo();                    // o lote novo entra na lista na hora
+  }catch(err){
+    console.error(err);
+    showToast('Não deu para criar o lote: ' + (err.message || err), 'error');
+    if(bt){ bt.disabled = false; bt.textContent = 'Tentar de novo'; }
+  }
+}
+
+/* Progresso de uma operação que grava em fila. Abre girando, vai contando o
+   passo, e no fim troca para o resultado — que é o momento em que a pessoa
+   sabe que pode sair da tela. */
+function abrirProgresso(titulo, passo){
+  const m = $('progModal');
+  if(!m) return;
+  $('progIcone').innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+  $('progIcone').style.color = '#0d9488';
+  $('progTitulo').textContent = titulo || 'Trabalhando…';
+  $('progPasso').textContent = passo || '';
+  $('progFechar').style.display = 'none';
+  m.style.display = 'flex';
+}
+function passoProgresso(txt){
+  const el = $('progPasso');
+  if(el) el.textContent = txt || '';
+}
+/** Fim: ok=true mostra o certo verde; ok=false, o aviso âmbar. */
+function concluirProgresso(ok, titulo, passo){
+  const m = $('progModal');
+  if(!m || m.style.display === 'none') return;
+  $('progIcone').innerHTML = ok ? '<i class="fa-solid fa-circle-check"></i>'
+                                : '<i class="fa-solid fa-triangle-exclamation"></i>';
+  $('progIcone').style.color = ok ? '#0d9488' : '#b45309';
+  $('progTitulo').textContent = titulo || (ok ? 'Pronto' : 'Não deu certo');
+  $('progPasso').textContent = passo || '';
+  $('progFechar').style.display = '';
+}
+function fecharProgresso(){ const m = $('progModal'); if(m) m.style.display = 'none'; }
+
+/* ── A volta atrás ──────────────────────────────────────────────────────────
+   O lote que nasceu de uma oferta carrega a origem e o GCI, e é com eles que
+   se monta a chave da ação na Detalhada: cliente|gci|referência|cor. Quando o
+   último lote daquela oferta sai da DISPO — devolvido ao cliente ou apagado —
+   a encomenda tem de voltar a ser dele, sem ninguém desmarcar nada.
+
+   Só desfaz quando não sobra lote nenhum: devolução parcial, ou um lote de
+   dois, deixa a oferta de pé, porque o repasse continua existindo.          */
+function chaveDaOferta(row){
+  const p = [row && row.origem, row && row.gci, row && row.codigo, row && row.cor]
+    .map(v => String(v == null ? '' : v).trim());
+  return p.every(Boolean) ? p.join('|') : '';
+}
+
+async function desfazerOfertaDoLote(row, motivo){
+  const chave = chaveDaOferta(row);
+  if(!chave) return false;                      // lote antigo, sem origem: nada a desfazer
+  try{
+    const r = await workerFetch({ method:'PATCH', body: JSON.stringify({ action:'getAcoesCarteira' }) });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    const reg = j && j.acoes && j.acoes[chave];
+    if(!reg || reg.acao !== 'OFERTA') return false;
+
+    const rep = { ...(reg.repasse || {}) };
+    const of = { ...(rep.oferta || {}) };
+    const num = String(row.num ?? '').trim();
+    const restantes = (of.lotes || []).filter(n => String(n) !== num);
+
+    // ainda há lote desta oferta na DISPO? então ela continua valendo
+    const vivos = restantes.filter(n => (STATE.dispoRows || [])
+      .some(x => String(x.num ?? '').trim() === String(n) && Number(x.saldo || 0) > 0));
+    if(vivos.length){
+      of.lotes = restantes;
+      rep.oferta = of;
+      rep.atualizadoEm = Date.now();
+      await workerFetch({ method:'PATCH', body: JSON.stringify({ action:'saveAcaoCarteira',
+        itens: [{ key: chave, acao: 'OFERTA', repasse: rep }], por: 'ESCRITÓRIO' }) });
+      return false;
+    }
+
+    // era o último: a encomenda volta a ser do cliente
+    await workerFetch({ method:'PATCH', body: JSON.stringify({ action:'saveAcaoCarteira',
+      itens: [{ key: chave, acao: 'MANTER',
+                repasse: { app: 'detalhada', atualizadoEm: Date.now(),
+                           devolvida: { em: Date.now(), por: quemSou(), motivo: motivo || '' } } }],
+      por: 'ESCRITÓRIO' }) });
+    return true;
+  }catch(e){
+    console.warn('Não consegui desfazer a oferta na Detalhada.', e);
+    showToast('O lote saiu da DISPO, mas a encomenda continua marcada na Detalhada — ' +
+              'desmarque por lá.', 'error');
+    return false;
+  }
+}
+
+const quemSou = () => (getPortalSession() && getPortalSession().nome) || 'CMS';
+
+/** Registro da exclusão, para a pergunta "o que aconteceu com o lote 488?"
+    ter resposta na tela. Vai no mesmo arquivo dos cancelamentos, com tipo
+    próprio, e guarda o lote inteiro — inclusive a grade e a origem. */
+function montarExclusao(row, motivo){
+  return {
+    id: 'x' + Date.now() + Math.random().toString(36).slice(2, 6),
+    num: String(row.num ?? ''), gci: String(row.gci ?? ''), ebm: String(row.ebm ?? ''),
+    codigo: String(row.codigo ?? ''), produto: row.produto || '', cor: row.cor || '',
+    filial: String(row.filial ?? ''), dataEntrega: row.dataEntrega || '',
+    pares: Number(row.saldo || 0), saldoAntes: Number(row.saldo || 0), saldoDepois: 0,
+    total: true, caixas: 0, porCaixa: paresPorCaixa(row),
+    tipo: 'excluido', cliente: '',
+    origem: String(row.origem ?? ''), origemNome: row.origemNome || '',
+    grade: row.grade || {},
+    motivo: motivo || 'Excluído da DISPO', obs: '',
+    por: quemSou(), em: new Date().toISOString(),
+  };
+}
+
+/** Marca a oferta como atendida, do lado da Detalhada. */
+async function fecharOferta(o, nums){
+  const r = await workerFetch({ method:'PATCH', body: JSON.stringify({ action:'getAcoesCarteira' }) });
+  const j = r.ok ? await r.json() : null;
+  const reg = j && j.acoes && j.acoes[o.chave];
+  if(!reg) return;
+  const repasse = { ...(reg.repasse || {}), atualizadoEm: Date.now() };
+  repasse.oferta = { ...(repasse.oferta || {}), status:'NO_REPASSE',
+                     lotes: nums, criadoEm: Date.now() };
+  await workerFetch({ method:'PATCH', body: JSON.stringify({ action:'saveAcaoCarteira',
+    itens: [{ key:o.chave, acao:reg.acao, repasse }], por:'ESCRITÓRIO' }) });
+}
+
+function abrirLoteModal(){ const m = $('loteModal'); if(m) m.style.display = 'flex'; }
+function fecharLoteModal(){ pararPassos(); const m = $('loteModal'); if(m) m.style.display = 'none'; _loteEmCurso = null; }
+function pintarLote(html){ const c = $('loteCorpo'); if(c) c.innerHTML = html; }
+
+/* Abre a tela de ajuste do admin já procurando os lotes. Sem número, vai
+   com todos os que estão para trás. */
 
 /* Abre a tela de ajuste do admin já procurando os lotes. Sem número, vai
    com todos os que estão para trás. */
@@ -2216,7 +3311,18 @@ function montarBlocoCancelamento(row){
   document.querySelector('input[name=canctipo][value=tudo]').checked = true;
 
   $('cancObs').value = '';
-  $('cancCliente').value = '';
+  // Lote que nasceu de uma oferta já sabe de quem é: o campo vem preenchido
+  // com o cliente de origem. Deixar em branco era pedir para alguém devolver
+  // os pares ao cliente errado — a lista sugere qualquer um que pareça.
+  const origemTxt = row.origem && row.origemNome
+    ? `${row.origem} · ${row.origemNome}`
+    : (row.origemNome || row.origem || '');
+  $('cancCliente').value = origemTxt;
+  const dica = $('cancClienteDica');
+  if(dica){
+    dica.textContent = origemTxt ? 'veio do lote — troque só se for para outro cliente' : '';
+    dica.style.display = origemTxt ? '' : 'none';
+  }
   sugerirClientes();
 
   // o que já foi pedido deste lote: é o aviso que evita prometer o que não vai chegar
@@ -2270,11 +3376,12 @@ function pintarHistoricoCanc(num){
     <div class="l${c.desfeitoEm ? ' desfeito' : ''}">
       <span class="q">−${formatInt(c.pares)} pares</span>
       <span class="m"><span class="canc-tag ${ehVolta(c) ? 'volta' : 'canc'}">${
-        ehVolta(c) ? 'devolvido' : 'cancelado'}</span>${c.caixas} cx · ${safeHtml(c.motivo || '—')}${
+        c.tipo === 'excluido' ? 'excluído' : (ehVolta(c) ? 'devolvido' : 'cancelado')}</span>${
+        c.tipo === 'excluido' ? '' : c.caixas + ' cx · '}${safeHtml(c.motivo || '—')}${
         ehVolta(c) && c.cliente ? ' · <b>' + safeHtml(c.cliente) + '</b>' : ''} · por ${safeHtml(c.por || '—')}${
         c.desfeitoEm ? ' · desfeito por ' + safeHtml(c.desfeitoPor || '—') : ''}</span>
       <span class="d">${new Date(c.em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' })}</span>
-      ${c.desfeitoEm ? '' : `<button class="canc-bt-mini" title="${
+      ${c.desfeitoEm || c.tipo === 'excluido' ? '' : `<button class="canc-bt-mini" title="${
         ehVolta(c) ? 'Desfazer esta devolução' : 'Desfazer este cancelamento'}"
         onclick="desfazerCancelamento('${c.id}')"><i class="fa-solid fa-rotate-left"></i></button>`}
     </div>`).join('');
@@ -2434,9 +3541,22 @@ async function confirmarCancelamento(){
       await new Promise(r => setTimeout(r, 1200));
       await gravarDispo();
     }
-    showToast(`${formatInt(reg.pares)} pares ${volta ? 'devolvidos à origem' : 'cancelados'}.`, 'success');
+    // Devolveu o lote inteiro: não há mais repasse, então a encomenda sai do
+    // limbo e volta para o cliente na Detalhada.
+    let voltouDev = false;
+    if(volta && reg.saldoDepois === 0){
+      passoProgresso('avisando a Detalhada');
+      voltouDev = await desfazerOfertaDoLote(row, 'pares devolvidos ao cliente');
+      if(voltouDev) await carregarOfertas();
+    }
     fecharEditarProduto();
     renderDispo();
+    concluirProgresso(true,
+      `${formatInt(reg.pares)} pares ${volta ? 'devolvidos' : 'cancelados'}`,
+      voltouDev
+        ? `A encomenda voltou para ${row.origemNome || row.origem} na Detalhada.`
+        : (reg.saldoDepois > 0 ? `Sobraram ${formatInt(reg.saldoDepois)} pares no lote Nº ${row.num}.`
+                               : `O lote Nº ${row.num} ficou sem saldo.`));
   }catch(err){
     console.error(err);
     row.saldo = reg.saldoAntes;
@@ -2504,8 +3624,13 @@ async function gravarCancelamentos(lista){
    Agora cada tela manda só o que ELA mudou: relê a DISPO do servidor e, linha
    a linha, mantém a do servidor onde não mexeu. Quem não tocou no lote não o
    desfaz mais. */
+/* Os três últimos nasceram com o repasse criado pelo sistema: de qual
+   cliente o lote veio, a família do artigo e a linha do tempo do lote. A
+   planilha do Chris tinha isso e a DISPO não — era por eles que ele voltava
+   ao Excel. Lote antigo simplesmente não os tem, e a tela lida com isso. */
 const CAMPOS_DISPO = ['num','ebm','gci','filial','codigo','produto','cor',
-                      'dataEntrega','pedidoMae','saldo','grade'];
+                      'dataEntrega','pedidoMae','saldo','grade',
+                      'origem','origemNome','fam','eventos'];
 function linhaDispo(r){
   const o = {};
   for(const c of CAMPOS_DISPO) o[c] = c === 'grade' ? (r.grade || {}) : r[c];
@@ -2877,10 +4002,16 @@ async function excluirCampanha(id){
 document.addEventListener('DOMContentLoaded', () => {
   $('campModal').addEventListener('click', e => { if(e.target.id === 'campModal') fecharCampanhas(); });
   $('campFormModal').addEventListener('click', e => { if(e.target.id === 'campFormModal') fecharCampForm(); });
+  const of = $('ofertasModal');
+  if(of) of.addEventListener('click', e => { if(e.target.id === 'ofertasModal') fecharOfertas(); });
+  // As encomendas que a Detalhada mandou: vêm logo ao abrir, para a faixa
+  // aparecer sem ninguém pedir. Falhar aqui não pode segurar o estoque.
+  carregarOfertas();
 });
 document.addEventListener('keydown', e => {
   if(e.key !== 'Escape') return;
-  if($('campFormModal') && $('campFormModal').style.display === 'flex') fecharCampForm();
+  if($('ofertasModal') && $('ofertasModal').style.display === 'flex') fecharOfertas();
+  else if($('campFormModal') && $('campFormModal').style.display === 'flex') fecharCampForm();
   else if($('campModal') && $('campModal').style.display === 'flex') fecharCampanhas();
 });
 document.addEventListener('click', e => {
@@ -2927,6 +4058,31 @@ function _paresPorCaixa(row){
   const tot = Object.values(g).reduce((s,v)=>s+(Number(v)||0),0);
   return tot === 6 ? 6 : 12;
 }
+/* Quanto cada vendedor já tirou deste lote. A planilha do Chris tinha uma
+   coluna por vendedor; aqui a conta sai dos próprios pedidos, então nunca
+   fica desatualizada. Cancelado não conta; pendente conta, porque o par já
+   está reservado para aquele cliente. */
+function consumoPorVendedor(num){
+  const alvo = String(num || '').trim();
+  const porNome = new Map();
+  for(const o of (STATE.orders || [])){
+    if(o.archived) continue;
+    if(canonicalStatus(o.status) === 'Cancelado') continue;
+    const quem = String((o.preposto && (o.preposto.nome || o.preposto.codigo)) || o.vendedor || '—').trim();
+    for(const it of (o.items || [])){
+      if(sanitizeDisplayText(String(it.num || '')) !== alvo) continue;
+      const pares = getItemUnits(it);
+      if(!pares) continue;
+      const r = porNome.get(quem) || { pares:0, pendentes:0, pedidos:new Set() };
+      r.pares += pares;
+      if(canonicalStatus(o.status) === 'Pendente') r.pendentes += pares;
+      r.pedidos.add(o.id);
+      porNome.set(quem, r);
+    }
+  }
+  return porNome;
+}
+
 function abrirRateio(num){
   const row = STATE.dispoRows.find(r => String(r.num) === String(num));
   if(!row){ showToast('Linha não encontrada.', 'error'); return; }
@@ -2938,12 +4094,17 @@ function abrirRateio(num){
   $('rateioSub').textContent = `Nº ${row.num} · GCI ${row.gci||'—'} · total: ${_rateioMaxPares} pares (${maxCx} cx de ${_rateioPack})`;
   const atual = (STATE.rateio && STATE.rateio[_rateioNum]) || {};
   $('rateioSelo').value = typeof atual._selo === 'string' ? atual._selo : '';
+  const levou = consumoPorVendedor(num);
   $('rateioLista').innerHTML = PREPOSTOS_RATEIO.map(p=>{
     const pares = Number(atual[p.codigo]||0);
     const cx = pares ? pares/_rateioPack : 0;
     const cxVal = cx ? (Number.isInteger(cx)?cx:cx.toFixed(2)) : '';
+    const j = levou.get(p.nome);
     return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:12px;padding:8px 12px">
-      <span style="font-weight:800;font-size:13px;color:var(--text)">${safeHtml(p.nome)}</span>
+      <span style="font-weight:800;font-size:13px;color:var(--text)">${safeHtml(p.nome)}
+        ${j ? `<span style="display:block;font-size:10.5px;font-weight:700;color:#0f766e" title="${j.pedidos.size} pedido(s) deste lote">
+                 já levou ${formatInt(j.pares)} ${j.pares === 1 ? 'par' : 'pares'}${j.pendentes ? ` · ${formatInt(j.pendentes)} ainda pendente${j.pendentes === 1 ? '' : 's'}` : ''}</span>` : ''}
+      </span>
       <div style="display:flex;align-items:center;gap:8px">
         <input type="number" min="0" step="1" class="rateio-inp" data-code="${p.codigo}" value="${cxVal}" oninput="recalcRateio()" placeholder="0" style="width:62px;text-align:center;border:1px solid var(--line);border-radius:8px;padding:5px 6px;font-weight:800;font-size:13px;background:var(--card);color:var(--text)">
         <span style="font-size:11px;color:var(--muted);min-width:62px;text-align:right" class="rateio-pares" data-code="${p.codigo}">${pares} pares</span>
@@ -3142,6 +4303,7 @@ function renderDispo(){
 
   if(!sorted.length){
     $('dispoEmpty').classList.remove('hidden');
+    contarComOQueSumiu();
     $('dispoTableBody').innerHTML = '';
     return;
   }
@@ -3176,6 +4338,10 @@ function renderDispo(){
           <span class="font-extrabold text-slate-800">${safeHtml(row.produto)}</span>
           <span class="text-xs text-slate-400 font-semibold ml-1">${safeHtml(row.codigo||'')}</span>
           ${desmBadge}
+          ${row.origemNome || row.origem
+            ? `<div class="text-[10.5px] font-semibold text-slate-400" title="Cliente de onde este lote veio">
+                 <i class="fa-solid fa-arrow-turn-up fa-rotate-180" style="font-size:9px"></i>
+                 ${safeHtml(row.origemNome || row.origem)}${row.fam ? ' · ' + safeHtml(row.fam) : ''}</div>` : ''}
         </td>
         <td class="text-slate-500 font-semibold">${safeHtml(row.cor)}</td>
         <td class="tabular-nums font-semibold ${row._antecipavel ? 'text-[#3C3489]' : 'text-slate-600'}">
@@ -3195,8 +4361,9 @@ function renderDispo(){
             ${STATE.activeFilter === 'ocultos'
               ? `<button class="icon-btn reexibir btn-reexibir" data-gci="${safeHtml(String(row.gci||''))}" title="Reexibir"><i class="fa-solid fa-eye" style="font-size:12px"></i></button>
                  <button class="icon-btn btn-ratear ${rateioDaLinha(row) ? 'rateado' : ''}" title="${safeHtml(dicaRateio(row))}" onclick="abrirRateio('${safeHtml(String(row.num||''))}')"><i class="fa-solid fa-users" style="font-size:12px"></i></button>`
-              : STATE.activeFilter === 'finalizados'
-              ? `<button class="icon-btn btn-excluir-dispo" data-idx="${idx}" title="Excluir da DISPO" style="color:#b91c1c;border-color:#fca5a5" onclick="excluirDaDispoJson(STATE.dispoRows.find(r=>String(r.num)===String('${safeHtml(String(row.num||''))}')))"><i class="fa-solid fa-trash-can" style="font-size:12px"></i></button>`
+              : STATE.activeFilter === 'arquivados'
+              ? `<button class="icon-btn" title="Desarquivar este lote" style="color:var(--brand);border-color:var(--brand-soft)" onclick="desarquivarUm('${safeHtml(String(row.num||''))}')"><i class="fa-solid fa-box-open" style="font-size:12px"></i></button>
+                 <button class="icon-btn btn-excluir-dispo" data-idx="${idx}" title="Excluir da DISPO" style="color:#b91c1c;border-color:#fca5a5" onclick="excluirDaDispoJson(STATE.dispoRows.find(r=>String(r.num)===String('${safeHtml(String(row.num||''))}')))"><i class="fa-solid fa-trash-can" style="font-size:12px"></i></button>`
               : `<button class="icon-btn desm btn-desmembrar" data-idx="${idx}" title="Desmembrar"><i class="fa-solid fa-table-list" style="font-size:12px"></i></button>
                  <button class="icon-btn btn-ratear ${rateioDaLinha(row) ? 'rateado' : ''}" title="${safeHtml(dicaRateio(row))}" onclick="abrirRateio('${safeHtml(String(row.num||''))}')"><i class="fa-solid fa-users" style="font-size:12px"></i></button>
                  <button class="icon-btn ocultar btn-ocultar" data-gci="${safeHtml(String(row.gci||''))}" title="Ocultar"><i class="fa-solid fa-eye-slash" style="font-size:12px"></i></button>
@@ -4068,13 +5235,28 @@ function atualizarBadgeOcultos(){
   atualizarBadgeFinalizados();
 }
 
+/* Os três contadores saem da MESMA varredura: percorrer a lista três vezes
+   para dizer três números seria trabalho à toa numa tabela de 322 linhas que
+   se repinta a cada clique. O nome antigo continua porque é chamado de vários
+   lugares, e todos querem a mesma coisa: os números em dia. */
 function atualizarBadgeFinalizados(){
-  const badge = $('finalizadosBadge');
-  if(!badge || !STATE.dispoRows?.length) return;
-  const allRows = computeAllRows();
-  const n = allRows.filter(r => isDispoFinalizado(r)).length;
-  badge.textContent = n;
-  badge.classList.toggle('hidden', n === 0);
+  if(!STATE.dispoRows?.length) return;
+  recalcArquivados();
+  let distribuir = 0, esgotados = 0, arquivados = 0;
+  for(const r of computeAllRows()){
+    if(isArquivado(r)){ arquivados++; continue; }
+    if(isOculto(r)) continue;
+    if(r.saldoReal > 0) distribuir++; else esgotados++;
+  }
+  const pintar = (id, n) => {
+    const b = $(id);
+    if(!b) return;
+    b.textContent = n;
+    b.classList.toggle('hidden', n === 0);
+  };
+  pintar('distribuirBadge', distribuir);
+  pintar('esgotadosBadge', esgotados);
+  pintar('arquivadosBadge', arquivados);
 }
 
 // ── EVENT LISTENERS ───────────────────────────────────────────────────────────
@@ -4174,6 +5356,54 @@ $('antecipacaoModal').addEventListener('click', e=>{
 // Auto-load on page open
 loadDispo();
 </script>
+<!-- PROGRESSO — devolver, cancelar e excluir fazem três gravações em fila;
+     sem isto a tela parece travada e ninguém sabe quando acabou. -->
+<div id="progModal" style="position:fixed;inset:0;z-index:260;background:rgba(2,6,23,.55);display:none;align-items:center;justify-content:center;padding:16px">
+  <div style="width:100%;max-width:380px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:26px 24px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5);text-align:center">
+    <div id="progIcone" style="font-size:30px;line-height:1;margin-bottom:14px;color:#0d9488">
+      <i class="fa-solid fa-circle-notch fa-spin"></i>
+    </div>
+    <div id="progTitulo" style="font-size:16px;font-weight:900;color:var(--text)"></div>
+    <div id="progPasso" style="font-size:12.5px;font-weight:600;color:var(--muted);margin-top:7px;line-height:1.5;min-height:19px"></div>
+    <button id="progFechar" onclick="fecharProgresso()" style="display:none;margin-top:18px;border:0;background:#0d9488;color:#fff;border-radius:999px;height:40px;padding:0 22px;font-weight:800;font-size:13.5px;cursor:pointer">Fechar</button>
+  </div>
+</div>
+
+<!-- MODAL DO LOTE — o que o EBM devolveu, para o Chris conferir e inserir -->
+<div id="loteModal" style="position:fixed;inset:0;z-index:210;background:rgba(2,6,23,.6);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
+  <div style="width:100%;max-width:680px;margin-top:40px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px">
+      <div>
+        <div style="font-size:11px;font-weight:800;color:#0d9488;text-transform:uppercase;letter-spacing:.04em">Do EBM</div>
+        <div style="font-size:17px;font-weight:900;color:var(--text)">Criar o lote</div>
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-top:2px">Marque os artigos que vão para repasse</div>
+      </div>
+      <button onclick="fecharLoteModal()" style="border:0;background:transparent;color:var(--muted);font-size:24px;cursor:pointer;line-height:1">&times;</button>
+    </div>
+    <div id="loteCorpo"></div>
+  </div>
+</div>
+
+<!-- MODAL DAS OFERTAS — encomendas mandadas para repasse na Detalhada -->
+<div id="ofertasModal" style="position:fixed;inset:0;z-index:200;background:rgba(2,6,23,.55);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
+  <div style="width:100%;max-width:680px;margin-top:40px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px">
+      <div>
+        <div style="font-size:11px;font-weight:800;color:#0d9488;text-transform:uppercase;letter-spacing:.04em">Veio da Detalhada</div>
+        <div style="font-size:17px;font-weight:900;color:var(--text)">Repasses a criar</div>
+        <div id="ofertasSub" style="font-size:12px;font-weight:600;color:var(--muted);margin-top:2px"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button onclick="carregarOfertas(true)" title="Procurar encomendas novas"
+          style="border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:7px 13px;font-weight:700;font-size:12.5px;cursor:pointer">
+          <i class="fa-solid fa-rotate" style="font-size:11px"></i> Atualizar</button>
+        <button onclick="fecharOfertas()" style="border:0;background:transparent;color:var(--muted);font-size:24px;cursor:pointer;line-height:1">&times;</button>
+      </div>
+    </div>
+    <div id="ofertasLista" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+</div>
+
 <!-- MODAL RATEIO -->
 <div id="rateioModal" style="position:fixed;inset:0;z-index:200;background:rgba(2,6,23,.55);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
   <div style="width:100%;max-width:560px;margin-top:40px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
@@ -4441,6 +5671,7 @@ loadDispo();
             placeholder="código ou nome — ex.: 21209 MAZZULE" oninput="cancRecalcular()"
             style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
           <datalist id="cancClientes"></datalist>
+          <div id="cancClienteDica" style="display:none;font-size:11px;font-weight:700;color:#0f766e;margin-top:5px"></div>
         </div>
 
         <div class="canc-hist" id="cancHist"></div>
@@ -4454,6 +5685,9 @@ loadDispo();
         </div>
       </div>
     </div>
+
+    <!-- A vida do lote: de onde veio, quem levou, o que foi devolvido. -->
+    <div id="loteHistorico" style="margin-top:18px"></div>
 
     <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
       <button id="editarProdutoBtnSalvar" onclick="salvarEdicaoProduto()" style="flex:1;min-width:140px;background:var(--brand);color:#fff;border:0;border-radius:999px;padding:11px;font-weight:800;font-size:14px;cursor:pointer">Salvar alterações</button>
