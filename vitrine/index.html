@@ -2843,7 +2843,7 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
   <div class="folha" role="dialog" aria-modal="true" aria-labelledby="mgTit"
        style="max-width:420px">
     <div class="folha-topo">
-      <span class="min"><img id="mgImg" alt=""></span>
+      <span class="min"><img id="mgImg" alt="" onerror="semMiniatura(this)"></span>
       <span style="flex:1;min-width:0"><h3 id="mgTit"></h3><p id="mgSub"></p></span>
       <button class="icone" onclick="fecharGrade()" aria-label="Fechar">✕</button>
     </div>
@@ -3115,7 +3115,7 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
   <div class="zc-caixa" role="dialog" aria-modal="true" aria-label="Foto ampliada">
     <div class="zc-palco">
       <button class="zc-seta" data-zc-nav="-1" aria-label="Cor anterior">←</button>
-      <div class="zc-foto"><img id="zoomImg" alt=""></div>
+      <div class="zc-foto"><img id="zoomImg" alt="" onerror="semMiniatura(this)"></div>
       <button class="zc-seta" data-zc-nav="1" aria-label="Próxima cor">→</button>
     </div>
     <div class="zc-painel">
@@ -3208,7 +3208,7 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
 <div class="fundo" id="modal" hidden>
   <div class="folha" role="dialog" aria-modal="true" aria-labelledby="mTit">
     <div class="folha-topo">
-      <span class="min"><img id="mImg" alt=""></span>
+      <span class="min"><img id="mImg" alt="" onerror="semMiniatura(this)"></span>
       <span style="flex:1;min-width:0">
         <h3 id="mTit"></h3>
         <p id="mSub"></p>
@@ -3668,6 +3668,24 @@ const fotoMini = o => IMG + 'mini/' + arquivoFoto(o);
    direto. Sem este terceiro degrau o card do bolsão 1S27 abriria vazio em
    41 produtos que têm foto. */
 const IMG_ALT = 'https://cms-representacoes.github.io/apps-oly-v2/imagens_olympikus/';
+/* Os <img> montados no HTML já nascem com a escada (data-cheia + onerror).
+   Os que o JS preenche - o detalhe do produto, o zoom e a grade da sacola -
+   recebiam a foto grande direto e paravam no primeiro degrau: se o Catalogo
+   não tivesse aquela cor, a imagem quebrava na cara do cliente, mesmo com a
+   foto existindo no outro banco. Foi o que aconteceu com o CHALLENGER 6 em
+   STOMUL, que o Catalogo não tem e o banco do catálogo digital tem.
+   Reabrir o modal com outro produto exige limpar o estado da tentativa
+   anterior, senão o segundo produto herda o "já tentei" do primeiro e fica
+   escondido sem motivo. */
+function poeFoto(img, o, grande){
+  if(!img || !o) return;
+  img.style.visibility = '';
+  delete img.dataset.tentouAlt;
+  img.setAttribute('data-cheia', foto(o));
+  img.src = grande ? foto(o) : fotoMini(o);
+  img.alt = o.nome || o.artigo || '';
+}
+
 function semMiniatura(img){
   const cheia = img.getAttribute('data-cheia');
   if(cheia && img.src.includes('/mini/')){ img.src = cheia; return; }
@@ -8627,8 +8645,7 @@ function abrirModal(i, comFicha){
   if(!o) return;
   _abertoEm = typeof i === 'object' ? STATE.filtrados.indexOf(o) : i;
   anotarVisto(o);
-  $('mImg').src = foto(o);
-  $('mImg').alt = o.nome;
+  poeFoto($('mImg'), o);          // ícone pequeno: a miniatura basta
   $('mTit').textContent = o.nome || o.artigo;
   $('mSub').textContent = o.artigo + ' · ' + o.cor + (o.pdv ? ' · ' + brl(o.pdv) : '');
 
@@ -9005,8 +9022,7 @@ let _gradeItem = null;
 function editarGrade(k){
   const it = STATE.sacola.get(k);
   if(!it) return;
-  $('mgImg').src = foto(it);
-  $('mgImg').alt = it.nome || '';
+  poeFoto($('mgImg'), it);
   $('mgTit').textContent = it.nome || it.artigo;
   $('mgSub').textContent = `${it.artigo} · ${it.cor}` + (it.pdv ? ` · ${brl(it.pdv)}` : '');
   montarGradeDe(it);
@@ -9793,8 +9809,7 @@ function pintarZoom(){
   if(!c) return;
   const img = $('zoomImg');
   img.classList.add('carregando');
-  img.src = foto(c);
-  img.alt = c.nome || c.artigo;
+  poeFoto(img, c, true);          // no zoom vai a foto grande
   $('zcNome').textContent = c.nome || c.artigo;
   $('zcPdv').textContent = c.pdv ? brl(c.pdv) : '';
   $('zcArt').textContent = c.artigo;
