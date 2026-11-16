@@ -213,6 +213,15 @@ window.DISPONIVEL = (() => {
       // cinco delas estão ocultas. Filtrar o produto inteiro tiraria a sexta
       // junto, e ignorar a lista somava as seis no saldo do card.
       if(bloq.lotes.has(chaveLote(r))) continue;
+      /* Bolsao de colecao (1S27): enquanto a cota nao for dividida entre o
+         time, o lote so existe para a CMS e para quem desenvolve. Sem rateio
+         dois vendedores poem o mesmo lote na sacola e quem pede primeiro
+         leva - a cota que a fabrica reservou ao escritorio viraria corrida.
+         A trava e no LOTE, nao na aba: esconder so a aba deixaria o produto
+         a mostra em "Tudo", e de la ele e pedido do mesmo jeito.
+         Para abrir: lance o rateio desses lotes no admin, ou tire estas duas
+         linhas. */
+      if(String(r.colecao || '').trim() && !souCms) continue;
       const o = pega(cod, r.cor);
       const pc = refCor.get(chave(cod, r.cor));      // mesma cor
       const p  = pc || refArt.get(norm(cod));         // qualquer cor do artigo
@@ -251,9 +260,14 @@ window.DISPONIVEL = (() => {
       for(const [t,v] of Object.entries(r.grade || {})) if(Number(v) > 0) g[t] = Number(v);
       if(!o.repasse) o.repasse = { total:0, lotes:[], mes:'' };
       o.repasse.total += saldo;
+      // A coleção vem do lote e sobe para o produto. É o que separa o bolsão
+      // da 1S27 - a cota que a fábrica reservou para o escritório atender os
+      // clientes pequenos - do repasse de todo dia.
+      const colecao = String(r.colecao || '').trim().toUpperCase();
       o.repasse.lotes.push({ num, gci:String(r.gci||'').trim(),
                              data:String(r.dataEntrega||'').trim(), saldo, grade:g,
-                             rateado, selo, soAcompanhar });
+                             rateado, selo, soAcompanhar, colecao });
+      if(colecao) o.colecoes = [...new Set([...(o.colecoes || []), colecao])];
       if(rateado){ o.rateado = true; o.selo = o.selo || selo; o.soAcompanhar = soAcompanhar; }
     }
 

@@ -249,6 +249,9 @@ button{font:inherit}
 /* Fora de linha em âmbar: fica fora das três cores de origem de propósito,
    porque não é uma origem — é a condição do produto. */
 .seg .on.o-fora{background:linear-gradient(145deg,#F0B429,#B45309 55%,#7C3D12)}
+/* A coleção em ciano: não é origem nem condição, é de QUAL safra o lote
+   veio — então não divide cor com nenhuma das outras pílulas. */
+.seg .on.o-colecao{background:linear-gradient(145deg,#22D3EE,#0E7490 55%,#083344)}
 
 .cat{display:flex;gap:5px;flex-wrap:nowrap}
 .cat button{border:1px dashed var(--linha-forte);background:none;color:var(--fraco);
@@ -429,6 +432,12 @@ button{font:inherit}
 .ficha-fonte{font-size:9.5px;color:var(--fraco)}
 .campanha{display:block;font-size:9.5px;font-weight:600;color:var(--fraco)}
 .campanha b{color:var(--tinta);font-weight:600}
+/* O chip da coleção. As campanhas ao lado são texto solto, de propósito: ali
+   o que importa é ler o número. Aqui é o contrário — é um selo, o vendedor
+   reconhece pela forma antes de ler, e por isso ganha pílula e cor. */
+.chip-colecao{display:inline-block;margin-bottom:3px;padding:1px 7px;
+  border-radius:999px;font-size:9px;font-weight:800;letter-spacing:.04em;
+  background:#CFFAFE;color:#0E7490;border:1px solid #67E8F9}
 
 /* faixas de disponibilidade — dado, sempre chapado */
 .quando{display:flex;flex-wrap:wrap;gap:3px;margin-top:auto;padding-top:3px}
@@ -2388,6 +2397,12 @@ body:has(#sacola:not([hidden])) .aviso-desfazer.on{ transform:translate(50%, 0);
 .selo-novo{ font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
   color:#fff; background:#16A34A; border-radius:999px; padding:3px 9px;
   box-shadow:0 4px 10px rgba(22,163,74,.35); }
+/* Coleção: ocupa o lugar do "Novo" em vez de somar mais um selo ao card. Um
+   produto do bolsão é novo por definição, então os dois juntos diriam a mesma
+   coisa duas vezes — e qual coleção é a informação que falta. */
+.selo-colecao{ font-size:10px; font-weight:800; letter-spacing:.04em;
+  color:#fff; background:#0891B2; border-radius:999px; padding:3px 9px;
+  box-shadow:0 4px 10px rgba(8,145,178,.35); }
 /* Lote dividido por vendedor: o selo diz de qual ação ele é. Roxo, a mesma
    cor que o rateio tem no admin e no Repasses. */
 .selo-rateio{ font-size:10px; font-weight:800; letter-spacing:.03em;
@@ -3307,6 +3322,11 @@ let MARCA = (new URLSearchParams(location.search).get('marca') || 'oly').toLower
 if(!MARCAS[MARCA]) MARCA = 'oly';
 
 /* ── estado ─────────────────────────────────────────────────────── */
+/* O bolsão da 1S27. Fica numa constante porque aparece em seis lugares — a
+   pílula, o filtro, o rótulo, o chip do card, o link e a planilha — e um dia
+   vai virar 2S27: trocar aqui troca em todos. */
+const COLECAO_BOLSAO = '1S27';
+
 const STATE = { produtos:[], filtrados:[], origem:'repasse', categoria:'', busca:'', ddAberto:'',
                 termos:[], termosIgnorados:0,
                 sel:{ selo:new Set(), chega:new Set(), genero:new Set(), sub:new Set(),
@@ -3564,6 +3584,9 @@ function itemRepasse(o, lote){
     artigo:o.artigo, cor:o.cor, corCodigo:o.cor, nome:o.nome, produto:o.nome,
     codigo:o.artigo, pdv:o.pdv, imagem:o.imagem, categoria:o.categoria,
     num:lote.num, gci:lote.gci, ebm:'', prevFaturamento:lote.data,
+    // A coleção vai junto até o pedido: é por ela que a campanha de
+    // incentivo sabe que este par não vale prêmio.
+    colecao:lote.colecao || '',
     selo:lote.selo || '', soAcompanhar:!!lote.soAcompanhar,
     grade:{ ...lote.grade }, packSize, mode:'boxed', saldo:lote.saldo,
     amount: packSize > 0 && lote.saldo >= packSize ? 1 : 0 };
@@ -3622,10 +3645,23 @@ const foto = o => IMG + arquivoFoto(o);
 // produtos isso é o carregamento inteiro. Em lista vai a miniatura de 420 px
 // (≈12 KB); a foto grande fica para o zoom e a ficha do produto.
 const fotoMini = o => IMG + 'mini/' + arquivoFoto(o);
-// Foto nova ainda sem miniatura publicada: cai para a grande em vez de sumir.
+/* A escada da foto, do mais leve ao último recurso:
+     1. miniatura do Catalogo (≈12 KB)
+     2. foto grande do Catalogo
+     3. o banco do catálogo digital, que tem 4.221 imagens e guarda cores que
+        o Catalogo não tem — o CHALLENGER 6 em AREPET, por exemplo.
+   O segundo banco não tem pasta de miniatura, então ali é a foto grande
+   direto. Sem este terceiro degrau o card do bolsão 1S27 abriria vazio em
+   41 produtos que têm foto. */
+const IMG_ALT = 'https://cms-representacoes.github.io/apps-oly-v2/imagens_olympikus/';
 function semMiniatura(img){
   const cheia = img.getAttribute('data-cheia');
   if(cheia && img.src.includes('/mini/')){ img.src = cheia; return; }
+  if(cheia && !img.dataset.tentouAlt){
+    img.dataset.tentouAlt = '1';
+    img.src = IMG_ALT + cheia.split('/').pop();
+    return;
+  }
   img.style.visibility = 'hidden';
 }
 
@@ -4137,7 +4173,9 @@ let FAIXAS = {};
 function filtrosDaUrl(){
   const q = new URLSearchParams(location.search);
   const origem = (q.get('origem') || '').trim().toLowerCase();
-  if(['tudo', 'pronta', 'repasse', 'meta', 'fora'].includes(origem)) STATE.origem = origem;
+  const abas = ['tudo', 'pronta', 'repasse', 'meta', 'fora'];
+  if(ehCmsSessao()) abas.push(COLECAO_BOLSAO.toLowerCase());   // link direto so vale para a casa
+  if(abas.includes(origem)) STATE.origem = origem === COLECAO_BOLSAO.toLowerCase() ? COLECAO_BOLSAO : origem;
   const cat = (q.get('categoria') || '').trim().toUpperCase();
   if(CATEGORIAS.some(([id]) => id === cat)) STATE.categoria = cat;
   const faixa = (q.get('faixa') || '').trim().toUpperCase();
@@ -4184,11 +4222,40 @@ function subcategoriaDe(o){
 
 /* ── faixas ─────────────────────────────────────────────────────── */
 // Ordem cronológica: o que o cliente recebe antes aparece em cima.
+/* O CARD FALA DA ABA EM QUE ESTÁ.
+   Antes mostrava as três origens sempre, e isso poluía e mentia ao mesmo
+   tempo: na aba Repasse o chip somava o bolsão da 1S27 junto, então o
+   vendedor lia 1.236 pares de repasse comum quando 828 eram cota reservada —
+   e na aba 1S27 lia o contrário. Agora cada aba mostra só o seu número.
+   "Tudo" e "Oportunidades" continuam mostrando as três, porque ali o card
+   está justamente respondendo "o que existe deste produto". */
 function faixas(o){
   const f = [];
-  if(o.pronta)  f.push({ cls:'c-pronta',  qual:'Estoque', qtd:o.pronta.total });
-  if(o.repasse) f.push({ cls:'c-repasse', qual:'Repasse', quando:o.repasse.mes, qtd:o.repasse.total });
-  if(o.meta && o.meta.quinzenas.length){
+  const aba = STATE.origem;
+  const soColecao = aba === COLECAO_BOLSAO;
+  const tudo = aba === 'tudo' || aba === 'fora';
+
+  if(o.pronta && (tudo || aba === 'pronta'))
+    f.push({ cls:'c-pronta', qual:'Estoque', qtd:o.pronta.total });
+
+  if(o.repasse && (tudo || aba === 'repasse' || soColecao)){
+    /* O recorte dos lotes é a parte que faltava: na aba do bolsão entram só
+       os da coleção, na de repasse só os que NÃO são de coleção nenhuma. */
+    const todos = o.repasse.lotes || [];
+    const lotes = tudo ? todos
+      : soColecao ? todos.filter(l => l.colecao === COLECAO_BOLSAO)
+                  : todos.filter(l => !l.colecao);
+    const total = tudo ? o.repasse.total
+                       : lotes.reduce((s, l) => s + Number(l.saldo || 0), 0);
+    if(total > 0){
+      // o mês é o do lote que chega primeiro DENTRO do recorte
+      const mes = tudo ? o.repasse.mes
+                       : (lotes.length ? mesDaData(lotes[0].data) : '');
+      f.push({ cls:'c-repasse', qual:'Repasse', quando:mes, qtd:total });
+    }
+  }
+
+  if(o.meta && o.meta.quinzenas.length && (tudo || aba === 'meta')){
     const q0 = o.meta.quinzenas[0];
     // O card mostra so a quinzena mais proxima; as outras estao no modal.
     f.push({ cls:'c-plano', qual:'Produção', quando:q0.mes });
@@ -4211,12 +4278,21 @@ const CATEGORIAS = [
 function daMarca(o){ return o.marca === MARCA; }
 function temOrigem(o, q){
   if(q === 'pronta')  return !!o.pronta;
-  if(q === 'repasse') return !!o.repasse;
+  /* "Repasse" é o repasse de todo dia. Produto cujos lotes são TODOS de uma
+     coleção tem aba própria e não entra aqui — senão apareceria com o chip
+     zerado, já que o número da aba Repasse não conta a cota. */
+  if(q === 'repasse') return !!o.repasse &&
+    (o.repasse.lotes || []).some(l => !l.colecao);
   if(q === 'meta')    return !!o.meta;
   // Fora de linha não é uma origem: o produto encerrado continua sendo
   // estoque ou produção. É um recorte que atravessa as três, e por isso
   // entra aqui como mais uma escolha da mesma fila.
   if(q === 'fora')    return !!o.foraDeLinha;
+  // 1S27: o bolsão. São lotes de repasse como os outros, mas vêm da cota que
+  // a fábrica reservou ao escritório para atender o cliente pequeno — e por
+  // isso andam separados do repasse de todo dia, que é disputado pelos
+  // grandes. A marca vem do lote, não de dedução por data ou por número.
+  if(q === COLECAO_BOLSAO) return (o.colecoes || []).includes(COLECAO_BOLSAO);
   return true;
 }
 const MAX_TERMOS = 3;
@@ -4355,9 +4431,14 @@ function pintarFiltros(){
        ele olhar o preço. O que o dado significa não mudou - só o nome que
        aparece. No admin, onde ninguém vende, continua "Fora de linha". */
     ['fora','Oportunidades', o => o.foraDeLinha],
+    /* A aba do bolsao so existe para a CMS e para quem desenvolve, enquanto
+       a cota nao tiver rateio. Nao e so a aba: o lote tambem nao chega aqui
+       (ver a trava em js/disponivel.js), entao nao ha o que vazar por "Tudo". */
+    ...(ehCmsSessao() ? [[COLECAO_BOLSAO, COLECAO_BOLSAO, o => (o.colecoes || []).includes(COLECAO_BOLSAO)]] : []),
     ['tudo','Tudo', () => true]
   ];
-  const CLS = { tudo:'o-tudo', pronta:'o-est', repasse:'o-rep', meta:'o-pro', fora:'o-fora' };
+  const CLS = { tudo:'o-tudo', pronta:'o-est', repasse:'o-rep', meta:'o-pro',
+                fora:'o-fora', [COLECAO_BOLSAO]:'o-colecao' };
   $('segOrigem').innerHTML = orig.map(([id, rot, f]) => {
     const n = conta(f);
     const ativo = STATE.origem === id;
@@ -5676,7 +5757,9 @@ function cardHtml(o, i){
         ? `<span class="selo-dele" data-dica="${esc(reatDica(o, h))}" tabindex="0"
              role="button" aria-label="Quando este cliente comprou">já comprou</span>`
         : ''; })()}${
-        ehNovo(o) ? '<span class="selo-novo">Novo</span>' : ''}${
+        (o.colecoes || []).length
+          ? `<span class="selo-colecao" title="Bolsão ${esc(o.colecoes[0])} — cota reservada ao escritório">${esc(o.colecoes[0])}</span>`
+          : (ehNovo(o) ? '<span class="selo-novo">Novo</span>' : '')}${
         o.rateado ? `<span class="selo-rateio${o.soAcompanhar ? ' cms' : ''}"
           title="${o.soAcompanhar ? 'Lote rateado: só acompanhamento — quem pede é o vendedor com cota'
             : 'Reservado para você nesta ação'}">${esc(o.selo)}</span>` : ''}</span>
@@ -6054,7 +6137,7 @@ function snapshotPedido(itens, cfg){
     artigo: it.artigo, nome: it.nome, cor: it.cor, corCodigo: it.corCodigo || it.cor,
     categoria: it.categoria || '', genero: it.genero || '',
     pdv: Number(it.pdv || 0), imagem: it.imagem || '',
-    origem: it.origem, mes: it.mes || '',
+    origem: it.origem, mes: it.mes || '', colecao: it.colecao || '',
     // A grade da caixa e o multiplicador vão juntos com o resultado: quem
     // reabrir o pedido precisa ver como ele foi montado, não só o total.
     gradeCaixa: { ...(it.gradePedido || {}) },
@@ -7644,6 +7727,12 @@ function premiosQueValem(){
 function premioDoProduto(o){
   if(!o || !o.repasse || !window.INCENTIVO) return null;
   const cod = ehCmsSessao() ? '' : String((SESSAO && SESSAO.codigo) || '').trim();
+  /* O selo do prêmio acompanha a aba: na aba de uma coleção ele não aparece,
+     porque ali o par não vale incentivo. Fora dela, o mesmo produto pode ter
+     lote comum, e aí o prêmio é real — por isso a regra é por aba e não por
+     produto. Quem decide de fato é itemDaCampanha, na hora de apurar; aqui é
+     só não prometer na tela o que não vai ser pago. */
+  if(STATE.origem === COLECAO_BOLSAO) return null;
   return INCENTIVO.campanhaDoProduto(premiosQueValem(),
     { produto: o.nome || o.artigo, cor: o.cor }, cod);
 }
@@ -7953,7 +8042,8 @@ async function gerarCatalogoPdf(){
    lote de repasse) e o "Chega em". Com algum deles ligado, a planilha segue
    o filtro linha a linha — senão, filtrar Forecast trazia junto o estoque e
    a produção do mesmo tênis. */
-const ROT_ORIGEM = { pronta:'Estoque', repasse:'Repasse', meta:'Produção', fora:'Oportunidades' };
+const ROT_ORIGEM = { pronta:'Estoque', repasse:'Repasse', meta:'Produção',
+                     fora:'Oportunidades', [COLECAO_BOLSAO]:COLECAO_BOLSAO };
 function filtroDeLinha(){
   const partes = [];
   if(STATE.origem && STATE.origem !== 'tudo') partes.push(ROT_ORIGEM[STATE.origem]);
@@ -7966,7 +8056,7 @@ function linhaPassa(origem, alvo){
   // continua saindo do estoque ou da produção. Comparar aqui zeraria a
   // planilha inteira — o recorte já foi aplicado lá atrás, no produto.
   if(STATE.origem && STATE.origem !== 'tudo' && STATE.origem !== 'fora'
-     && STATE.origem !== origem) return false;
+     && STATE.origem !== COLECAO_BOLSAO && STATE.origem !== origem) return false;
   // ação é coisa de lote de repasse: estoque e produção não têm selo
   if(STATE.sel.selo.size){
     if(origem !== 'repasse' || !alvo || !alvo.rateado || !STATE.sel.selo.has(alvo.selo)) return false;

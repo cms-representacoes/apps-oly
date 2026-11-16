@@ -1437,9 +1437,11 @@ async function loadDispo(){
       const origem     = sanitizeDisplayText(String(row.origem || ''));
       const origemNome = sanitizeDisplayText(String(row.origemNome || ''));
       const fam        = sanitizeDisplayText(String(row.fam || ''));
+      // A coleção separa o bolsão da 1S27 do repasse comum, na vitrine.
+      const colecao    = sanitizeDisplayText(String(row.colecao || ''));
       const eventos    = Array.isArray(row.eventos) ? row.eventos : undefined;
       return { num, codigo, produto, cor, dataEntrega, saldo, pedidoMae, gci, ebm, filial, grade,
-               origem, origemNome, fam, ...(eventos ? { eventos } : {}) };
+               origem, origemNome, fam, colecao, ...(eventos ? { eventos } : {}) };
     }).filter(row => row.codigo || row.produto);
 
     marcarBaseDispo(STATE.dispoRows.map(linhaDispo));
@@ -3630,7 +3632,7 @@ async function gravarCancelamentos(lista){
    ao Excel. Lote antigo simplesmente não os tem, e a tela lida com isso. */
 const CAMPOS_DISPO = ['num','ebm','gci','filial','codigo','produto','cor',
                       'dataEntrega','pedidoMae','saldo','grade',
-                      'origem','origemNome','fam','eventos'];
+                      'origem','origemNome','fam','eventos','colecao'];
 function linhaDispo(r){
   const o = {};
   for(const c of CAMPOS_DISPO) o[c] = c === 'grade' ? (r.grade || {}) : r[c];

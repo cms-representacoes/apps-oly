@@ -70,7 +70,22 @@
     const nome = texto(item.produto);
     if (!nome || !prods.includes(nome)) return false;
     const cores = (c.cores || []).map(texto).filter(Boolean);
-    return !cores.length || cores.includes(texto(item.cor));
+    if (cores.length && !cores.includes(texto(item.cor))) return false;
+
+    /* Produto de COLEÇÃO fica fora do incentivo.
+       O bolsão da 1S27 é a cota que a fábrica reservou ao escritório para
+       atender o cliente pequeno: ali o benefício já está no preço e na
+       reserva, e pagar prêmio por par em cima disso seria premiar duas vezes
+       a mesma mercadoria — e empurrar o vendedor para a cota em vez do
+       repasse comum, que é o contrário do que a cota existe para fazer.
+       Uma campanha pode incluir uma coleção de propósito, listando-a em
+       'colecoes'. Sem essa lista, nenhuma entra. */
+    const col = texto(item.colecao);
+    if (col) {
+      const aceitas = (c.colecoes || []).map(texto).filter(Boolean);
+      if (!aceitas.includes(col)) return false;
+    }
+    return true;
   }
 
   /** Que papel este pedido tem na campanha:

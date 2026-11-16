@@ -123,6 +123,11 @@
     .fs-count-export{ background:#93c5fd; color:#1e40af; }
     .fs-count-canc{ background:#fca5a5; color:#991b1b; }
     .fs-count-alt{ background:#ddd6fe; color:#5b21b6; }
+    /* Coleção (bolsão 1S27): o mesmo ciano do selo no Showroom, para quem
+       vê as duas telas reconhecer na hora que é a mesma coisa. */
+    .filter-status-btn.fs-active-colecao{ background:linear-gradient(135deg,#22d3ee,#0891b2); color:#fff; border-color:transparent; box-shadow:0 3px 10px rgba(8,145,178,.3); }
+    .fs-count-colecao{ background:#a5f3fc; color:#155e75; }
+    .chip-colecao-adm{ font-size:11px; font-weight:700; background:#CFFAFE; color:#155E75; border-radius:999px; padding:2px 9px; flex-shrink:0; cursor:help; }
     .chip-status-cancelado{ background:linear-gradient(135deg,#f87171,#dc2626); color:#fff; border-color:transparent; box-shadow:0 2px 8px rgba(220,38,38,.32); }
 
     .shadow-card{ box-shadow:var(--shadow); }
@@ -318,6 +323,8 @@
     .dark .filter-status-btn.fs-active-export{ background:#1e3a5f!important; color:#60a5fa!important; border-color:#1e40af!important; }
     .dark .filter-status-btn.fs-active-canc{ background:#450a0a!important; color:#f87171!important; border-color:#7f1d1d!important; }
     .dark .filter-status-btn.fs-active-alt{ background:#2e1065!important; color:#a78bfa!important; border-color:#5b21b6!important; }
+    .dark .filter-status-btn.fs-active-colecao{ background:#083344!important; color:#22d3ee!important; border-color:#155e75!important; }
+    .dark .chip-colecao-adm{ background:#083344!important; color:#67e8f9!important; }
     .dark .btn-expand-compact:hover{ background:#334155!important; }
     .dark .expand-action-btn:hover{ background:#334155!important; }
     .dark .ia-aprov:hover{ background:#14532d!important; }
@@ -988,6 +995,11 @@
               title="Pedidos cujo conteúdo mudou depois de criados">
               <i class="fa-solid fa-pen-to-square" style="font-size:10px"></i>
               Alterados <span class="fs-count fs-count-alt" id="fsCountAlt">0</span>
+            </button>
+            <button class="filter-status-btn" data-fs="1S27" onclick="setStatusFilter('1S27',this)"
+              title="Pedidos com algum item do bolsão 1S27 — a cota que a fábrica reservou ao escritório">
+              <i class="fa-solid fa-layer-group" style="font-size:10px"></i>
+              1S27 <span class="fs-count fs-count-colecao" id="fsCountColecao">0</span>
             </button>
           </div>
         </div>
@@ -2510,12 +2522,27 @@ async function loadAdmin(){
   }
 }
 
+/* ── Bolsão da coleção ──────────────────────────────────────────────────
+   O vendedor pode pôr na mesma sacola um lote do bolsão e um de repasse
+   comum, então um pedido não é "de 1S27" OU "de repasse": pode ser os dois.
+   A aba mostra todo pedido que tenha ao menos um item da coleção, e o card
+   diz quantos são — assim o pedido misto aparece nas duas abas e a parte da
+   cota nunca fica escondida dentro de um pedido que parece comum.
+   O campo nasceu com o bolsão: pedido anterior a ele não tem, e por isso não
+   aparece aqui. Não é falha — antes do bolsão não havia o que mostrar. */
+const COLECAO_ADMIN = '1S27';
+function itensDaColecao(order){
+  return (order?.items || []).filter(it =>
+    String(it?.colecao || '').trim().toUpperCase() === COLECAO_ADMIN);
+}
+function pedidoTemColecao(order){ return itensDaColecao(order).length > 0; }
+
 function setStatusFilter(f, btn){
   STATE.statusFilter = f;
   document.querySelectorAll('.filter-status-btn').forEach(b => {
     b.className = 'filter-status-btn';
   });
-  const clsMap = { todos:'fs-active-todos', Pendente:'fs-active-pend', Aprovado:'fs-active-aprov', Exportado:'fs-active-export', Cancelado:'fs-active-canc', solicitacoes:'fs-active-sol', alterados:'fs-active-alt' };
+  const clsMap = { todos:'fs-active-todos', Pendente:'fs-active-pend', Aprovado:'fs-active-aprov', Exportado:'fs-active-export', Cancelado:'fs-active-canc', solicitacoes:'fs-active-sol', alterados:'fs-active-alt', '1S27':'fs-active-colecao' };
   btn.className = `filter-status-btn ${clsMap[f]||''}`;
   applyFilters();
 }
@@ -2531,6 +2558,7 @@ function updateFilterCounts(){
     Cancelado:base.filter(o => canonicalStatus(o.status) === 'Cancelado').length,
     solicitacoes: base.filter(o => solicitacaoAberta(o)).length,
     alterados: base.filter(o => pedidoAlterado(o)).length,
+    colecao:   base.filter(o => pedidoTemColecao(o)).length,
   };
   if($('fsCountSol')) $('fsCountSol').textContent = c.solicitacoes;
   if($('fsCountTodos'))  $('fsCountTodos').textContent  = c.todos;
@@ -2539,6 +2567,7 @@ function updateFilterCounts(){
   if($('fsCountExport')) $('fsCountExport').textContent = c.Exportado;
   if($('fsCountCanc'))   $('fsCountCanc').textContent   = c.Cancelado;
   if($('fsCountAlt'))    $('fsCountAlt').textContent    = c.alterados;
+  if($('fsCountColecao'))$('fsCountColecao').textContent= c.colecao;
 }
 
 function applyFilters(){
@@ -2570,6 +2599,7 @@ function applyFilters(){
     else if(sf === 'Cancelado') matchStatus = canonicalStatus(order.status) === 'Cancelado';
     else if(sf === 'solicitacoes') matchStatus = Boolean(solicitacaoAberta(order));
     else if(sf === 'alterados') matchStatus = pedidoAlterado(order);
+    else if(sf === COLECAO_ADMIN) matchStatus = pedidoTemColecao(order);
 
     return matchQ && matchStatus && matchScope;
   });
@@ -2648,6 +2678,17 @@ function renderList(){
            style="font-size:11px;font-weight:700;background:#EDE9FE;color:#5B21B6;border-radius:999px;padding:2px 9px;flex-shrink:0;cursor:help">
            <i class="fa-solid fa-pen-to-square" style="font-size:9px"></i> Alterado${alteracoes.length > 1 ? ' ' + alteracoes.length + 'x' : ''}</span>`
       : '';
+    /* Quantos itens do pedido saíram do bolsão. Num pedido só de coleção o
+       chip diz só "1S27"; no misto ele diz a fração, que é o número que
+       interessa a quem vai desmembrar. */
+    const nColecao = itensDaColecao(order).length;
+    const chipColecao = nColecao
+      ? `<span class="chip-colecao-adm" title="${nColecao === nItems
+            ? 'Pedido inteiro do bolsão ' + COLECAO_ADMIN
+            : nColecao + ' de ' + nItems + ' produtos vêm do bolsão ' + COLECAO_ADMIN + '; o resto é repasse comum'}">${COLECAO_ADMIN}${
+            nColecao < nItems ? ' · ' + nColecao + '/' + nItems : ''}</span>`
+      : '';
+
     const cardStatus = getStatusVisual(order.status);
     const sol = order.solicitacao;
     const solAberta = solicitacaoAberta(order);
@@ -2745,6 +2786,7 @@ function renderList(){
               ${order.isDuplicate ? `<span style="font-size:11px;font-weight:700;background:var(--warning-soft);color:var(--warning);border-radius:999px;padding:2px 9px;flex-shrink:0">⚠ Duplicata</span>` : ''}
               ${order.avisoCarteira ? `<span title="O cliente já tinha esse produto na carteira (ou recebeu nos últimos 90 dias) e o vendedor enviou mesmo assim" style="font-size:11px;font-weight:700;background:var(--warning-soft);color:var(--warning);border-radius:999px;padding:2px 9px;flex-shrink:0;cursor:help">⚠ Já em carteira</span>` : ''}
               ${(order.history||[]).some(h=>h.label==='Antecipado') ? `<span style="font-size:11px;font-weight:700;background:#EEEDFE;color:#3C3489;border-radius:999px;padding:2px 9px;flex-shrink:0">↑ Antecipado</span>` : ''}
+              ${chipColecao}
               ${chipAlt}
               ${fatMudou ? `<span title="Prev. Faturamento: ${safeHtml(fatMudouTitle)}" style="font-size:11px;font-weight:700;background:var(--warning-soft);color:var(--warning);border-radius:999px;padding:2px 9px;flex-shrink:0;cursor:help"><i class="fa-solid fa-triangle-exclamation" style="font-size:9px"></i> Faturamento atualizado</span>` : ''}
             </div>
@@ -4025,6 +4067,14 @@ async function processarDispoXlsx(file){
   const colCor    = _resolve('COR','Cor');
   const colData   = _resolve('DATA ENTREGA');
   const colPedMae = _resolve('PEDIDO MÃE','PEDIDO MAE');
+  /* A coleção do lote (1S27, 2S27...). Nasceu com o bolsão da 1S27, que é a
+     cota que a fábrica reservou para o escritório atender os clientes
+     pequenos: esses lotes ficam numa aba própria do Showroom, separados do
+     repasse comum. Sem este campo a única forma de separá-los seria deduzir
+     pela data ou pela faixa de número, e as duas quebram em silêncio na
+     próxima coleção. O resolve não tira acento, só maiúsculas - por isso as
+     três grafias. */
+  const colColecao = _resolve('COLECAO','COLEÇÃO','COLEÇAO','COLECÃO');
   const colSaldo  = _resolve('SALDO');
 
   // Grade = só colunas que são tamanho (28–48, combinados 33/34, ou PP…U)
@@ -4070,6 +4120,7 @@ async function processarDispoXlsx(file){
       _dataTexto: colData ? String(_g(colData) ?? '').trim() : '',
       _dataAviso: _data.aviso,
       pedidoMae: String(_g(colPedMae) || '').trim(),
+      colecao: String(_g(colColecao) || '').trim().toUpperCase(),
       saldo: Number(_g(colSaldo) || 0),
       grade
     };
@@ -4098,7 +4149,19 @@ async function processarDispoXlsx(file){
 // Catalogo. Aqui listamos os que faltam e deixamos enviar sem sair da tela.
 let _dispoSemImg = [];
 
-const IMG_BASE_ADMIN = '../Catalogo/';
+/* SÃO DOIS BANCOS DE FOTO, não um.
+   O primeiro é a pasta Catalogo deste repositório. O segundo é o do catálogo
+   digital, em apps-oly-v2, com 4.221 imagens — e nem tudo está nos dois: o
+   CHALLENGER 6 na cor AREPET só existe no segundo. Procurando num só, o
+   bolsão da 1S27 abriu com 41 produtos marcados "sem imagem" que tinham foto
+   o tempo todo, e cada um deles vinha com um botão de enviar pedindo um
+   arquivo que já estava no ar.
+   A ordem importa: o Catalogo vem primeiro porque é onde a vitrine lê. */
+const IMG_BASES_ADMIN = [
+  '../Catalogo/',
+  'https://cms-representacoes.github.io/apps-oly-v2/imagens_olympikus/'
+];
+const IMG_BASE_ADMIN = IMG_BASES_ADMIN[0];   // destino de quem ENVIA uma foto nova
 const IMG_EXTS = ['jpg','png','jpeg','webp'];
 
 function nomeBaseImagem(codigo, cor){
@@ -4120,8 +4183,13 @@ async function imagemExiste(url){
 }
 
 async function temAlgumaImagem(base){
-  const res = await Promise.all(IMG_EXTS.map(ext =>
-    imagemExiste(IMG_BASE_ADMIN + encodeURIComponent(base + '.' + ext))));
+  // Todas as combinações de banco e extensão de uma vez: são poucas, e em
+  // série a conferência de 65 produtos viraria uma espera visível.
+  const tentativas = [];
+  for(const raiz of IMG_BASES_ADMIN)
+    for(const ext of IMG_EXTS)
+      tentativas.push(imagemExiste(raiz + encodeURIComponent(base + '.' + ext)));
+  const res = await Promise.all(tentativas);
   return res.some(Boolean);
 }
 
@@ -4406,7 +4474,7 @@ async function confirmarImportarDispo(){
     // O que o lote sabe de si e a planilha não traz — de qual cliente veio, a
     // família, a linha do tempo — tem de sobreviver à substituição. Sem isto,
     // uma importação apagaria a origem de todo lote que ela toca.
-    const GUARDAR = ['origem','origemNome','fam','eventos'];
+    const GUARDAR = ['origem','origemNome','fam','eventos','colecao'];
     const porNum = new Map(_dispoJsonAtual.map(r => [String(r.num), r]));
     const herdar = (nova) => {
       const velha = porNum.get(String(nova && nova.num));
