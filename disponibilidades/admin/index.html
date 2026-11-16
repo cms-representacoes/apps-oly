@@ -3793,7 +3793,21 @@ function aplicarTabelaEspecial(item){
   const k = chaveTabela(item.artigo);
   const lista = _tabelaEspecial[k] || [];
 
-  const validas = lista.filter(ref => !ref.marca || !item.marca || ref.marca === item.marca);
+  const validas = lista.filter(ref => !ref.marca || !item.marca || ref.marca === item.marca)
+    /* Quando o artigo está em mais de uma campanha, vale a de MENOR custo.
+       Antes ficava a primeira da lista — a ordem em que a planilha foi lida —
+       e em 16/11/2026 isso dava o preço mais caro em TODOS os 33 artigos que
+       estavam em duas tabelas, com diferença média de R$ 10,32 por par e
+       máxima de R$ 22,01. O vendedor oferecia pior do que podia, sem saber
+       que havia melhor. Sem custo vai para o fim: não dá para dizer que é
+       melhor o que não tem preço. */
+    .slice()
+    .sort((a, b) => {
+      const ca = Number(a.custo), cb = Number(b.custo);
+      const va = Number.isFinite(ca) && ca > 0, vb = Number.isFinite(cb) && cb > 0;
+      if(va && vb) return ca - cb;
+      return va ? -1 : (vb ? 1 : 0);
+    });
 
   item.tabelasEspeciais = validas.map(v => ({
     codigoTabela: v.codigoTabela, custo: v.custo, mkp: v.mkp, vigencia: v.vigencia||''

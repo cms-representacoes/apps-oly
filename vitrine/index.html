@@ -4350,7 +4350,11 @@ function pintarFiltros(){
     ['repasse','Repasse', o => o.repasse],
     ['pronta','Estoque', o => o.pronta],
     ['meta','Produção', o => o.meta],
-    ['fora','Fora de linha', o => o.foraDeLinha],
+    /* "Oportunidades", não "Fora de linha": o vendedor abre esta tela na
+       frente do cliente, e "fora de linha" diz que o produto é velho antes de
+       ele olhar o preço. O que o dado significa não mudou - só o nome que
+       aparece. No admin, onde ninguém vende, continua "Fora de linha". */
+    ['fora','Oportunidades', o => o.foraDeLinha],
     ['tudo','Tudo', () => true]
   ];
   const CLS = { tudo:'o-tudo', pronta:'o-est', repasse:'o-rep', meta:'o-pro', fora:'o-fora' };
@@ -7949,7 +7953,7 @@ async function gerarCatalogoPdf(){
    lote de repasse) e o "Chega em". Com algum deles ligado, a planilha segue
    o filtro linha a linha — senão, filtrar Forecast trazia junto o estoque e
    a produção do mesmo tênis. */
-const ROT_ORIGEM = { pronta:'Estoque', repasse:'Repasse', meta:'Produção', fora:'Fora de linha' };
+const ROT_ORIGEM = { pronta:'Estoque', repasse:'Repasse', meta:'Produção', fora:'Oportunidades' };
 function filtroDeLinha(){
   const partes = [];
   if(STATE.origem && STATE.origem !== 'tudo') partes.push(ROT_ORIGEM[STATE.origem]);

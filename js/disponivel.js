@@ -111,17 +111,24 @@ window.DISPONIVEL = (() => {
     return ts.length === 1 ? ts[0] : `${ts[0]}–${ts[ts.length - 1]}`;
   }
 
-  // O que o painel esconde. Exclusivo e oculto barram o mesmo produto: um conjunto só resolve os dois.
+  /* O que o painel esconde. Os dois conjuntos eram um só, e isso passou a
+     importar: produto FORA DE LINHA entra na vitrine mesmo sendo exclusivo,
+     porque o canal direto também já não tem o que vender. Mas o OCULTO
+     continua valendo sempre - ali alguém escondeu de propósito, e fora de
+     linha não desfaz essa escolha. Juntos, o exclusivo nunca seria liberado
+     sem liberar o oculto junto. */
   function bloqueiosDe({ ocultos, ocultosDisp, exclusivos, rateio }){
     return {
       // Rateio: o lote dividido por vendedor. Cada Nº traz as cotas em pares e,
       // opcionalmente, o nome do selo que aparece no card.
       rateio: (rateio && typeof rateio === 'object' && !Array.isArray(rateio)) ? rateio : {},
       lotes: new Set(Array.isArray(ocultos) ? ocultos : []),
-      produtos: new Set([
-        ...(Array.isArray(ocultosDisp) ? ocultosDisp : []),
-        ...(exclusivos && typeof exclusivos === 'object' && !Array.isArray(exclusivos) ? Object.keys(exclusivos) : [])
-      ])
+      escondidos: new Set(Array.isArray(ocultosDisp) ? ocultosDisp : []),
+      exclusivos: new Set(
+        exclusivos && typeof exclusivos === 'object' && !Array.isArray(exclusivos)
+          ? Object.keys(exclusivos) : []),
+      // Mantido para quem ainda lê bloq.produtos: é a soma dos dois.
+      get produtos(){ return new Set([...this.escondidos, ...this.exclusivos]); }
     };
   }
 
@@ -153,7 +160,12 @@ window.DISPONIVEL = (() => {
 
     // 1) disponibilidades: pronta entrega e meta produtiva
     for(const i of (disponib || [])){
-      if(bloq.produtos.has(chaveProduto(i))) continue;
+      const kProd = chaveProduto(i);
+      if(bloq.escondidos && bloq.escondidos.has(kProd)) continue;
+      // Exclusivo só barra enquanto o produto está vivo.
+      if(!i.foraDeLinha && bloq.exclusivos && bloq.exclusivos.has(kProd)) continue;
+      // Montagem antiga (sem os conjuntos separados): comporta-se como antes.
+      if(!bloq.escondidos && bloq.produtos && bloq.produtos.has(kProd)) continue;
       // O admin marca o que ainda nao tem foto, e a vitrine de disponibilidades
       // ja respeitava isso. Aqui a marcacao passava batido: o card saia com o
       // buraco branco no lugar da imagem, porque o arquivo nao existe mesmo.
