@@ -935,8 +935,10 @@
             <!-- A fila encolheu em 16/11/2026. Saiu "Com pedidos", que era a
                  soma de Pendentes e Aprovados, e saiu "Finalizados", que com
                  308 de 322 lotes virou quase o mesmo conjunto de Esgotados.
-                 "Críticos" virou "Esgotados": mesma regra, nome que diz o que
-                 é. E "Todos" virou "A distribuir", porque deixou de mostrar
+                 "Críticos" virou "Esgotados" e, em 16/11, "Ag desmembramento":
+                 a regra nunca mudou (saldo real zerado), o nome foi deixando
+                 de dizer o estado para dizer o que falta fazer.
+                 E "Todos" virou "A distribuir", porque deixou de mostrar
                  tudo - mostra o que ainda tem par para dar, que é o trabalho
                  do dia. Em 16/11 isso era 14 de 322 linhas. -->
             <button class="filter-pill active" data-filter="all"
@@ -959,9 +961,13 @@
             <button class="filter-pill" data-filter="aprovado">
               <i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i>Aprovados
             </button>
+            <!-- "Esgotados" dizia o que o lote É; "Ag desmembramento" diz o que
+                 falta FAZER com ele. A regra é a mesma - saldo real zerado,
+                 ou seja, tudo já pedido - mas é desta fila que o robô de
+                 desmembramento vai puxar o trabalho. -->
             <button class="filter-pill" data-filter="esgotados" id="pillEsgotados"
-                    data-tip="Sem saldo para distribuir — selecione para arquivar">
-              <i class="fa-solid fa-triangle-exclamation text-rose-500 mr-1 badge-ruptura"></i>Esgotados
+                    data-tip="Tudo já foi pedido: o lote espera ser desmembrado">
+              <i class="fa-solid fa-triangle-exclamation text-rose-500 mr-1 badge-ruptura"></i>Ag desmembramento
               <span id="esgotadosBadge" class="ml-1 hidden bg-rose-600 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
             </button>
             <button class="filter-pill" data-filter="rateados" id="pillRateados" style="border-color:#ddd6fe;color:#6d28d9;background:#f5f3ff" data-tip="Lotes divididos por vendedor — abra para ver as cotas e o nome do selo">
@@ -1023,7 +1029,7 @@
           <button onclick="cancelarSelecionadosDispo()" style="margin-left:auto;display:flex;align-items:center;gap:7px;background:#b45309;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-ban" style="font-size:12px"></i> Cancelar selecionados</button>
           <button onclick="relatorioDispo()" style="background:transparent;border:1px solid var(--line,#c7cdfb);color:var(--brand,#3730a3);border-radius:999px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer" title="Baixar o relatorio de cancelamentos"><i class="fa-solid fa-file-excel"></i> Relatorio</button>
           <button onclick="excluirSelecionadosDispo()" style="display:flex;align-items:center;gap:7px;background:#dc2626;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-trash-can" style="font-size:12px"></i> Excluir selecionados</button>
-          <!-- Cada um aparece só na sua aba: arquivar na dos Esgotados,
+          <!-- Cada um aparece só na sua aba: arquivar na Ag desmembramento,
                desarquivar na dos Arquivados. Fora delas não fazem sentido e
                só dariam chance de erro. -->
           <button id="btnArquivarSel" onclick="arquivarSelecionadosDispo()" style="display:none;align-items:center;gap:7px;background:#475569;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-box-archive" style="font-size:12px"></i> Arquivar selecionados</button>
@@ -1544,7 +1550,7 @@ function computeRows(){
     /* 'all' deixou de ser "tudo": é o que ainda tem par para distribuir.
        O resto está esgotado e só atrapalha quem procura o que dar. E desde
        16/11 também não traz o bolsão - ele tem fila própria, senão as ~14
-       linhas do repasse de todo dia somem no meio de 633. Esgotados,
+       linhas do repasse de todo dia somem no meio de 633. Ag desmembramento,
        Pendentes e Arquivados seguem mostrando os dois: ali o que importa é
        a situação do lote, não de onde ele veio. */
     if(f === 'all') return row.saldoReal > 0 && !ehColecaoDispo(row);
@@ -1781,7 +1787,7 @@ function atualizarBulkBarDispo(){
   const cnt = document.getElementById('dispoBulkCount');
   if(cnt) cnt.textContent = `${n} selecionado${n!==1?'s':''}`;
   if(bar) bar.style.display = n > 0 ? 'flex' : 'none';
-  /* Arquivar vale em QUALQUER aba, não só na dos Esgotados. Era assim no
+  /* Arquivar vale em QUALQUER aba, não só na Ag desmembramento. Era assim no
      primeiro desenho e estava errado: o modal já avisa quando um selecionado
      ainda tem saldo, e esse aviso só faz sentido se der para arquivar fora
      dos esgotados — um produto que vai sair de linha, por exemplo, some da
