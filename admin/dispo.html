@@ -1485,7 +1485,11 @@ async function loadDispo(){
 
 // O que a busca varre: as mesmas colunas que aparecem na tabela — Nº, GCI,
 // produto (com o código ao lado) e cor.
+/* O texto que a busca varre. Era remontado e passado para minúsculas a cada
+   tecla, para cada uma das 955 linhas. Agora fica guardado na linha, feito
+   uma vez em computeAllRows. */
 function textoDaLinha(row){
+  if(row._txt != null) return row._txt;
   return `${row.num} ${row.gci} ${row.codigo} ${row.produto} ${row.cor}`.toLowerCase();
 }
 
@@ -4271,32 +4275,57 @@ function computeAllRows(){
     if(gci && aprovGci.has(gci) && !legacyAprovDone.has(gci)){ aprovado += aprovGci.get(gci); legacyAprovDone.add(gci); }
     const saldoReal = Number(row.saldo || 0) - pendente - aprovado;
     const situacao = getSituacao(saldoReal, Number(row.saldo || 0));
-    return { ...row, pendente, aprovado, saldoReal, situacao };
+    return { ...row, pendente, aprovado, saldoReal, situacao,
+             _txt: `${row.num} ${row.gci} ${row.codigo} ${row.produto} ${row.cor}`.toLowerCase() };
   });
+
+  /* ── a antecipação, por índice em vez de varredura ──────────────────
+     Isto varria TODAS as linhas para cada linha, e dentro dela TODOS os
+     pedidos. Com 322 linhas passava; com as 955 do bolsão virou 912 mil
+     comparações por chamada, cada uma normalizando quatro textos - e como
+     a busca redesenha a tela a cada tecla, era meio segundo POR LETRA.
+     Medido em 16/11/2026: 531 ms por tecla, 5,3 s para digitar
+     "challenger". O laço em si custava 16 ms; o resto era a normalização,
+     que cria uma expressão regular a cada chamada.
+     Agora os dois pares (linha↔irmãs, linha↔pedidos) saem de índices
+     montados uma vez. O resultado é o mesmo, a conta é outra. */
+  const tempoDe = new Map(), chaveDe = new Map(), porProdCor = new Map();
+  for(const r of allRows){
+    const t = r.dataEntrega ? parseDate(r.dataEntrega)?.getTime() : NaN;
+    tempoDe.set(r, (t == null || isNaN(t)) ? NaN : t);
+    const k = sanitizeDisplayText(r.codigo) + '|' +
+              sanitizeDisplayText(r.cor).toUpperCase();
+    chaveDe.set(r, k);
+    if(!porProdCor.has(k)) porProdCor.set(k, []);
+    porProdCor.get(k).push(r);
+  }
+  // pedidos vivos indexados pelo GCI dos seus itens
+  const pedidosPorGci = new Map();
+  for(const order of (STATE.orders || [])){
+    if(!['Pendente','Aprovado'].includes(canonicalStatus(order.status))) continue;
+    if(order.archived) continue;
+    for(const item of (order.items || [])){
+      const g = sanitizeDisplayText(String(item.gci || ''));
+      if(!g) continue;
+      if(!pedidosPorGci.has(g)) pedidosPorGci.set(g, new Set());
+      pedidosPorGci.get(g).add(order);
+    }
+  }
 
   allRows.forEach(row => {
     row._antecipavel = null;
-    if(!row.dataEntrega) return;
-    const rowTime = parseDate(row.dataEntrega)?.getTime();
+    const rowTime = tempoDe.get(row);
     if(isNaN(rowTime)) return;
-    const siblings = allRows.filter(r => {
+    const siblings = (porProdCor.get(chaveDe.get(row)) || []).filter(r => {
       if(r === row) return false;
-      if(sanitizeDisplayText(r.codigo) !== sanitizeDisplayText(row.codigo)) return false;
-      if(sanitizeDisplayText(r.cor).toUpperCase() !== sanitizeDisplayText(row.cor).toUpperCase()) return false;
       if(r.gci === row.gci) return false;
-      if(!r.dataEntrega) return false;
-      const rTime = parseDate(r.dataEntrega)?.getTime();
-      return !isNaN(rTime) && rTime < rowTime;
+      const t = tempoDe.get(r);
+      return !isNaN(t) && t < rowTime;
     });
     if(!siblings.length) return;
     const novaLinha = siblings.reduce((a,b) => a.dataEntrega < b.dataEntrega ? a : b);
-    const pedidosVinculados = STATE.orders.filter(order => {
-      if(!['Pendente','Aprovado'].includes(canonicalStatus(order.status))) return false;
-      if(order.archived) return false;
-      return (order.items||[]).some(item =>
-        sanitizeDisplayText(String(item.gci||'')) === sanitizeDisplayText(String(row.gci||''))
-      );
-    });
+    const vinc = pedidosPorGci.get(sanitizeDisplayText(String(row.gci || '')));
+    const pedidosVinculados = vinc ? [...vinc] : [];
     if(!pedidosVinculados.length) return;
     const gradeAtual = gradeFromRow(row);
     const gradeNova = gradeFromRow(novaLinha);
@@ -5309,9 +5338,16 @@ $('btnRefreshDispo').addEventListener('click', async () => {
   await loadDispo();
 });
 
+/* Redesenhar 955 linhas a cada tecla fazia a própria letra demorar a
+   aparecer: o navegador só pinta o campo depois de terminar o trabalho.
+   Só a última tecla vale, como no Showroom. Limpar não espera - quem
+   apaga quer a lista inteira de volta na hora. */
+let _tBuscaDispo = null;
 $('dispoSearch').addEventListener('input', (e) => {
   STATE.searchQuery = e.target.value;
-  renderDispo();
+  clearTimeout(_tBuscaDispo);
+  if(!e.target.value){ renderDispo(); return; }
+  _tBuscaDispo = setTimeout(renderDispo, 130);
 });
 
 // ── Busca: botão X + tecla Esc pra limpar ──────────────────────────────────────
