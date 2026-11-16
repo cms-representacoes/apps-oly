@@ -2123,11 +2123,28 @@ function aplicarCancelamentosNaDispo(){
     if(!porNum.has(n)) porNum.set(n, []);
     porNum.get(n).push(c);
   }
-  let mexidas = 0;
+  /* O Nº sozinho NÃO identifica o lote. Ele é reaproveitado: o 488 era um
+     CICLO CHBMLT devolvido pela Casa Pio em 13/11/2026, e quando o bolsão da
+     1S27 entrou numerado a partir de 488 o CHALLENGER 6 AREPET herdou aquela
+     devolução. Pior, o desconto se repetia a cada abertura da tela enquanto o
+     saldo fosse maior que o do cancelamento: 108 → 84 → 60 → 36 → 12, quatro
+     vezes, tudo gravado. O lote perdeu 96 pares sem ninguém tocar nele.
+     Por isso o GCI entra na conferência: mesmo Nº com outro GCI é outro lote,
+     e o que aconteceu com o antigo não lhe diz respeito. */
+  const mesmoLote = (c, row) => {
+    const a = String(c.gci || '').trim(), b = String(row.gci || '').trim();
+    if(a && b) return a === b;
+    // sem GCI dos dois lados, cai para o produto: melhor que só o número
+    const ca = (x) => String(x || '').trim().toUpperCase();
+    if(ca(c.codigo) && ca(row.codigo)) return ca(c.codigo) === ca(row.codigo) && ca(c.cor) === ca(row.cor);
+    return true;
+  };
+  let mexidas = 0, ignorados = 0;
   for(const row of (STATE.dispoRows || [])){
     const lista = porNum.get(String(row.num));
     if(!lista) continue;
     for(const c of lista){
+      if(!mesmoLote(c, row)){ ignorados++; continue; }
       const saldoAntes = Number(c.saldoAntes || 0);
       if(Number(row.saldo || 0) >= saldoAntes && saldoAntes > 0){
         row.saldo = Math.max(0, Number(row.saldo || 0) - Number(c.pares || 0));
@@ -2135,6 +2152,7 @@ function aplicarCancelamentosNaDispo(){
       }
     }
   }
+  if(ignorados) console.log(`[cancelamentos] ${ignorados} ignorado(s): o Nº voltou com outro produto`);
   return mexidas;
 }
 
