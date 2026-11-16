@@ -943,6 +943,16 @@
                     data-tip="Lotes que ainda têm saldo para distribuir">A distribuir
               <span id="distribuirBadge" class="ml-1 hidden bg-slate-900 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
             </button>
+            <!-- O bolsão ao lado de "A distribuir" porque são irmãos: um é a
+                 cota da coleção, o outro é o repasse de todo dia. Em 16/11 o
+                 bolsão era 633 das 647 linhas com saldo e soterrava as ~14 do
+                 repasse comum - daí a fila separada. -->
+            <button class="filter-pill" data-filter="colecao" id="pillColecao"
+                    style="border-color:#A5F3FC;color:#0E7490;background:#ECFEFF"
+                    data-tip="Bolsão 1S27 — a cota que a fábrica reservou ao escritório">
+              <i class="fa-solid fa-layer-group mr-1"></i>1S27
+              <span id="colecaoBadge" class="ml-1 hidden bg-[#0891B2] text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
+            </button>
             <button class="filter-pill" data-filter="pendente">
               <i class="fa-solid fa-circle text-amber-500 mr-1"></i>Pendentes
             </button>
@@ -1492,6 +1502,12 @@ function rotuloMes(ym){
   return `${MESES_PT[+m-1]}/${a}`;
 }
 
+/* Lote que veio de um bolsão de coleção. Vale QUALQUER coleção, não só a
+   1S27: se amanhã chegar a 2S27, ela entra aqui e não vaza para a aba do
+   repasse comum sozinha. Só o rótulo da pílula é que está preso ao nome da
+   coleção de hoje - quando houver uma segunda, ele vira "Coleções". */
+const ehColecaoDispo = row => !!String(row?.colecao || '').trim();
+
 function computeRows(){
   const q = normalizeText(STATE.searchQuery).toLowerCase();
 
@@ -1519,10 +1535,15 @@ function computeRows(){
     if(f === 'pendente') return row.pendente > 0;
     if(f === 'aprovado') return row.aprovado > 0;
     if(f === 'esgotados') return row.saldoReal <= 0;
+    if(f === 'colecao') return ehColecaoDispo(row) && row.saldoReal > 0;
     if(f === 'saldo-positivo') return row.saldoReal > 0;
-    // 'all' deixou de ser "tudo": é o que ainda tem par para distribuir.
-    // O resto está esgotado e só atrapalha quem procura o que dar.
-    if(f === 'all') return row.saldoReal > 0;
+    /* 'all' deixou de ser "tudo": é o que ainda tem par para distribuir.
+       O resto está esgotado e só atrapalha quem procura o que dar. E desde
+       16/11 também não traz o bolsão - ele tem fila própria, senão as ~14
+       linhas do repasse de todo dia somem no meio de 633. Esgotados,
+       Pendentes e Arquivados seguem mostrando os dois: ali o que importa é
+       a situação do lote, não de onde ele veio. */
+    if(f === 'all') return row.saldoReal > 0 && !ehColecaoDispo(row);
     return true;
   });
 }
@@ -5244,11 +5265,13 @@ function atualizarBadgeOcultos(){
 function atualizarBadgeFinalizados(){
   if(!STATE.dispoRows?.length) return;
   recalcArquivados();
-  let distribuir = 0, esgotados = 0, arquivados = 0;
+  let distribuir = 0, esgotados = 0, arquivados = 0, colecao = 0;
   for(const r of computeAllRows()){
     if(isArquivado(r)){ arquivados++; continue; }
     if(isOculto(r)) continue;
-    if(r.saldoReal > 0) distribuir++; else esgotados++;
+    if(r.saldoReal <= 0){ esgotados++; continue; }
+    // com saldo: ou é bolsão, ou é o repasse de todo dia — nunca os dois
+    if(ehColecaoDispo(r)) colecao++; else distribuir++;
   }
   const pintar = (id, n) => {
     const b = $(id);
@@ -5259,6 +5282,7 @@ function atualizarBadgeFinalizados(){
   pintar('distribuirBadge', distribuir);
   pintar('esgotadosBadge', esgotados);
   pintar('arquivadosBadge', arquivados);
+  pintar('colecaoBadge', colecao);
 }
 
 // ── EVENT LISTENERS ───────────────────────────────────────────────────────────
