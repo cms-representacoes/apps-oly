@@ -150,6 +150,9 @@
   .mn-acoes button:hover,.mn-acoes label:hover{background:#f1f5f9}
   .mn-acoes .gg-b{border-color:#2563eb;color:#1d4ed8}
   .mn-acoes .ts-b{border-color:var(--acc);color:var(--acc-d)}
+  .mn-acoes .mn-cam{border-color:#0f172a;background:#0f172a;color:#fff}
+  .so-toque{display:none !important}
+  @media (hover:none) and (pointer:coarse){ .mn-acoes .so-toque{display:inline-flex !important} }
   .mn-acoes button:disabled{cursor:wait;opacity:.7}
   @media (max-width:760px){
     .mn-acoes{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:-18px;margin-right:-18px;padding:0 18px}
@@ -296,6 +299,7 @@
       </div>
       <div class="mn-foto-tit">Foto <span class="op">(opcional, mas ajuda a vender)</span></div>
       <div class="mn-acoes">
+        <label for="mnCam" class="mn-cam so-toque"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></svg>Tirar foto<input id="mnCam" type="file" accept="image/*" capture="environment" hidden></label>
         <label for="mnArq">📁 Escolher arquivo<input id="mnArq" type="file" accept="image/*" hidden></label>
         <button type="button" class="ts-b" id="mnTS">Buscar no Trade Squash</button>
         <button type="button" class="gg-b" id="mnGoogle">Buscar no Google</button>
@@ -657,7 +661,7 @@
   mnEl.querySelectorAll('#mnG button').forEach(b => b.addEventListener('click', () => {
     mn.g = b.dataset.g; mnEl.querySelectorAll('#mnG button').forEach(x => x.classList.toggle('on', x === b));
   }));
-  $('#mnArq').addEventListener('change', e => { mnArquivo(e.target.files[0]); e.target.value = ''; });
+  ['#mnArq', '#mnCam'].forEach(i => $(i).addEventListener('change', e => { mnArquivo(e.target.files[0]); e.target.value = ''; }));
   $('#mnSemFoto').addEventListener('click', () => { mnFoto(null); mnPe('Os campos com * são obrigatórios.'); });
   $('#mnTS').addEventListener('click', async () => {
     const a = $('#mnA').value.trim().toUpperCase(), c = $('#mnC').value.trim().toUpperCase();

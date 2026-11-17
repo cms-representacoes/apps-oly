@@ -36,6 +36,9 @@
   .fa-pe .fa-ok{border:0;background:#0d9488;color:#fff}
   .fa-pe .fa-ok:disabled{background:#cbd5e1;cursor:not-allowed}
   .fa-cel{display:none}
+  .so-toque{display:none !important}
+  @media (hover:none) and (pointer:coarse){ .fa-acoes .so-toque{display:inline-flex !important} .fa-dica .so-toque{display:inline !important} }
+  .fa-acoes .fa-cam{border-color:#0f172a;background:#0f172a;color:#fff}
   .ts-fundo{z-index:98}
   .ts-marca{display:inline-block;font-style:normal;font-size:11px;font-weight:800;color:#fff;border-radius:999px;padding:2px 9px;margin-left:6px;vertical-align:2px}
   .ts-txt{font-size:13.5px;color:#334155;margin:0 0 10px;line-height:1.45}
@@ -163,13 +166,14 @@
         <div class="fa-cab"><div><b>${esc(titulo)}</b><span>${esc([artigo, cor, nome].filter(Boolean).join(' · '))}</span></div><button class="fa-x" type="button" aria-label="Fechar">×</button></div>
         <div class="fa-corpo">
           <div class="fa-acoes">
+            <label class="fa-cam so-toque"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></svg>Tirar foto<input type="file" accept="image/*" capture="environment" hidden></label>
             <button type="button" class="ts">Buscar no Trade Squash</button>
             <button type="button" class="gg">Buscar no Google</button>
             <label>📁 Escolher arquivo<input type="file" accept="image/*" hidden></label>
           </div>
           <div class="fa-cola" tabindex="0" contenteditable="true" spellcheck="false" aria-label="Cole ou arraste a foto aqui">${VAZIA}</div>
           <input class="fa-link" type="url" inputmode="url" placeholder="ou cole o endereço (link) da imagem" autocomplete="off">
-          <p class="fa-dica">No Google, clique com o botão direito na foto certa, escolha <b>Copiar imagem</b> e volte aqui para colar. No celular, <b>Escolher arquivo</b> também deixa tirar a foto na hora.</p>
+          <p class="fa-dica">No Google, clique com o botão direito na foto certa, escolha <b>Copiar imagem</b> e volte aqui para colar. <span class="so-toque">No celular e no tablet, <b>Tirar foto</b> abre a câmera.</span></p>
         </div>
         <div class="fa-pe"><span class="fa-sel">Escolha um caminho para trazer a foto.</span><button type="button" class="fa-nao">Cancelar</button><button type="button" class="fa-ok" disabled>Usar esta foto</button></div>
       </div>`;
@@ -229,7 +233,8 @@
         pe('Copie a foto certa no Google e volte aqui para colar.');
         setTimeout(() => cola.focus(), 300);
       });
-      $('input[type=file]').addEventListener('change', e => { arquivo(e.target.files[0]); e.target.value = ''; });
+      // "Escolher arquivo" e "Tirar foto" (câmera do celular) caem no mesmo lugar
+      f.querySelectorAll('input[type=file]').forEach(i => i.addEventListener('change', e => { arquivo(e.target.files[0]); e.target.value = ''; }));
       f.addEventListener('paste', e => {
         const dt = e.clipboardData; if (!dt) return;
         const arq = [...dt.items].find(i => i.kind === 'file' && i.type.startsWith('image/'));
