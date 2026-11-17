@@ -448,6 +448,21 @@
       padding:48px 24px;
       color:#94a3b8;
     }
+    /* De onde o lote veio, na fila do desmembramento. O ciano é o mesmo do
+       selo 1S27 no Showroom e da aba no Pulse: quem vê as três telas
+       reconhece sem precisar ler. */
+    .selo-origem{ display:inline-block; font-size:9.5px; font-weight:800; letter-spacing:.04em;
+      text-transform:uppercase; border-radius:999px; padding:1px 7px; margin-left:6px;
+      vertical-align:middle; }
+    .selo-origem.so-colecao{ background:#CFFAFE; color:#155E75; }
+    .selo-origem.so-repasse{ background:#E2E8F0; color:#475569; }
+    .dark .selo-origem.so-colecao{ background:#083344 !important; color:#67E8F9 !important; }
+    .dark .selo-origem.so-repasse{ background:#334155 !important; color:#CBD5E1 !important; }
+
+    /* A linha que carrega o aviso dentro da tabela: sem listra, sem borda e
+       sem o hover das linhas de dados — não é um lote, é um recado. */
+    .linha-aviso td{ padding:0 !important; background:transparent !important; border:0 !important; }
+    .linha-aviso:hover td{ background:transparent !important; }
 
     .empty-state i{
       font-size:36px;
@@ -967,7 +982,7 @@
                  desmembramento vai puxar o trabalho. -->
             <button class="filter-pill" data-filter="esgotados" id="pillEsgotados"
                     data-tip="Tudo já foi pedido: o lote espera ser desmembrado">
-              <i class="fa-solid fa-triangle-exclamation text-rose-500 mr-1 badge-ruptura"></i>Ag desmembramento
+              <i class="fa-solid fa-hourglass-half text-slate-500 mr-1"></i>Desmembramento
               <span id="esgotadosBadge" class="ml-1 hidden bg-rose-600 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
             </button>
             <button class="filter-pill" data-filter="rateados" id="pillRateados" style="border-color:#ddd6fe;color:#6d28d9;background:#f5f3ff" data-tip="Lotes divididos por vendedor — abra para ver as cotas e o nome do selo">
@@ -990,7 +1005,9 @@
           </div>
         </div>
 
-        <!-- EMPTY / LOADING -->
+        <!-- EMPTY / LOADING — o aviso mora aqui enquanto não está em uso e,
+             com a lista vazia, é movido para dentro da tabela (ver renderDispo) -->
+        <div id="dispoAvisoCasa">
         <div id="dispoEmpty" class="hidden empty-state">
           <i class="fa-solid fa-box-open" id="dispoEmptyIcone"></i>
           <p id="dispoEmptyTxt">Nenhum item encontrado para este filtro.</p>
@@ -999,6 +1016,7 @@
                lugar do "nenhum item", em vez de aparecer solto embaixo dele. -->
           <div id="dispoSumiu" class="hidden" style="margin:0 auto;max-width:460px;text-align:center;
             background:#fffbeb;border:1px solid #fde68a;border-radius:16px;padding:16px 18px"></div>
+        </div>
         </div>
 
         <div id="dispoNotLoaded" class="empty-state">
@@ -1544,7 +1562,15 @@ function computeRows(){
     if(q && !textoDaLinha(row).includes(q)) return false;
     if(f === 'pendente') return row.pendente > 0;
     if(f === 'aprovado') return row.aprovado > 0;
-    if(f === 'esgotados') return row.saldoReal <= 0;
+    /* A fila do desmembramento, a partir de 17/11/2026, é o TRABALHO do
+       robô, não um estado do lote: entra o lote que JÁ TEM pedido, pendente
+       ou aprovado, tenha ele sobrado saldo ou não.
+       Encomenda cheia, sem pedido nenhum, não tem o que desmembrar - essa
+       fica em "A distribuir", que é onde se trabalha para vendê-la.
+       Repasse comum e bolsão convivem aqui, então cada linha leva a
+       etiqueta de onde veio (ver `selo-origem` no desenho da linha). */
+    if(f === 'esgotados')
+      return (Number(row.pendente || 0) + Number(row.aprovado || 0)) > 0;
     if(f === 'colecao') return ehColecaoDispo(row) && row.saldoReal > 0;
     if(f === 'saldo-positivo') return row.saldoReal > 0;
     /* 'all' deixou de ser "tudo": é o que ainda tem par para distribuir.
@@ -4377,14 +4403,27 @@ function renderDispo(){
   $('kpiSaldoReal').textContent = formatInt(sorted.reduce((t, r) => t + Math.max(0, r.saldoReal || 0), 0));
   $('tableWrap').classList.remove('hidden');
 
+  /* O aviso de lista vazia morava ACIMA da tabela, então aparecia antes do
+     cabeçalho e o cabeçalho ficava solto embaixo, encimando nada. Agora ele
+     entra como uma linha da própria tabela, abaixo do cabeçalho, que é onde
+     a lista estaria.
+     O bloco é MOVIDO, não copiado: 'dispoSumiu', 'dispoEmptyTxt' e
+     'dispoEmptyIcone' seguem sendo os mesmos nós que o resto do código
+     manipula. Por isso ele volta para a casa antes de a tabela ser
+     reescrita - innerHTML destrói os filhos, e o aviso iria junto. */
+  const aviso = $('dispoEmpty');
+  const casaDoAviso = $('dispoAvisoCasa');
   if(!sorted.length){
-    $('dispoEmpty').classList.remove('hidden');
+    $('dispoTableBody').innerHTML =
+      '<tr class="linha-aviso"><td colspan="14" id="dispoAvisoCelula"></td></tr>';
+    $('dispoAvisoCelula').appendChild(aviso);
+    aviso.classList.remove('hidden');
     contarComOQueSumiu();
-    $('dispoTableBody').innerHTML = '';
     return;
   }
 
-  $('dispoEmpty').classList.add('hidden');
+  if(casaDoAviso && aviso.parentElement !== casaDoAviso) casaDoAviso.appendChild(aviso);
+  aviso.classList.add('hidden');
 
   $('dispoTableBody').innerHTML = sorted.map((row, idx) => {
     const sit = row.situacao;
@@ -4405,6 +4444,15 @@ function renderDispo(){
       ? '<span class="badge-total ml-1">Total</span>'
       : isParcial ? '<span class="badge-parcial ml-1">Parcial</span>' : '';
 
+    /* De onde o lote veio. Só aparece na fila do desmembramento, que é a
+       única aba onde repasse comum e bolsão ficam lado a lado - nas outras
+       seria repetir em toda linha o nome da própria aba. */
+    const seloOrigem = STATE.activeFilter === 'esgotados'
+      ? (ehColecaoDispo(row)
+          ? `<span class="selo-origem so-colecao" title="Lote do bolsão ${safeHtml(String(row.colecao||''))}">${safeHtml(String(row.colecao||'')) }</span>`
+          : '<span class="selo-origem so-repasse" title="Lote do repasse de todo dia">Repasse</span>')
+      : '';
+
     return `
       <tr class="${rowClass}${cancPares ? (Number(row.saldo||0) <= 0 ? ' linha-cancelada' : ' linha-canc-parcial') : ''}">
         <td class="td-chk" style="text-align:center"><input type="checkbox" class="dispo-chk" data-num="${safeHtml(String(row.num||''))}" ${_dispoSelecionados.has(String(row.num||'')) ? 'checked' : ''}></td>
@@ -4413,6 +4461,7 @@ function renderDispo(){
         <td>
           <span class="font-extrabold text-slate-800">${safeHtml(row.produto)}</span>
           <span class="text-xs text-slate-400 font-semibold ml-1">${safeHtml(row.codigo||'')}</span>
+          ${seloOrigem}
           ${desmBadge}
           ${row.origemNome || row.origem
             ? `<div class="text-[10.5px] font-semibold text-slate-400" title="Cliente de onde este lote veio">
@@ -4457,7 +4506,16 @@ function renderDispo(){
 
 // ── DESMEMBRAMENTO ────────────────────────────────────────────────────────────
 
+/* A caixa onde ficam guardados os status do desmembramento deste lote.
+   Era `codigo|cor|data`, que NAO identifica o lote: em 17/11/2026 a DISPO
+   tinha 955 lotes para apenas 638 dessas chaves - 283 delas repartidas
+   entre dois ou tres lotes, que assim dividiam a mesma caixa. Desmembrar
+   um marcava os irmaos junto.
+   O Nº é único por lote, e é ele quem manda. A chave antiga fica para a
+   linha sem Nº, que não deveria existir mas não custa cobrir. */
 function desmKey(row){
+  const num = String(row.num || '').trim();
+  if(num) return `lote:${num}`;
   return `${row.codigo}|${row.cor}|${formatDate(row.dataEntrega)}`;
 }
 
@@ -4466,15 +4524,37 @@ function buildDesmembramentoLinhas(row){
   const saved = STATE.desmembramentos[key] || {};
   const linhas = [];
   const rowGci = sanitizeDisplayText(String(row.gci || '')).trim();
+  const rowNum = String(row.num || '').trim();
+
+  /* O GCI NÃO identifica o lote: ele se repete entre as entregas do mesmo
+     produto. O 436 (CHALLENGER 6 ALGLMA) divide o GCI 7571717 com o 437 e o
+     438, e por isso a tela abria 13 pedidos onde só 3 eram dele - os outros
+     10 eram dos irmãos. Quem fosse desmembrar distribuiria par de outro lote.
+     É o mesmo erro que o dashboard já tinha corrigido; esta tela ficou para
+     trás. Agora a chave é o Nº.
+     O GCI segue como plano B para pedido ANTIGO, gravado antes de o Nº
+     existir: ele não sabe de que lote veio, então entra no de menor número
+     daquele GCI - um só, nunca em todos. Em 17/11/2026 não havia nenhum
+     assim (1.562 itens, todos com Nº), mas tirar o plano B faria um pedido
+     velho sumir da tela em silêncio. */
+  const menorNumDoGci = (gci) => {
+    const nums = (STATE.dispoRows || [])
+      .filter(r => sanitizeDisplayText(String(r.gci || '')).trim() === gci)
+      .map(r => String(r.num || '').trim())
+      .filter(Boolean)
+      .sort((a, b) => Number(a) - Number(b));
+    return nums[0] || '';
+  };
 
   for(const order of STATE.orders){
     for(const item of (order.items || [])){
       const itemGci = sanitizeDisplayText(String(item.gci || '')).trim();
-      // Cruzamento principal por GCI (único por linha DISPO)
-      // Fallback por produto+cor se GCI não disponível
+      const itemNum = String(item.num || '').trim();
       let match = false;
-      if(rowGci && itemGci){
-        match = rowGci === itemGci;
+      if(itemNum && rowNum){
+        match = itemNum === rowNum;                 // o caso de sempre
+      } else if(rowGci && itemGci){
+        match = rowGci === itemGci && rowNum === menorNumDoGci(rowGci);
       } else {
         const itemProduto = sanitizeDisplayText(item.produto || '').toUpperCase();
         const rowProduto  = sanitizeDisplayText(row.produto  || '').toUpperCase();
@@ -4484,7 +4564,11 @@ function buildDesmembramentoLinhas(row){
       }
       if(!match) continue;
 
-      const lineKey = `${order.id}||${itemGci||item.codigo}||${item.cor}`;
+      /* Sem o Nº aqui, dois lotes de mesmo GCI e mesma cor geravam a MESMA
+         chave para o mesmo pedido - foi o que o teste do 436/437 pegou:
+         13 linhas para 12 chaves. Marcar o desmembramento de um mexeria no
+         outro. */
+      const lineKey = `${order.id}||${itemNum || itemGci || item.codigo}||${item.cor}`;
       const savedStatus = saved[lineKey] || 'Pendente';
       const units = Number(item.totalUnits || 0) || (item.grade||[]).reduce((s,g)=>s+Number(g.qty||0),0);
       const itemPrevFat = formatDate(item.prevFaturamento);
@@ -4510,12 +4594,21 @@ function buildDesmembramentoLinhas(row){
 function openDesmModal(row){
   const linhas = buildDesmembramentoLinhas(row);
   // Passa dados via sessionStorage para a página de desmembramento
+  /* O cabeçalho da tela de desmembramento precisa dizer de quanto é o lote
+     e quanto dele já tem dono - sem isso quem desmembra não sabe se está
+     distribuindo o lote inteiro ou um pedaço. O desmembramento parcial ainda
+     vai ser feito, mas os números já vão. */
+  const consumido = Number(row.pendente || 0) + Number(row.aprovado || 0);
   sessionStorage.setItem('desm_row', JSON.stringify({
+    num: row.num,
     codigo: row.codigo,
     produto: row.produto,
     cor: row.cor,
     gci: row.gci,
-    dataEntrega: row.dataEntrega ? String(row.dataEntrega) : null
+    dataEntrega: row.dataEntrega ? String(row.dataEntrega) : null,
+    saldo: Number(row.saldo || 0),
+    consumido,
+    saldoReal: Number(row.saldoReal || 0)
   }));
   sessionStorage.setItem('desm_linhas', JSON.stringify(linhas));
   sessionStorage.setItem('desm_key', desmKey(row));

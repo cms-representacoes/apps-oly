@@ -106,6 +106,26 @@
   </div>
 </div>
 
+<style>
+  /* Parcial x Completo: o desmembramento parcial ainda vai existir, então a
+     etiqueta já diz de saída se sobra par no lote ou se ele está todo
+     comprometido. Âmbar = ainda sobra; verde = não sobra nada. */
+  .etiqueta{ display:inline-block; font-size:11px; font-weight:800; letter-spacing:.03em;
+    text-transform:uppercase; border-radius:999px; padding:3px 11px; }
+  /* O saldo é o número que decide se há o que distribuir: verde enquanto
+     sobra par, vermelho quando o lote está todo comprometido. */
+  .saldo-tem{ color:#047857; }
+  .saldo-zero{ color:#B91C1C; }
+  [data-theme="dark"] .saldo-tem{ color:#34D399; }
+  [data-theme="dark"] .saldo-zero{ color:#F87171; }
+  .etiqueta.parcial{ background:#FEF3C7; color:#92400E; }
+  .etiqueta.completo{ background:#D1FAE5; color:#065F46; }
+  .etiqueta.intacto{ background:#E2E8F0; color:#475569; }
+  [data-theme="dark"] .etiqueta.parcial{ background:#451A03; color:#FBBF24; }
+  [data-theme="dark"] .etiqueta.completo{ background:#064E3B; color:#6EE7B7; }
+  [data-theme="dark"] .etiqueta.intacto{ background:#334155; color:#CBD5E1; }
+</style>
+
 <div class="max-w-[1300px] mx-auto px-6 py-6 space-y-4">
 
   <div id="metaCard" class="card">
@@ -114,6 +134,15 @@
       <div><span class="text-slate-400 font-semibold">GCI</span><div id="metaGci" class="font-extrabold text-[var(--brand)] mt-0.5"></div></div>
       <div><span class="text-slate-400 font-semibold">Cor</span><div id="metaCor" class="font-extrabold mt-0.5"></div></div>
       <div><span class="text-slate-400 font-semibold">Prev. Fat.</span><div id="metaPrevFat" class="font-extrabold mt-0.5"></div></div>
+      <!-- Quanto o lote tem e quanto dele já tem dono. Sem isso não dá para
+           saber se o que está na lista é o lote inteiro ou um pedaço. -->
+      <div><span class="text-slate-400 font-semibold">Nº do lote</span><div id="metaNum" class="font-extrabold mt-0.5"></div></div>
+      <div><span class="text-slate-400 font-semibold">Total do lote</span><div id="metaSaldo" class="font-extrabold mt-0.5 tabular-nums"></div></div>
+      <div><span class="text-slate-400 font-semibold">Absorvido</span><div id="metaConsumido" class="font-extrabold mt-0.5 tabular-nums"></div></div>
+      <!-- O que ainda sobra do lote, em campo próprio: é o número que decide
+           se há o que distribuir. Verde enquanto sobra, vermelho quando zera. -->
+      <div><span class="text-slate-400 font-semibold">Saldo</span><div id="metaSobra" class="font-extrabold mt-0.5 tabular-nums"></div></div>
+      <div><span class="text-slate-400 font-semibold">Situação</span><div class="mt-0.5"><span id="metaEtiqueta" class="etiqueta"></span></div></div>
     </div>
   </div>
 
@@ -186,6 +215,17 @@ function showToast(msg, type='info'){
 
 function formatDate(value){
   if(!value) return '—';
+  /* A DISPO guarda a data como DD/MM/AAAA. Sem esta linha ela caía no
+     `new Date(...)` lá embaixo, que lê MM/DD à americana: o cabeçalho
+     mostrava 11/05/2026 para o mesmo lote cujas linhas diziam 05/11/2026.
+     Mesma data, dois dias diferentes na mesma tela. */
+  if(typeof value === 'string'){
+    const m = value.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if(m){
+      const ano = m[3].length === 2 ? '20' + m[3] : m[3];
+      return `${m[1].padStart(2,'0')}/${m[2].padStart(2,'0')}/${ano}`;
+    }
+  }
   if(typeof value === 'string' && value.includes('T')) return new Date(value).toLocaleDateString('pt-BR');
   if(typeof value === 'number' || (typeof value === 'string' && /^\d{4,6}$/.test(value))){
     const n = Number(value);
@@ -264,6 +304,26 @@ if(!row){
   document.getElementById('metaGci').textContent = row.gci || '—';
   document.getElementById('metaCor').textContent = row.cor || '—';
   document.getElementById('metaPrevFat').textContent = formatDate(row.dataEntrega);
+
+  /* Total do lote, quanto dele já foi absorvido e o que sobra. "Absorvido"
+     soma pendente e aprovado: os dois já têm cliente, o que muda entre eles
+     é se a CMS aprovou. */
+  const nf = n => Number(n || 0).toLocaleString('pt-BR');
+  const saldo = Number(row.saldo || 0);
+  const consumido = Number(row.consumido || 0);
+  const sobra = Number(row.saldoReal != null ? row.saldoReal : saldo - consumido);
+  document.getElementById('metaNum').textContent = row.num || '—';
+  document.getElementById('metaSaldo').textContent = nf(saldo) + ' un';
+  document.getElementById('metaConsumido').textContent = nf(consumido) + ' un';
+  const elSobra = document.getElementById('metaSobra');
+  const resta = Math.max(0, sobra);
+  elSobra.textContent = nf(resta) + ' un';
+  elSobra.className = 'font-extrabold mt-0.5 tabular-nums ' +
+                      (resta > 0 ? 'saldo-tem' : 'saldo-zero');
+  const et = document.getElementById('metaEtiqueta');
+  if(consumido <= 0){        et.textContent = 'Intacto';  et.className = 'etiqueta intacto'; }
+  else if(sobra > 0){        et.textContent = 'Parcial';  et.className = 'etiqueta parcial'; }
+  else {                     et.textContent = 'Completo'; et.className = 'etiqueta completo'; }
 
   const saved = desmembramentos[desmKey] || {};
 
