@@ -19,7 +19,15 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://cms-representacoes.github.io/apps-oly/amostras/cms-store.jpg">
 <meta name="theme-color" content="#ffffff">
-<link rel="icon" href="../icon-192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-title" content="CMS STORE">
+<meta name="application-name" content="CMS STORE">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
@@ -128,6 +136,115 @@ main{ max-width:1100px; margin:0 auto; padding:4px 12px 120px; }
 </style>
 </head>
 <body>
+<!-- Abertura: porta da loja abrindo (toldo, letreiro e etiqueta).
+     Uma vez por dia por aparelho; no atalho instalado, sempre. Toque pula.
+     "?abertura=1" força, para conferir. -->
+<style>
+  /* ── ABERTURA: porta da loja abrindo ─────────────────────────── */
+  .ab{position:fixed;inset:0;z-index:9999;overflow:hidden;cursor:pointer;
+    font-family:"Plus Jakarta Sans",system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
+  .ab[hidden]{display:none}
+
+  /* portas de vidro escuro com caixilho âmbar; abrem para os lados */
+  .ab-porta{position:absolute;top:0;bottom:0;width:50%;
+    background:
+      radial-gradient(120% 70% at 50% 35%,rgba(255,190,11,.10),transparent 60%),
+      linear-gradient(180deg,#1d1810,#0d0b07);
+    animation:ab_portaAbre .8s cubic-bezier(.7,0,.25,1) 2.0s forwards}
+  .ab-porta.ab-esq{left:0;border-right:3px solid #D99A00;box-shadow:inset -14px 0 30px rgba(0,0,0,.45);--x:-102%}
+  .ab-porta.ab-dir{right:0;border-left:3px solid #D99A00;box-shadow:inset 14px 0 30px rgba(0,0,0,.45);--x:102%}
+  /* reflexo do vidro */
+  .ab-porta::before{content:'';position:absolute;inset:0;
+    background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.05) 38%,transparent 46%)}
+  /* puxadores */
+  .ab-porta::after{content:'';position:absolute;top:68%;width:7px;height:min(18vh,130px);
+    border-radius:4px;background:linear-gradient(90deg,#FFD35A,#D99A00);box-shadow:0 0 12px rgba(255,190,11,.35)}
+  .ab-porta.ab-esq::after{right:16px}
+  .ab-porta.ab-dir::after{left:16px}
+  @keyframes ab_portaAbre{to{transform:translateX(var(--x))}}
+
+  /* toldo listrado que desce do topo, com a barra recortada em ondas */
+  .ab-toldo{position:absolute;left:-2%;right:-2%;top:0;height:clamp(70px,13vh,110px);
+    background:repeating-linear-gradient(90deg,#FFBE0B 0 46px,#14110A 46px 92px);
+    transform:translateY(-110%);
+    filter:drop-shadow(0 10px 14px rgba(0,0,0,.5));
+    animation:ab_toldoDesce .65s cubic-bezier(.22,1.3,.36,1) .1s forwards,
+              ab_toldoSobe .55s ease-in 2.0s forwards}
+  .ab-toldo::after{content:'';position:absolute;left:0;right:0;bottom:-15px;height:16px;
+    background:radial-gradient(circle at 23px 0,#FFBE0B 15px,transparent 15.5px) 0 0/92px 16px repeat-x,
+               radial-gradient(circle at 69px 0,#14110A 15px,transparent 15.5px) 0 0/92px 16px repeat-x}
+  @keyframes ab_toldoDesce{to{transform:translateY(0)}}
+  @keyframes ab_toldoSobe{from{transform:translateY(0)}to{transform:translateY(-120%)}}
+
+  /* letreiro: selo CMS + STORE, ab_acende como neon */
+  .ab-placa{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);
+    display:flex;flex-direction:column;align-items:center;gap:14px;
+    animation:ab_some .5s ease 2.05s forwards}
+  .ab-letreiro{display:flex;align-items:center;gap:14px;opacity:0;
+    animation:ab_acende .9s steps(1,end) .6s forwards}
+  .ab-selo{width:clamp(64px,16vw,84px);height:clamp(64px,16vw,84px);border-radius:20px;display:grid;place-items:center;
+    background:linear-gradient(140deg,#ffd35a 0%,#ffbe0b 45%,#d99a00 85%);color:#1a1407;
+    font:700 clamp(22px,5.4vw,28px) "Space Grotesk",sans-serif;
+    box-shadow:0 0 0 1px rgba(255,255,255,.25) inset,0 0 34px rgba(255,190,11,.55),0 14px 30px rgba(0,0,0,.5)}
+  .ab-store{color:#FFD35A;font:700 clamp(30px,8vw,44px) "Space Grotesk",sans-serif;letter-spacing:.18em;
+    text-shadow:0 0 8px rgba(255,190,11,.9),0 0 26px rgba(255,190,11,.55)}
+  /* pisca duas vezes antes de firmar, como letreiro ligando */
+  @keyframes ab_acende{0%{opacity:0}18%{opacity:1}30%{opacity:.25}46%{opacity:1}58%{opacity:.5}70%,100%{opacity:1}}
+
+  /* etiqueta -50% pendurada no letreiro, balançando */
+  .ab-pendura{position:relative;height:clamp(84px,14vh,104px);width:2px;opacity:0;
+    transform-origin:50% 0;animation:ab_aparece .01s linear 1.1s forwards,ab_balanca 1.1s cubic-bezier(.3,.6,.4,1) 1.1s forwards}
+  .ab-pendura::before{content:'';position:absolute;left:0;top:0;width:2px;height:34px;background:linear-gradient(#FFD35A,#c9a24a);box-shadow:0 0 6px rgba(255,190,11,.5)}
+  .ab-etq{position:absolute;top:30px;left:50%;transform:translateX(-50%);
+    padding:10px 16px 10px 22px;border-radius:8px 14px 14px 8px;background:#FFBE0B;color:#14110A;
+    font:800 clamp(18px,4.6vw,22px) "Plus Jakarta Sans",sans-serif;white-space:nowrap;
+    box-shadow:0 8px 18px rgba(0,0,0,.45)}
+  .ab-etq::before{content:'';position:absolute;left:8px;top:50%;width:7px;height:7px;margin-top:-3.5px;border-radius:50%;background:#14110A}
+  @keyframes ab_aparece{to{opacity:1}}
+  @keyframes ab_balanca{0%{transform:rotate(-28deg)}35%{transform:rotate(16deg)}60%{transform:rotate(-8deg)}80%{transform:rotate(4deg)}100%{transform:rotate(0)}}
+
+  .ab-pula{position:absolute;left:0;right:0;bottom:calc(18px + env(safe-area-inset-bottom));text-align:center;
+    color:rgba(255,211,90,.55);font:600 12px "Plus Jakarta Sans",sans-serif;letter-spacing:.06em;
+    animation:ab_someSo .4s ease 2.0s forwards}
+  /* a placa sobe e ab_some junto com a porta abrindo */
+  @keyframes ab_some{to{opacity:0;transform:translate(-50%,-62%)}}
+  @keyframes ab_someSo{to{opacity:0}}
+
+  .ab.ab-fim{opacity:0;transition:opacity .2s;pointer-events:none}
+
+  @media (prefers-reduced-motion:reduce){ .ab{display:none} }
+
+</style>
+<div class="ab" id="abertura" aria-hidden="true" hidden>
+  <div class="ab-porta ab-esq"></div>
+  <div class="ab-porta ab-dir"></div>
+  <div class="ab-toldo"></div>
+  <div class="ab-placa">
+    <div class="ab-letreiro"><span class="ab-selo">CMS</span><span class="ab-store">STORE</span></div>
+    <div class="ab-pendura"><span class="ab-etq">até -50%</span></div>
+  </div>
+  <div class="ab-pula">toque para entrar</div>
+</div>
+<script>
+(() => {
+  const el = document.getElementById('abertura');
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const app = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  let mostrar = app || /[?&]abertura=1(&|$)/.test(location.search);
+  if (!mostrar) {
+    try {
+      const hoje = new Date().toISOString().slice(0, 10);
+      if (localStorage.getItem('cms.abertura.store') !== hoje) { localStorage.setItem('cms.abertura.store', hoje); mostrar = true; }
+    } catch (e) { /* sem armazenamento: entra direto */ }
+  }
+  if (!mostrar) { el.remove(); return; }
+  el.hidden = false;
+  let t;
+  const fechar = () => { clearTimeout(t); el.classList.add('ab-fim'); setTimeout(() => el.remove(), 220); };
+  el.addEventListener('click', fechar);
+  t = setTimeout(fechar, 2750);
+})();
+</script>
 <header><div class="hin">
   <div class="topo-linha">
     <div class="marca"><span class="selo">CMS</span><span class="store">STORE</span></div>
