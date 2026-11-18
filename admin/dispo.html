@@ -2301,9 +2301,14 @@ function pararDesm(){
   if(!X) return;
   X.parar = true;
   X.pausado = false;
-  // na conferência quem está trabalhando é a extensão, do outro lado
-  if(X.modo === 'conferir')
+  /* Quem está trabalhando é a extensão, do outro lado — vale para a
+     conferência E para o piloto. Faltar o piloto aqui deixou o botão
+     Parar sem efeito justamente no modo que mexe no EBM. */
+  if(X.modo === 'conferir' || X.modo === 'piloto'){
     window.dispatchEvent(new CustomEvent('cms-desm-parar'));
+    desmLog('Parando…', 'warn');
+    setTimeout(() => { if(DESM.exec && DESM.exec.rodando) fecharExecucaoDesm(true); }, 2500);
+  }
 }
 function fecharExecDesm(){
   const X = DESM.exec;
