@@ -2468,9 +2468,9 @@ function ouvirExtensaoDesm(){
     if(d.tipo === 'fim'){ fecharExecucaoDesm(!d.ok); return; }
     if(d.tipo === 'erro'){
       desmLog(d.texto || 'Falhou.', 'erro');
-      if(d.codigo === 'sem-ebm')
-        desmLog('Abra o EBM numa aba, vá em Desmembrar Pedido Mãe, consulte os '
-                + 'pedidos e deixe a lista na tela. Depois clique em Conferir de novo.', 'warn');
+      if(d.codigo === 'precisa-login')
+        desmLog('O EBM pediu login e a extensão não tem um guardado. Entre no EBM '
+                + 'uma vez nesta janela e tente de novo.', 'warn');
       fecharExecucaoDesm(true);
       return;
     }
@@ -2603,7 +2603,8 @@ function conferirNoEbm(){
   $('desmExecModal').style.display = 'flex';
   desmAndar();
   desmPasso('falando com a extensão…');
-  desmLog('CONFERÊNCIA — o EBM é só lido. Nada é marcado, digitado ou gerado.', 'warn');
+  desmLog('CONFERÊNCIA — o EBM é só lido. Nada é marcado, digitado ou gerado. '
+          + 'Se não houver aba do EBM aberta, a extensão abre e consulta sozinha.', 'warn');
   window.dispatchEvent(new CustomEvent('cms-desm-conferir', { detail:{ pacote:p } }));
 }
 
