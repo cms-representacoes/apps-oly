@@ -1996,7 +1996,7 @@ async function agDisponivel(a) {
     if (o.repasse && (!quer || quer === 'repasse')) for (const l of o.repasse.lotes) {
       const g = gradeTexto(l.grade);
       rows.push([o.nome, o.cor, 'Repasse' + (l.rateado ? ` (${l.selo})` : ''), l.saldo, l.data, DISPONIVEL.faixaDeGrade(Object.keys(l.grade)), o.artigo, l.num, g]);
-      partes.push(`Repasse lote ${l.num}: ${fmt(l.saldo)} pares, entrega ${l.data}, grade ${g}` + (l.rateado ? (l.soAcompanhar ? ', lote rateado: total, só para acompanhar' : ', cota do vendedor') : ''));
+      partes.push(`Repasse lote ${l.num}: ${fmt(l.saldo)} pares, entrega ${l.data}, grade ${g}` + (l.rateado ? (MANDA_EM_TUDO.includes(norm(APP.sessao.nome)) ? ', lote rateado: total do lote' : ', cota do vendedor') : ''));
     }
     if (o.pronta && (!quer || quer === 'estoque')) {
       const g = gradeTexto(o.pronta.grade);

@@ -240,16 +240,17 @@ window.DISPONIVEL = (() => {
       let saldo = Math.max(0, Number(r.saldo || 0) - (reservas.get(num) || 0));
 
       // Lote rateado: o vendedor vê só a própria cota (menos o que já pediu) e,
-      // sem cota, o lote nem aparece para ele. A CMS vê o total, só para
-      // acompanhar.
+      // sem cota, o lote nem aparece para ele.
+      // A CMS vê e pega o saldo inteiro: o escritório lança em nome do vendedor
+      // e, se o pedido passar da cota dele, o aviso sai na hora de enviar — não
+      // aqui. Travar a CMS na cota não funcionaria: o vendedor só é escolhido
+      // no fim, e o rateio divide 100% do lote, então ela nunca pegaria nada.
       const cotas = cotasDoLote(rateio, num);
       const rateado = loteERateado(cotas);
-      let soAcompanhar = false, selo = '';
+      let selo = '';
       if(rateado){
         selo = nomeDoSelo(cotas);
-        if(souCms){
-          soAcompanhar = true;
-        }else{
+        if(!souCms){
           const cota = Number(cotas[meu] || 0);
           if(cota <= 0) continue;
           saldo = Math.min(saldo, Math.max(0, cota - (jaPedi.get(num) || 0)));
@@ -266,9 +267,9 @@ window.DISPONIVEL = (() => {
       const colecao = String(r.colecao || '').trim().toUpperCase();
       o.repasse.lotes.push({ num, gci:String(r.gci||'').trim(),
                              data:String(r.dataEntrega||'').trim(), saldo, grade:g,
-                             rateado, selo, soAcompanhar, colecao });
+                             rateado, selo, colecao });
       if(colecao) o.colecoes = [...new Set([...(o.colecoes || []), colecao])];
-      if(rateado){ o.rateado = true; o.selo = o.selo || selo; o.soAcompanhar = soAcompanhar; }
+      if(rateado){ o.rateado = true; o.selo = o.selo || selo; }
     }
 
     // mês mais próximo entre os lotes, para a faixa do card

@@ -2423,7 +2423,8 @@ body:has(#sacola:not([hidden])) .aviso-desfazer.on{ transform:translate(50%, 0);
   color:#fff; background:linear-gradient(145deg,#A78BFA,#7C3AED); border-radius:999px;
   padding:3px 9px; box-shadow:0 4px 10px rgba(124,58,237,.35);
   max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-/* Para a CMS o selo é só acompanhamento: ela vê o total e não pede. */
+/* Para a CMS o lote não é dela: o cinza diz que a cota é do time, e ela pede
+   em nome do vendedor. O roxo continua sendo "reservado para você". */
 .selo-rateio.cms{ background:linear-gradient(145deg,#94A3B8,#475569);
   box-shadow:0 4px 10px rgba(71,85,105,.32); }
 
@@ -3601,7 +3602,7 @@ function itemRepasse(o, lote){
     // A coleção vai junto até o pedido: é por ela que a campanha de
     // incentivo sabe que este par não vale prêmio.
     colecao:lote.colecao || '',
-    selo:lote.selo || '', soAcompanhar:!!lote.soAcompanhar,
+    selo:lote.selo || '',
     grade:{ ...lote.grade }, packSize, mode:'boxed', saldo:lote.saldo,
     amount: packSize > 0 && lote.saldo >= packSize ? 1 : 0 };
 }
@@ -5792,8 +5793,8 @@ function cardHtml(o, i){
         (o.colecoes || []).length
           ? `<span class="selo-colecao" title="Bolsão ${esc(o.colecoes[0])} — cota reservada ao escritório">${esc(o.colecoes[0])}</span>`
           : (ehNovo(o) ? '<span class="selo-novo">Novo</span>' : '')}${
-        o.rateado ? `<span class="selo-rateio${o.soAcompanhar ? ' cms' : ''}"
-          title="${o.soAcompanhar ? 'Lote rateado: só acompanhamento — quem pede é o vendedor com cota'
+        o.rateado ? `<span class="selo-rateio${ehCmsSessao() ? ' cms' : ''}"
+          title="${ehCmsSessao() ? 'Lote rateado entre os vendedores — a CMS pede em nome de quem tem cota'
             : 'Reservado para você nesta ação'}">${esc(o.selo)}</span>` : ''}</span>
       ${premio ? `<span class="selo-premio" title="Campanha ${esc(premio.nome)} · ${
         esc(INCENTIVO.dinheiro(premio.valor))} por par repassado, até ${esc(diaBR(premio.fim))}">${
@@ -8681,12 +8682,11 @@ function abrirModal(i, comFicha){
           </div>
           <div class="lote-d">fat. ${esc(l.data||'—')}</div>
           ${Object.keys(l.grade).length ? celulas(l.grade, 'g-rep') : ''}
-          ${l.rateado ? `<div class="lote-selo${l.soAcompanhar ? ' cms' : ''}">${esc(l.selo)}${
-            l.soAcompanhar ? ' · só acompanhamento' : ' · reservado para você'}</div>` : ''}
+          ${l.rateado ? `<div class="lote-selo${ehCmsSessao() ? ' cms' : ''}">${esc(l.selo)}${
+            ehCmsSessao() ? ' · cota do time' : ' · reservado para você'}</div>` : ''}
           <button class="acao forte lote-add na-sacola" data-lote="${esc(l.num)}"
-            ${(naSacola(`rep|${o.k}|${l.num}`) || l.soAcompanhar) ? 'disabled' : ''}>
-            ${l.soAcompanhar ? 'Só acompanhamento'
-              : naSacola(`rep|${o.k}|${l.num}`) ? 'Já está na sacola' : 'Adicionar à sacola'}
+            ${naSacola(`rep|${o.k}|${l.num}`) ? 'disabled' : ''}>
+            ${naSacola(`rep|${o.k}|${l.num}`) ? 'Já está na sacola' : 'Adicionar à sacola'}
           </button>
         </div>`).join('')}</div></div>`;
   }
@@ -8753,10 +8753,7 @@ function abrirModal(i, comFicha){
 }
 function fecharModal(){ $('modal').hidden = true; pintarVistos(); aplicarSaldoPendente(); }
 
-const AVISO_RATEIO_CMS = 'Lote rateado: a CMS acompanha a quantidade, mas quem faz o ' +
-  'pedido é o vendedor que tem cota nessa ação.';
 function porNaSacola(item){
-  if(item && item.soAcompanhar){ avisar('Só acompanhamento', AVISO_RATEIO_CMS); return; }
   if(STATE.sacola.has(item.key)) return;
   STATE.sacola.set(item.key, item);
   salvarSacola(); pintarSacola();
@@ -9481,7 +9478,13 @@ async function enviarRepasse(op = {}){
       if(dele) doVendedor.set(num, (doVendedor.get(num) || 0) + u);
     }
   }
-  const conflitos = [];
+  /* A cota pesa diferente conforme quem está mandando. Para o vendedor ela é
+     teto: o lote é dividido e ele tira só o que é dele. Para a CMS é aviso —
+     o escritório lança em nome do vendedor e às vezes precisa passar da cota
+     dele. O que ninguém fura é o saldo real do lote: essa mercadoria não
+     existe. Por isso o furo de cota da CMS sai do corte e vira pergunta. */
+  const cmsMandando = ehSessaoCms();
+  const conflitos = [], furos = [];
   const linhas = itens.map(it => {
     const row = porNum.get(String(it.num).trim());
     const [cod, nome] = row ? desinverte(row.codigo, row.produto) : ['', ''];
@@ -9493,7 +9496,13 @@ async function enviarRepasse(op = {}){
     const cota = rateio && typeof rateio === 'object' ? rateio[String(it.num).trim()] : null;
     if(mesmo && cota && typeof cota === 'object'){
       const teto = Math.max(0, Number(cota[preposto] || 0) - (doVendedor.get(String(it.num)) || 0));
-      if(teto < livre){ livre = teto; porCota = true; }
+      if(teto < livre){
+        if(cmsMandando){
+          if(Number(it.amount) * pack > teto) furos.push({ it, cabe: Math.floor(teto / pack) });
+        }else{
+          livre = teto; porCota = true;
+        }
+      }
     }
     const cabe = Math.floor(livre / pack);
     if(cabe < Number(it.amount)) conflitos.push({ it, cabe, porCota });
@@ -9532,6 +9541,27 @@ async function enviarRepasse(op = {}){
             `<ul class="dlg-lista">${lista}</ul>Dá para enviar com o que cabe.`,
       ok:'Enviar com o que tem', cancelar:'Voltar',
       aoConfirmar: () => { ajustar(); enviarRepasse({ ...op, aceitouSaldo:true }); }
+    });
+    return;
+  }
+
+  /* ── 1b) a CMS está passando da cota de alguém ──
+     O saldo do lote comporta, o rateio é que não. Mostra de quem é a cota e
+     quanto ela cobre, e deixa o escritório decidir — não corta por conta. */
+  if(furos.length && !op.aceitouCota){
+    liberado(btn);
+    const nomeDele = (PREPOSTOS_REP.find(([c]) => c === preposto) || [preposto, ''])[1] || preposto;
+    const lista = furos.map(({ it, cabe }) =>
+      `<li><b>${esc(it.nome || it.artigo)}</b> ${esc(it.cor)} · Nº ${esc(it.num)} — ` +
+      (cabe ? `a cota cobre ${nf(cabe)}` : 'a cota já está esgotada') +
+      `, o pedido leva <b>${nf(it.amount)}</b></li>`).join('');
+    mostrarDialogo({
+      titulo:'Passa da cota do vendedor',
+      texto:`Estes lotes são rateados e o pedido ultrapassa a cota de ` +
+            `<b>${esc(nomeCurto(nomeDele))}</b>:<ul class="dlg-lista">${lista}</ul>` +
+            `O saldo do lote comporta — os pares saem da cota dos outros vendedores.`,
+      ok:'Enviar assim mesmo', cancelar:'Voltar',
+      aoConfirmar: () => enviarRepasse({ ...op, aceitouCota:true })
     });
     return;
   }
