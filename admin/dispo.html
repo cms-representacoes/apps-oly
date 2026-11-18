@@ -3169,11 +3169,15 @@ async function inserirLotes(){
   try{
     const e = L.encomenda, o = L.oferta;
     // O número é a identidade do lote e continua a sequência que a planilha
-    // começou: o maior que existe, mais um.
-    let proximo = (STATE.dispoRows || []).reduce((m, r) => {
-      const n = parseInt(String(r.num || '').trim(), 10);
+    // começou: o maior que existe, mais um. Os cancelamentos entram na conta
+    // junto com a lista, porque o lote excluído sai da DISPO mas o número
+    // dele já foi usado — reaproveitá-lo faria o histórico falar de dois
+    // lotes diferentes pelo mesmo Nº. A importação de planilha conta igual.
+    const maiorNum = (lista) => (lista || []).reduce((m, r) => {
+      const n = parseInt(String((r && r.num) || '').trim(), 10);
       return Number.isFinite(n) && n > m ? n : m;
     }, 0);
+    let proximo = Math.max(maiorNum(STATE.dispoRows), maiorNum(STATE.cancelamentos));
 
     const novas = [];
     for(const k of [...L.escolhidos].sort((a, b) => a - b)){

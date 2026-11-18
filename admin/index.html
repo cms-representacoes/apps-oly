@@ -1077,7 +1077,11 @@
         <i class="fa-solid fa-upload text-slate-300 text-3xl mb-3 block"></i>
         <div class="text-sm font-bold text-slate-600">Clique para selecionar o DISPO.xlsx</div>
         <div class="text-xs text-slate-400 mt-1">ou arraste o arquivo aqui</div>
-        <input type="file" id="inputDispoXlsx" accept=".xlsx,.xls" class="hidden" onchange="processarDispoXlsx(this.files[0])">
+        <div class="text-[11px] text-slate-400 mt-3 max-w-md mx-auto leading-relaxed">
+          Toda linha da planilha entra como <b>lote novo</b>, com o Nº dado pelo sistema.
+          A coluna Nº do arquivo, se houver, é ignorada.
+        </div>
+        <input type="file" id="inputDispoXlsx" accept=".xlsx,.xls" class="hidden" onchange="escolherDestinoImportDispo(this.files[0])">
       </div>
 
       <!-- Preview -->
@@ -1085,6 +1089,27 @@
         <div class="flex items-center justify-between mb-3">
           <div class="text-sm font-extrabold" id="dispoPreviewTitle">—</div>
           <button onclick="$('inputDispoXlsx').click()" class="text-xs text-blue-600 font-bold hover:underline">Trocar arquivo</button>
+        </div>
+
+        <!-- Para onde vai o arquivo e com que numeração. As duas coisas são
+             decididas antes de ler a planilha, e ficam à vista até salvar:
+             o bolsão e o repasse comum moram em abas diferentes do Showroom,
+             e o Nº não vem mais do arquivo. -->
+        <div id="dispoDestinoBlock" class="hidden mb-4">
+          <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+            <div>
+              <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Entra como</div>
+              <div class="text-sm font-extrabold" id="dispoDestinoNome">—</div>
+            </div>
+            <div>
+              <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Nºs gerados</div>
+              <div class="text-sm font-extrabold text-slate-700" id="dispoDestinoNums">—</div>
+            </div>
+            <button type="button" onclick="trocarDestinoImportDispo()"
+              class="ml-auto focus-ring rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100">
+              Trocar destino
+            </button>
+          </div>
         </div>
 
         <!-- Conferência das datas: a Prev. Fat. é a informação que mais
@@ -1109,7 +1134,7 @@
             <div class="overflow-auto max-h-48">
               <table class="w-full text-xs">
                 <thead><tr class="bg-green-100 text-green-800">
-                  <th class="text-left px-3 py-2">Nº</th><th class="text-left px-3 py-2">Código</th><th class="text-left px-3 py-2">Produto</th><th class="text-left px-3 py-2">COR</th><th class="text-right px-3 py-2">Saldo</th><th class="text-left px-3 py-2">Prev. Fat.</th>
+                  <th class="text-left px-3 py-2" title="Dado pelo sistema, continuando a série da DISPO">Nº novo</th><th class="text-left px-3 py-2">Código</th><th class="text-left px-3 py-2">Produto</th><th class="text-left px-3 py-2">COR</th><th class="text-right px-3 py-2">Saldo</th><th class="text-left px-3 py-2">Prev. Fat.</th>
                 </tr></thead>
                 <tbody id="dispoNovosBody"></tbody>
               </table>
@@ -1141,25 +1166,6 @@
           <input type="file" id="dispoImgInput" accept="image/*" class="hidden">
         </div>
 
-        <!-- Conflitos -->
-        <div id="dispoConflitosBlock" class="hidden mb-4">
-          <div class="flex items-center gap-2 mb-2">
-            <span class="text-xs font-bold text-slate-700">Conflitos detectados</span>
-            <span id="dispoConflitosCount" class="text-[11px] font-bold bg-amber-100 text-amber-700 rounded-full px-2 py-0.5">0</span>
-            <span class="text-[11px] text-slate-400">— mesmo Nº já existe</span>
-          </div>
-          <div class="flex flex-wrap items-center gap-2 mb-2 text-[11px]">
-            <label class="flex items-center gap-1.5 font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="dispoConfCheckAll"> Selecionar todos</label>
-            <span id="dispoConfSelCount" class="text-slate-400 font-semibold"></span>
-            <div class="ml-auto flex gap-1.5">
-              <button type="button" onclick="aplicarAcaoConflitosSelecionados('ignorar')" class="rounded-full px-2.5 py-1 font-bold border border-red-300 bg-red-50 text-red-600">Ignorar sel.</button>
-              <button type="button" onclick="aplicarAcaoConflitosSelecionados('incluir')" class="rounded-full px-2.5 py-1 font-bold border border-blue-300 bg-blue-50 text-blue-600">Incluir sel.</button>
-              <button type="button" onclick="aplicarAcaoConflitosSelecionados('substituir')" class="rounded-full px-2.5 py-1 font-bold border border-emerald-300 bg-emerald-50 text-emerald-600">Substituir sel.</button>
-            </div>
-          </div>
-          <div id="dispoConflitosBody" class="flex flex-col gap-3"></div>
-        </div>
-
         <div class="flex items-center justify-between pt-4 border-t border-slate-200">
           <div class="text-xs text-slate-400" id="dispoResumoImport">—</div>
           <div class="flex gap-2">
@@ -1170,6 +1176,43 @@
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: DESTINO DA IMPORTAÇÃO ───────────────────────────────────────
+       Vem antes de ler a planilha, porque é a pergunta que a planilha não
+       responde: o bolsão da coleção é a cota que a fábrica reservou ao
+       escritório e tem aba própria no Showroom; o repasse comum é o de todo
+       dia. Errar aqui põe o lote na prateleira errada, e só se descobre
+       quando o vendedor não acha o produto. -->
+  <div id="modalDestinoDispo" class="hidden fixed inset-0 z-[160] bg-slate-950/55 p-4 flex items-center justify-center overflow-y-auto">
+    <div class="rounded-[28px] bg-white border border-slate-200 shadow-card w-full max-w-lg my-8 p-6">
+      <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Importar DISPO</div>
+      <div class="text-xl font-extrabold mb-1">O que tem nesta planilha?</div>
+      <div class="text-xs text-slate-500 mb-5" id="dispoDestinoArquivo">—</div>
+
+      <div class="flex flex-col gap-3">
+        <button type="button" onclick="confirmarDestinoImportDispo('')"
+          class="focus-ring text-left rounded-2xl border-2 border-slate-200 bg-white p-4 hover:border-blue-400 hover:bg-blue-50 transition-colors">
+          <div class="flex items-center gap-2 font-extrabold text-slate-800">
+            <i class="fa-solid fa-box-open text-slate-400"></i> Repasse comum
+          </div>
+          <div class="text-xs text-slate-500 mt-1">O repasse de todo dia. Vai para a lista de sempre e para a vitrine do Showroom.</div>
+        </button>
+
+        <button type="button" onclick="confirmarDestinoImportDispo(COLECAO_ADMIN)"
+          class="focus-ring text-left rounded-2xl border-2 border-slate-200 bg-white p-4 hover:border-cyan-400 hover:bg-cyan-50 transition-colors">
+          <div class="flex items-center gap-2 font-extrabold text-slate-800">
+            <i class="fa-solid fa-sack-dollar text-cyan-500"></i> <span>Bolsão <span id="dispoDestinoColecao">1S27</span></span>
+          </div>
+          <div class="text-xs text-slate-500 mt-1">A cota que a fábrica reservou ao escritório. Fica na aba própria, separada do repasse comum.</div>
+        </button>
+      </div>
+
+      <div class="flex justify-end pt-5">
+        <button type="button" onclick="cancelarDestinoImportDispo()"
+          class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">Cancelar</button>
       </div>
     </div>
   </div>
@@ -3999,7 +4042,9 @@ $('btnVoltarConfig').addEventListener('click', voltarDaConfig);
 // ── IMPORTAR DISPO ────────────────────────────────────────────────────────────
 let _dispoJsonAtual = [];
 let _dispoNovos = [];
-let _dispoConflitos = []; // [{xlsx, atual, incluir}]
+let _dispoDestino = '';      // '' = repasse comum; '1S27' = bolsão da coleção
+let _dispoArquivo = null;    // o arquivo esperando a resposta do destino
+let _dispoFaixaNums = '';    // "1165 a 1210", só para mostrar na conferência
 
 function abrirImportarDispo(){ $('modalImportarDispo').classList.remove('hidden'); }
 function fecharModalDispo(){
@@ -4007,8 +4052,74 @@ function fecharModalDispo(){
   $('dispoPreviewArea').classList.add('hidden');
   $('dispoUploadArea').classList.remove('hidden');
   $('inputDispoXlsx').value = '';
-  _dispoNovos = []; _dispoConflitos = []; _dispoSemImg = [];
+  _dispoNovos = []; _dispoSemImg = []; _dispoArquivo = null; _dispoFaixaNums = '';
   $('dispoSemImgBlock')?.classList.add('hidden');
+  $('dispoDestinoBlock')?.classList.add('hidden');
+}
+
+/* ── O destino, antes de ler a planilha ──────────────────────────────────────
+   A planilha não diz se aquilo é bolsão ou repasse comum — e a coluna
+   COLEÇÃO, quando vem, vem do que o Chris digitou. Então quem responde é
+   quem está importando, uma vez por arquivo, e a resposta vale para todas as
+   linhas. Fica à vista na conferência e dá para trocar sem reabrir o arquivo. */
+function escolherDestinoImportDispo(file){
+  if(!file) return;
+  _dispoArquivo = file;
+  $('dispoDestinoArquivo').textContent = file.name;
+  const selo = $('dispoDestinoColecao'); if(selo) selo.textContent = COLECAO_ADMIN;
+  $('modalDestinoDispo').classList.remove('hidden');
+}
+function cancelarDestinoImportDispo(){
+  $('modalDestinoDispo').classList.add('hidden');
+  _dispoArquivo = null;
+  $('inputDispoXlsx').value = '';
+}
+function confirmarDestinoImportDispo(destino){
+  $('modalDestinoDispo').classList.add('hidden');
+  _dispoDestino = destino || '';
+  const f = _dispoArquivo;
+  if(f) processarDispoXlsx(f);
+}
+/* Trocar o destino não relê o arquivo: só reetiqueta o que já está na tela. */
+function trocarDestinoImportDispo(){
+  _dispoDestino = _dispoDestino ? '' : COLECAO_ADMIN;
+  for(const it of _dispoNovos) it.colecao = _dispoDestino;
+  renderDestinoImportDispo();
+}
+function renderDestinoImportDispo(){
+  const bloco = $('dispoDestinoBlock');
+  if(!bloco) return;
+  const nome = $('dispoDestinoNome');
+  if(nome){
+    nome.textContent = _dispoDestino ? ('Bolsão ' + _dispoDestino) : 'Repasse comum';
+    nome.className = 'text-sm font-extrabold ' + (_dispoDestino ? 'text-cyan-700' : 'text-slate-700');
+  }
+  $('dispoDestinoNums').textContent = _dispoFaixaNums || '—';
+  bloco.classList.remove('hidden');
+}
+
+/* ── O Nº do lote ────────────────────────────────────────────────────────────
+   Era a planilha que mandava, e dois arquivos com a mesma numeração se
+   atropelavam. Agora o Nº nasce aqui, continuando a série que já existe.
+   Conta o que está na DISPO e também o que foi cancelado ou excluído: o
+   número de um lote apagado não volta para a fila, senão o histórico passa a
+   falar de dois lotes diferentes com o mesmo Nº. */
+async function maiorNumDispo(lista){
+  let maior = 0;
+  const olhar = (n) => {
+    const v = parseInt(String(n == null ? '' : n).trim(), 10);
+    if(Number.isFinite(v) && v > maior) maior = v;
+  };
+  for(const r of (lista || [])) olhar(r && r.num);
+  try{
+    const res = await fetch(WORKER_URL, { method:'PATCH', headers:{'Content-Type':'application/json'},
+                                          body: JSON.stringify({ action:'getCancelamentosDispo' }) });
+    if(res.ok){
+      const j = await res.json();
+      for(const c of (Array.isArray(j) ? j : [])) olhar(c && c.num);
+    }
+  }catch(e){ console.warn('Não deu para ler os cancelamentos; a numeração segue pela DISPO.', e); }
+  return maior;
 }
 
 async function processarDispoXlsx(file){
@@ -4020,6 +4131,7 @@ async function processarDispoXlsx(file){
     const res = await fetch(WORKER_URL, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'getDispo'}) });
     _dispoJsonAtual = res.ok ? await res.json() : [];
   }catch(e){ _dispoJsonAtual = []; }
+  let proximoNum = (await maiorNumDispo(_dispoJsonAtual)) + 1;
 
   // Lê o xlsx
   const buf = await file.arrayBuffer();
@@ -4043,12 +4155,6 @@ async function processarDispoXlsx(file){
   // pelo texto da planilha — era dele que saía a troca de dia com mês.
   const rowsBrutas = XLSX.utils.sheet_to_json(ws, { range:_hdrIdx, defval:null, raw:true });
 
-  const chaveAtual = new Map(); // por Nº (identidade única)
-  for(const r of _dispoJsonAtual){
-    const k = String(r.num||'').trim();
-    if(k) chaveAtual.set(k, r);
-  }
-
   // Mapeamento por NOME com apelidos — aceita BASE_APP e Repasses_Atual
   const _norm = s => String(s==null?'':s).trim().toUpperCase();
   const _headerKeys = rows.length > 0 ? Object.keys(rows[0]) : [];
@@ -4058,7 +4164,10 @@ async function processarDispoXlsx(file){
     for(const a of aliases){ const real = _keyByName[_norm(a)]; if(real !== undefined) return real; }
     return null;
   };
-  const colNum    = _resolve('Nº','N','CÓD REPASSE','COD REPASSE');
+  /* A coluna Nº da planilha não é lida de propósito: a numeração passou a ser
+     do sistema. Enquanto o arquivo mandava, duas planilhas com a mesma série
+     criavam lotes com o mesmo Nº, e o Nº é o que identifica o lote em toda a
+     casa — DISPO, Showroom, rateio, desmembramento. */
   const colEbm    = _resolve('EBM');
   const colGci    = _resolve('GCI');
   const colFilial = _resolve('FILIAL');
@@ -4067,14 +4176,12 @@ async function processarDispoXlsx(file){
   const colCor    = _resolve('COR','Cor');
   const colData   = _resolve('DATA ENTREGA');
   const colPedMae = _resolve('PEDIDO MÃE','PEDIDO MAE');
-  /* A coleção do lote (1S27, 2S27...). Nasceu com o bolsão da 1S27, que é a
-     cota que a fábrica reservou para o escritório atender os clientes
-     pequenos: esses lotes ficam numa aba própria do Showroom, separados do
-     repasse comum. Sem este campo a única forma de separá-los seria deduzir
-     pela data ou pela faixa de número, e as duas quebram em silêncio na
-     próxima coleção. O resolve não tira acento, só maiúsculas - por isso as
-     três grafias. */
-  const colColecao = _resolve('COLECAO','COLEÇÃO','COLEÇAO','COLECÃO');
+  /* A coleção do lote (1S27, 2S27...) também não vem mais da planilha: quem
+     responde é o modal de destino, uma vez por arquivo. O bolsão é a cota que
+     a fábrica reservou ao escritório e tem aba própria no Showroom; o resto é
+     repasse comum. A coluna COLEÇÃO chegava em quatro grafias e em branco na
+     maioria dos arquivos, e um lote do bolsão sem ela ia parar na prateleira
+     errada sem ninguém ver. */
   const colSaldo  = _resolve('SALDO');
 
   // Grade = só colunas que são tamanho (28–48, combinados 33/34, ou PP…U)
@@ -4108,7 +4215,7 @@ async function processarDispoXlsx(file){
     }
 
     return {
-      num: String(_g(colNum) ?? '').trim(),
+      num: '',                       // dado pelo sistema, logo abaixo
       ebm: String(_g(colEbm) || '').trim(),
       gci: String(_g(colGci) || '').trim(),
       filial: String(_g(colFilial) || '').trim(),
@@ -4120,26 +4227,30 @@ async function processarDispoXlsx(file){
       _dataTexto: colData ? String(_g(colData) ?? '').trim() : '',
       _dataAviso: _data.aviso,
       pedidoMae: String(_g(colPedMae) || '').trim(),
-      colecao: String(_g(colColecao) || '').trim().toUpperCase(),
+      colecao: _dispoDestino,
       saldo: Number(_g(colSaldo) || 0),
       grade
     };
   }
 
   _dispoNovos = [];
-  _dispoConflitos = [];
 
+  /* Toda linha da planilha é lote novo. Não se procura mais o lote existente:
+     a importação serve para dar entrada no que chegou, não para corrigir o
+     que já está lá — isso se faz na própria DISPO, linha a linha. */
   for(let _i = 0; _i < rows.length; _i++){
     const row = rows[_i];
     const item = rowToJson(row, rowsBrutas[_i]);
     if(!item.codigo && !item.produto) continue;
-    const k = String(item.num||'').trim();
-    if(k && chaveAtual.has(k)){
-      _dispoConflitos.push({ xlsx: item, atual: chaveAtual.get(k), acao: 'ignorar', _sel: false });
-    } else {
-      _dispoNovos.push(item);
-    }
+    item.num = String(proximoNum++);
+    _dispoNovos.push(item);
   }
+
+  _dispoFaixaNums = _dispoNovos.length
+    ? (_dispoNovos.length === 1
+        ? _dispoNovos[0].num
+        : `${_dispoNovos[0].num} a ${_dispoNovos[_dispoNovos.length - 1].num}`)
+    : '—';
 
   renderPreviewDispo(file.name, rows.length);
 }
@@ -4311,7 +4422,7 @@ async function enviarImagemDispo(file){
 function renderConferenciaDatas(){
   const bloco = $('dispoDatasBlock');
   if(!bloco) return;
-  const itens = [..._dispoNovos, ..._dispoConflitos.map(c => c.xlsx)];
+  const itens = _dispoNovos;
   if(!itens.length){ bloco.classList.add('hidden'); return; }
 
   const porData = new Map();
@@ -4346,6 +4457,7 @@ function renderPreviewDispo(fileName, totalLinhas){
   $('dispoUploadArea').classList.add('hidden');
   $('dispoPreviewArea').classList.remove('hidden');
   $('dispoPreviewTitle').textContent = `${fileName} — ${totalLinhas} linha(s) lida(s)`;
+  renderDestinoImportDispo();
   renderConferenciaDatas();
 
   // Novos
@@ -4355,7 +4467,7 @@ function renderPreviewDispo(fileName, totalLinhas){
     $('dispoNovosCount').textContent = _dispoNovos.length;
     $('dispoNovosBody').innerHTML = _dispoNovos.map(r => `
       <tr class="border-t border-green-100">
-        <td class="px-3 py-2 text-slate-600">${safeHtml(r.num)}</td>
+        <td class="px-3 py-2 font-extrabold text-green-700">${safeHtml(r.num)}</td>
         <td class="px-3 py-2 font-semibold">${safeHtml(r.codigo)}</td>
         <td class="px-3 py-2 font-bold">${safeHtml(r.produto)}</td>
         <td class="px-3 py-2">${safeHtml(r.cor)}</td>
@@ -4370,91 +4482,15 @@ function renderPreviewDispo(fileName, totalLinhas){
   // o preview aparecer na hora; o bloco surge quando termina.
   verificarImagensDosNovos();
 
-  // Conflitos
-  const conflitosBlock = $('dispoConflitosBlock');
-  if(_dispoConflitos.length){
-    conflitosBlock.classList.remove('hidden');
-    $('dispoConflitosCount').textContent = _dispoConflitos.length;
-    $('dispoConflitosBody').innerHTML = _dispoConflitos.map((c,i) => `
-      <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-        <div class="flex items-center justify-between mb-3 gap-3">
-          <label class="flex items-center gap-2 font-bold text-sm cursor-pointer">
-            <input type="checkbox" class="dispo-conf-chk" data-i="${i}" ${c._sel?'checked':''}>
-            <span>Nº ${safeHtml(c.xlsx.num||'—')} · ${safeHtml(c.xlsx.produto)} — ${safeHtml(c.xlsx.cor)} <span class="text-slate-400 font-normal text-xs">${safeHtml(c.xlsx.codigo)}</span></span>
-          </label>
-          <div class="flex gap-2 flex-shrink-0">
-            <button type="button" onclick="setAcaoConflito(${i},'ignorar')" class="conf-btn-ignorar-${i} focus-ring rounded-full px-3 py-1 text-xs font-bold border ${(c.acao||'ignorar')==='ignorar'?'border-red-300 bg-red-50 text-red-600':'border-slate-200 bg-white text-slate-500'}">Ignorar</button>
-            <button type="button" onclick="setAcaoConflito(${i},'incluir')" class="conf-btn-incluir-${i} focus-ring rounded-full px-3 py-1 text-xs font-bold border ${c.acao==='incluir'?'border-blue-300 bg-blue-50 text-blue-600':'border-slate-200 bg-white text-slate-500'}">Incluir</button>
-            <button type="button" onclick="setAcaoConflito(${i},'substituir')" class="conf-btn-substituir-${i} focus-ring rounded-full px-3 py-1 text-xs font-bold border ${c.acao==='substituir'?'border-emerald-300 bg-emerald-50 text-emerald-600':'border-slate-200 bg-white text-slate-500'}">Substituir</button>
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-3 text-xs">
-          <div class="rounded-xl bg-white border border-slate-200 p-3">
-            <div class="text-slate-400 font-bold mb-2 uppercase text-[10px] tracking-wide">Existente no sistema</div>
-            <div class="flex justify-between"><span class="text-slate-500">Nº</span><span class="font-semibold">${safeHtml(c.atual.num||'—')}</span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Saldo</span><span class="font-bold">${c.atual.saldo}</span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Prev. Fat.</span><span>${safeHtml(c.atual.dataEntrega||'—')}</span></div>
-            <div class="flex justify-between"><span class="text-slate-500">GCI</span><span class="text-blue-600 font-bold">${safeHtml(c.atual.gci||'—')}</span></div>
-          </div>
-          <div class="rounded-xl bg-blue-50 border border-blue-200 p-3">
-            <div class="text-blue-500 font-bold mb-2 uppercase text-[10px] tracking-wide">Chegando no xlsx</div>
-            <div class="flex justify-between"><span class="text-slate-500">Nº</span><span class="font-semibold">${safeHtml(c.xlsx.num||'—')}</span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Saldo</span><span class="font-bold ${c.xlsx.saldo!==c.atual.saldo?'text-amber-600':''}">${c.xlsx.saldo}</span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Prev. Fat.</span><span class="${c.xlsx.dataEntrega!==c.atual.dataEntrega?'text-amber-600':''}">${safeHtml(c.xlsx.dataEntrega||'—')}</span></div>
-            <div class="flex justify-between"><span class="text-slate-500">GCI</span><span class="text-blue-600 font-bold">${safeHtml(c.xlsx.gci||'—')}</span></div>
-          </div>
-        </div>
-      </div>`).join('');
-  } else {
-    conflitosBlock.classList.add('hidden');
-  }
-
   atualizarResumoImportDispo();
 }
-
-const _confCls = { ignorar:'border-red-300 bg-red-50 text-red-600', incluir:'border-blue-300 bg-blue-50 text-blue-600', substituir:'border-emerald-300 bg-emerald-50 text-emerald-600' };
-function _updateConfBtns(idx){
-  const acao = _dispoConflitos[idx].acao || 'ignorar';
-  ['ignorar','incluir','substituir'].forEach(act=>{
-    const el = document.querySelector(`.conf-btn-${act}-${idx}`);
-    if(el) el.className = `conf-btn-${act}-${idx} focus-ring rounded-full px-3 py-1 text-xs font-bold border ${act===acao?_confCls[act]:'border-slate-200 bg-white text-slate-500'}`;
-  });
-}
-function setAcaoConflito(idx, acao){
-  _dispoConflitos[idx].acao = acao;
-  _updateConfBtns(idx);
-  atualizarResumoImportDispo();
-}
-function aplicarAcaoConflitosSelecionados(acao){
-  let n=0;
-  _dispoConflitos.forEach((c,i)=>{ if(c._sel){ c.acao=acao; _updateConfBtns(i); n++; } });
-  if(!n){ showToast('Selecione ao menos um conflito.', 'error'); return; }
-  atualizarResumoImportDispo();
-}
-function _syncConfSelUI(){
-  const n=_dispoConflitos.filter(c=>c._sel).length;
-  const el=document.getElementById('dispoConfSelCount'); if(el) el.textContent = n ? `${n} selecionado(s)` : '';
-  const all=document.getElementById('dispoConfCheckAll');
-  if(all){ all.checked = _dispoConflitos.length>0 && n===_dispoConflitos.length; all.indeterminate = n>0 && n<_dispoConflitos.length; }
-}
-document.addEventListener('change', (e)=>{
-  const t=e.target; if(!t) return;
-  if(t.classList && t.classList.contains('dispo-conf-chk')){
-    const i = +t.dataset.i; if(_dispoConflitos[i]) _dispoConflitos[i]._sel = t.checked;
-    _syncConfSelUI();
-  } else if(t.id === 'dispoConfCheckAll'){
-    _dispoConflitos.forEach(c=>c._sel = t.checked);
-    document.querySelectorAll('.dispo-conf-chk').forEach(c=>c.checked = t.checked);
-    _syncConfSelUI();
-  }
-});
 
 function atualizarResumoImportDispo(){
-  const incl = _dispoConflitos.filter(c=>c.acao==='incluir').length;
-  const subs = _dispoConflitos.filter(c=>c.acao==='substituir').length;
-  const ign  = _dispoConflitos.filter(c=>(c.acao||'ignorar')==='ignorar').length;
-  const totalFinal = _dispoJsonAtual.length + _dispoNovos.length + incl;
-  $('dispoResumoImport').textContent = `${_dispoNovos.length} novo(s) · ${subs} substituído(s) · ${incl} incluído(s) · ${ign} ignorado(s). Total a salvar: ${totalFinal} produto(s).`;
+  const n = _dispoNovos.length;
+  const onde = _dispoDestino ? ('bolsão ' + _dispoDestino) : 'repasse comum';
+  $('dispoResumoImport').textContent = n
+    ? `${n} lote(s) novo(s) em ${onde}, Nº ${_dispoFaixaNums}. A DISPO fica com ${_dispoJsonAtual.length + n} lote(s).`
+    : 'Nenhuma linha aproveitável no arquivo.';
 }
 
 document.addEventListener('change', (e)=>{
@@ -4469,24 +4505,34 @@ async function confirmarImportarDispo(){
   btn.disabled = true;
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
   try{
-    const subsNums = new Set(_dispoConflitos.filter(c=>c.acao==='substituir').map(c=>String(c.atual.num)));
-    const base = _dispoJsonAtual.filter(r => !subsNums.has(String(r.num)));
-    // O que o lote sabe de si e a planilha não traz — de qual cliente veio, a
-    // família, a linha do tempo — tem de sobreviver à substituição. Sem isto,
-    // uma importação apagaria a origem de todo lote que ela toca.
-    const GUARDAR = ['origem','origemNome','fam','eventos','colecao'];
-    const porNum = new Map(_dispoJsonAtual.map(r => [String(r.num), r]));
-    const herdar = (nova) => {
-      const velha = porNum.get(String(nova && nova.num));
-      if(!velha) return nova;
-      const extra = {};
-      for(const c of GUARDAR) if(velha[c] !== undefined && nova[c] === undefined) extra[c] = velha[c];
-      return Object.keys(extra).length ? { ...nova, ...extra } : nova;
-    };
-    const adicionar = [..._dispoNovos, ..._dispoConflitos.filter(c=>c.acao==='incluir'||c.acao==='substituir').map(c=>c.xlsx)]
-      .map(herdar);
+    /* A importação só acrescenta: nenhum lote que já está na DISPO é tocado.
+       Antes ela podia substituir um lote de mesmo Nº, e com isso apagava o
+       que o lote sabia de si e a planilha não traz (de qual cliente veio, a
+       família, a linha do tempo). Com o Nº vindo do sistema, não há mais
+       encontro de números — o que chega é sempre lote novo.
+
+       A DISPO é relida aqui, e não a da conferência: entre escolher o arquivo
+       e confirmar pode ter entrado lote por outra tela. Gravar a lista velha
+       apagaria esse lote, e os Nºs reservados na conferência já estariam
+       tomados. Se foi o caso, a numeração recomeça do topo de agora. */
+    let base = _dispoJsonAtual;
+    try{
+      const r0 = await fetch(WORKER_URL, { method:'PATCH', headers:{'Content-Type':'application/json'},
+                                           body: JSON.stringify({ action:'getDispo' }) });
+      if(r0.ok){ const j0 = await r0.json(); if(Array.isArray(j0)) base = j0; }
+    }catch(e){ console.warn('Não deu para reler a DISPO; segue com a da conferência.', e); }
+
+    const usados = new Set(base.map(r => String(r && r.num || '').trim()));
+    let renumerados = 0;
+    if(_dispoNovos.some(r => usados.has(String(r.num).trim()))){
+      let prox = (await maiorNumDispo(base)) + 1;
+      for(const it of _dispoNovos){ it.num = String(prox++); renumerados++; }
+      _dispoFaixaNums = renumerados === 1 ? _dispoNovos[0].num
+        : `${_dispoNovos[0].num} a ${_dispoNovos[_dispoNovos.length - 1].num}`;
+    }
     // _dataTexto e _dataAviso servem só para conferir na tela
     const semMarcas = ({ _dataTexto, _dataAviso, ...r }) => r;
+    const adicionar = _dispoNovos;
     const listaFinal = [...base, ...adicionar.map(semMarcas)];
     const res = await fetch(WORKER_URL, {
       method: 'PATCH', headers:{'Content-Type':'application/json'},
@@ -4495,7 +4541,9 @@ async function confirmarImportarDispo(){
     if(!res.ok) throw new Error(`Worker falhou (${res.status})`);
     const result = await res.json();
     if(!result.success) throw new Error(result.error);
-    showToast(`DISPO importada! ${adicionar.length} produto(s) gravado(s).`, 'success');
+    const onde = _dispoDestino ? `bolsão ${_dispoDestino}` : 'repasse comum';
+    showToast(`DISPO importada! ${adicionar.length} lote(s) em ${onde}, Nº ${_dispoFaixaNums}.` +
+              (renumerados ? ' A DISPO tinha mudado: os Nºs foram refeitos.' : ''), 'success');
     fecharModalDispo();
   }catch(err){
     console.error(err);
