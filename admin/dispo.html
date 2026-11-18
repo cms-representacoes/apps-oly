@@ -606,6 +606,32 @@
 
     button.badge-rateio{ border:0; cursor:pointer; font-family:inherit; }
     button.badge-rateio:hover{ filter:brightness(1.08); }
+    /* ── Desmembramento: uma cor por cliente ──────────────────────────
+       Dezesseis destinos em sequência viram um bloco único de texto; a cor
+       é o que separa um do outro de relance. São classes, e não cor escrita
+       na linha, porque o tom que se lê no fundo claro desaparece no escuro:
+       cada uma traz o seu par. */
+    .desm-cli{ padding:9px 13px; border-top:1px solid var(--line);
+               border-left:4px solid var(--dc); background:var(--dc-bg); }
+    .desm-cli-cod{ font-weight:900; font-size:12.5px; color:var(--dc); }
+    .desm-cli-item{ border-left:2px solid var(--dc); opacity:.92; }
+    .desm-log-cli{ color:var(--dc); }
+    .desm-c0{ --dc:#0d9488; --dc-bg:rgba(13,148,136,.06); }
+    .desm-c1{ --dc:#4f46e5; --dc-bg:rgba(79,70,229,.06); }
+    .desm-c2{ --dc:#b45309; --dc-bg:rgba(180,83,9,.06); }
+    .desm-c3{ --dc:#be185d; --dc-bg:rgba(190,24,93,.06); }
+    .desm-c4{ --dc:#059669; --dc-bg:rgba(5,150,105,.06); }
+    .desm-c5{ --dc:#7c3aed; --dc-bg:rgba(124,58,237,.06); }
+    .desm-c6{ --dc:#0369a1; --dc-bg:rgba(3,105,161,.06); }
+    .desm-c7{ --dc:#c2410c; --dc-bg:rgba(194,65,12,.06); }
+    html.dark .desm-c0{ --dc:#5eead4; --dc-bg:rgba(94,234,212,.09); }
+    html.dark .desm-c1{ --dc:#a5b4fc; --dc-bg:rgba(165,180,252,.09); }
+    html.dark .desm-c2{ --dc:#fcd34d; --dc-bg:rgba(252,211,77,.09); }
+    html.dark .desm-c3{ --dc:#f9a8d4; --dc-bg:rgba(249,168,212,.09); }
+    html.dark .desm-c4{ --dc:#6ee7b7; --dc-bg:rgba(110,231,183,.09); }
+    html.dark .desm-c5{ --dc:#c4b5fd; --dc-bg:rgba(196,181,253,.09); }
+    html.dark .desm-c6{ --dc:#7dd3fc; --dc-bg:rgba(125,211,252,.09); }
+    html.dark .desm-c7{ --dc:#fdba74; --dc-bg:rgba(253,186,116,.09); }
     .rateio-resumo{ display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; margin-top:3px;
       font-size:10.5px; font-weight:700; color:#6d28d9; }
     .rateio-resumo .rateio-selo{ font-weight:600; color:#7c3aed; background:#f5f3ff; border:1px dashed #c4b5fd;
@@ -1050,6 +1076,12 @@
           <!-- Cada um aparece só na sua aba: arquivar na Ag desmembramento,
                desarquivar na dos Arquivados. Fora delas não fazem sentido e
                só dariam chance de erro. -->
+          <!-- Desmembrar: só na Ag desmembramento, que é a fila do trabalho.
+               O robô do Chris faz um pedido mãe por vez; aqui a seleção é
+               por LOTE e o pacote se agrupa por pedido mãe, porque é assim
+               que o EBM trabalha - abre o pedido uma vez e digita todos os
+               clientes dele. -->
+          <button id="btnDesmembrarSel" onclick="abrirConferenciaDesm()" style="display:none;align-items:center;gap:7px;background:#0d9488;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-scissors" style="font-size:12px"></i> Desmembrar</button>
           <button id="btnArquivarSel" onclick="arquivarSelecionadosDispo()" style="display:none;align-items:center;gap:7px;background:#475569;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-box-archive" style="font-size:12px"></i> Arquivar selecionados</button>
           <button id="btnDesarquivarSel" onclick="desarquivarSelecionadosDispo()" style="display:none;align-items:center;gap:7px;background:var(--brand,#3730a3);color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-box-open" style="font-size:12px"></i> Desarquivar</button>
           <button onclick="limparSelecaoDispo()" style="background:transparent;border:1px solid var(--line,#c7cdfb);color:var(--brand,#3730a3);border-radius:999px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer">Limpar</button>
@@ -1826,6 +1858,11 @@ function atualizarBulkBarDispo(){
   };
   mostrar('btnArquivarSel', !naArquivados);
   mostrar('btnDesarquivarSel', naArquivados);
+  // o desmembramento só faz sentido na fila dele
+  mostrar('btnDesmembrarSel', STATE.activeFilter === 'esgotados');
+  const bd = document.getElementById('btnDesmembrarSel');
+  if(bd && n > 0) bd.innerHTML = '<i class="fa-solid fa-scissors" style="font-size:12px"></i> '
+    + (n > 1 ? `Desmembrar ${n} lotes` : 'Desmembrar');
   const all = document.getElementById('dispoCheckAll');
   if(all){
     const vis = Array.from(document.querySelectorAll('.dispo-chk'));
@@ -1838,6 +1875,938 @@ function limparSelecaoDispo(){
   _dispoSelecionados.clear();
   document.querySelectorAll('.dispo-chk').forEach(c=>c.checked=false);
   atualizarBulkBarDispo();
+}
+
+/* ═══ DESMEMBRAMENTO ════════════════════════════════════════════════════
+   O que hoje é uma planilha exportada daqui, aberta no robô do Chris, vai
+   virar trabalho que sai direto desta tela. A planilha nunca teve nada que
+   a CMS não tenha: o pedido do Showroom guarda cliente, vendedor, prazo,
+   campanha e a grade de cada caixa — é a mesma informação, passando por
+   um arquivo a menos.
+
+   Duas coisas mandam no desenho, e as duas vêm do EBM:
+   1. O trabalho é por PEDIDO MÃE, não por lote. O EBM abre o pedido uma
+      vez e recebe todos os clientes dele; por isso a seleção é por lote
+      (que é como a fila se organiza) mas o pacote se agrupa por EBM.
+   2. Dentro do pedido, o destino é o CLIENTE: várias grades do mesmo
+      cliente viram UM desmembramento só. É assim que o robô faz, e é
+      assim que o EBM conta as digitações na hora de gerar a encomenda.
+
+   Esta etapa monta e CONFERE o pacote. Nada é enviado nem gravado: o
+   botão Iniciar roda um ensaio, que percorre os mesmos passos para a
+   tela de acompanhamento poder ser vista e ajustada antes de existir
+   extensão nenhuma. */
+const DESM = { pacote:null, irmaos:[], incluirIrmaos:false, exec:null };
+
+/* A cor de cada cliente mora no CSS (.desm-c0 … .desm-c7), que traz o par
+   claro/escuro de cada tom. Aqui só se escolhe o índice: i % 8. */
+
+/* A fila do desmembramento, igual ao filtro da aba: lote com pedido
+   (pendente ou aprovado), fora dos arquivados e dos ocultos. */
+function lotesNaFilaDesm(){
+  return computeAllRows().filter(r => !isArquivado(r) && !isOculto(r)
+    && (Number(r.pendente || 0) + Number(r.aprovado || 0)) > 0);
+}
+
+function pedidosVivosDoLote(num){
+  const n = sanitizeDisplayText(String(num ?? ''));
+  const out = [];
+  for(const o of (STATE.orders || [])){
+    if(o.archived) continue;
+    const st = canonicalStatus(o.status);
+    if(st === 'Cancelado') continue;
+    for(const it of (o.items || [])){
+      if(sanitizeDisplayText(String(it.num || '')) !== n) continue;
+      out.push({ order:o, item:it, status:st });
+    }
+  }
+  return out;
+}
+
+/* O robô faz QTD PARES ÷ soma da grade e trava o lote inteiro se não der
+   número redondo. Como a vitrine só deixa pedir caixa fechada, isso nunca
+   deveria acontecer — mas quem confere é esta conta, aqui, antes de sair
+   da nossa casa. */
+function _desmCaixas(item, pares){
+  const g = Array.isArray(item && item.grade) ? item.grade : [];
+  const soma = g.reduce((s, x) => s + Number((x && x.qty) || 0), 0);
+  if(soma > 0 && pares % soma === 0) return { caixas: pares / soma, porCaixa: soma };
+  return { caixas: null, porCaixa: soma };
+}
+
+function _desmVendedor(order){
+  const p = order && order.preposto;
+  return String((p && (p.nome || p.codigo)) || order.vendedor || '').trim();
+}
+
+function montarPacoteDesm(nums, incluirIrmaos){
+  const sigla = siglaDesm();
+  const fila = lotesNaFilaDesm();
+  const porNum = new Map(fila.map(r => [String(r.num), r]));
+  const pedidos = new Map();
+  const avisos = [];
+  const marcados = nums.map(String);
+  const naoEstao = marcados.filter(n => !porNum.has(n));
+  if(naoEstao.length) avisos.push({ t:'erro', txt:
+    `Fora da fila: ${naoEstao.join(', ')} — sem pedido de cliente, não há o que desmembrar.` });
+
+  let escolhidos = marcados.map(n => porNum.get(n)).filter(Boolean);
+  const ebmsSel = new Set(escolhidos.map(r => String(r.ebm || '')));
+  const irmaos = fila.filter(r => !marcados.includes(String(r.num))
+                                  && ebmsSel.has(String(r.ebm || '')));
+  DESM.irmaos = irmaos;
+  if(incluirIrmaos) escolhidos = escolhidos.concat(irmaos);
+
+  for(const row of escolhidos){
+    const ebm = String(row.ebm || '');
+    let P = pedidos.get(ebm);
+    if(!P){ P = { ebm, gci:String(row.gci || ''), lotes:[], clientes:new Map(),
+                  pares:0, fica:0 };
+            pedidos.set(ebm, P); }
+    P.lotes.push(String(row.num));
+    const vivos = pedidosVivosDoLote(row.num);
+    const somaPedida = vivos.reduce((s, v) => s + getItemUnits(v.item), 0);
+    /* O que sobra no lote depois desta carga. É o número que decide o
+       destino da linha na fila: zerou, o lote acabou; sobrou, ele fica
+       com a marca de parcial e continua aqui esperando o resto. */
+    P.fica += Math.max(0, Number(row.saldo || 0) - somaPedida);
+    if(somaPedida > Number(row.saldo || 0)) avisos.push({ t:'alerta', txt:
+      `Lote ${row.num}: os pedidos somam ${somaPedida} pares e o lote tem ${row.saldo}. `
+      + 'O EBM vai barrar o que passar do saldo.' });
+
+    for(const { order, item, status } of vivos){
+      const cod = String(order.clienteCodigo || '').trim();
+      const pares = getItemUnits(item);
+      const { caixas, porCaixa } = _desmCaixas(item, pares);
+      const vend = _desmVendedor(order);
+      const prazo = String(order.prazo || '').trim();
+      const camp = String(order.campanha || '').trim();
+      const rot = `${row.produto} ${row.cor} (lote ${row.num})`;
+
+      if(!cod){ avisos.push({ t:'erro', txt:
+        `${rot}: o pedido de ${order.clienteNome || 'cliente sem nome'} está sem código de cliente.` });
+        continue; }
+      if(caixas === null) avisos.push({ t:'erro', txt:
+        `${rot} · ${cod}: ${pares} pares não fecham caixa de ${porCaixa || '?'}. O EBM recusa.` });
+      if(status === 'Pendente') avisos.push({ t:'alerta', txt:
+        `${rot} · ${cod}: pedido ainda PENDENTE (não aprovado).` });
+      if(!prazo) avisos.push({ t:'alerta', txt:
+        `${rot} · ${cod}: sem prazo no pedido — o "manter itens" não terá o que preencher.` });
+
+      let C = P.clientes.get(cod);
+      if(!C){
+        C = { cod, nome:order.clienteNome || '', vendedor:vend, prazo, campanha:camp,
+              pedidoCliente:`${sigla} ${cod}`, linhas:[], pares:0 };
+        P.clientes.set(cod, C);
+      }else{
+        /* Mesmo cliente, dois pedidos: o EBM recebe UMA digitação com UM
+           prazo e UM vendedor. Divergiu, alguém vai ficar com o dado do
+           outro — e no caso do vendedor o robô chega a EXCLUIR a digitação
+           quando o comissionista da tela não bate. */
+        if(prazo && C.prazo && prazo !== C.prazo) avisos.push({ t:'alerta', txt:
+          `Cliente ${cod} tem dois prazos nesta carga ("${C.prazo}" e "${prazo}"). `
+          + 'Vai valer o primeiro.' });
+        if(camp && C.campanha && camp !== C.campanha) avisos.push({ t:'alerta', txt:
+          `Cliente ${cod} tem duas campanhas ("${C.campanha}" e "${camp}"). Vai valer a primeira.` });
+        if(vend && C.vendedor && vend !== C.vendedor) avisos.push({ t:'alerta', txt:
+          `Cliente ${cod} aparece com dois vendedores (${C.vendedor} e ${vend}). `
+          + 'O EBM confere o comissionista e recusa quem não bater.' });
+      }
+      C.linhas.push({ num:String(row.num), codigo:String(row.codigo || ''),
+                      produto:row.produto || '', cor:row.cor || '',
+                      grade:item.grade || [], pares, caixas, porCaixa,
+                      pedidoId:order.id, status });
+      C.pares += pares;
+      P.pares += pares;
+    }
+  }
+
+  const lista = [...pedidos.values()].map(P => ({ ...P, clientes:[...P.clientes.values()] }));
+  const totais = {
+    pedidos: lista.length,
+    lotes: lista.reduce((s, P) => s + P.lotes.length, 0),
+    clientes: lista.reduce((s, P) => s + P.clientes.length, 0),
+    linhas: lista.reduce((s, P) => s + P.clientes.reduce((x, C) => x + C.linhas.length, 0), 0),
+    pares: lista.reduce((s, P) => s + P.pares, 0),
+    fica: lista.reduce((s, P) => s + P.fica, 0),
+  };
+  return { pedidos:lista, totais, avisos, sigla,
+           temErro: avisos.some(a => a.t === 'erro') };
+}
+
+/* A sigla fica no aparelho de quem usa: é a assinatura da pessoa, não da
+   rodada. CH é o padrão do robô, então quem já trabalha assim não precisa
+   mexer em nada. */
+const DESM_SIGLA_KEY = 'cms_desm_sigla';
+const DESM_SIGLAS = ['CH', 'CL'];        // as duas pessoas que desmembram
+function siglaDesm(){
+  try{
+    const s = (localStorage.getItem(DESM_SIGLA_KEY) || '').trim().toUpperCase();
+    return DESM_SIGLAS.includes(s) ? s : 'CH';
+  }catch(e){ return 'CH'; }
+}
+function mudarSiglaDesm(v){
+  const s = String(v || '').trim().toUpperCase();
+  if(!DESM_SIGLAS.includes(s)) return;
+  try{ localStorage.setItem(DESM_SIGLA_KEY, s); }catch(e){}
+  desenharConferenciaDesm();
+}
+function desenharSiglaDesm(){
+  const cx = $('desmSiglaBotoes');
+  if(!cx) return;
+  const atual = siglaDesm();
+  cx.innerHTML = DESM_SIGLAS.map(s => `
+    <button type="button" onclick="mudarSiglaDesm('${s}')"
+      style="border:1px solid ${s === atual ? '#0d9488' : 'var(--line)'};
+             background:${s === atual ? '#0d9488' : 'transparent'};
+             color:${s === atual ? '#fff' : 'var(--muted)'};
+             border-radius:999px;padding:6px 16px;font-weight:900;font-size:13px;
+             cursor:pointer">${s}</button>`).join('');
+  const ex = $('desmSiglaExemplo');
+  if(ex) ex.textContent = `No EBM sai como "${atual} 23424" no Pedido do Cliente.`;
+}
+
+// ---------- tela 1: conferência ----------
+function abrirConferenciaDesm(){
+  if(!_dispoSelecionados.size){ showToast('Selecione ao menos um lote.', 'error'); return; }
+  DESM.incluirIrmaos = false;
+  desenharConferenciaDesm();
+  $('desmConfModal').style.display = 'flex';
+}
+function fecharConferenciaDesm(){ $('desmConfModal').style.display = 'none'; }
+function alternarIrmaosDesm(el){
+  DESM.incluirIrmaos = !!(el && el.checked);
+  desenharConferenciaDesm();
+}
+
+function desenharConferenciaDesm(){
+  desenharSiglaDesm();
+  const p = montarPacoteDesm([..._dispoSelecionados], DESM.incluirIrmaos);
+  DESM.pacote = p;
+  const t = p.totais;
+  /* O par que vai e o par que fica, lado a lado. O que fica é o que decide
+     se o lote some da fila ou volta para ela marcado como parcial — e é a
+     conta que hoje só aparece depois, na tela, quando já não dá para
+     desistir. */
+  $('desmConfResumo').innerHTML =
+    `<b>${t.pedidos}</b> pedido(s) mãe · <b>${t.lotes}</b> lote(s) · `
+    + `<b>${t.clientes}</b> cliente(s)`
+    + `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+         <span style="background:rgba(13,148,136,.12);color:#0d9488;border-radius:999px;
+                      padding:4px 12px;font-weight:800;font-size:12.5px">
+           ${formatInt(t.pares)} pares vão desmembrados</span>
+         <span style="background:${t.fica ? 'rgba(180,83,9,.12)' : 'rgba(5,150,105,.12)'};
+                      color:${t.fica ? '#b45309' : '#059669'};border-radius:999px;
+                      padding:4px 12px;font-weight:800;font-size:12.5px">
+           ${t.fica ? `${formatInt(t.fica)} pares ficam no lote (parcial)`
+                    : 'o lote zera — vai para os arquivados'}</span>
+       </div>`;
+
+  // irmãos: lotes do mesmo pedido mãe que estão na fila e ficaram de fora
+  const box = $('desmConfIrmaos');
+  if(DESM.irmaos.length){
+    box.style.display = 'block';
+    box.innerHTML =
+      `<label style="display:flex;gap:9px;align-items:flex-start;cursor:pointer">
+         <input type="checkbox" onchange="alternarIrmaosDesm(this)" ${DESM.incluirIrmaos ? 'checked' : ''}
+                style="margin-top:2px">
+         <span style="font-size:12.5px;color:var(--text);line-height:1.5">
+           <b>Estes pedidos mãe têm mais ${DESM.irmaos.length} lote(s) na fila</b> que você não marcou:
+           ${safeHtml(DESM.irmaos.map(r => `${r.num} (${r.produto} ${r.cor})`).join(', '))}.<br>
+           <span style="color:var(--muted)">Gerar a encomenda com só parte do pedido digitado deixa o
+           resto para outra rodada. Marque para incluir tudo de uma vez.</span>
+         </span>
+       </label>`;
+  }else{
+    box.style.display = 'none';
+    box.innerHTML = '';
+  }
+
+  // avisos
+  const av = $('desmConfAvisos');
+  if(p.avisos.length){
+    av.style.display = 'flex';
+    av.innerHTML = p.avisos.map(a => {
+      const cor = a.t === 'erro' ? '#dc2626' : '#b45309';
+      const fundo = a.t === 'erro' ? 'rgba(220,38,38,.08)' : 'rgba(180,83,9,.08)';
+      const ico = a.t === 'erro' ? 'fa-circle-exclamation' : 'fa-triangle-exclamation';
+      return `<div style="display:flex;gap:8px;align-items:flex-start;background:${fundo};
+                   border:1px solid ${cor}33;border-radius:10px;padding:8px 11px">
+                <i class="fa-solid ${ico}" style="color:${cor};font-size:12px;margin-top:2px"></i>
+                <span style="font-size:12px;color:var(--text);line-height:1.45">${safeHtml(a.txt)}</span>
+              </div>`;
+    }).join('');
+  }else{
+    av.style.display = 'none';
+    av.innerHTML = '';
+  }
+
+  /* O pacote, do jeito que o EBM vai receber. Um pedido mãe pode ter 30
+     clientes: tudo aberto vira uma lista de três telas e ninguém confere
+     nada. Cada pedido abre sozinho quando é o único — aí a conferência é
+     justamente ver os clientes. */
+  $('desmConfLista').innerHTML = p.pedidos.map(P => `
+    <details ${p.pedidos.length === 1 ? 'open' : ''}
+             style="border:1px solid var(--line);border-radius:14px;overflow:hidden">
+      <summary style="display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;
+                  background:var(--brand-soft,#eef0fe);padding:9px 13px;cursor:pointer;
+                  list-style:none">
+        <span style="font-weight:900;color:var(--brand);font-size:13px">EBM ${safeHtml(P.ebm || '—')}</span>
+        <span style="font-size:11.5px;color:var(--muted);font-weight:700">GCI ${safeHtml(P.gci || '—')}</span>
+        <span style="font-size:11.5px;color:var(--muted);font-weight:700">
+          lote(s) ${safeHtml(P.lotes.join(', '))}</span>
+        <span style="margin-left:auto;font-size:12px;font-weight:800;color:var(--text)">
+          ${P.clientes.length} cliente(s) · ${formatInt(P.pares)} pares${
+            P.fica ? ` · ficam ${formatInt(P.fica)}` : ''}</span>
+      </summary>
+      ${P.clientes.map((C, iC) => {
+        const cls = 'desm-c' + (iC % 8);   // a cor vem do CSS, que tem o par claro/escuro
+        return `
+        <div class="desm-cli ${cls}">
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:baseline">
+            <span class="desm-cli-cod">${safeHtml(C.pedidoCliente)}</span>
+            <span style="font-size:12px;color:var(--text);font-weight:600">${safeHtml(C.nome)}</span>
+            <span style="margin-left:auto;font-size:12px;font-weight:800">${formatInt(C.pares)} pares</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">
+            vendedor ${safeHtml(C.vendedor || '—')} · prazo ${safeHtml(C.prazo || '—')}
+            · campanha ${safeHtml(C.campanha || '—')}
+          </div>
+          ${C.linhas.map(L => `
+            <div class="desm-cli-item" style="display:flex;flex-wrap:wrap;gap:8px;
+                        font-size:11.5px;color:var(--text);margin-top:5px;padding-left:10px">
+              <span style="font-weight:700">${safeHtml(L.produto)} ${safeHtml(L.cor)}</span>
+              <span style="color:var(--muted)">${safeHtml(L.codigo)}</span>
+              <span style="color:var(--muted)">lote ${safeHtml(L.num)}</span>
+              <span style="margin-left:auto;font-weight:700">
+                ${L.caixas != null ? `${L.caixas} cx de ${L.porCaixa}` : 'grade não fecha'}
+                = ${formatInt(L.pares)}</span>
+              ${L.status === 'Pendente'
+                ? '<span style="color:#b45309;font-weight:800">pendente</span>' : ''}
+            </div>`).join('')}
+        </div>`; }).join('')}
+    </details>`).join('') || '<div style="color:var(--muted);font-size:12.5px">Nada a desmembrar.</div>';
+
+  const btn = $('desmConfIniciar');
+  btn.disabled = p.temErro || !t.linhas;
+  btn.style.opacity = btn.disabled ? '.5' : '1';
+  btn.style.cursor = btn.disabled ? 'not-allowed' : 'pointer';
+  btn.textContent = p.temErro ? 'Corrija os erros acima'
+                              : `Iniciar desmembramento (${t.clientes})`;
+
+  /* Com a extensão instalada aparece o passo que o robô não tem: antes de
+     digitar nada, abrir cada pedido mãe no EBM e comparar artigo, cor,
+     grade e saldo com o que a CMS acha que vai mandar. Hoje essas
+     diferenças só aparecem no meio da digitação, como [PULEI]. */
+  const bc = $('desmConfConferir');
+  if(bc){
+    const v = versaoExtensaoDesm();
+    bc.style.display = v ? 'inline-flex' : 'none';
+    bc.disabled = !t.linhas;
+    bc.title = v ? `Extensão CMS · EBM ${v}` : '';
+  }
+  const bx = $('desmConfRaioX');
+  if(bx) bx.style.display = (versaoExtensaoDesm() && primeiroClienteDesm(p)) ? 'inline-flex' : 'none';
+  const bp = $('desmConfPiloto');
+  if(bp){
+    const prim = primeiroClienteDesm(p);
+    bp.style.display = (versaoExtensaoDesm() && prim) ? 'inline-flex' : 'none';
+    bp.title = prim
+      ? `Preenche ${prim.cliente.pedidoCliente} (${prim.cliente.nome}) no pedido `
+        + `${prim.ebm} e para antes de salvar`
+      : '';
+  }
+  const semExt = $('desmConfSemExt');
+  if(semExt) semExt.style.display = versaoExtensaoDesm() ? 'none' : 'block';
+}
+
+/* A extensão se anuncia marcando a página (data-cms-desm). Sem ela, o
+   botão de conferir simplesmente não existe — nada quebra. */
+function versaoExtensaoDesm(){
+  try{ return document.documentElement.dataset.cmsDesm || ''; }catch(e){ return ''; }
+}
+
+/* ---------- tela 2: acompanhamento ----------
+   O robô conta o que está fazendo num bloco de texto que só o Chris vê, na
+   máquina dele. Aqui o mesmo relato fica na tela de quem mandou: uma barra
+   que anda por digitação (cliente), o passo em curso e os avisos na hora em
+   que acontecem, com as cores do log do robô.
+
+   As quatro listas do fim são as mesmas do robô, e cada uma é uma ação de
+   alguém: vendedor incorreto (a digitação é excluída), campanha indisponível
+   (o item salva sem ela), manter itens pendente (prazo não entrou) e
+   encomenda não gerada (as digitações ficaram salvas). Sem elas, o lote
+   "termina" e ninguém sabe o que ficou pela metade. */
+const DESM_CORES = { info:'var(--muted)', acao:'var(--brand)', ok:'#059669',
+                     warn:'#b45309', erro:'#dc2626' };
+
+/* idxCliente pinta a linha com a cor daquele cliente — a mesma da
+   conferência, para o olho ligar as duas telas. */
+function desmLog(msg, tag, idxCliente){
+  const cx = $('desmExecLog');
+  if(!cx) return;
+  const cor = DESM_CORES[tag || 'info'] || DESM_CORES.info;
+  const forte = (tag === 'erro' || tag === 'ok' || tag === 'acao') ? '700' : '500';
+  const linha = document.createElement('div');
+  if(DESM.exec) DESM.exec.log.push({ em:Date.now(), txt:msg, tag:tag || 'info' });
+  if(idxCliente != null) linha.className = 'desm-log-cli desm-c' + (idxCliente % 8);
+  linha.style.cssText = (idxCliente == null ? `color:${cor};` : '')
+    + `font-weight:${forte};padding:2px 0;`
+    + 'font-size:12px;line-height:1.45;white-space:pre-wrap';
+  linha.textContent = msg;
+  cx.appendChild(linha);
+  cx.scrollTop = cx.scrollHeight;
+}
+
+function desmPasso(txt){
+  const e = $('desmExecPasso');
+  if(e) e.textContent = txt || '';
+}
+
+function desmAndar(){
+  const X = DESM.exec;
+  if(!X) return;
+  const pct = X.total ? Math.round(100 * X.feitos / X.total) : 0;
+  const b = $('desmExecBarra');
+  if(b) b.style.width = pct + '%';
+  const c = $('desmExecContador');
+  const oque = X.modo === 'conferir' ? 'pedido(s) mãe' : 'digitação(ões)';
+  if(c) c.textContent = `${X.feitos} de ${X.total} ${oque} · ${pct}%`;
+}
+
+function _desmDormir(ms){
+  return new Promise(res => setTimeout(res, ms));
+}
+async function _desmEspera(ms){
+  const X = DESM.exec;
+  await _desmDormir(ms);
+  while(X && X.pausado && !X.parar) await _desmDormir(150);
+  if(X && X.parar) throw new Error('PARADO');
+}
+
+function abrirRegistroDesm(rodadaId){
+  const q = rodadaId ? ('?rodada=' + encodeURIComponent(rodadaId)) : '';
+  window.open('desmembrados.html' + q, '_blank');
+}
+
+function pausarDesm(){
+  const X = DESM.exec;
+  if(!X) return;
+  X.pausado = !X.pausado;
+  $('desmExecPausar').textContent = X.pausado ? 'Continuar' : 'Pausar';
+  desmLog(X.pausado ? '— pausado por você —' : '— seguindo —', 'warn');
+}
+function pararDesm(){
+  const X = DESM.exec;
+  if(!X) return;
+  X.parar = true;
+  X.pausado = false;
+  // na conferência quem está trabalhando é a extensão, do outro lado
+  if(X.modo === 'conferir')
+    window.dispatchEvent(new CustomEvent('cms-desm-parar'));
+}
+function fecharExecDesm(){
+  const X = DESM.exec;
+  if(X && X.rodando){ showToast('Pare a execução antes de fechar.', 'error'); return; }
+  $('desmExecModal').style.display = 'none';
+}
+
+function iniciarDesmembramento(){
+  const p = DESM.pacote;
+  if(!p || p.temErro || !p.totais.linhas) return;
+  fecharConferenciaDesm();
+  DESM.exec = { total:p.totais.clientes, feitos:0, pausado:false, parar:false,
+                rodando:true, inicio:Date.now(), ensaio:true,
+                id:'r' + Date.now() + Math.random().toString(36).slice(2, 5),
+                sigla:p.sigla, log:[], linhas:[],
+                vendedor:[], campanha:[], itens:[], naoGeradas:[], puladas:[] };
+  $('desmExecLog').innerHTML = '';
+  $('desmExecResumo').style.display = 'none';
+  $('desmExecPausar').textContent = 'Pausar';
+  $('desmExecPausar').style.display = '';
+  $('desmExecParar').style.display = '';
+  $('desmExecTitulo').textContent =
+    `${p.totais.pedidos} pedido(s) mãe · ${p.totais.clientes} cliente(s) · `
+    + `${formatInt(p.totais.pares)} pares`;
+  $('desmExecModal').style.display = 'flex';
+  desmAndar();
+  ensaiarDesmembramento(p);
+}
+
+/* ───────── CONFERIR NO EBM (pela extensão) ─────────────────────────────
+   O robô de hoje descobre os desencontros no meio da digitação: o artigo
+   que não está naquele pedido, a cor que mudou, a grade que não é a mesma,
+   o saldo que não cobre. Isso vira [PULEI] depois de a tela já estar
+   mexida. Aqui o EBM é lido ANTES, com o pedido só aberto, e a comparação
+   é feita contra o pacote que acabamos de montar. Nada é marcado,
+   digitado ou gerado. */
+
+const _norm = s => String(s == null ? '' : s).trim().toUpperCase().replace(/\s+/g, '');
+
+/** A grade de uma caixa, como o EBM escreve: os dígitos do primeiro ao
+ *  último tamanho com par (ex.: 1,2,3,3,2,1 → "123321"). */
+function gradeComoTexto(grade){
+  const g = (Array.isArray(grade) ? grade : [])
+    .map(x => ({ t: parseInt(x.size, 10), q: Number(x.qty || 0) }))
+    .filter(x => Number.isFinite(x.t))
+    .sort((a, b) => a.t - b.t);
+  const vivos = g.filter(x => x.q > 0);
+  if(!vivos.length) return { txt:'', ini:'' };
+  const ini = vivos[0].t, fim = vivos[vivos.length - 1].t;
+  const txt = g.filter(x => x.t >= ini && x.t <= fim).map(x => x.q).join('');
+  return { txt, ini:String(ini) };
+}
+
+/** Compara o que o EBM mostrou com o que a CMS pretende mandar. */
+function conferirPedidoNaTela(P, dados){
+  const artigos = (dados && dados.artigos) || [];
+  const achados = [];
+
+  // o que o pacote quer deste pedido, somado por artigo+cor
+  const querido = new Map();
+  for(const C of P.clientes){
+    for(const L of C.linhas){
+      const k = _norm(L.codigo) + '|' + _norm(L.cor);
+      const a = querido.get(k) || { codigo:L.codigo, cor:L.cor, produto:L.produto,
+                                    pares:0, grade:L.grade, clientes:new Set() };
+      a.pares += Number(L.pares || 0);
+      a.clientes.add(C.cod);
+      querido.set(k, a);
+    }
+  }
+
+  for(const [, q] of querido){
+    const mesmaRef = artigos.filter(a => _norm(a.codigo) === _norm(q.codigo));
+    const alvo = mesmaRef.find(a => _norm(a.cor) === _norm(q.cor));
+    const rot = `${q.produto} ${q.cor} (${q.codigo})`;
+    if(!mesmaRef.length){
+      achados.push({ t:'erro', txt:`${rot}: este artigo NÃO está no pedido ${P.ebm}. `
+        + `A tela tem ${artigos.length} artigo(s).` });
+      continue;
+    }
+    if(!alvo){
+      achados.push({ t:'erro', txt:`${rot}: o artigo está no pedido, mas sem esta cor. `
+        + `Na tela: ${[...new Set(mesmaRef.map(a => a.cor))].join(', ')}.` });
+      continue;
+    }
+    const saldo = parseInt(String(alvo.saldo).replace(/\./g, ''), 10);
+    if(Number.isFinite(saldo) && saldo < q.pares){
+      achados.push({ t:'erro', txt:`${rot}: o EBM tem saldo ${saldo} e o pacote pede `
+        + `${q.pares} pares (${q.clientes.size} cliente(s)).` });
+    }
+    const g = gradeComoTexto(q.grade);
+    const gTela = _norm(alvo.grade).split('=')[0].replace(/_/g, '0');
+    if(g.txt && gTela && gTela !== g.txt){
+      achados.push({ t:'alerta', txt:`${rot}: grade do EBM ${alvo.grade} e do pedido `
+        + `${g.txt}. Pode ser grade conjugada — o robô trata, mas confira.` });
+    }
+    const iniTela = String(alvo.tamInicial || '').match(/\d+/);
+    if(g.ini && iniTela && iniTela[0] !== g.ini && !String(alvo.tamInicial).includes('/')){
+      achados.push({ t:'alerta', txt:`${rot}: começa no ${iniTela[0]} no EBM e no `
+        + `${g.ini} no pedido.` });
+    }
+  }
+
+  if(dados && dados.digitacoesExistentes)
+    achados.push({ t:'alerta', txt:`O pedido ${P.ebm} já tem `
+      + `${dados.digitacoesExistentes} digitação(ões) salva(s) no EBM. `
+      + 'Elas entram na encomenda junto com as nossas.' });
+  if(dados && dados.pendenteNaTela)
+    achados.push({ t:'alerta', txt:`O pedido ${P.ebm} tem ${dados.pendenteNaTela} `
+      + 'linha(s) pendente(s) em "Artigos desmembramento" — alguém deixou uma '
+      + 'digitação pela metade.' });
+  return achados;
+}
+
+let _desmOuvindo = false;
+function ouvirExtensaoDesm(){
+  if(_desmOuvindo) return;
+  _desmOuvindo = true;
+  window.addEventListener('cms-desm-resposta', ev => {
+    const d = ev.detail || {};
+    const X = DESM.exec;
+    if(!X || (X.modo !== 'conferir' && X.modo !== 'piloto')) return;
+    if(d.tipo === 'log'){ desmLog('  ' + d.texto, d.tag || 'info'); return; }
+
+    /* Piloto: a extensão preencheu e parou. A decisão é de quem olha a
+       tela do EBM — por isso os dois botões só nascem aqui. */
+    if(d.tipo === 'preparado'){
+      const dd = d.dados || {};
+      X.feitos = 1;
+      desmAndar();
+      desmPasso('preenchido — esperando você');
+      desmLog('Confira a tela do EBM: o cliente está marcado na Cliente Carteira e '
+              + 'a linha do artigo está preenchida. Nada foi salvo.', 'acao');
+      $('desmExecSalvar').style.display = '';
+      $('desmExecDesfazer').style.display = '';
+      return;
+    }
+    if(d.tipo === 'salvou'){
+      X.salvouPiloto = !!d.ok;
+      return;
+    }
+    if(d.tipo === 'pedido'){
+      const P = (DESM.pacote.pedidos || []).find(x => String(x.ebm) === String(d.ebm));
+      if(P){
+        const achados = conferirPedidoNaTela(P, d.dados);
+        if(!achados.length){
+          desmLog(`  ${d.ebm}: confere com o pacote — `
+                  + `${P.clientes.length} cliente(s), ${P.pares} pares.`, 'ok');
+        }else{
+          for(const a of achados){
+            desmLog(`  ${a.t === 'erro' ? '[DIVERGÊNCIA]' : '[ATENÇÃO]'} ${a.txt}`,
+                    a.t === 'erro' ? 'erro' : 'warn');
+            (a.t === 'erro' ? X.divergencias : X.atencoes).push(`${d.ebm}: ${a.txt}`);
+          }
+        }
+      }
+      X.feitos++;
+      desmAndar();
+      desmPasso(`${X.feitos} de ${X.total} pedido(s) mãe`);
+      return;
+    }
+    if(d.tipo === 'fim'){ fecharExecucaoDesm(!d.ok); return; }
+    if(d.tipo === 'erro'){
+      desmLog(d.texto || 'Falhou.', 'erro');
+      if(d.codigo === 'sem-ebm')
+        desmLog('Abra o EBM numa aba, vá em Desmembrar Pedido Mãe, consulte os '
+                + 'pedidos e deixe a lista na tela. Depois clique em Conferir de novo.', 'warn');
+      fecharExecucaoDesm(true);
+      return;
+    }
+  });
+}
+
+/* ───────── PILOTO: um cliente, parando antes de salvar ─────────────────
+   É o primeiro contato da extensão com a parte que ESCREVE no EBM. O robô
+   tem o mesmo modo, e pela mesma razão: ninguém quer descobrir um engano
+   depois de dezesseis digitações. Preenche, mostra o que preencheu e
+   espera alguém olhar a tela do EBM antes de salvar.
+   Gerar encomenda não existe neste código — essa parte vem depois. */
+function primeiroClienteDesm(p){
+  for(const P of (p && p.pedidos) || []){
+    for(const C of P.clientes || []) return { ebm:P.ebm, cliente:C };
+  }
+  return null;
+}
+
+function pilotarNoEbm(){
+  const p = DESM.pacote;
+  const prim = primeiroClienteDesm(p);
+  if(!p || !prim) return;
+  if(!versaoExtensaoDesm()){
+    showToast('A extensão CMS · EBM não está instalada nesta janela.', 'error');
+    return;
+  }
+  ouvirExtensaoDesm();
+  fecharConferenciaDesm();
+  DESM.exec = { total:1, feitos:0, pausado:false, parar:false,
+                rodando:true, inicio:Date.now(), ensaio:false, modo:'piloto',
+                id:'p' + Date.now() + Math.random().toString(36).slice(2, 5),
+                sigla:p.sigla, log:[], linhas:[], divergencias:[], atencoes:[],
+                piloto:prim, vendedor:[], campanha:[], itens:[], naoGeradas:[], puladas:[] };
+  $('desmExecLog').innerHTML = '';
+  $('desmExecResumo').style.display = 'none';
+  $('desmExecPausar').style.display = 'none';
+  $('desmExecParar').style.display = '';
+  $('desmExecSalvar').style.display = 'none';
+  $('desmExecDesfazer').style.display = 'none';
+  $('desmExecTitulo').textContent =
+    `Piloto · pedido ${prim.ebm} · ${prim.cliente.pedidoCliente} — ${prim.cliente.nome}`;
+  $('desmExecModal').style.display = 'flex';
+  desmAndar();
+  desmPasso('falando com a extensão…');
+  desmLog('PILOTO — um cliente só. A extensão preenche e PARA antes de salvar. '
+          + 'Gerar encomenda não entra nesta etapa.', 'warn');
+  window.dispatchEvent(new CustomEvent('cms-desm-piloto', { detail:{
+    pacote:p,
+    cliente:{ ebm:prim.ebm, cod:prim.cliente.cod, nome:prim.cliente.nome,
+              pedidoCliente:prim.cliente.pedidoCliente,
+              linhas:prim.cliente.linhas.map(L => ({ codigo:L.codigo, cor:L.cor,
+                                                     caixas:L.caixas, pares:L.pares })) },
+  } }));
+}
+
+/* Raio-X: a extensão olha a tela do EBM e descreve o que há nela — as
+   abas, o que acontece ao clicar nelas, os campos de filtro. Não altera
+   nada. Existe porque adivinhar o DOM do EBM de longe custou caro. */
+function raioXNoEbm(){
+  const p = DESM.pacote;
+  const prim = primeiroClienteDesm(p);
+  if(!p || !prim || !versaoExtensaoDesm()) return;
+  ouvirExtensaoDesm();
+  fecharConferenciaDesm();
+  DESM.exec = { total:1, feitos:0, pausado:false, parar:false, rodando:true,
+                inicio:Date.now(), ensaio:false, modo:'conferir',
+                id:'x' + Date.now(), sigla:p.sigla, log:[], linhas:[],
+                divergencias:[], atencoes:[], vendedor:[], campanha:[],
+                itens:[], naoGeradas:[], puladas:[] };
+  $('desmExecLog').innerHTML = '';
+  $('desmExecResumo').style.display = 'none';
+  $('desmExecPausar').style.display = 'none';
+  $('desmExecParar').style.display = '';
+  $('desmExecSalvar').style.display = 'none';
+  $('desmExecDesfazer').style.display = 'none';
+  $('desmExecTitulo').textContent = `Raio-X da tela · pedido ${prim.ebm}`;
+  $('desmExecModal').style.display = 'flex';
+  desmAndar();
+  desmPasso('olhando a tela…');
+  desmLog('RAIO-X — a extensão só olha e descreve. Nada é alterado no EBM.', 'warn');
+  window.dispatchEvent(new CustomEvent('cms-desm-raiox', { detail:{
+    pacote:p,
+    cliente:{ ebm:prim.ebm, cod:prim.cliente.cod, nome:prim.cliente.nome,
+              pedidoCliente:prim.cliente.pedidoCliente,
+              linhas:prim.cliente.linhas.map(L => ({ codigo:L.codigo, cor:L.cor,
+                                                     caixas:L.caixas, pares:L.pares })) },
+  } }));
+}
+
+function salvarPilotoEbm(){
+  const X = DESM.exec;
+  if(!X || X.modo !== 'piloto') return;
+  $('desmExecSalvar').style.display = 'none';
+  $('desmExecDesfazer').style.display = 'none';
+  desmPasso('salvando no EBM…');
+  desmLog('Mandando salvar…', 'acao');
+  window.dispatchEvent(new CustomEvent('cms-desm-salvar'));
+}
+function desfazerPilotoEbm(){
+  const X = DESM.exec;
+  if(!X || X.modo !== 'piloto') return;
+  $('desmExecSalvar').style.display = 'none';
+  $('desmExecDesfazer').style.display = 'none';
+  desmPasso('desfazendo na tela…');
+  desmLog('Mandando cancelar na tela do EBM…', 'acao');
+  window.dispatchEvent(new CustomEvent('cms-desm-cancelar-tela'));
+}
+
+function conferirNoEbm(){
+  const p = DESM.pacote;
+  if(!p || !p.totais.linhas) return;
+  if(!versaoExtensaoDesm()){
+    showToast('A extensão CMS · EBM não está instalada nesta janela.', 'error');
+    return;
+  }
+  ouvirExtensaoDesm();
+  fecharConferenciaDesm();
+  DESM.exec = { total:p.totais.pedidos, feitos:0, pausado:false, parar:false,
+                rodando:true, inicio:Date.now(), ensaio:false, modo:'conferir',
+                id:'c' + Date.now() + Math.random().toString(36).slice(2, 5),
+                sigla:p.sigla, log:[], linhas:[], divergencias:[], atencoes:[],
+                vendedor:[], campanha:[], itens:[], naoGeradas:[], puladas:[] };
+  $('desmExecLog').innerHTML = '';
+  $('desmExecResumo').style.display = 'none';
+  $('desmExecPausar').style.display = 'none';     // a extensão não pausa no meio
+  $('desmExecParar').style.display = '';
+  $('desmExecTitulo').textContent =
+    `Conferindo ${p.totais.pedidos} pedido(s) mãe no EBM · ${p.totais.clientes} cliente(s)`;
+  $('desmExecModal').style.display = 'flex';
+  desmAndar();
+  desmPasso('falando com a extensão…');
+  desmLog('CONFERÊNCIA — o EBM é só lido. Nada é marcado, digitado ou gerado.', 'warn');
+  window.dispatchEvent(new CustomEvent('cms-desm-conferir', { detail:{ pacote:p } }));
+}
+
+/* ENSAIO: percorre exatamente os passos que a extensão vai percorrer no
+   EBM, sem EBM nenhum. Serve para acertar esta tela antes de existir
+   extensão - e, depois, para conferir o pacote sem mexer em pedido de
+   verdade. Nada sai daqui: nem para o EBM, nem para o servidor. */
+async function ensaiarDesmembramento(p){
+  const X = DESM.exec;
+  desmLog('ENSAIO — nada é enviado ao EBM nem gravado. Os passos são os '
+          + 'mesmos que a extensão vai executar.', 'warn');
+  try{
+    for(const P of p.pedidos){
+      desmPasso(`Pedido mãe ${P.ebm}`);
+      desmLog(`Pedido mãe ${P.ebm} (GCI ${P.gci || '—'}) — ${P.clientes.length} `
+              + `cliente(s), ${formatInt(P.pares)} pares`, 'acao');
+      await _desmEspera(350);
+      desmLog('  abrindo a manutenção do pedido…', 'info');
+      await _desmEspera(400);
+      desmLog(`  artigos na tela: ${[...new Set(P.clientes.flatMap(
+        C => C.linhas.map(L => `${L.produto} ${L.cor}`)))].join('; ')}`, 'info');
+
+      for(const [iC, C] of P.clientes.entries()){
+        desmPasso(`${P.ebm} · ${C.pedidoCliente} — ${C.nome}`);
+        desmLog(`  ${C.pedidoCliente} · ${C.nome} — ${C.linhas.length} grade(s), `
+                + `${formatInt(C.pares)} pares`, 'acao', iC);
+        await _desmEspera(300);
+        desmLog('    marcando os artigos e indo na Cliente Carteira…', 'info');
+        await _desmEspera(300);
+        desmLog(`    cliente final ${C.cod} informado e marcado.`, 'info');
+        await _desmEspera(250);
+        for(const L of C.linhas){
+          desmLog(`    ${L.produto} ${L.cor}: ${L.caixas} caixa(s) de `
+                  + `${L.porCaixa} = ${formatInt(L.pares)} pares.`, 'info');
+          await _desmEspera(180);
+        }
+        desmLog('    salvando o desmembramento…', 'info');
+        await _desmEspera(400);
+        desmLog(`    ${C.pedidoCliente}: desmembramento salvo.`, 'ok', iC);
+
+        if(!C.prazo && !C.campanha){
+          desmLog(`    ${C.pedidoCliente}: sem prazo nem campanha — "manter itens" `
+                  + 'não tem o que preencher.', 'warn');
+          X.itens.push(`${P.ebm}/${C.pedidoCliente}`);
+        }else{
+          desmLog(`    manter itens: prazo ${C.prazo || '—'}`
+                  + (C.campanha ? `, campanha ${C.campanha}` : '')
+                  + (C.vendedor ? `, conferindo o vendedor ${C.vendedor}` : '')
+                  + '…', 'info');
+          await _desmEspera(400);
+          desmLog(`    ${C.pedidoCliente}: item salvo.`, 'ok', iC);
+        }
+        if(C.linhas.some(L => L.status === 'Pendente'))
+          desmLog(`    ${C.pedidoCliente}: o pedido do Showroom ainda está PENDENTE.`, 'warn');
+
+        /* Uma linha de registro por digitação — o mesmo grão do EBM: um
+           cliente dentro de um pedido mãe. É o que dá certo ou falha
+           sozinho, e o que se procura depois ("o que foi do 23424?"). */
+        X.linhas.push({
+          id:'d' + Date.now() + Math.random().toString(36).slice(2, 5),
+          rodada:X.id, em:new Date().toISOString(), ensaio:true,
+          ebm:P.ebm, gci:P.gci, sigla:X.sigla, pedidoCliente:C.pedidoCliente,
+          codCliente:C.cod, cliente:C.nome, vendedor:C.vendedor,
+          prazo:C.prazo, campanha:C.campanha, pares:C.pares,
+          itens:C.linhas.map(L => ({ num:L.num, codigo:L.codigo, produto:L.produto,
+                                     cor:L.cor, pares:L.pares, caixas:L.caixas })),
+          encomenda:'',
+          situacao: (!C.prazo && !C.campanha) ? 'Manter itens pendente' : 'Encomenda gerada',
+          motivo:'', por:quemSou(),
+        });
+        X.feitos++;
+        desmAndar();
+      }
+
+      desmPasso(`Pedido mãe ${P.ebm} — gerando a encomenda`);
+      desmLog(`  ${P.ebm}: ${P.clientes.length} digitação(ões) selecionada(s); `
+              + 'gerando a encomenda (o EBM demora)…', 'acao');
+      await _desmEspera(700);
+      desmLog(`  ${P.ebm}: ENCOMENDA GERADA.`, 'ok');
+    }
+    fecharExecucaoDesm(false);
+  }catch(e){
+    if(String(e && e.message) === 'PARADO'){
+      desmLog('PARADO por você. No ensaio nada ficou pela metade; '
+              + 'com a extensão, confira a tela do EBM.', 'warn');
+      fecharExecucaoDesm(true);
+    }else{
+      console.error(e);
+      desmLog('Falha no ensaio: ' + (e && e.message || e), 'erro');
+      fecharExecucaoDesm(true);
+    }
+  }
+}
+
+/* O registro vive por enquanto no aparelho de quem mandou. Quando a
+   extensão existir, a rodada vai para o servidor pelo mesmo formato — o
+   que muda é de onde a tela lê, não o que ela mostra. */
+const DESM_REG_KEY = 'cms_desm_registro';
+function lerRegistroDesm(){
+  try{ const j = JSON.parse(localStorage.getItem(DESM_REG_KEY) || '[]');
+       return Array.isArray(j) ? j : []; }catch(e){ return []; }
+}
+function salvarRodadaDesm(rodada){
+  try{
+    const lista = lerRegistroDesm();
+    lista.unshift(rodada);
+    localStorage.setItem(DESM_REG_KEY, JSON.stringify(lista.slice(0, 50)));
+  }catch(e){ console.warn('Não deu para guardar a rodada no registro', e); }
+}
+
+function fecharExecucaoDesm(interrompido){
+  const X = DESM.exec;
+  if(!X || !X.rodando) return;
+  X.rodando = false;
+  $('desmExecPausar').style.display = 'none';
+  $('desmExecParar').style.display = 'none';
+
+  const bs = $('desmExecSalvar'), bd = $('desmExecDesfazer');
+  if(bs) bs.style.display = 'none';
+  if(bd) bd.style.display = 'none';
+
+  /* O piloto fecha com uma frase só: o que importa é se aquilo virou
+     registro no EBM ou não. O registro de desmembramentos continua para
+     o lote inteiro, que é o que ele representa. */
+  if(X.modo === 'piloto'){
+    desmPasso(X.salvouPiloto ? 'Salvo no EBM' : 'Sem salvar');
+    const prim = X.piloto || {};
+    $('desmExecResumo').style.display = 'block';
+    $('desmExecResumo').innerHTML =
+      `<div style="font-weight:900;font-size:13.5px;color:${X.salvouPiloto ? '#059669' : '#b45309'}">
+         ${X.salvouPiloto ? 'Digitação salva no EBM' : 'Nada foi salvo'}</div>`
+      + `<div style="font-size:12px;color:var(--muted);margin-top:4px">`
+      + `${safeHtml((prim.cliente && prim.cliente.pedidoCliente) || '')} · pedido mãe `
+      + `${safeHtml(prim.ebm || '')}</div>`
+      + (X.salvouPiloto
+          ? '<div style="font-size:11.5px;color:var(--muted);margin-top:8px">'
+            + 'A encomenda NÃO foi gerada — essa parte ainda não existe no código. '
+            + 'Para desfazer, exclua a digitação na tela do EBM.</div>'
+          : '<div style="font-size:11.5px;color:var(--muted);margin-top:8px">'
+            + 'Se a tela do EBM ficou com artigos marcados ou uma linha preenchida, '
+            + 'clique em <b>cancelar desmembramento</b> lá — nada chegou a ser gravado.</div>');
+    return;
+  }
+
+  /* A conferência não desmembra nada, então não entra no registro — o
+     que ela produz é uma lista de divergências para resolver antes. */
+  if(X.modo === 'conferir'){
+    desmPasso(interrompido ? 'Interrompida' : 'Concluída');
+    const bloco = (titulo, arr, cor) => arr.length
+      ? `<div style="margin-top:8px"><div style="font-weight:800;font-size:12px;color:${cor}">
+           ${titulo} (${arr.length})</div>
+           <div style="font-size:11.5px;color:var(--text);margin-top:3px;line-height:1.5">
+           ${arr.map(safeHtml).join('<br>')}</div></div>` : '';
+    const limpo = !X.divergencias.length && !X.atencoes.length;
+    $('desmExecResumo').style.display = 'block';
+    $('desmExecResumo').innerHTML =
+      `<div style="font-weight:900;font-size:13.5px;color:${
+         X.divergencias.length ? '#dc2626' : (interrompido ? '#b45309' : '#059669')}">
+         ${interrompido ? 'Conferência interrompida' : 'Conferência concluída'}:
+         ${X.feitos} de ${X.total} pedido(s) mãe</div>`
+      + (limpo
+          ? '<div style="font-size:12px;color:var(--muted);margin-top:4px">'
+            + 'O EBM bate com o pacote. Dá para desmembrar.</div>'
+          : bloco('NÃO DÁ PARA DESMEMBRAR ASSIM', X.divergencias, '#dc2626')
+            + bloco('CONFIRA ANTES', X.atencoes, '#b45309'))
+      + '<div style="font-size:11.5px;color:var(--muted);margin-top:8px">'
+      + 'Nada foi marcado, digitado ou gerado no EBM.</div>';
+    return;
+  }
+
+  salvarRodadaDesm({
+    id:X.id, em:new Date(X.inicio).toISOString(), fim:new Date().toISOString(),
+    ensaio:!!X.ensaio, por:quemSou(), sigla:X.sigla,
+    interrompido:!!interrompido, feitas:X.feitos, previstas:X.total,
+    linhas:X.linhas, log:X.log,
+    pendencias:{ vendedor:X.vendedor, campanha:X.campanha,
+                 itens:X.itens, naoGeradas:X.naoGeradas },
+  });
+  desmPasso(interrompido ? 'Interrompido' : 'Concluído');
+  const seg = Math.max(1, Math.round((Date.now() - X.inicio) / 1000));
+  const blocos = [];
+  const lista = (titulo, arr, cor) => arr.length
+    ? `<div style="margin-top:8px"><div style="font-weight:800;font-size:12px;color:${cor}">
+         ${titulo}</div><div style="font-size:11.5px;color:var(--text);margin-top:2px">
+         ${safeHtml(arr.join(', '))}</div></div>` : '';
+  blocos.push(lista('VENDEDOR INCORRETO (digitação excluída)', X.vendedor, '#dc2626'));
+  blocos.push(lista('CAMPANHA NÃO DISPONÍVEL (item salvo sem ela)', X.campanha, '#dc2626'));
+  blocos.push(lista('MANTER ITENS PENDENTE (prazo/parcelas não entraram)', X.itens, '#b45309'));
+  blocos.push(lista('ENCOMENDAS NÃO GERADAS', X.naoGeradas, '#dc2626'));
+  const limpo = blocos.every(b => !b);
+  $('desmExecResumo').style.display = 'block';
+  $('desmExecResumo').innerHTML =
+    `<div style="font-weight:900;font-size:13.5px;color:${interrompido ? '#b45309' : '#059669'}">
+       ${interrompido ? 'Interrompido' : 'Concluído'}: ${X.feitos} de ${X.total}
+       digitação(ões) em ${seg}s</div>`
+    + (limpo ? '<div style="font-size:12px;color:var(--muted);margin-top:4px">'
+             + 'Nenhuma pendência.</div>' : blocos.join(''))
+    + '<div style="font-size:11.5px;color:#b45309;margin-top:8px;font-weight:700">'
+    + 'Isto foi um ensaio: nada foi enviado ao EBM nem gravado na DISPO.</div>'
+    + `<button onclick="abrirRegistroDesm('${X.id}')"
+         style="margin-top:12px;background:var(--brand);color:#fff;border:0;border-radius:999px;
+                padding:9px 18px;font-weight:800;font-size:13px;cursor:pointer">
+         <i class="fa-solid fa-table-list"></i> Ver no registro</button>`;
 }
 /* Arquivar em lote. Ao contrário de excluir, aqui NADA sai da DISPO: o lote
    continua inteiro, com saldo, grade e histórico. O que muda é que ele deixa
@@ -5588,6 +6557,94 @@ loadDispo();
 </div>
 
 <!-- MODAL RATEIO -->
+<!-- MODAL: CONFERIR O DESMEMBRAMENTO -->
+<div id="desmConfModal" style="position:fixed;inset:0;z-index:215;background:rgba(2,6,23,.6);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
+  <div style="width:100%;max-width:760px;margin:24px 0;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+      <div>
+        <div style="font-size:11px;font-weight:800;color:#0d9488;text-transform:uppercase;letter-spacing:.04em">Ag desmembramento</div>
+        <div style="font-size:17px;font-weight:900;color:var(--text)">Conferir antes de desmembrar</div>
+        <div id="desmConfResumo" style="font-size:12.5px;font-weight:600;color:var(--muted);margin-top:3px"></div>
+      </div>
+      <button onclick="fecharConferenciaDesm()" style="border:0;background:transparent;color:var(--muted);font-size:24px;cursor:pointer;line-height:1">&times;</button>
+    </div>
+
+    <!-- A sigla de quem desmembra. Vai no "Pedido do Cliente" do EBM junto
+         com o código do destino (CH 23424): o número diz para quem foi, a
+         sigla diz quem fez - e são duas pessoas, CH e CL. É o mesmo campo
+         da tela do robô, que tem CH embutido como padrão. Escolha em vez de
+         texto livre: digitar errado aqui carimba a OC inteira com a sigla
+         de outra pessoa, e só se descobre no EBM. -->
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:13px 0;
+                border:1px solid var(--line);border-radius:12px;padding:10px 13px">
+      <span style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">
+        Quem está desmembrando</span>
+      <div id="desmSiglaBotoes" style="display:flex;gap:6px"></div>
+      <span id="desmSiglaExemplo" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+
+    <div id="desmConfIrmaos" style="display:none;background:var(--brand-soft,#eef0fe);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin:13px 0"></div>
+    <div id="desmConfAvisos" style="display:none;flex-direction:column;gap:6px;margin:13px 0"></div>
+
+    <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 7px">
+      O que vai para o EBM, por pedido mãe</div>
+    <div id="desmConfLista" style="display:flex;flex-direction:column;gap:10px;max-height:46vh;overflow-y:auto"></div>
+
+    <div id="desmConfSemExt" style="display:none;font-size:11.5px;color:var(--muted);margin-top:14px">
+      A extensão <b>CMS · EBM</b> não está instalada nesta janela — por isso só aparece o ensaio.
+      Com ela, entra o botão que confere os pedidos no EBM de verdade.
+    </div>
+    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+      <button id="desmConfConferir" onclick="conferirNoEbm()" style="display:none;flex:1;min-width:220px;align-items:center;justify-content:center;gap:8px;background:var(--brand);color:#fff;border:0;border-radius:999px;padding:11px;font-weight:800;font-size:14px;cursor:pointer">
+        <i class="fa-solid fa-magnifying-glass"></i> Conferir no EBM</button>
+      <button id="desmConfRaioX" onclick="raioXNoEbm()" style="display:none;align-items:center;justify-content:center;gap:6px;background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:11px 14px;font-weight:800;font-size:12.5px;cursor:pointer"
+        title="Só olha a tela do EBM e descreve o que encontrou. Não altera nada.">
+        <i class="fa-solid fa-stethoscope"></i> Raio-X</button>
+      <button id="desmConfPiloto" onclick="pilotarNoEbm()" style="display:none;align-items:center;justify-content:center;gap:8px;background:transparent;border:1px solid #0d9488;color:#0d9488;border-radius:999px;padding:11px 16px;font-weight:800;font-size:13px;cursor:pointer"
+        title="Preenche o primeiro cliente no EBM e para antes de salvar">
+        <i class="fa-solid fa-user-pen"></i> Piloto: 1 cliente</button>
+      <button id="desmConfIniciar" onclick="iniciarDesmembramento()" style="flex:1;min-width:200px;background:#0d9488;color:#fff;border:0;border-radius:999px;padding:11px;font-weight:800;font-size:14px;cursor:pointer">Iniciar desmembramento</button>
+      <button onclick="fecharConferenciaDesm()" style="background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:11px 16px;font-weight:700;font-size:13px;cursor:pointer">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: O DESMEMBRAMENTO ACONTECENDO -->
+<div id="desmExecModal" style="position:fixed;inset:0;z-index:220;background:rgba(2,6,23,.65);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
+  <div style="width:100%;max-width:720px;margin:24px 0;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+      <div>
+        <div style="font-size:11px;font-weight:800;color:#0d9488;text-transform:uppercase;letter-spacing:.04em">Desmembrando</div>
+        <div id="desmExecTitulo" style="font-size:16px;font-weight:900;color:var(--text)"></div>
+      </div>
+      <button onclick="fecharExecDesm()" style="border:0;background:transparent;color:var(--muted);font-size:24px;cursor:pointer;line-height:1">&times;</button>
+    </div>
+
+    <div style="height:9px;border-radius:999px;background:var(--line);overflow:hidden;margin:14px 0 6px">
+      <div id="desmExecBarra" style="height:100%;width:0;background:#0d9488;border-radius:999px;transition:width .25s ease"></div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;margin-bottom:12px">
+      <span id="desmExecContador" style="font-size:12px;font-weight:800;color:var(--text)"></span>
+      <span id="desmExecPasso" style="font-size:12px;color:var(--muted);font-weight:600"></span>
+    </div>
+
+    <div id="desmExecLog" style="background:var(--log-bg,rgba(2,6,23,.05));border:1px solid var(--line);border-radius:14px;padding:12px 14px;height:38vh;min-height:220px;overflow-y:auto;font-family:ui-monospace,Menlo,Consolas,monospace"></div>
+
+    <div id="desmExecResumo" style="display:none;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:12px"></div>
+
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+      <!-- Só aparecem no piloto, com a digitação preenchida e parada:
+           quem decide se aquilo vira registro no EBM é quem está olhando. -->
+      <button id="desmExecSalvar" onclick="salvarPilotoEbm()" style="display:none;background:#0d9488;color:#fff;border:0;border-radius:999px;padding:10px 20px;font-weight:800;font-size:13px;cursor:pointer">
+        <i class="fa-solid fa-floppy-disk"></i> Salvar no EBM</button>
+      <button id="desmExecDesfazer" onclick="desfazerPilotoEbm()" style="display:none;background:transparent;border:1px solid #fca5a5;color:#dc2626;border-radius:999px;padding:10px 18px;font-weight:800;font-size:13px;cursor:pointer">Desfazer na tela</button>
+      <button id="desmExecPausar" onclick="pausarDesm()" style="background:transparent;border:1px solid var(--line);color:var(--text);border-radius:999px;padding:10px 18px;font-weight:800;font-size:13px;cursor:pointer">Pausar</button>
+      <button id="desmExecParar" onclick="pararDesm()" style="background:transparent;border:1px solid #fca5a5;color:#dc2626;border-radius:999px;padding:10px 18px;font-weight:800;font-size:13px;cursor:pointer">Parar</button>
+      <button onclick="fecharExecDesm()" style="margin-left:auto;background:var(--brand);color:#fff;border:0;border-radius:999px;padding:10px 20px;font-weight:800;font-size:13px;cursor:pointer">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <div id="rateioModal" style="position:fixed;inset:0;z-index:200;background:rgba(2,6,23,.55);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
   <div style="width:100%;max-width:560px;margin-top:40px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px">

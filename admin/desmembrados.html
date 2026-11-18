@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Desmembramentos feitos • Repasse Olympikus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <style>
+    :root{
+      --brand:#2836d4; --brand-soft:rgba(40,54,212,.10);
+      --line:#e2e8f0; --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#475569;
+      --success:#15803d; --success-soft:#dcfce7;
+      --warning:#b45309; --warning-soft:#fef3c7;
+      --danger:#b91c1c;  --danger-soft:#fee2e2;
+      --teal:#0d9488;    --teal-soft:rgba(13,148,136,.10);
+    }
+    html.dark{
+      --bg:#0f172a; --card:#1e293b; --text:#f1f5f9; --line:#334155;
+      --brand:#818cf8; --brand-soft:rgba(129,140,248,.15);
+      --success:#4ade80; --success-soft:#14532d;
+      --warning:#fbbf24; --warning-soft:#451a03;
+      --danger:#f87171;  --danger-soft:#450a0a;
+      --teal:#5eead4;    --teal-soft:rgba(94,234,212,.12);
+      --muted:#94a3b8;
+    }
+    *{ box-sizing:border-box; }
+    body{ font-family:Inter,system-ui,sans-serif; background:var(--bg); color:var(--text);
+          margin:0; transition:background .2s,color .2s; }
+
+    .page-header{ background:var(--card); border-bottom:1px solid var(--line); padding:14px 24px;
+                  display:flex; align-items:center; justify-content:space-between; gap:16px;
+                  flex-wrap:wrap; position:sticky; top:0; z-index:30; }
+    .btn-back{ display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line);
+               border-radius:999px; padding:6px 14px; font-size:13px; font-weight:700;
+               color:var(--muted); background:var(--card); cursor:pointer; text-decoration:none; }
+    .btn-back:hover{ background:var(--bg); }
+    .btn{ border:1px solid var(--line); background:var(--card); color:var(--text);
+          border-radius:999px; padding:8px 16px; font-size:13px; font-weight:700; cursor:pointer; }
+    .btn:hover{ background:var(--bg); }
+    .btn-forte{ background:var(--teal); border-color:var(--teal); color:#fff; }
+    .btn-forte:hover{ filter:brightness(1.06); background:var(--teal); }
+
+    .wrap{ max-width:1400px; margin:0 auto; padding:20px 24px 40px; }
+    .card{ background:var(--card); border-radius:20px; border:1px solid var(--line); }
+
+    /* Os três números do mês: o que o diretor pergunta antes de abrir a tabela. */
+    .numeros{ display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+              gap:12px; margin-bottom:16px; }
+    .num{ padding:16px 18px; }
+    .num .rot{ font-size:11px; font-weight:800; color:var(--muted);
+               text-transform:uppercase; letter-spacing:.05em; }
+    .num .val{ font-size:26px; font-weight:900; margin-top:4px; font-variant-numeric:tabular-nums; }
+    .num .pe{ font-size:11.5px; color:var(--muted); font-weight:600; }
+
+    .filtros{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:14px 16px;
+              margin-bottom:14px; }
+    .inp{ border:1px solid var(--line); border-radius:999px; padding:8px 14px; font-size:13px;
+          font-weight:600; background:var(--card); color:var(--text); outline:none; }
+    .inp:focus{ border-color:var(--brand); }
+
+    table{ width:100%; border-collapse:collapse; font-size:13px; }
+    thead th{ background:var(--bg); color:var(--muted); font-size:11px; font-weight:800;
+              text-transform:uppercase; letter-spacing:.05em; padding:10px 14px;
+              border-bottom:1px solid var(--line); white-space:nowrap; text-align:left;
+              position:sticky; top:0; z-index:1; }
+    tbody td{ padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top; }
+    tbody tr:last-child td{ border-bottom:none; }
+    tbody tr:hover td{ background:var(--bg); }
+    .num-col{ text-align:right; font-variant-numeric:tabular-nums; font-weight:800; }
+
+    .sit{ display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:3px 10px;
+          font-size:11.5px; font-weight:800; white-space:nowrap; }
+    .sit-ok{ background:var(--success-soft); color:var(--success); }
+    .sit-dig{ background:var(--brand-soft); color:var(--brand); }
+    .sit-warn{ background:var(--warning-soft); color:var(--warning); }
+    .sit-erro{ background:var(--danger-soft); color:var(--danger); }
+
+    .etq-ensaio{ background:var(--warning-soft); color:var(--warning); border-radius:999px;
+                 padding:2px 8px; font-size:10.5px; font-weight:900; text-transform:uppercase;
+                 letter-spacing:.04em; }
+
+    /* A cor do cliente é a mesma da conferência e do log da DISPO: o olho
+       liga as três telas sem ler o código. */
+    .cli{ font-weight:900; color:var(--dc); }
+    .desm-c0{ --dc:#0d9488; } .desm-c1{ --dc:#4f46e5; } .desm-c2{ --dc:#b45309; }
+    .desm-c3{ --dc:#be185d; } .desm-c4{ --dc:#059669; } .desm-c5{ --dc:#7c3aed; }
+    .desm-c6{ --dc:#0369a1; } .desm-c7{ --dc:#c2410c; }
+    html.dark .desm-c0{ --dc:#5eead4; } html.dark .desm-c1{ --dc:#a5b4fc; }
+    html.dark .desm-c2{ --dc:#fcd34d; } html.dark .desm-c3{ --dc:#f9a8d4; }
+    html.dark .desm-c4{ --dc:#6ee7b7; } html.dark .desm-c5{ --dc:#c4b5fd; }
+    html.dark .desm-c6{ --dc:#7dd3fc; } html.dark .desm-c7{ --dc:#fdba74; }
+
+    .vazio{ padding:60px 20px; text-align:center; color:var(--muted); }
+
+    /* Modal do log da rodada */
+    .modal{ position:fixed; inset:0; background:rgba(2,6,23,.6); z-index:100; display:none;
+            align-items:flex-start; justify-content:center; padding:16px; overflow-y:auto; }
+    .modal .box{ width:100%; max-width:760px; margin:28px 0; background:var(--card);
+                 border:1px solid var(--line); border-radius:22px; padding:22px; }
+    .log{ background:var(--bg); border:1px solid var(--line); border-radius:14px;
+          padding:12px 14px; max-height:52vh; overflow-y:auto;
+          font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; line-height:1.5; }
+    .log .info{ color:var(--muted); }
+    .log .acao{ color:var(--brand); font-weight:700; }
+    .log .ok{ color:var(--success); font-weight:700; }
+    .log .warn{ color:var(--warning); font-weight:700; }
+    .log .erro{ color:var(--danger); font-weight:700; }
+
+    @media (max-width:640px){
+      .wrap{ padding:14px 16px 32px; }
+      .page-header{ padding:12px 16px; }
+      thead{ display:none; }
+      tbody td{ display:block; border:none; padding:3px 14px; }
+      tbody tr{ display:block; border-bottom:1px solid var(--line); padding:10px 0; }
+      .num-col{ text-align:left; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-header">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <a class="btn-back" href="dispo.html"><i class="fa-solid fa-arrow-left"></i> DISPO</a>
+    <div>
+      <div style="font-size:11px;font-weight:800;color:var(--teal);text-transform:uppercase;letter-spacing:.05em">
+        Registro</div>
+      <div style="font-size:17px;font-weight:900">Desmembramentos feitos</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn" onclick="exportarRegistro()"><i class="fa-solid fa-file-excel"></i> XLSX</button>
+    <button class="btn" onclick="alternarTema()"><i class="fa-solid fa-moon"></i></button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- quando se chega aqui pelo botão do painel, a tela abre naquela rodada -->
+  <div id="avisoRodada" class="card" style="display:none;padding:12px 16px;margin-bottom:14px;
+       border-color:var(--teal);background:var(--teal-soft)">
+    <span style="font-weight:800;font-size:13px" id="avisoRodadaTxt"></span>
+    <button class="btn" style="margin-left:10px;padding:4px 12px;font-size:12px"
+            onclick="verTudo()">Ver todos</button>
+  </div>
+
+  <div class="numeros">
+    <div class="card num"><div class="rot">Pares desmembrados</div>
+      <div class="val" id="nPares">0</div><div class="pe" id="nParesPe">no mês</div></div>
+    <div class="card num"><div class="rot">Encomendas geradas</div>
+      <div class="val" id="nEnc" style="color:var(--success)">0</div>
+      <div class="pe">pedidos mãe fechados</div></div>
+    <div class="card num"><div class="rot">Pendências em aberto</div>
+      <div class="val" id="nPend" style="color:var(--warning)">0</div>
+      <div class="pe">precisam de alguém</div></div>
+    <div class="card num"><div class="rot">Digitações</div>
+      <div class="val" id="nDig">0</div><div class="pe" id="nDigPe">clientes atendidos</div></div>
+  </div>
+
+  <div class="card filtros">
+    <input id="fBusca" class="inp" type="search" placeholder="Buscar cliente, pedido mãe, lote, produto…"
+           style="flex:1;min-width:220px" oninput="desenhar()">
+    <select id="fSituacao" class="inp" onchange="desenhar()">
+      <option value="">Todas as situações</option>
+      <option>Encomenda gerada</option>
+      <option>Digitado</option>
+      <option>Manter itens pendente</option>
+      <option>Campanha não aplicada</option>
+      <option>Vendedor incorreto</option>
+      <option>Falhou</option>
+    </select>
+    <select id="fSigla" class="inp" onchange="desenhar()">
+      <option value="">CH e CL</option>
+      <option value="CH">só CH</option>
+      <option value="CL">só CL</option>
+    </select>
+    <select id="fPeriodo" class="inp" onchange="desenhar()">
+      <option value="mes">Este mês</option>
+      <option value="7">Últimos 7 dias</option>
+      <option value="30">Últimos 30 dias</option>
+      <option value="">Tudo</option>
+    </select>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:var(--muted)">
+      <input type="checkbox" id="fEnsaio" checked onchange="desenhar()"> mostrar ensaios
+    </label>
+  </div>
+
+  <div class="card" style="overflow:hidden">
+    <div style="overflow:auto;max-height:calc(100vh - 420px)">
+      <table>
+        <thead><tr>
+          <th>Quando</th><th>Pedido mãe</th><th>Produto</th><th>Cliente</th>
+          <th>Vendedor</th><th class="num-col">Pares</th><th>Prazo · campanha</th>
+          <th>Encomenda</th><th>Situação</th><th>Por</th>
+        </tr></thead>
+        <tbody id="corpo"></tbody>
+      </table>
+    </div>
+    <div id="vazio" class="vazio" style="display:none">
+      <i class="fa-solid fa-inbox" style="font-size:34px;display:block;margin-bottom:10px"></i>
+      <div style="font-weight:700">Nenhum desmembramento no período.</div>
+      <div style="font-size:12.5px;margin-top:4px">
+        O registro se enche quando um desmembramento roda na DISPO.</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: o que aconteceu naquela rodada -->
+<div id="modalLog" class="modal" onclick="if(event.target===this) fecharLog()">
+  <div class="box">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px">
+      <div>
+        <div style="font-size:11px;font-weight:800;color:var(--teal);text-transform:uppercase;letter-spacing:.05em">
+          A rodada</div>
+        <div id="logTitulo" style="font-size:16px;font-weight:900"></div>
+        <div id="logSub" style="font-size:12.5px;color:var(--muted);margin-top:2px"></div>
+      </div>
+      <button class="btn" style="padding:4px 12px" onclick="fecharLog()">Fechar</button>
+    </div>
+    <div class="log" id="logCorpo"></div>
+  </div>
+</div>
+
+<script>
+/* ═══ REGISTRO DOS DESMEMBRAMENTOS ══════════════════════════════════════
+   O robô conta o que fez num arquivo de texto na máquina de quem rodou.
+   Quem mandou desmembrar não vê nada: nem o que entrou, nem o que falhou,
+   nem o número da encomenda que saiu. Esta tela é esse relato, do lado de
+   cá — por digitação, que é o grão do EBM (um cliente dentro de um pedido
+   mãe) e também o grão do problema: é uma digitação que dá certo, falha,
+   sai sem campanha ou com o vendedor errado.
+
+   A fonte hoje é o aparelho de quem mandou (os ensaios da DISPO). Quando a
+   extensão existir, a rodada virá do servidor no mesmo formato: muda de
+   onde se lê, não o que se mostra. */
+
+const REG_KEY = 'cms_desm_registro';
+let RODADAS = [];
+let LINHAS = [];
+let rodadaFoco = new URLSearchParams(location.search).get('rodada') || '';
+
+if(localStorage.getItem('admin_dark') === '1' || localStorage.getItem('dispo_dark') === '1')
+  document.documentElement.classList.add('dark');
+function alternarTema(){
+  const dark = document.documentElement.classList.toggle('dark');
+  try{ localStorage.setItem('admin_dark', dark ? '1' : '0'); }catch(e){}
+}
+
+function carregar(){
+  try{
+    const j = JSON.parse(localStorage.getItem(REG_KEY) || '[]');
+    RODADAS = Array.isArray(j) ? j : [];
+  }catch(e){ RODADAS = []; }
+  // uma linha da tabela = uma digitação, mas ela carrega a rodada de onde veio
+  LINHAS = [];
+  for(const r of RODADAS){
+    for(const l of (r.linhas || [])) LINHAS.push({ ...l, _rodada:r });
+  }
+}
+
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const int = n => Number(n || 0).toLocaleString('pt-BR');
+const dataHora = iso => {
+  const d = new Date(iso);
+  return isNaN(d) ? '—' : d.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit',
+    year:'2-digit', hour:'2-digit', minute:'2-digit' });
+};
+
+/* A cor do cliente é estável: o mesmo código sempre na mesma cor, em
+   qualquer rodada. Some do código, não da ordem na lista — senão a cor
+   mudaria a cada filtro. */
+function corDoCliente(cod){
+  let h = 0;
+  for(const ch of String(cod || '')) h = (h * 31 + ch.charCodeAt(0)) % 8;
+  return 'desm-c' + h;
+}
+
+const CLS_SIT = {
+  'Encomenda gerada':'sit-ok', 'Digitado':'sit-dig',
+  'Manter itens pendente':'sit-warn', 'Campanha não aplicada':'sit-warn',
+  'Vendedor incorreto':'sit-erro', 'Falhou':'sit-erro',
+};
+const PENDENTES = ['Manter itens pendente','Campanha não aplicada',
+                   'Vendedor incorreto','Falhou','Digitado'];
+
+function filtrar(){
+  const q = ($('fBusca').value || '').trim().toLowerCase();
+  const sit = $('fSituacao').value;
+  const sig = $('fSigla').value;
+  const per = $('fPeriodo').value;
+  const comEnsaio = $('fEnsaio').checked;
+  const agora = new Date();
+  const corte = per === 'mes'
+    ? new Date(agora.getFullYear(), agora.getMonth(), 1)
+    : (per ? new Date(agora.getTime() - Number(per) * 86400000) : null);
+
+  return LINHAS.filter(l => {
+    if(rodadaFoco && l.rodada !== rodadaFoco) return false;
+    if(!comEnsaio && l.ensaio) return false;
+    if(sit && l.situacao !== sit) return false;
+    if(sig && l.sigla !== sig) return false;
+    if(corte && new Date(l.em) < corte) return false;
+    if(q){
+      const alvo = [l.ebm, l.gci, l.codCliente, l.cliente, l.vendedor, l.encomenda,
+                    l.pedidoCliente, ...(l.itens || []).flatMap(i => [i.num, i.codigo, i.produto, i.cor])]
+        .join(' ').toLowerCase();
+      if(!alvo.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function desenhar(){
+  const linhas = filtrar();
+
+  // números do topo: contam o que está filtrado, para bater com a tabela
+  $('nPares').textContent = int(linhas.reduce((s, l) => s + Number(l.pares || 0), 0));
+  $('nDig').textContent = int(linhas.length);
+  $('nEnc').textContent = int(new Set(linhas
+    .filter(l => l.situacao === 'Encomenda gerada').map(l => l.ebm)).size);
+  $('nPend').textContent = int(linhas.filter(l => PENDENTES.includes(l.situacao)).length);
+  const per = $('fPeriodo').value;
+  $('nParesPe').textContent = per === 'mes' ? 'neste mês'
+    : (per ? `nos últimos ${per} dias` : 'em todo o registro');
+
+  const corpo = $('corpo');
+  corpo.innerHTML = linhas.map(l => {
+    const itens = (l.itens || []);
+    const prod = itens.map(i =>
+      `<div><b>${esc(i.produto)}</b> ${esc(i.cor)}
+         <span style="color:var(--muted)">· lote ${esc(i.num)}
+         · ${i.caixas != null ? i.caixas + ' cx' : '—'}</span></div>`).join('');
+    const cls = CLS_SIT[l.situacao] || 'sit-dig';
+    return `
+      <tr onclick="abrirLog('${esc(l.rodada)}')" style="cursor:pointer">
+        <td style="white-space:nowrap">${dataHora(l.em)}
+          ${l.ensaio ? '<div><span class="etq-ensaio">ensaio</span></div>' : ''}</td>
+        <td style="white-space:nowrap"><b>${esc(l.ebm)}</b>
+          <div style="font-size:11.5px;color:var(--muted)">GCI ${esc(l.gci || '—')}</div></td>
+        <td style="min-width:200px">${prod || '—'}</td>
+        <td><span class="cli ${corDoCliente(l.codCliente)}">${esc(l.pedidoCliente)}</span>
+          <div style="font-size:11.5px;color:var(--muted)">${esc(l.cliente)}</div></td>
+        <td style="white-space:nowrap">${esc(l.vendedor || '—')}</td>
+        <td class="num-col">${int(l.pares)}</td>
+        <td style="font-size:12px">${esc(l.prazo || '—')}
+          <div style="color:var(--muted)">${esc(l.campanha || 'sem campanha')}</div></td>
+        <td style="white-space:nowrap">${l.encomenda
+          ? '<b>' + esc(l.encomenda) + '</b>' : '<span style="color:var(--muted)">—</span>'}</td>
+        <td><span class="sit ${cls}">${esc(l.situacao)}</span>
+          ${l.motivo ? `<div style="font-size:11px;color:var(--danger);margin-top:3px">${esc(l.motivo)}</div>` : ''}</td>
+        <td style="white-space:nowrap;font-size:12px">${esc(l.por || '—')}</td>
+      </tr>`;
+  }).join('');
+
+  $('vazio').style.display = linhas.length ? 'none' : 'block';
+
+  if(rodadaFoco){
+    const r = RODADAS.find(x => x.id === rodadaFoco);
+    $('avisoRodada').style.display = 'block';
+    $('avisoRodadaTxt').textContent = r
+      ? `Mostrando só a rodada de ${dataHora(r.em)} — ${r.feitas} de ${r.previstas} digitações`
+      : 'Rodada não encontrada neste aparelho.';
+  }
+}
+
+function verTudo(){
+  rodadaFoco = '';
+  history.replaceState(null, '', location.pathname);
+  $('avisoRodada').style.display = 'none';
+  desenhar();
+}
+
+function abrirLog(id){
+  const r = RODADAS.find(x => x.id === id);
+  if(!r) return;
+  $('logTitulo').textContent = `${dataHora(r.em)} · ${r.feitas} de ${r.previstas} digitações`;
+  $('logSub').textContent = `${r.por || '—'} · sigla ${r.sigla || '—'}`
+    + (r.ensaio ? ' · ENSAIO (nada foi ao EBM)' : '')
+    + (r.interrompido ? ' · interrompida' : '');
+  $('logCorpo').innerHTML = (r.log || []).map(l =>
+    `<div class="${esc(l.tag || 'info')}">${esc(l.txt)}</div>`).join('')
+    || '<div class="info">Sem registro de passos nesta rodada.</div>';
+  $('modalLog').style.display = 'flex';
+}
+function fecharLog(){ $('modalLog').style.display = 'none'; }
+
+/* A planilha é a prova: o Chris trabalha assim e o EBM não devolve nada
+   parecido. Sai o que está na tela, com os filtros aplicados. */
+function exportarRegistro(){
+  const linhas = filtrar();
+  if(!linhas.length){ alert('Não há linhas para exportar.'); return; }
+  const dados = linhas.flatMap(l => (l.itens || [{}]).map(i => ({
+    'QUANDO': dataHora(l.em),
+    'ENSAIO': l.ensaio ? 'SIM' : '',
+    'PEDIDO MAE': l.ebm, 'GCI': l.gci,
+    'LOTE': i.num || '', 'REFERENCIA': i.codigo || '',
+    'DESCRICAO': i.produto || '', 'COR': i.cor || '',
+    'PARES': i.pares != null ? i.pares : l.pares,
+    'CAIXAS': i.caixas != null ? i.caixas : '',
+    'PEDIDO DO CLIENTE': l.pedidoCliente,
+    'COD CLIENTE': l.codCliente, 'CLIENTE': l.cliente,
+    'VENDEDOR': l.vendedor, 'PRAZO': l.prazo, 'CAMPANHA': l.campanha,
+    'ENCOMENDA': l.encomenda || '', 'SITUACAO': l.situacao,
+    'MOTIVO': l.motivo || '', 'POR': l.por || '',
+  })));
+  const ws = XLSX.utils.json_to_sheet(dados);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Desmembramentos');
+  const hoje = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `desmembramentos_${hoje}.xlsx`);
+}
+
+function $(id){ return document.getElementById(id); }
+
+carregar();
+desenhar();
+</script>
+</body>
+</html>
