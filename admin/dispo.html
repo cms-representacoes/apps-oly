@@ -2410,42 +2410,59 @@ function desenharConferenciaDesm(){
     </details>`).join('') || '<div style="color:var(--muted);font-size:12.5px">Nada a desmembrar.</div>';
 
   const btn = $('desmConfIniciar');
+  /* o ensaio fica fora da tela enquanto o caminho é a planilha (ver
+     DESM_SO_ROBO, logo abaixo) */
+  btn.style.display = 'none';
   btn.disabled = p.temErro || !t.linhas;
-  btn.style.opacity = btn.disabled ? '.5' : '1';
-  btn.style.cursor = btn.disabled ? 'not-allowed' : 'pointer';
   btn.textContent = p.temErro ? 'Corrija os erros acima'
                               : `Iniciar desmembramento (${t.clientes})`;
 
-  /* Com a extensão instalada aparece o passo que o robô não tem: antes de
-     digitar nada, abrir cada pedido mãe no EBM e comparar artigo, cor,
-     grade e saldo com o que a CMS acha que vai mandar. Hoje essas
-     diferenças só aparecem no meio da digitação, como [PULEI]. */
+  /* UM CAMINHO SO (19/11/2026). O trabalho sai daqui pela PLANILHA DO
+     ROBO: o arquivo cai em Downloads, o vigia o pega e o robô digita no
+     EBM. Tudo o mais que existia nesta barra era de outra fase - o
+     ensaio (simulação) e os três botões da extensão - e dividia a tela
+     em dois caminhos. Ele clicou no ensaio achando que era o de
+     verdade, viu "ENCOMENDA GERADA" escrito na tela e nada aconteceu no
+     EBM. Enquanto a extensão não voltar, a tela mostra uma coisa só.
+
+     Para religar quando a extensão voltar: DESM_SO_ROBO = false. */
+  const DESM_SO_ROBO = true;
+
   const bc = $('desmConfConferir');
   if(bc){
     const v = versaoExtensaoDesm();
-    bc.style.display = v ? 'inline-flex' : 'none';
+    bc.style.display = (!DESM_SO_ROBO && v) ? 'inline-flex' : 'none';
     bc.disabled = !t.linhas;
     bc.title = v ? `Extensão CMS · EBM ${v}` : '';
   }
   const bpl = $('desmConfPlanilha');
   if(bpl){
-    bpl.style.display = t.linhas ? 'inline-flex' : 'none';
+    /* o único botão que age: por isso ocupa a linha e vem destacado */
+    bpl.style.display = t.linhas ? 'flex' : 'none';
+    bpl.style.flex = '1';
+    bpl.style.minWidth = '240px';
     bpl.disabled = p.temErro;
     bpl.style.opacity = p.temErro ? '.5' : '1';
+    bpl.style.cursor = p.temErro ? 'not-allowed' : 'pointer';
   }
   const bx = $('desmConfRaioX');
-  if(bx) bx.style.display = (versaoExtensaoDesm() && primeiroClienteDesm(p)) ? 'inline-flex' : 'none';
+  if(bx) bx.style.display = (!DESM_SO_ROBO && versaoExtensaoDesm()
+                             && primeiroClienteDesm(p)) ? 'inline-flex' : 'none';
   const bp = $('desmConfPiloto');
   if(bp){
     const prim = primeiroClienteDesm(p);
-    bp.style.display = (versaoExtensaoDesm() && prim) ? 'inline-flex' : 'none';
+    bp.style.display = (!DESM_SO_ROBO && versaoExtensaoDesm() && prim)
+                         ? 'inline-flex' : 'none';
     bp.title = prim
       ? `Preenche ${prim.cliente.pedidoCliente} (${prim.cliente.nome}) no pedido `
         + `${prim.ebm} e para antes de salvar`
       : '';
   }
   const semExt = $('desmConfSemExt');
-  if(semExt) semExt.style.display = versaoExtensaoDesm() ? 'none' : 'block';
+  if(semExt) semExt.style.display = (!DESM_SO_ROBO && !versaoExtensaoDesm())
+                                      ? 'block' : 'none';
+  const dica = $('desmConfDica');
+  if(dica) dica.style.display = (DESM_SO_ROBO && t.linhas) ? 'block' : 'none';
 }
 
 /* A extensão se anuncia marcando a página (data-cms-desm). Sem ela, o
@@ -2625,10 +2642,10 @@ function linhasDaPlanilhaRobo(p){
 
 function gerarPlanilhaRobo(){
   const p = DESM.pacote;
-  if(!p || !p.totais.linhas){ showToast('Nada para gerar.', 'error'); return; }
+  if(!p || !p.totais.linhas){ showToast('Nada para desmembrar.', 'error'); return; }
   if(p.temErro){ showToast('Corrija os erros da conferência antes.', 'error'); return; }
   const linhas = linhasDaPlanilhaRobo(p);
-  if(!linhas.length){ showToast('Nada para gerar.', 'error'); return; }
+  if(!linhas.length){ showToast('Nada para desmembrar.', 'error'); return; }
 
   const colunas = COLUNAS_ROBO;
   const total = linhas.reduce((s, l) => s + Number(l['QTD PARES'] || 0), 0);
@@ -2647,7 +2664,9 @@ function gerarPlanilhaRobo(){
   XLSX.writeFile(wb, `DESMEMBRAMENTO_${dd}_lote${lotes}.xlsx`);
 
   desmLog && null;
-  showToast(`Planilha gerada: ${linhas.length} linha(s), ${formatInt(total)} pares.`, 'success');
+  showToast(`Mandado para o robô: ${linhas.length} linha(s), `
+            + `${formatInt(total)} pares. A janela do CMS · Desmembra abre `
+            + `em alguns segundos.`, 'success');
   fecharConferenciaDesm();
 }
 
@@ -7254,6 +7273,15 @@ loadDispo();
       A extensão <b>CMS · EBM</b> não está instalada nesta janela — por isso só aparece o ensaio.
       Com ela, entra o botão que confere os pedidos no EBM de verdade.
     </div>
+    <div id="desmConfDica" style="display:none;font-size:11.5px;color:var(--muted);margin-top:14px;line-height:1.5">
+      Um clique faz o resto: o robô <b>CMS · Desmembra</b> abre em alguns
+      segundos, entra no EBM, consulta os pedidos e digita. No fim ele mostra
+      a conferência, e só então alguém manda <b>gerar as encomendas</b>.
+      Aqui não há mais nada a clicar.
+      <br><span style="opacity:.85">Se em um minuto nada abrir, o vigia do robô
+      não está de pé nessa máquina: abra o <b>CMS · Desmembra</b> e escolha o
+      arquivo que acabou de cair em <b>Downloads</b>.</span>
+    </div>
     <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
       <button id="desmConfConferir" onclick="conferirNoEbm()" style="display:none;flex:1;min-width:220px;align-items:center;justify-content:center;gap:8px;background:var(--brand);color:#fff;border:0;border-radius:999px;padding:11px;font-weight:800;font-size:14px;cursor:pointer">
         <i class="fa-solid fa-magnifying-glass"></i> Conferir no EBM</button>
@@ -7263,9 +7291,12 @@ loadDispo();
       <button id="desmConfPiloto" onclick="pilotarNoEbm()" style="display:none;align-items:center;justify-content:center;gap:8px;background:transparent;border:1px solid #0d9488;color:#0d9488;border-radius:999px;padding:11px 16px;font-weight:800;font-size:13px;cursor:pointer"
         title="Preenche o primeiro cliente no EBM e para antes de salvar">
         <i class="fa-solid fa-user-pen"></i> Piloto: 1 cliente</button>
-      <button id="desmConfPlanilha" onclick="gerarPlanilhaRobo()" style="display:none;align-items:center;justify-content:center;gap:8px;background:#15803d;color:#fff;border:0;border-radius:999px;padding:11px 16px;font-weight:800;font-size:13px;cursor:pointer"
-        title="Gera o arquivo no layout que o robô CMS_DESMEMBRA lê">
-        <i class="fa-solid fa-file-excel"></i> Planilha do robô</button>
+      <!-- Um clique so (19/11/2026): ninguem quer "gerar uma planilha",
+           quer desmembrar. O arquivo continua sendo gerado - e o que o
+           robo le -, mas deixou de ser assunto de quem usa a tela. -->
+      <button id="desmConfPlanilha" onclick="gerarPlanilhaRobo()" style="display:none;align-items:center;justify-content:center;gap:8px;background:#15803d;color:#fff;border:0;border-radius:999px;padding:11px 16px;font-weight:800;font-size:14px;cursor:pointer"
+        title="Manda este trabalho para o robô: ele entra no EBM, consulta os pedidos e digita">
+        <i class="fa-solid fa-robot"></i> Desmembrar no EBM</button>
       <button id="desmConfIniciar" onclick="iniciarDesmembramento()" style="flex:1;min-width:200px;background:#0d9488;color:#fff;border:0;border-radius:999px;padding:11px;font-weight:800;font-size:14px;cursor:pointer">Iniciar desmembramento</button>
       <button onclick="fecharConferenciaDesm()" style="background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:11px 16px;font-weight:700;font-size:13px;cursor:pointer">Cancelar</button>
     </div>
