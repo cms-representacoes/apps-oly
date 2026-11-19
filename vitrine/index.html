@@ -4099,10 +4099,14 @@ function montar(dispo, disponib, produtos, pedidos, oculto){
     o.camp = o.campanhas.map(rotuloCampanha);
     // "Chega em" e a prev. faturamento unificada: estoque sai agora, as outras
     // duas origens entram pelo mes. Um produto pode estar em mais de um.
+    /* Um produto pode estar em mais de uma origem no mesmo mês (estoque
+       hoje e repasse chegando em novembro): o mês entra uma vez só, senão
+       o filtro contaria o produto duas vezes. */
     o.chega = [];
-    if(o.pronta) o.chega.push(AGORA);
-    if(o.repasse && o.repasse.mes) o.chega.push(o.repasse.mes);
-    if(o.meta && !o.chega.includes(o.meta.quinzenas[0].mes)) o.chega.push(o.meta.quinzenas[0].mes);
+    const poeMes = m => { if(m && !o.chega.includes(m)) o.chega.push(m); };
+    if(o.pronta) poeMes(MES_PRONTA);
+    if(o.repasse) poeMes(o.repasse.mes);
+    if(o.meta && o.meta.quinzenas.length) poeMes(o.meta.quinzenas[0].mes);
   }
 
   // Produto sem nenhuma origem com saldo não é vitrine.
@@ -4147,7 +4151,11 @@ const SVG_CORACAO = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"
   aria-hidden="true"><path d="M20.8 5.6a5.2 5.2 0 0 0-7.4 0L12 7l-1.4-1.4a5.2 5.2 0 1 0-7.4 7.4
   L12 21.4l8.8-8.4a5.2 5.2 0 0 0 0-7.4z"/></svg>`;
 
-const AGORA = 'Agora';
+/* O estoque não tem previsão de faturamento: ele sai agora. No filtro de
+   PREV. FAT. isso virava a opção "Agora", que não é um mês e ninguém sabia
+   ler ao lado de Nov e Dez. Faturar agora é faturar neste mês, então o
+   estoque passa a contar no mês corrente e o filtro fica só com meses. */
+const MES_PRONTA = mesDaData(`01/${String(new Date().getMonth() + 1).padStart(2, '0')}/2026`);
 // O rótulo é a chave do filtro: mesma tabela com MKP diferente é campanha
 // diferente na prática, porque muda o custo.
 const rotuloCampanha = c =>
@@ -4278,13 +4286,18 @@ function faixas(o){
     const lotes = tudo ? todos
       : soColecao ? todos.filter(l => l.colecao === COLECAO_BOLSAO)
                   : todos.filter(l => !l.colecao);
-    const total = tudo ? o.repasse.total
-                       : lotes.reduce((s, l) => s + Number(l.saldo || 0), 0);
+    const total = lotes.reduce((s, l) => s + Number(l.saldo || 0), 0);
     if(total > 0){
       // o mês é o do lote que chega primeiro DENTRO do recorte
-      const mes = tudo ? o.repasse.mes
-                       : (lotes.length ? mesDaData(lotes[0].data) : '');
-      f.push({ cls:'c-repasse', qual:'Repasse', quando:mes, qtd:total });
+      const mes = lotes.length ? mesDaData(lotes[0].data) : '';
+      /* O chip diz um mês e, até 19/11/2026, um número que era de TODOS os
+         meses juntos: "Nov 312" com 312 somando lotes de novembro e de
+         dezembro. Quem lia entendia que havia 312 pares em novembro. Agora
+         o número é só o do mês que o chip anuncia; o resto continua no
+         modal, lote a lote. */
+      const qtd = lotes.filter(l => mesDaData(l.data) === mes)
+                       .reduce((s, l) => s + Number(l.saldo || 0), 0);
+      f.push({ cls:'c-repasse', qual:'Repasse', quando:mes, qtd });
     }
   }
 
@@ -4511,10 +4524,8 @@ function ordemOpcoes(id, itens){
       posTamanho(String(a[0]).split('–')[0]) - posTamanho(String(b[0]).split('–')[0]) ||
       String(a[0]).localeCompare(String(b[0]), 'pt-BR', { numeric:true }));
   }
-  if(id === 'chega'){
-    return itens.sort((a, b) =>
-      (a[0] === AGORA ? -1 : distanciaMes(a[0])) - (b[0] === AGORA ? -1 : distanciaMes(b[0])));
-  }
+  // PREV. FAT.: só meses, do mais próximo ao mais distante
+  if(id === 'chega') return itens.sort((a, b) => distanciaMes(a[0]) - distanciaMes(b[0]));
   return itens.sort((a, b) => b[1] - a[1]);
 }
 
@@ -8095,7 +8106,7 @@ function linhaPassa(origem, alvo){
     if(origem !== 'repasse' || !alvo || !alvo.rateado || !STATE.sel.selo.has(alvo.selo)) return false;
   }
   if(STATE.sel.chega.size){
-    const mes = origem === 'pronta' ? AGORA
+    const mes = origem === 'pronta' ? MES_PRONTA
               : origem === 'repasse' ? mesDaData(alvo && alvo.data)
               : (alvo && alvo.mes);
     if(!STATE.sel.chega.has(mes)) return false;
