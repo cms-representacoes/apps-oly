@@ -4531,7 +4531,9 @@ function pintarFiltros(){
        a cota nao tiver rateio. Nao e so a aba: o lote tambem nao chega aqui
        (ver a trava em js/disponivel.js), entao nao ha o que vazar por "Tudo". */
     ...(podeVerBolsao() ? [[COLECAO_BOLSAO, ROTULO_BOLSAO, o => (o.colecoes || []).includes(COLECAO_BOLSAO)]] : []),
-    ['repasse','Repasse', o => o.repasse],
+    /* só o repasse de todo dia: o card do bolsão tem aba própria, e
+       somar os dois aqui era o que inflava o total (ver disponivel.js). */
+    ['repasse','Repasse', o => o.repasse && !(o.colecoes || []).length],
     ['pronta','Estoque', o => o.pronta],
     /* "Oportunidades", não "Fora de linha": o vendedor abre esta tela na
        frente do cliente, e "fora de linha" diz que o produto é velho antes de
@@ -5867,7 +5869,7 @@ function cardHtml(o, i){
              role="button" aria-label="Quando este cliente comprou">já comprou</span>`
         : ''; })()}${
         (o.colecoes || []).length
-          ? `<span class="selo-colecao" title="Bolsão ${esc(o.colecoes[0])} — cota reservada ao escritório">${esc(o.colecoes[0])}</span>`
+          ? `<span class="selo-colecao" title="GTM ${esc(o.colecoes[0])} — a cota da coleção, sem rateio: quem pedir primeiro leva">${esc(o.colecoes[0])}</span>`
           : (ehNovo(o) ? '<span class="selo-novo">Novo</span>' : '')}${
         o.rateado ? `<span class="selo-rateio${ehCmsSessao() ? ' cms' : ''}"
           title="${ehCmsSessao() ? 'Lote rateado entre os vendedores — a CMS pede em nome de quem tem cota'

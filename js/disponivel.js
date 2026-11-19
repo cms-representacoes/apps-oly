@@ -142,8 +142,15 @@ window.DISPONIVEL = (() => {
       if(!refArt.has(norm(p.codigo))) refArt.set(norm(p.codigo), p);
     }
 
-    const pega = (artigo, cor) => {
-      const k = chave(artigo, cor);
+    /* A familia do card: repasse comum e bolsao de colecao (1S27) sao
+       produtos DIFERENTES na tela, mesmo sendo o mesmo tenis. Antes o card
+       era um so e somava os dois: o ATMOS 43286101 PRETO aparecia na aba
+       Repasse com 4.008 pares, sendo 360 de repasse e 3.648 de seis lotes
+       do bolsao - e de la esses lotes podiam ser pedidos como repasse.
+       E a mesma separacao que a DISPO ganhou em 19/11/2026. */
+    const pega = (artigo, cor, colecao) => {
+      const fam = String(colecao || '').trim().toUpperCase();
+      const k = chave(artigo, cor) + (fam ? '|' + fam : '');
       if(!mapa.has(k)) mapa.set(k, {
         k, artigo:norm(artigo), cor:String(cor||'').trim().toUpperCase(),
         nome:'', marca:'', pdv:0, categoria:'', genero:'', imagem:'', fabrica:'',
@@ -221,7 +228,8 @@ window.DISPONIVEL = (() => {
          mesmo jeito. Para fechar de novo:
              if(String(r.colecao || '').trim() && !souCms) continue;
          e devolver podeVerBolsao() para ehCmsSessao() na vitrine. */
-      const o = pega(cod, r.cor);
+      const colecaoDoLote = String(r.colecao || '').trim().toUpperCase();
+      const o = pega(cod, r.cor, colecaoDoLote);
       const pc = refCor.get(chave(cod, r.cor));      // mesma cor
       const p  = pc || refArt.get(norm(cod));         // qualquer cor do artigo
       o.nome      = o.nome      || nome || String(p && p.produto || '').trim();
@@ -263,7 +271,7 @@ window.DISPONIVEL = (() => {
       // A coleção vem do lote e sobe para o produto. É o que separa o bolsão
       // da 1S27 - a cota que a fábrica reservou para o escritório atender os
       // clientes pequenos - do repasse de todo dia.
-      const colecao = String(r.colecao || '').trim().toUpperCase();
+      const colecao = colecaoDoLote;
       o.repasse.lotes.push({ num, gci:String(r.gci||'').trim(),
                              data:String(r.dataEntrega||'').trim(), saldo, grade:g,
                              rateado, selo, colecao });
