@@ -538,7 +538,15 @@ export default {
     // Atalhos para pedidos
     async function getPedidos() { return getFile(GITHUB_PEDIDOS); }
     async function savePedidos(list, sha, msg = "update pedidos") {
-      return saveFile(GITHUB_PEDIDOS, list, sha, msg);
+      /* COMPACTO (19/11/2026). Cada pedido novo relê o arquivo inteiro,
+         acrescenta um item e serializa tudo de volta - a mesma operacao que
+         derrubava o getDispo com erro 1102 (CPU) quando o dispo.json tinha
+         0,68 MB. O pedidos.json estava em 2,24 MB com indentacao de 2
+         espacos; sem ela cai para 1,32 MB (38% menos), e o GTM 1S27 acabou
+         de abrir para os prepostos, o que vai aumentar o ritmo. O preco e o
+         diff do GitHub ficar ilegivel - a Detalhada ja paga esse preco pelo
+         mesmo motivo. */
+      return saveFile(GITHUB_PEDIDOS, list, sha, msg, true);
     }
 
     // ── Retry para colisao de gravacao ────────────────────────────────────
@@ -556,14 +564,20 @@ export default {
       return false;
     }
 
-    async function comRetry(operacao, tentativas = 4) {
+    async function comRetry(operacao, tentativas = 6) {
       for (let i = 0; i < tentativas; i++) {
         try { return await operacao(); }
         catch (e) {
           if (!ehConflitoDeGravacao(e) || i === tentativas - 1) throw e;
           // Espera crescente com variacao, para que duas gravacoes que
           // colidiram nao voltem a tentar no mesmo instante.
-          const espera = 300 * Math.pow(2, i) + Math.floor(Math.random() * 250);
+          // Eram 4 tentativas; viraram 6 em 19/11/2026, quando o bolsao
+          // GTM 1S27 abriu para os seis prepostos e a chance de dois
+          // enviarem no mesmo instante subiu. O teto de 2,5 s existe para
+          // a soma das esperas (~9 s no pior caso) nao estourar o tempo
+          // do proprio request.
+          const espera = Math.min(2500, 300 * Math.pow(2, i))
+                       + Math.floor(Math.random() * 250);
           await new Promise(r => setTimeout(r, espera));
         }
       }
