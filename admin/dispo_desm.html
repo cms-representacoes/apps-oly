@@ -55,6 +55,7 @@
 
     .status-select{ border:1px solid var(--line); border-radius:999px; padding:5px 12px; font-size:12px; font-weight:700; cursor:pointer; outline:none; appearance:none; -webkit-appearance:none; transition:background .12s; background:var(--card); color:var(--text); }
     .status-select.st-pendente{ background:var(--warning-soft); color:var(--warning); border-color:#fde68a; }
+    .status-select.st-desmembrado,
     .status-select.st-finalizado{ background:var(--success-soft); color:var(--success); border-color:#bbf7d0; }
 
     .toast-wrap{ position:fixed; top:20px; right:20px; z-index:999; display:flex; flex-direction:column; gap:8px; }
@@ -160,8 +161,18 @@
             <th>Cor</th>
             <th class="text-right">Qtde</th>
             <th>Prev Fat</th>
-            <th>Status Pedido</th>
-            <th>Situação</th>
+            <!-- Dois estados, duas perguntas: o PEDIDO é do vendedor (a CMS
+                 aprovou?), o DESMEMBRAMENTO é do trabalho (já foi digitado
+                 no EBM?). Uma linha aprovada e ainda não desmembrada é o
+                 estado normal de quem está na fila. Os nomes antigos eram
+                 "Status Pedido" e "Situação", e ninguém lembrava qual era
+                 qual. Ele preferiu PEDIDO e STATUS (19/11/2026).
+                 (Pendente, à espera dele: Descrição e Cor podem sair. Em
+                 360 lotes conferidos, nenhum tem mais de uma descrição,
+                 cor ou EBM - as três repetem em toda linha o que já está
+                 no título da tela.) -->
+            <th>Pedido</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody id="desmBody"></tbody>
@@ -352,7 +363,7 @@ if(!row){
             data-line-key="${safeHtml(l.lineKey)}"
             onchange="onStatusChange(this)">
             <option value="Pendente"   ${st==='Pendente'  ?'selected':''}>Pendente</option>
-            <option value="Finalizado" ${st==='Finalizado'?'selected':''}>Finalizado</option>
+            <option value="Desmembrado" ${st==='Desmembrado'?'selected':''}>Desmembrado</option>
           </select>
         </td>
       </tr>`;

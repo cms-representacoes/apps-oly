@@ -562,6 +562,7 @@
     .desm-table tbody tr:hover td{ background:#f8fafc; }
     .desm-status-select{ border:1px solid #e2e8f0; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; cursor:pointer; outline:none; appearance:none; -webkit-appearance:none; }
     .desm-status-select.st-pendente{ background:#fef3c7; color:#b45309; border-color:#fde68a; }
+    .desm-status-select.st-desmembrado,
     .desm-status-select.st-finalizado{ background:#dcfce7; color:#15803d; border-color:#bbf7d0; }
 
     .btn-desmembrar{
@@ -1586,6 +1587,36 @@ function getItemUnits(item){
   return amount;
 }
 
+/* A chave de UMA linha de desmembramento - a mesma que a tela do
+   Controle de Desmembramento grava. Mora aqui para as duas pontas
+   lerem a mesma regra: quem marca (dispo_desm.html) e quem decide o
+   que mandar para o robo. */
+function desmLineKey(order, item){
+  const meio = sanitizeDisplayText(String(item.num || ''))
+            || sanitizeDisplayText(String(item.gci || ''))
+            || sanitizeDisplayText(String(item.codigo || ''));
+  return `${order.id}||${meio}||${item.cor}`;
+}
+
+/* Aquele destino ja foi digitado no EBM? Vem da coluna STATUS, que o
+   Chris marca - e que em 19/11/2026 recebeu de uma vez as 1.427 linhas
+   DESMEMBRADO da planilha dele. "Finalizado" era o nome antigo. */
+function linhaJaDesmembrada(num, order, item){
+  const marcas = (STATE.desmembramentos || {})[`lote:${String(num)}`];
+  if(!marcas) return false;
+  const v = String(marcas[desmLineKey(order, item)] || '').toLowerCase();
+  return v === 'desmembrado' || v === 'finalizado';
+}
+
+/* Quantas linhas cada lote tem e quantas ja foram - contadas no mesmo
+   laco do impacto, que ja percorre todos os pedidos. Sem isso, saber se
+   um lote acabou custaria uma varredura por linha da tabela. */
+let _desmFeitos = null;
+function desmFeitosPorLote(){
+  if(!_desmFeitos) buildImpactMap();
+  return _desmFeitos || new Map();
+}
+
 function buildImpactMap(){
   // Chave principal = Nº da linha DISPO (identidade única).
   // Pedidos antigos SEM Nº são reconhecidos por GCI (legado) e aplicados
@@ -1594,6 +1625,7 @@ function buildImpactMap(){
   const aprovMap = new Map();
   const pendGci = new Map();
   const aprovGci = new Map();
+  const feitos = new Map();
 
   for(const order of STATE.orders){
     if(order.archived) continue;
@@ -1604,6 +1636,10 @@ function buildImpactMap(){
       const units = getItemUnits(item);
       const num = sanitizeDisplayText(String(item.num || ''));
       if(num){
+        const c = feitos.get(num) || { total:0, prontas:0 };
+        c.total++;
+        if(linhaJaDesmembrada(num, order, item)) c.prontas++;
+        feitos.set(num, c);
         if(status === 'Pendente'){
           pendMap.set(num, (pendMap.get(num) || 0) + units);
         } else if(status === 'Aprovado'){
@@ -1621,7 +1657,15 @@ function buildImpactMap(){
     }
   }
 
+  _desmFeitos = feitos;
   return { pendMap, aprovMap, pendGci, aprovGci };
+}
+
+/* Lote sem nenhuma linha esperando: tudo o que tinha destino ja foi
+   digitado no EBM. */
+function loteTodoDesmembrado(row){
+  const c = desmFeitosPorLote().get(String(row.num || ''));
+  return !!c && c.total > 0 && c.prontas >= c.total;
 }
 
 function getSituacao(saldoReal, saldo){
@@ -1805,7 +1849,11 @@ function computeRows(){
       if(!q) return true;
       return textoDaLinha(row).includes(q);
     }
-    if(f === 'arquivados') return isArquivado(row);
+    /* Finalizados = o que foi arquivado a mao MAIS o que acabou
+       sozinho (todas as linhas desmembradas). Sem a segunda metade, o
+       lote concluido sairia da fila e nao apareceria em aba nenhuma:
+       ele nao tem saldo para "A distribuir" e ninguem o arquivou. */
+    if(f === 'arquivados') return isArquivado(row) || loteTodoDesmembrado(row);
     if(f === 'ocultos') return isOculto(row);
     // Arquivado só aparece na aba dele. Vale para TODAS as outras, inclusive
     // a busca por Nº: quem arquivou tirou da vista de propósito.
@@ -1824,7 +1872,8 @@ function computeRows(){
        abas separadas (ver .familia-tabs), então a etiqueta saiu: a lista
        inteira é de uma família só. */
     if(f === 'esgotados')
-      return (Number(row.pendente || 0) + Number(row.aprovado || 0)) > 0;
+      return (Number(row.pendente || 0) + Number(row.aprovado || 0)) > 0
+             && !loteTodoDesmembrado(row);
     if(f === 'saldo-positivo') return row.saldoReal > 0;
     /* 'all' deixou de ser "tudo": é o que ainda tem par para distribuir.
        O resto está esgotado e só atrapalha quem procura o que dar. Não
@@ -1837,13 +1886,17 @@ function computeRows(){
 }
 
 function isDispoFinalizado(row){
-  // Finalizado = saldoReal <= 0 e todos desmembramentos com situação Finalizado
+  /* Fechado = saldo zerado E toda linha já desmembrada. "Finalizado" era o
+     nome antigo da situação; desde 19/11/2026 a palavra é DESMEMBRADO, a
+     mesma da planilha do Chris. As duas continuam valendo aqui para não
+     perder nada que tenha sido salvo antes. */
   if(row.saldoReal > 0) return false;
   const key = desmKey(row);
   const lojas = STATE.desmembramentos[key] || {};
   const linhas = Object.values(lojas);
   if(!linhas.length) return row.saldoReal <= 0; // sem desmembramentos mas saldo zerado
-  return linhas.every(sit => (sit||'').toLowerCase() === 'finalizado');
+  return linhas.every(sit => ['desmembrado', 'finalizado']
+                               .includes(String(sit || '').toLowerCase()));
 }
 
 // ── Modal de confirmação (mesmo estilo do formulário) ──
@@ -2125,7 +2178,11 @@ const DESM = { pacote:null, irmaos:[], incluirIrmaos:false, exec:null };
    (pendente ou aprovado), fora dos arquivados e dos ocultos. */
 function lotesNaFilaDesm(){
   return computeAllRows().filter(r => !isArquivado(r) && !isOculto(r)
-    && (Number(r.pendente || 0) + Number(r.aprovado || 0)) > 0);
+    && (Number(r.pendente || 0) + Number(r.aprovado || 0)) > 0
+    /* lote com tudo desmembrado nao e trabalho: sai da fila e vai para
+       Finalizados. Antes ele ficava aqui para sempre, e a carga do robo
+       levava de novo quem ja tinha sido digitado. */
+    && !loteTodoDesmembrado(r));
 }
 
 function pedidosVivosDoLote(num){
@@ -2195,6 +2252,14 @@ function montarPacoteDesm(nums, incluirIrmaos){
       + 'O EBM vai barrar o que passar do saldo.' });
 
     for(const { order, item, status } of vivos){
+      /* Ja digitado no EBM: nao vai de novo. O saldo do lote (P.fica)
+         continua contando com ele - o par saiu do lote de qualquer
+         forma -, mas o destino nao entra na carga. */
+      if(linhaJaDesmembrada(row.num, order, item)){
+        P.jaFeitos = (P.jaFeitos || 0) + 1;
+        P.paresFeitos = (P.paresFeitos || 0) + getItemUnits(item);
+        continue;
+      }
       const cod = String(order.clienteCodigo || '').trim();
       const pares = getItemUnits(item);
       const { caixas, porCaixa } = _desmCaixas(item, pares);
@@ -2244,6 +2309,12 @@ function montarPacoteDesm(nums, incluirIrmaos){
   }
 
   const lista = [...pedidos.values()].map(P => ({ ...P, clientes:[...P.clientes.values()] }));
+  const jaFeitos = lista.reduce((s, P) => s + (P.jaFeitos || 0), 0);
+  const paresFeitos = lista.reduce((s, P) => s + (P.paresFeitos || 0), 0);
+  if(jaFeitos) avisos.push({ t:'info', txt:
+    `${jaFeitos} destino(s) já desmembrado(s) (${formatInt(paresFeitos)} pares) `
+    + 'ficaram de fora desta carga. Eles estão marcados como Desmembrado no '
+    + 'Controle de Desmembramento — desmarque lá se algum precisar ir de novo.' });
   const totais = {
     pedidos: lista.length,
     lotes: lista.reduce((s, P) => s + P.lotes.length, 0),
@@ -2257,15 +2328,16 @@ function montarPacoteDesm(nums, incluirIrmaos){
 }
 
 /* A sigla fica no aparelho de quem usa: é a assinatura da pessoa, não da
-   rodada. CH é o padrão do robô, então quem já trabalha assim não precisa
-   mexer em nada. */
+   rodada. O padrão é CL desde 19/11/2026 (decisão dele); quem desmembra
+   como CH clica no outro botão uma vez e o aparelho lembra. */
 const DESM_SIGLA_KEY = 'cms_desm_sigla';
 const DESM_SIGLAS = ['CH', 'CL'];        // as duas pessoas que desmembram
+const DESM_SIGLA_PADRAO = 'CL';
 function siglaDesm(){
   try{
     const s = (localStorage.getItem(DESM_SIGLA_KEY) || '').trim().toUpperCase();
-    return DESM_SIGLAS.includes(s) ? s : 'CH';
-  }catch(e){ return 'CH'; }
+    return DESM_SIGLAS.includes(s) ? s : DESM_SIGLA_PADRAO;
+  }catch(e){ return DESM_SIGLA_PADRAO; }
 }
 function mudarSiglaDesm(v){
   const s = String(v || '').trim().toUpperCase();
@@ -5964,8 +6036,9 @@ function renderDesmTable(linhas){
             <th>Cor</th>
             <th class="text-right">Qtde</th>
             <th>Prev Fat</th>
-            <th>Status Pedido</th>
-            <th>Situação</th>
+            <!-- os mesmos nomes da tela cheia: PEDIDO e STATUS -->
+            <th>Pedido</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>
@@ -5986,7 +6059,7 @@ function renderDesmTable(linhas){
                   data-line-key="${safeHtml(l.lineKey)}"
                   onchange="onDesmStatusChange(this)">
                   <option value="Pendente"  ${l.desmStatus==='Pendente'  ?'selected':''}>Pendente</option>
-                  <option value="Finalizado" ${l.desmStatus==='Finalizado'?'selected':''}>Finalizado</option>
+                  <option value="Desmembrado" ${l.desmStatus==='Desmembrado'?'selected':''}>Desmembrado</option>
                 </select>
               </td>
             </tr>
@@ -6136,7 +6209,7 @@ function renderConsultaDesm(){
           <tr>
             <th>EBM</th><th>GCI</th><th>Cliente</th><th>Prazo</th>
             <th>Campanha</th><th class="text-right">Qtde</th>
-            <th>Prev Fat</th><th>Status pedido</th><th>Situação</th>
+            <th>Prev Fat</th><th>Pedido</th><th>Status</th>
           </tr>
         </thead>
         <tbody>
