@@ -4099,14 +4099,8 @@ function montar(dispo, disponib, produtos, pedidos, oculto){
     o.camp = o.campanhas.map(rotuloCampanha);
     // "Chega em" e a prev. faturamento unificada: estoque sai agora, as outras
     // duas origens entram pelo mes. Um produto pode estar em mais de um.
-    /* Um produto pode estar em mais de uma origem no mesmo mês (estoque
-       hoje e repasse chegando em novembro): o mês entra uma vez só, senão
-       o filtro contaria o produto duas vezes. */
-    o.chega = [];
-    const poeMes = m => { if(m && !o.chega.includes(m)) o.chega.push(m); };
-    if(o.pronta) poeMes(MES_PRONTA);
-    if(o.repasse) poeMes(o.repasse.mes);
-    if(o.meta && o.meta.quinzenas.length) poeMes(o.meta.quinzenas[0].mes);
+    /* O "chega em" NÃO é montado aqui de propósito — ver mesesDe(). Ele
+       depende da aba, e aqui a aba ainda não existe. */
   }
 
   // Produto sem nenhuma origem com saldo não é vitrine.
@@ -4261,6 +4255,42 @@ function subcategoriaDe(o){
   return 'Outros';   // dentro de acessórios/vestuário, o que não casou
 }
 
+/* ── o que vale NA ABA ───────────────────────────────────────────────
+   O 1S27 é a cota que a fábrica reservou ao escritório: são lotes de
+   repasse como os outros, mas andam separados do repasse de todo dia.
+   Misturar os dois fazia três coisas erradas ao mesmo tempo — o card
+   prometia um mês que não era o daquela aba, o filtro de PREV. FAT.
+   deixava passar produto cujo lote de novembro era do bolsão, e o modal
+   listava lote que o vendedor não podia pegar ali. Agora o recorte é um
+   só e os três leem dele. */
+function lotesDaAba(o){
+  const todos = (o.repasse && o.repasse.lotes) || [];
+  const aba = STATE.origem;
+  if(aba === COLECAO_BOLSAO) return todos.filter(l => l.colecao === COLECAO_BOLSAO);
+  if(aba === 'repasse')      return todos.filter(l => !l.colecao);
+  return todos;                       // Tudo e Oportunidades mostram as três origens
+}
+
+/* Os meses em que este produto chega, na aba atual. Antes era só o mês do
+   PRIMEIRO lote: quem filtrava Dezembro não via o produto que tinha lote
+   em novembro E em dezembro. Agora entram todos. */
+function mesesDe(o){
+  const aba = STATE.origem;
+  const tudo = aba === 'tudo' || aba === 'fora';
+  const m = new Set();
+  if(o.pronta && (tudo || aba === 'pronta')) m.add(MES_PRONTA);
+  if(o.repasse && (tudo || aba === 'repasse' || aba === COLECAO_BOLSAO)){
+    for(const l of lotesDaAba(o)){
+      const x = mesDaData(l.data);
+      if(x) m.add(x);
+    }
+  }
+  if(o.meta && (tudo || aba === 'meta')){
+    for(const q of (o.meta.quinzenas || [])) if(q.mes) m.add(q.mes);
+  }
+  return [...m];
+}
+
 /* ── faixas ─────────────────────────────────────────────────────── */
 // Ordem cronológica: o que o cliente recebe antes aparece em cima.
 /* O CARD FALA DA ABA EM QUE ESTÁ.
@@ -4282,10 +4312,15 @@ function faixas(o){
   if(o.repasse && (tudo || aba === 'repasse' || soColecao)){
     /* O recorte dos lotes é a parte que faltava: na aba do bolsão entram só
        os da coleção, na de repasse só os que NÃO são de coleção nenhuma. */
-    const todos = o.repasse.lotes || [];
-    const lotes = tudo ? todos
-      : soColecao ? todos.filter(l => l.colecao === COLECAO_BOLSAO)
-                  : todos.filter(l => !l.colecao);
+    /* Com um mês escolhido no filtro, o chip fala DAQUELE mês. Sem isto
+       o vendedor filtrava Dezembro e via "Nov 192": o produto passava
+       porque tem lote em dezembro, mas o chip anunciava o lote mais
+       próximo, que é de novembro. Parecia filtro quebrado — e a bronca
+       era dele. */
+    const mesesSel = STATE.sel.chega;
+    const lotes = mesesSel.size
+      ? lotesDaAba(o).filter(l => mesesSel.has(mesDaData(l.data)))
+      : lotesDaAba(o);
     const total = lotes.reduce((s, l) => s + Number(l.saldo || 0), 0);
     if(total > 0){
       // o mês é o do lote que chega primeiro DENTRO do recorte
@@ -4367,7 +4402,9 @@ const GRUPOS = [
   { id:'camp',    rot:'Campanha', lista:true }
 ];
 const LISTAS = new Set(['chega', 'camp', 'grade']);   // campos com vários valores por produto
-const valoresDe = (o, id) => LISTAS.has(id) ? o[id] : (o[id] ? [o[id]] : []);
+const valoresDe = (o, id) => id === 'chega' ? mesesDe(o)
+                           : LISTAS.has(id) ? o[id]
+                           : (o[id] ? [o[id]] : []);
 function casaGrupo(o, id){
   const sel = STATE.sel[id];
   return sel.size === 0 || valoresDe(o, id).some(v => sel.has(v));
@@ -8684,8 +8721,14 @@ function abrirModal(i, comFicha){
     h += `<div class="bloco"><p class="rot r-pronta">${svgIcone('c-pronta')}Estoque · ${nf(o.pronta.total)} un</p>${celulas(o.pronta.grade, 'g-est')}</div>`;
   }
   if(verRep){
-    h += `<div class="bloco"><p class="rot r-repasse">${svgIcone('c-repasse')}Repasse · ${o.repasse.lotes.length} ${o.repasse.lotes.length === 1 ? 'lote' : 'lotes'} · ${nf(o.repasse.total)} un</p>
-      <div class="lotes">${o.repasse.lotes.map(l =>
+    /* Os lotes do detalhe são os DA ABA. Na aba Repasse o modal listava
+       também os do 1S27 — lote que o vendedor vê, tenta pegar e não é
+       dali. O título conta o mesmo recorte, senão diria "6 lotes" e
+       mostraria dois. */
+    const lotesRep = lotesDaAba(o);
+    const totalRep = lotesRep.reduce((a, l) => a + Number(l.saldo || 0), 0);
+    h += `<div class="bloco"><p class="rot r-repasse">${svgIcone('c-repasse')}Repasse · ${lotesRep.length} ${lotesRep.length === 1 ? 'lote' : 'lotes'} · ${nf(totalRep)} un</p>
+      <div class="lotes">${lotesRep.map(l =>
         `<div class="lote">
           <div class="lote-l1">
             <span class="n">Nº ${esc(l.num)}${l.gci?` · GCI ${esc(l.gci)}`:''}</span>
