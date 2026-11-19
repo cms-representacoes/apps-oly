@@ -127,6 +127,46 @@
        vê as duas telas reconhecer na hora que é a mesma coisa. */
     .filter-status-btn.fs-active-colecao{ background:linear-gradient(135deg,#22d3ee,#0891b2); color:#fff; border-color:transparent; box-shadow:0 3px 10px rgba(8,145,178,.3); }
     .fs-count-colecao{ background:#a5f3fc; color:#155e75; }
+    /* ── As duas familias (19/11/2026) ──────────────────────────────────
+       O bolsao da colecao era uma pilula ao lado dos status: "1S27" ficava
+       no mesmo nivel de Pendente ou Aprovado, como se fosse um estado do
+       pedido. Nao e - e outro estoque, com outra conta. Agora a familia e a
+       primeira escolha da tela e vale para TODOS os chips, no mesmo trilho
+       que a DISPO usa. Pedido misto (um lote de cada) aparece nas duas
+       abas: a parte da cota nunca fica escondida dentro de um pedido que
+       parece comum. */
+    .familia-tabs{
+      display:inline-flex; gap:3px; padding:3px;
+      background:#eef1f7;
+      border:0.5px solid var(--line);
+      border-radius:999px;
+      align-self:center;
+    }
+    .familia-tab{
+      display:inline-flex; align-items:center; gap:6px;
+      border:0; background:transparent; cursor:pointer;
+      border-radius:999px; padding:5px 14px;
+      font-size:12.5px; font-weight:800; color:#64748b;
+      transition:background .15s, color .15s, box-shadow .15s;
+      white-space:nowrap;
+    }
+    .familia-tab:hover{ color:#0f172a; }
+    .familia-tab.active{ background:#fff; color:var(--brand); box-shadow:0 2px 8px rgba(15,23,42,.14); }
+    .familia-tab[data-familia="colecao"].active{ color:#0E7490; }
+    .familia-tab i{ font-size:11px; }
+    /* risco fino entre a familia e os filtros dela */
+    .barra-sep{ width:1px; align-self:center; height:22px; background:var(--line); margin:0 4px; }
+    .dark .familia-tabs{ background:rgba(255,255,255,.05)!important; border-color:rgba(255,255,255,.10)!important; }
+    .dark .familia-tab{ color:#a9b8d6!important; }
+    .dark .familia-tab.active{ background:#1e293b!important; color:#93c5fd!important; }
+    .dark .familia-tab[data-familia="colecao"].active{ color:#67e8f9!important; }
+    @media(max-width:560px){
+      /* No celular o trilho anda junto com os chips, so menor - ocupar a
+         largura toda empurraria os status para fora da tela. */
+      .familia-tab{ padding:5px 11px; font-size:12px; }
+      .familia-tab i{ font-size:10px; }
+      .barra-sep{ height:18px; margin:0 2px; }
+    }
     .chip-colecao-adm{ font-size:11px; font-weight:700; background:#CFFAFE; color:#155E75; border-radius:999px; padding:2px 9px; flex-shrink:0; cursor:help; }
     .chip-status-cancelado{ background:linear-gradient(135deg,#f87171,#dc2626); color:#fff; border-color:transparent; box-shadow:0 2px 8px rgba(220,38,38,.32); }
 
@@ -970,7 +1010,20 @@
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
 
 
-          <div class="flex flex-wrap gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <div id="familiaTabsAdm" class="familia-tabs" role="tablist" aria-label="Estoque do pedido">
+              <button type="button" class="familia-tab active" data-familia="repasse" role="tab"
+                      aria-selected="true" onclick="setFamiliaAdm('repasse')"
+                      title="Pedidos de repasse do dia a dia">
+                <i class="fa-solid fa-right-left"></i>Repasses
+              </button>
+              <button type="button" class="familia-tab" data-familia="colecao" role="tab"
+                      aria-selected="false" onclick="setFamiliaAdm('colecao')"
+                      title="Pedidos com item do GTM - 1S27, a cota da coleção">
+                <i class="fa-solid fa-layer-group"></i>GTM - 1S27
+              </button>
+            </div>
+            <span class="barra-sep" aria-hidden="true"></span>
             <button class="filter-status-btn" data-fs="solicitacoes" onclick="setStatusFilter('solicitacoes',this)">
               <i class="fa-solid fa-hand" style="font-size:10px"></i>
               Solicitações <span class="fs-count" id="fsCountSol">0</span>
@@ -998,11 +1051,6 @@
               title="Pedidos cujo conteúdo mudou depois de criados">
               <i class="fa-solid fa-pen-to-square" style="font-size:10px"></i>
               Alterados <span class="fs-count fs-count-alt" id="fsCountAlt">0</span>
-            </button>
-            <button class="filter-status-btn" data-fs="1S27" onclick="setStatusFilter('1S27',this)"
-              title="Pedidos com algum item do bolsão 1S27 — a cota que a fábrica reservou ao escritório">
-              <i class="fa-solid fa-layer-group" style="font-size:10px"></i>
-              1S27 <span class="fs-count fs-count-colecao" id="fsCountColecao">0</span>
             </button>
           </div>
         </div>
@@ -1907,7 +1955,8 @@ const STATE = {
   filtered: [],
   selectedId: null,
   cancelReasonContext: null,
-  statusFilter: 'Pendente'   // o admin abre direto no que precisa de acao
+  statusFilter: 'Pendente',  // o admin abre direto no que precisa de acao
+  familia: 'repasse'         // 'repasse' | 'colecao' - ver .familia-tabs
 };
 
 const $ = (id)=>document.getElementById(id);
@@ -2607,25 +2656,93 @@ async function loadAdmin(){
    O campo nasceu com o bolsão: pedido anterior a ele não tem, e por isso não
    aparece aqui. Não é falha — antes do bolsão não havia o que mostrar. */
 const COLECAO_ADMIN = '1S27';
+const ROTULO_COLECAO_ADM = 'GTM - ' + COLECAO_ADMIN;
+/* De que estoque saiu o item. O campo passou a ser gravado no pedido em
+   19/11/2026; antes disso - e no primeiro pedido do GTM, que chegou no mesmo
+   dia - ele vem vazio. Nesse caso a colecao vem do lote na DISPO, pelo Nº.
+   A DISPO chega depois dos pedidos (getDispoGciMap), e quando chega a lista
+   se repinta sozinha; se o lote ja tiver saido de la, o que vale e o campo
+   gravado - e por isso ele existe. */
+function colecaoDoItem(it){
+  const gravada = String(it?.colecao || '').trim().toUpperCase();
+  if(gravada) return gravada;
+  const num = String(it?.num ?? '').trim();
+  if(!num || !_dispoColecaoPorNum) return '';
+  return _dispoColecaoPorNum.get(num) || '';
+}
 function itensDaColecao(order){
-  return (order?.items || []).filter(it =>
-    String(it?.colecao || '').trim().toUpperCase() === COLECAO_ADMIN);
+  return (order?.items || []).filter(it => colecaoDoItem(it) === COLECAO_ADMIN);
 }
 function pedidoTemColecao(order){ return itensDaColecao(order).length > 0; }
+/* O que sobra do pedido depois de tirar a cota. Pedido antigo, de antes do
+   bolsao, nao tem colecao em item nenhum - entao e repasse inteiro, que e
+   o que ele sempre foi. */
+function pedidoTemRepasse(order){
+  const itens = order?.items || [];
+  if(!itens.length) return true;
+  return itens.length > itensDaColecao(order).length;
+}
+function pedidoNaFamilia(order, fam){
+  return fam === 'colecao' ? pedidoTemColecao(order) : pedidoTemRepasse(order);
+}
+
+function setFamiliaAdm(nome){
+  if(nome !== 'repasse' && nome !== 'colecao') return;
+  STATE.familia = nome;
+  document.querySelectorAll('#familiaTabsAdm .familia-tab').forEach(t => {
+    const on = t.dataset.familia === nome;
+    t.classList.toggle('active', on);
+    t.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  applyFilters();
+}
+
+/* Lista vazia nao pode ser uma mentira por omissao: se o que falta esta na
+   outra aba (um pendente do GTM, por exemplo), conta quantos sao e leva la
+   num clique. Mesmo recado que a DISPO da. */
+function avisarOutraFamiliaAdm(){
+  const caixa = $('ordersEmpty');
+  if(!caixa) return;
+  const outra = STATE.familia === 'colecao' ? 'repasse' : 'colecao';
+  const guardada = STATE.familia;
+  let quantos = 0;
+  try{
+    STATE.familia = outra;
+    quantos = STATE.orders.filter(o => _passaNosFiltros(o)).length;
+  }catch(e){ /* nao e motivo para derrubar o render */ }
+  finally{ STATE.familia = guardada; }
+  if(!quantos){
+    caixa.textContent = 'Nenhum pedido encontrado.';
+    return;
+  }
+  const nome = outra === 'colecao' ? 'GTM - 1S27' : 'Repasses';
+  const cor = outra === 'colecao'
+    ? { titulo:'#0e7490', btn:'#0891b2' }
+    : { titulo:'#3730a3', btn:'var(--brand)' };
+  caixa.innerHTML = `<div style="font-size:13.5px;font-weight:900;color:${cor.titulo}">
+      Nada aqui, mas há ${quantos} pedido${quantos === 1 ? '' : 's'} em ${safeHtml(nome)}</div>
+    <div style="font-size:12px;font-weight:700;color:#64748b;margin-top:4px">
+      Os mesmos filtros, do outro estoque</div>
+    <button type="button" onclick="setFamiliaAdm('${outra}')"
+      style="margin-top:10px;background:${cor.btn};color:#fff;border:0;border-radius:999px;
+             padding:8px 18px;font-weight:800;font-size:12.5px;cursor:pointer">
+      Ver em ${safeHtml(nome)}</button>`;
+}
 
 function setStatusFilter(f, btn){
   STATE.statusFilter = f;
   document.querySelectorAll('.filter-status-btn').forEach(b => {
     b.className = 'filter-status-btn';
   });
-  const clsMap = { todos:'fs-active-todos', Pendente:'fs-active-pend', Aprovado:'fs-active-aprov', Exportado:'fs-active-export', Cancelado:'fs-active-canc', solicitacoes:'fs-active-sol', alterados:'fs-active-alt', '1S27':'fs-active-colecao' };
+  const clsMap = { todos:'fs-active-todos', Pendente:'fs-active-pend', Aprovado:'fs-active-aprov', Exportado:'fs-active-export', Cancelado:'fs-active-canc', solicitacoes:'fs-active-sol', alterados:'fs-active-alt' };
   btn.className = `filter-status-btn ${clsMap[f]||''}`;
   applyFilters();
 }
 
 function updateFilterCounts(){
   const scope = getAdminScope();
-  const base = STATE.orders.filter(o => orderMatchesScope(o, scope));
+  const base = STATE.orders.filter(o =>
+    orderMatchesScope(o, scope) && pedidoNaFamilia(o, STATE.familia));
   const c = {
     todos:    base.length,
     Pendente: base.filter(o => canonicalStatus(o.status) === 'Pendente').length,
@@ -2634,7 +2751,6 @@ function updateFilterCounts(){
     Cancelado:base.filter(o => canonicalStatus(o.status) === 'Cancelado').length,
     solicitacoes: base.filter(o => solicitacaoAberta(o)).length,
     alterados: base.filter(o => pedidoAlterado(o)).length,
-    colecao:   base.filter(o => pedidoTemColecao(o)).length,
   };
   if($('fsCountSol')) $('fsCountSol').textContent = c.solicitacoes;
   if($('fsCountTodos'))  $('fsCountTodos').textContent  = c.todos;
@@ -2643,7 +2759,37 @@ function updateFilterCounts(){
   if($('fsCountExport')) $('fsCountExport').textContent = c.Exportado;
   if($('fsCountCanc'))   $('fsCountCanc').textContent   = c.Cancelado;
   if($('fsCountAlt'))    $('fsCountAlt').textContent    = c.alterados;
-  if($('fsCountColecao'))$('fsCountColecao').textContent= c.colecao;
+}
+
+/* A peneira de um pedido so. Virou funcao em 19/11/2026 para o aviso de
+   "nada aqui, mas ha N na outra aba" poder contar com a MESMA regra - duas
+   copias da peneira sempre acabam divergindo. */
+function _passaNosFiltros(order, q, sf, scope){
+  if(q === undefined) q = normalizeText($('adminSearch').value).toLowerCase();
+  if(sf === undefined) sf = STATE.statusFilter;
+  if(scope === undefined) scope = getAdminScope();
+  const hay = [
+    order.id,
+    order.clienteCodigo,
+    order.preposto?.nome,
+    order.preposto?.codigo,
+    order.prazo,
+    order.campanha,
+    ...(order.items || []).flatMap(item => [item.codigo, item.produto, item.cor, item.gci])
+  ].join(' ').toLowerCase();
+
+  const matchQ = !q || hay.includes(q);
+  const matchScope = orderMatchesScope(order, scope);
+  const matchFamilia = pedidoNaFamilia(order, STATE.familia);
+  let matchStatus = true;
+  if(sf === 'Pendente')  matchStatus = canonicalStatus(order.status) === 'Pendente';
+  else if(sf === 'Aprovado')  matchStatus = canonicalStatus(order.status) === 'Aprovado';
+  else if(sf === 'Exportado') matchStatus = canonicalStatus(order.status) === 'Aprovado' && !!order.exportedAt;
+  else if(sf === 'Cancelado') matchStatus = canonicalStatus(order.status) === 'Cancelado';
+  else if(sf === 'solicitacoes') matchStatus = Boolean(solicitacaoAberta(order));
+  else if(sf === 'alterados') matchStatus = pedidoAlterado(order);
+
+  return matchQ && matchStatus && matchScope && matchFamilia;
 }
 
 function applyFilters(){
@@ -2655,30 +2801,8 @@ function applyFilters(){
   updateScopeButtons();
   updateFilterCounts();
 
-  STATE.filtered = STATE.orders.filter(order=>{
-    const hay = [
-      order.id,
-      order.clienteCodigo,
-      order.preposto?.nome,
-      order.preposto?.codigo,
-      order.prazo,
-      order.campanha,
-      ...(order.items || []).flatMap(item => [item.codigo, item.produto, item.cor, item.gci])
-    ].join(' ').toLowerCase();
+  STATE.filtered = STATE.orders.filter(order => _passaNosFiltros(order, q, sf, scope));
 
-    const matchQ = !q || hay.includes(q);
-    const matchScope = orderMatchesScope(order, scope);
-    let matchStatus = true;
-    if(sf === 'Pendente')  matchStatus = canonicalStatus(order.status) === 'Pendente';
-    else if(sf === 'Aprovado')  matchStatus = canonicalStatus(order.status) === 'Aprovado';
-    else if(sf === 'Exportado') matchStatus = canonicalStatus(order.status) === 'Aprovado' && !!order.exportedAt;
-    else if(sf === 'Cancelado') matchStatus = canonicalStatus(order.status) === 'Cancelado';
-    else if(sf === 'solicitacoes') matchStatus = Boolean(solicitacaoAberta(order));
-    else if(sf === 'alterados') matchStatus = pedidoAlterado(order);
-    else if(sf === COLECAO_ADMIN) matchStatus = pedidoTemColecao(order);
-
-    return matchQ && matchStatus && matchScope;
-  });
 
   // Ordena AQUI, e não na carga: assim trocar a ordem não exige recarregar.
   // O padrão é por data de CHEGADA (createdAt) — a ordem antiga usava
@@ -2710,6 +2834,7 @@ let _currentPage = 1;
 
 function renderList(){
   $('ordersEmpty').classList.toggle('hidden', STATE.filtered.length !== 0);
+  if(!STATE.filtered.length) avisarOutraFamiliaAdm();
 
   const controles = $('selecaoControles');
   if(controles) controles.classList.toggle('hidden', STATE.filtered.length === 0);
@@ -2758,11 +2883,9 @@ function renderList(){
        chip diz só "1S27"; no misto ele diz a fração, que é o número que
        interessa a quem vai desmembrar. */
     const nColecao = itensDaColecao(order).length;
-    const chipColecao = nColecao
-      ? `<span class="chip-colecao-adm" title="${nColecao === nItems
-            ? 'Pedido inteiro do bolsão ' + COLECAO_ADMIN
-            : nColecao + ' de ' + nItems + ' produtos vêm do bolsão ' + COLECAO_ADMIN + '; o resto é repasse comum'}">${COLECAO_ADMIN}${
-            nColecao < nItems ? ' · ' + nColecao + '/' + nItems : ''}</span>`
+    const chipColecao = (nColecao && nColecao < nItems)
+      ? `<span class="chip-colecao-adm" title="${nColecao} de ${nItems} produtos vêm do ${ROTULO_COLECAO_ADM}; o resto é repasse comum">${
+            ROTULO_COLECAO_ADM} · ${nColecao}/${nItems}</span>`
       : '';
 
     const cardStatus = getStatusVisual(order.status);
@@ -5938,6 +6061,7 @@ function workerFetchAdmin(opts = {}){
 // ── DISPO GCI→NÚM MAP ────────────────────────────────────────────────────────
 let _dispoGciMap = null;  // cache: Map<gci, num>
 let _dispoRows = null;    // cache: array bruto do DISPO (pra comparar Prev. Fat.)
+let _dispoColecaoPorNum = null;  // cache: Map<num, colecao> - ver colecaoDoItem
 
 async function getDispoGciMap(){
   if(_dispoGciMap) return _dispoGciMap;
@@ -5947,12 +6071,15 @@ async function getDispoGciMap(){
     const rows = await res.json();
     _dispoRows = Array.isArray(rows) ? rows : [];
     _dispoGciMap = new Map();
+    _dispoColecaoPorNum = new Map();
     for(const r of _dispoRows){
       const gci  = String(r.gci || '').trim();
       const ebm  = String(r.ebm || '').trim();
       const num  = String(r.num ?? '').trim();
       if(gci && num) _dispoGciMap.set(gci, num);
       if(ebm && num) _dispoGciMap.set(ebm, num);
+      const col = String(r.colecao || '').trim().toUpperCase();
+      if(num && col) _dispoColecaoPorNum.set(num, col);
     }
   }catch(e){ console.error('Erro ao carregar DISPO para Nº:', e); return new Map(); }
   return _dispoGciMap;

@@ -9725,7 +9725,12 @@ async function enviarRepasse(op = {}){
     totalUnits: amount * pack,
     grade: Object.entries(row.grade || {}).filter(([, q]) => Number(q) > 0)
       .map(([size, qty]) => ({ size, qty:Number(qty) })),
-    prevFaturamento: String(row.dataEntrega || '').trim()
+    prevFaturamento: String(row.dataEntrega || '').trim(),
+    /* De que estoque saiu este par. Sem isso o pedido do bolsão chegava ao
+       Repasses com cara de repasse comum - foi o que aconteceu com o
+       primeiro pedido do GTM, em 19/11/2026. A linha da DISPO manda; a
+       sacola é reserva, para o lote que saiu do estoque no meio do caminho. */
+    colecao: String((row && row.colecao) || it.colecao || '').trim().toUpperCase()
   }));
   const pedido = {
     id: idPedido(),
