@@ -213,15 +213,14 @@ window.DISPONIVEL = (() => {
       // cinco delas estão ocultas. Filtrar o produto inteiro tiraria a sexta
       // junto, e ignorar a lista somava as seis no saldo do card.
       if(bloq.lotes.has(chaveLote(r))) continue;
-      /* Bolsao de colecao (1S27): enquanto a cota nao for dividida entre o
-         time, o lote so existe para a CMS e para quem desenvolve. Sem rateio
-         dois vendedores poem o mesmo lote na sacola e quem pede primeiro
-         leva - a cota que a fabrica reservou ao escritorio viraria corrida.
-         A trava e no LOTE, nao na aba: esconder so a aba deixaria o produto
-         a mostra em "Tudo", e de la ele e pedido do mesmo jeito.
-         Para abrir: lance o rateio desses lotes no admin, ou tire estas duas
-         linhas. */
-      if(String(r.colecao || '').trim() && !souCms) continue;
+      /* Bolsao de colecao (1S27): ABERTO para o time desde 19/11/2026, por
+         decisao dele e SEM rateio - quem pedir primeiro leva, e o
+         escritorio arbitra se dois quiserem o mesmo lote. Enquanto esteve
+         fechado, a trava era aqui, no LOTE, e nao na aba: esconder so a aba
+         deixaria o produto a mostra em "Tudo", e de la ele seria pedido do
+         mesmo jeito. Para fechar de novo:
+             if(String(r.colecao || '').trim() && !souCms) continue;
+         e devolver podeVerBolsao() para ehCmsSessao() na vitrine. */
       const o = pega(cod, r.cor);
       const pc = refCor.get(chave(cod, r.cor));      // mesma cor
       const p  = pc || refArt.get(norm(cod));         // qualquer cor do artigo

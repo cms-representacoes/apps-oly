@@ -3341,6 +3341,17 @@ if(!MARCAS[MARCA]) MARCA = 'oly';
    pílula, o filtro, o rótulo, o chip do card, o link e a planilha — e um dia
    vai virar 2S27: trocar aqui troca em todos. */
 const COLECAO_BOLSAO = '1S27';
+/* o que aparece no botao: a coleção dele se chama GTM lá dentro, e é
+   assim que ele pede (19/11/2026). O id da aba continua 1S27. */
+const ROTULO_BOLSAO = 'GTM - 1S27';
+
+/* QUEM ENXERGA O BOLSÃO: todo mundo, desde 19/11/2026.
+   Ficou fechado enquanto a cota não tinha rateio. Ele decidiu abrir assim
+   mesmo, sabendo que SEM RATEIO vale quem pedir primeiro: os seis
+   prepostos veem os mesmos 633 lotes e o escritório arbitra se dois
+   quiserem o mesmo. Para fechar de novo, devolva `ehCmsSessao()` aqui e
+   a trava irmã do LOTE, em js/disponivel.js - as duas andam juntas. */
+function podeVerBolsao(){ return true; }
 
 const STATE = { produtos:[], filtrados:[], origem:'repasse', categoria:'', busca:'', ddAberto:'',
                 termos:[], termosIgnorados:0,
@@ -4209,8 +4220,17 @@ function filtrosDaUrl(){
   const q = new URLSearchParams(location.search);
   const origem = (q.get('origem') || '').trim().toLowerCase();
   const abas = ['tudo', 'pronta', 'repasse', 'meta', 'fora'];
-  if(ehCmsSessao()) abas.push(COLECAO_BOLSAO.toLowerCase());   // link direto so vale para a casa
-  if(abas.includes(origem)) STATE.origem = origem === COLECAO_BOLSAO.toLowerCase() ? COLECAO_BOLSAO : origem;
+  if(podeVerBolsao()) abas.push(COLECAO_BOLSAO.toLowerCase());   // link direto so vale para quem a enxerga
+  if(abas.includes(origem)){
+    STATE.origem = origem === COLECAO_BOLSAO.toLowerCase() ? COLECAO_BOLSAO : origem;
+    STATE.origemDaUrl = true;
+  }else if(podeVerBolsao()){
+    /* Sem origem no link, a tela abre no bolsão: é a frente de trabalho
+       desta temporada (pedido dele, 19/11/2026). Se o bolsão estiver sem
+       produto na hora, a primeira pintura devolve para Repasse - abrir
+       numa aba vazia parece app quebrado. */
+    STATE.origem = COLECAO_BOLSAO;
+  }
   const cat = (q.get('categoria') || '').trim().toUpperCase();
   if(CATEGORIAS.some(([id]) => id === cat)) STATE.categoria = cat;
   const faixa = (q.get('faixa') || '').trim().toUpperCase();
@@ -4504,24 +4524,32 @@ function pintarFiltros(){
   const paraOrigem   = STATE.produtos.filter(o => passa(o, 'origem'));
   const paraCategoria= STATE.produtos.filter(o => passa(o, 'categoria'));
   const conta = f => paraOrigem.filter(f).length;
-  // Repasse primeiro: é a prioridade da casa. Tudo fecha a fila.
+  /* A ordem é a que ele pediu em 19/11/2026: o bolsão abre a fila, depois
+     repasse, estoque, oportunidades e produção. Tudo fecha. */
   const orig = [
+    /* A aba do bolsao so existe para a CMS e para quem desenvolve, enquanto
+       a cota nao tiver rateio. Nao e so a aba: o lote tambem nao chega aqui
+       (ver a trava em js/disponivel.js), entao nao ha o que vazar por "Tudo". */
+    ...(podeVerBolsao() ? [[COLECAO_BOLSAO, ROTULO_BOLSAO, o => (o.colecoes || []).includes(COLECAO_BOLSAO)]] : []),
     ['repasse','Repasse', o => o.repasse],
     ['pronta','Estoque', o => o.pronta],
-    ['meta','Produção', o => o.meta],
     /* "Oportunidades", não "Fora de linha": o vendedor abre esta tela na
        frente do cliente, e "fora de linha" diz que o produto é velho antes de
        ele olhar o preço. O que o dado significa não mudou - só o nome que
        aparece. No admin, onde ninguém vende, continua "Fora de linha". */
     ['fora','Oportunidades', o => o.foraDeLinha],
-    /* A aba do bolsao so existe para a CMS e para quem desenvolve, enquanto
-       a cota nao tiver rateio. Nao e so a aba: o lote tambem nao chega aqui
-       (ver a trava em js/disponivel.js), entao nao ha o que vazar por "Tudo". */
-    ...(ehCmsSessao() ? [[COLECAO_BOLSAO, COLECAO_BOLSAO, o => (o.colecoes || []).includes(COLECAO_BOLSAO)]] : []),
+    ['meta','Produção', o => o.meta],
     ['tudo','Tudo', () => true]
   ];
   const CLS = { tudo:'o-tudo', pronta:'o-est', repasse:'o-rep', meta:'o-pro',
                 fora:'o-fora', [COLECAO_BOLSAO]:'o-colecao' };
+  /* rede de seguranca da abertura: se o bolsão abriu sem nenhum produto,
+     volta para Repasse antes de pintar. Acontece uma vez só. */
+  if(!STATE.origemDaUrl && !STATE._conferiBolsao && STATE.origem === COLECAO_BOLSAO){
+    STATE._conferiBolsao = true;
+    const temBolsao = orig.some(([id, , f]) => id === COLECAO_BOLSAO && conta(f) > 0);
+    if(!temBolsao) STATE.origem = 'repasse';
+  }
   $('segOrigem').innerHTML = orig.map(([id, rot, f]) => {
     const n = conta(f);
     const ativo = STATE.origem === id;
