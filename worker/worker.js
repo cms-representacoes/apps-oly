@@ -1546,9 +1546,14 @@ export default {
         }
 
         // PATCH com action:"getDispo" → retorna dispo.json
+        // Repassa o arquivo CRU (ver streamFile). Ler o base64, decodificar,
+        // parsear e stringificar de volta custava CPU demais: desde que o
+        // bolsão 1S27 entrou, o dispo.json passou de 400 KB e a Cloudflare
+        // matava uma de cada cinco chamadas com erro 1102 — a tela do
+        // vendedor dizia "não foi possível carregar a DISPO" e parecia que o
+        // app tinha caído. É a mesma correção que pedidos.json já tinha.
         if (body.action === "getDispo") {
-          const { content } = await getFile(GITHUB_DISPO);
-          return new Response(JSON.stringify(Array.isArray(content) ? content : []), { status: 200, headers: corsHeaders });
+          return await streamFile(GITHUB_DISPO, "[]");
         }
 
         // PATCH com action:"saveDispo" e data:[] → salva dispo.json completo

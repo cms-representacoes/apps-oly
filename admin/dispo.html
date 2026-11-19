@@ -433,6 +433,75 @@
       box-shadow:0 4px 12px rgba(40,54,212,.32);
     }
 
+    /* ── Abas em lista (19/11/2026) ───────────────────────────────────
+       Eram oito pílulas na mesma fileira e a tela abria poluída. Ficaram
+       quatro à vista — as do trabalho do dia — e os quatro recortes de
+       consulta foram para esta lista. O menu é absoluto de propósito:
+       abrir não pode empurrar a tabela para baixo.
+       Cores por variável, para o modo escuro e o tema premium acertarem
+       sozinhos.                                                        */
+    /* ── As duas famílias (19/11/2026) ────────────────────────────────
+       Repasse comum e bolsão 1S27 são dois estoques com a mesma cara.
+       Enquanto conviveram na mesma lista, as 633 linhas do bolsão
+       soterravam as do repasse e o Desmembramento mostrava os dois
+       juntos — era fácil mandar digitar do lado errado. Agora a
+       família é a primeira escolha da tela e vale para TODAS as abas.
+       O desenho é de trilho (não de pílula) de propósito: diz que
+       está um nível acima dos filtros.                              */
+    .familia-tabs{
+      display:inline-flex; gap:3px; padding:3px;
+      background:#eef1f7;
+      border:1px solid var(--line,#e2e8f0);
+      border-radius:999px;
+      align-self:center;
+    }
+    .familia-tab{
+      display:inline-flex; align-items:center; gap:6px;
+      border:0; background:transparent; cursor:pointer;
+      border-radius:999px; padding:5px 14px;
+      font-size:13px; font-weight:800; color:#64748b;
+      transition:background .15s, color .15s, box-shadow .15s;
+      white-space:nowrap;
+    }
+    /* risco fino entre o estoque e os filtros dele */
+    .barra-sep{
+      width:1px; align-self:center; height:22px;
+      background:var(--line,#e2e8f0); margin:0 2px;
+    }
+    .familia-tab:hover{ color:#0f172a; }
+    .familia-tab.active{ background:#fff; color:#2836D4; box-shadow:0 2px 8px rgba(15,23,42,.14); }
+    .familia-tab[data-familia="colecao"].active{ color:#0E7490; }
+    .familia-tab i{ font-size:12px; }
+    .dark .familia-tabs{ background:rgba(255,255,255,.05)!important; border-color:rgba(255,255,255,.10)!important; }
+    .dark .familia-tab{ color:#a9b8d6!important; }
+    .dark .familia-tab.active{ background:#1e293b!important; color:#93c5fd!important; }
+    .dark .familia-tab[data-familia="colecao"].active{ color:#67e8f9!important; }
+    body.theme-premium .familia-tabs{ background:#18181b!important; border-color:#27272a!important; }
+    body.theme-premium .familia-tab{ color:#a1a1aa!important; }
+    body.theme-premium .familia-tab.active{ background:#27272a!important; color:#fafafa!important; }
+    @media(max-width:560px){
+      /* No celular a fileira não quebra: ela rola de lado (ver #filterPills
+         mais acima). Por isso o trilho NÃO pode ocupar a largura toda -
+         tentei assim e as pílulas eram empurradas para fora da tela, que
+         abria sem filtro nenhum à vista. Ele anda junto, menor. */
+      .familia-tab{ padding:5px 11px; font-size:12.5px; }
+      .familia-tab i{ font-size:11px; }
+      .barra-sep{ height:18px; }
+    }
+
+    .mais-filtros{ position:relative; display:inline-flex; }
+    .mais-menu{
+      position:absolute; top:calc(100% + 6px); left:0; z-index:60;
+      display:flex; flex-direction:column; gap:6px;
+      padding:8px; min-width:208px; max-width:calc(100vw - 32px);
+      background:var(--card,#fff);
+      border:1px solid var(--line,#e2e8f0);
+      border-radius:18px;
+      box-shadow:0 18px 44px -18px rgba(15,23,42,.45);
+    }
+    .mais-menu .mais-item{ width:100%; text-align:left; }
+    /* o encaixe fino é medido ao abrir, em ajustarMenuMais() */
+
     /* RUPTURA BADGE PULSE */
     @keyframes pulse-danger {
       0%, 100% { opacity:1; }
@@ -524,6 +593,114 @@
     .col-hide-aprovado .col-aprovado { display:none!important; }
     .col-hide-pedidoMae .col-pedidoMae { display:none!important; }
     .col-hide-desmembrado .col-desmembrado { display:none!important; }
+    .col-hide-origem .col-origem { display:none!important; }
+
+    /* ── Informações da encomenda (19/11/2026) ────────────────────────
+       Tudo que se sabe de um lote numa tela só: a foto, a grade, os
+       números de pares e quem pediu. Antes era preciso abrir o
+       desmembramento para ver a grade e a tela de pedidos para saber
+       quem tinha pedido.
+       As classes levam o prefixo mi- porque a DISPO já tem .chip, .tam
+       e .ped com outro sentido. */
+    #infoLoteModal{ position:fixed; inset:0; z-index:150; background:rgba(15,23,42,.45);
+      padding:16px; overflow-y:auto; }
+    #infoLoteModal.hidden{ display:none; }
+    .mi{ width:100%; max-width:720px; margin:24px auto; background:var(--card);
+      border:1px solid var(--line); border-radius:24px; box-shadow:var(--shadow); overflow:hidden; }
+    .mi-topo{ display:flex; gap:14px; padding:18px 20px; border-bottom:1px solid var(--line); }
+    .mi-foto{ width:84px; height:84px; flex:none; border-radius:16px; overflow:hidden;
+      background:var(--muted-soft); display:flex; align-items:center; justify-content:center; }
+    .mi-foto img{ width:100%; height:100%; object-fit:contain; }
+    .mi-foto i{ font-size:22px; color:var(--muted); opacity:.5; }
+    .mi-ident{ flex:1; min-width:0; }
+    .mi-nome{ font-size:19px; font-weight:800; line-height:1.2; }
+    .mi-cor{ font-size:13px; font-weight:700; color:var(--muted); margin-top:2px; }
+    .mi-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; }
+    .mi-chip{ font-size:10.5px; font-weight:800; border-radius:999px; padding:3px 9px;
+      background:var(--muted-soft); color:var(--muted); white-space:nowrap; }
+    .mi-chip.marca{ background:var(--brand-soft); color:var(--brand); }
+    .mi-chip.bolsao{ background:#ECFEFF; color:#0E7490; }
+    .dark .mi-chip.bolsao{ background:rgba(103,232,249,.12)!important; color:#67e8f9!important; }
+    .mi-chip.mae{ background:var(--success-soft); color:var(--success); }
+    .mi-num{ flex:none; text-align:right; }
+    .mi-num .l{ font-size:9.5px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+    .mi-num .v{ font-size:26px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; }
+    .mi-x{ margin-top:10px; width:30px; height:30px; border-radius:50%; border:1px solid var(--line);
+      background:var(--card); color:var(--muted); cursor:pointer; font-size:13px; }
+    .mi-x:hover{ color:var(--text); }
+    .mi-pares{ padding:16px 20px; border-bottom:1px solid var(--line); }
+    .mi-barra{ display:flex; height:9px; border-radius:999px; overflow:hidden;
+      background:var(--muted-soft); margin-bottom:12px; }
+    .mi-barra span{ display:block; height:100%; }
+    .mi-f-pend{ background:#f59e0b; } .mi-f-aprov{ background:#22c55e; } .mi-f-livre{ background:var(--brand); }
+    .mi-nums{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+    .mi-nums .l{ font-size:9.5px; font-weight:800; letter-spacing:.07em; text-transform:uppercase;
+      color:var(--muted); display:flex; align-items:center; gap:5px; }
+    .mi-nums .l i{ font-size:7px; }
+    .mi-nums .v{ font-size:21px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.15; }
+    .mi-v-pend{ color:#d97706; } .mi-v-aprov{ color:var(--success); } .mi-v-livre{ color:var(--brand); }
+    .mi-grid{ display:grid; grid-template-columns:1fr 1fr; }
+    .mi-bloco{ padding:16px 20px; border-bottom:1px solid var(--line); }
+    .mi-bloco + .mi-bloco{ border-left:1px solid var(--line); }
+    .mi-tit{ font-size:9.5px; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
+      color:var(--muted); margin-bottom:11px; }
+    .mi-linha{ display:flex; justify-content:space-between; gap:12px; padding:5px 0; font-size:13px; }
+    .mi-linha .k{ font-weight:600; color:var(--muted); }
+    .mi-linha .v{ font-weight:800; font-variant-numeric:tabular-nums; text-align:right; }
+    .mi-linha .v.copiavel{ cursor:pointer; border-bottom:1px dashed var(--line); }
+    .mi-linha .v.copiavel:hover{ color:var(--brand); border-color:var(--brand); }
+    .mi-grade{ display:flex; flex-wrap:wrap; gap:5px; }
+    .mi-tam{ min-width:38px; border:1px solid var(--line); border-radius:10px; overflow:hidden;
+      text-align:center; background:var(--card); }
+    .mi-tam .t{ font-size:10px; font-weight:800; color:var(--muted); background:var(--muted-soft); padding:2px 0; }
+    .mi-tam .q{ font-size:14px; font-weight:800; padding:4px 0; font-variant-numeric:tabular-nums; }
+    .mi-caixa{ margin-top:11px; font-size:12px; font-weight:700; color:var(--muted); }
+    .mi-caixa b{ color:var(--text); }
+    .mi-oculto{ display:none!important; }
+    .mi-abrir{ width:100%; display:flex; align-items:center; gap:8px;
+      background:none; border:0; padding:0; cursor:pointer; text-align:left; }
+    .mi-abrir .mi-seta{ margin-left:auto; font-size:11px; color:var(--muted); transition:transform .15s; }
+    .mi-abrir[aria-expanded="true"] .mi-seta{ transform:rotate(180deg); }
+    .mi-abrir:hover .mi-seta{ color:var(--brand); }
+    .mi-lista{ margin-top:10px; }
+    .mi-ped{ padding:16px 20px; }
+    .mi-ped .cab{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .mi-lista{ max-height:188px; overflow:auto; margin:0 -6px; }
+    .mi-item{ display:flex; align-items:center; gap:10px; padding:8px 6px; border-radius:12px; font-size:12.5px; }
+    .mi-item:hover{ background:var(--muted-soft); }
+    .mi-item .quem{ flex:1; min-width:0; }
+    .mi-item .vend{ font-weight:800; }
+    .mi-item .cli{ color:var(--muted); font-weight:600; font-size:11.5px;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .mi-item .pares{ font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .mi-st{ font-size:10px; font-weight:800; border-radius:999px; padding:2px 8px; white-space:nowrap; }
+    .mi-st.a{ background:var(--success-soft); color:var(--success); }
+    .mi-st.p{ background:var(--warning-soft); color:var(--warning); }
+    .mi-st.c{ background:var(--danger-soft); color:var(--danger); }
+    .mi-vazio{ text-align:center; padding:18px 10px; font-size:12.5px; font-weight:700;
+      color:var(--muted); background:var(--muted-soft); border-radius:14px; }
+    .mi-rod{ display:flex; gap:8px; justify-content:flex-end; padding:14px 20px;
+      border-top:1px solid var(--line); background:var(--muted-soft); }
+    .mi-bt{ border:1px solid var(--line); background:var(--card); color:var(--text);
+      font:800 13px 'Plus Jakarta Sans',sans-serif; border-radius:999px; padding:9px 18px; cursor:pointer; }
+    .mi-bt:hover{ border-color:var(--brand); color:var(--brand); }
+    .mi-bt.cheio{ background:var(--brand); border-color:transparent; color:#fff; }
+    .mi-bt.cheio:hover{ opacity:.9; color:#fff; }
+    @media (max-width:560px){
+      .mi-grid{ grid-template-columns:1fr; }
+      .mi-bloco + .mi-bloco{ border-left:0; }
+      .mi-nums{ grid-template-columns:repeat(2,1fr); gap:14px; }
+      .mi-topo{ flex-wrap:wrap; }
+      .mi-num{ order:-1; width:100%; display:flex; align-items:center; justify-content:space-between; text-align:left; }
+      .mi-num .v{ font-size:22px; }
+      .mi-x{ margin-top:0; }
+      .mi-rod{ flex-direction:column-reverse; }
+      .mi-bt{ width:100%; }
+    }
+
+    /* De onde o lote veio. Nome comprido não pode empurrar a tabela: corta
+       com reticências e o nome inteiro fica no title. */
+    td.col-origem{ max-width:180px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     @keyframes pulse-badge{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
     .icon-btn{ width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; border:0.5px solid var(--color-border-secondary,#e2e8f0); background:none; color:#64748b; transition:all .12s; flex-shrink:0; }
     .icon-btn:hover{ background:#f1f5f9; }
@@ -914,9 +1091,12 @@
               <i class="fa-solid fa-rotate-right text-sm"></i>
             </button>
 
-            <!-- Antecipações: o sino fica vermelho quando há produtos e o
-                 aviso só aparece se for clicado -->
-            <div class="relative" id="antecWrap">
+            <!-- Antecipações: o sino ficava vermelho quando havia produtos
+                 com data melhor. Escondido em 19/11/2026 junto com o botão
+                 da linha - o recurso nunca foi usado. Fica aqui inteiro;
+                 para religar, tire o `hidden` e o `return` de
+                 computeAllRows. -->
+            <div class="relative hidden" id="antecWrap">
               <button id="btnAntecipacoes" title="Antecipações disponíveis"
                 class="focus-ring relative h-9 w-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
                 <i class="fa-solid fa-bell text-sm"></i>
@@ -950,6 +1130,7 @@
                 <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colAprovado" onchange="toggleCol('aprovado',this.checked)"> Aprovado</label>
                 <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colPedidoMae" onchange="toggleCol('pedidoMae',this.checked)"> Pedido Mãe</label>
                 <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colDesmembrado" onchange="toggleCol('desmembrado',this.checked)"> Desmembrado</label>
+                <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colOrigem" checked onchange="toggleCol('origem',this.checked)"> Origem</label>
               </div>
             </div>
 
@@ -973,6 +1154,20 @@
         <!-- Filter pills + count -->
         <div id="barraFiltros" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
           <div class="flex flex-wrap gap-2" id="filterPills">
+          <!-- A família escolhe o estoque; as pílulas ao lado filtram dentro
+               dele. Moraram em duas fileiras até 19/11/2026 - lado a lado
+               poupam uma linha inteira numa tela que já é cheia. -->
+          <div id="familiaTabs" class="familia-tabs" role="tablist" aria-label="Estoque">
+            <button type="button" class="familia-tab active" data-familia="repasse" role="tab"
+                    aria-selected="true" title="Repasses do dia a dia — tudo que não é bolsão de coleção">
+              <i class="fa-solid fa-right-left"></i>Repasse
+            </button>
+            <button type="button" class="familia-tab" data-familia="colecao" role="tab"
+                    aria-selected="false" title="Bolsão 1S27 — a cota que a fábrica reservou ao escritório">
+              <i class="fa-solid fa-layer-group"></i>1S27
+            </button>
+          </div>
+          <span class="barra-sep" aria-hidden="true"></span>
             <!-- A fila encolheu em 16/11/2026. Saiu "Com pedidos", que era a
                  soma de Pendentes e Aprovados, e saiu "Finalizados", que com
                  308 de 322 lotes virou quase o mesmo conjunto de Esgotados.
@@ -986,22 +1181,9 @@
                     data-tip="Lotes que ainda têm saldo para distribuir">A distribuir
               <span id="distribuirBadge" class="ml-1 hidden bg-slate-900 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
             </button>
-            <!-- O bolsão ao lado de "A distribuir" porque são irmãos: um é a
-                 cota da coleção, o outro é o repasse de todo dia. Em 16/11 o
-                 bolsão era 633 das 647 linhas com saldo e soterrava as ~14 do
-                 repasse comum - daí a fila separada. -->
-            <button class="filter-pill" data-filter="colecao" id="pillColecao"
-                    style="border-color:#A5F3FC;color:#0E7490;background:#ECFEFF"
-                    data-tip="Bolsão 1S27 — a cota que a fábrica reservou ao escritório">
-              <i class="fa-solid fa-layer-group mr-1"></i>1S27
-              <span id="colecaoBadge" class="ml-1 hidden bg-[#0891B2] text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
-            </button>
-            <button class="filter-pill" data-filter="pendente">
-              <i class="fa-solid fa-circle text-amber-500 mr-1"></i>Pendentes
-            </button>
-            <button class="filter-pill" data-filter="aprovado">
-              <i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i>Aprovados
-            </button>
+            <!-- A pílula "1S27" virou aba de família em 19/11/2026: o bolsão
+                 deixou de ser um filtro ao lado dos outros e passou a ser o
+                 estoque inteiro da tela. -->
             <!-- "Esgotados" dizia o que o lote É; "Ag desmembramento" diz o que
                  falta FAZER com ele. A regra é a mesma - saldo real zerado,
                  ou seja, tudo já pedido - mas é desta fila que o robô de
@@ -1011,16 +1193,40 @@
               <i class="fa-solid fa-hourglass-half text-slate-500 mr-1"></i>Desmembramento
               <span id="esgotadosBadge" class="ml-1 hidden bg-rose-600 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
             </button>
-            <button class="filter-pill" data-filter="rateados" id="pillRateados" style="border-color:#ddd6fe;color:#6d28d9;background:#f5f3ff" data-tip="Lotes divididos por vendedor — abra para ver as cotas e o nome do selo">
-              <i class="fa-solid fa-users mr-1"></i>Rateados <span id="rateadosBadge" class="ml-1 hidden bg-[#7c3aed] text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
+            <!-- Finalizados fecha a fila: é consulta, não trabalho do dia.
+                 Chamava-se "Arquivados" até 19/11/2026; o filtro continua
+                 sendo o mesmo (data-filter="arquivados"), só o nome mudou. -->
+            <button class="filter-pill" data-filter="arquivados" id="pillArquivados" style="border-color:#e2e8f0;color:#475569;background:#f8fafc" data-tip="Lotes encerrados — saíram da lista mas continuam guardados">
+              <i class="fa-solid fa-box-archive mr-1"></i>Finalizados <span id="arquivadosBadge" class="ml-1 hidden bg-slate-600 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
             </button>
-            <button class="filter-pill" data-filter="ocultos" id="pillOcultos" style="border-color:#AFA9EC;color:#3C3489;background:#EEEDFE">
-              <i class="fa-solid fa-eye-slash mr-1"></i>Ocultos <span id="ocultosBadge" class="ml-1 hidden bg-[#3C3489] text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
-            </button>
-            <!-- Arquivados fecha a fila: é consulta, não trabalho do dia. -->
-            <button class="filter-pill" data-filter="arquivados" id="pillArquivados" style="border-color:#e2e8f0;color:#475569;background:#f8fafc" data-tip="Saíram da lista mas continuam guardados — dá para desarquivar">
-              <i class="fa-solid fa-box-archive mr-1"></i>Arquivados <span id="arquivadosBadge" class="ml-1 hidden bg-slate-600 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
-            </button>
+
+            <!-- Os quatro recortes de consulta saíram da fileira em
+                 19/11/2026. Eles seguem sendo .filter-pill com data-filter,
+                 e dentro de #filterPills: quem troca o filtro é a delegação
+                 que já existia, sem caminho novo. -->
+            <div id="maisFiltros" class="mais-filtros">
+              <button id="btnMaisFiltros" type="button" class="filter-pill" onclick="toggleMaisFiltros(event)"
+                      aria-expanded="false" aria-haspopup="true"
+                      title="Pendentes, Aprovados, Rateados e Ocultos">
+                <span id="lblMaisFiltros">Mais</span>
+                <i class="fa-solid fa-chevron-down ml-1" style="font-size:9px"></i>
+              </button>
+              <div id="menuMaisFiltros" class="mais-menu hidden" role="menu">
+                <button class="filter-pill mais-item" data-filter="pendente" role="menuitem">
+                  <i class="fa-solid fa-circle text-amber-500 mr-1"></i>Pendentes
+                </button>
+                <button class="filter-pill mais-item" data-filter="aprovado" role="menuitem">
+                  <i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i>Aprovados
+                </button>
+                <button class="filter-pill mais-item" data-filter="rateados" id="pillRateados" role="menuitem"
+                        data-tip="Lotes divididos por vendedor — abra para ver as cotas e o nome do selo">
+                  <i class="fa-solid fa-users mr-1"></i>Rateados <span id="rateadosBadge" class="ml-1 hidden bg-[#7c3aed] text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
+                </button>
+                <button class="filter-pill mais-item" data-filter="ocultos" id="pillOcultos" role="menuitem">
+                  <i class="fa-solid fa-eye-slash mr-1"></i>Ocultos <span id="ocultosBadge" class="ml-1 hidden bg-[#3C3489] text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
+                </button>
+              </div>
+            </div>
             <!-- Ordenar fica junto das abas e rola com elas; a dica diz a ordem em uso -->
             <button id="btnOrdenar" onclick="toggleOrdenarMenu()" title="Ordenar a lista" class="btn-ordenar">
               <i class="fa-solid fa-arrow-down-short-wide"></i>
@@ -1042,6 +1248,11 @@
                lugar do "nenhum item", em vez de aparecer solto embaixo dele. -->
           <div id="dispoSumiu" class="hidden" style="margin:0 auto;max-width:460px;text-align:center;
             background:#fffbeb;border:1px solid #fde68a;border-radius:16px;padding:16px 18px"></div>
+          <!-- Lista vazia pode ser efeito da família escolhida, não falta de
+               dado. Sem este aviso o lote "desaparece" e quem olha a tela
+               acha que a DISPO perdeu o item. -->
+          <div id="dispoOutraFamilia" class="hidden" style="margin:12px auto 0;max-width:460px;
+            text-align:center;border-radius:16px;padding:14px 16px;border:1px solid #a5f3fc;background:#ecfeff"></div>
         </div>
         </div>
 
@@ -1074,7 +1285,7 @@
           <button onclick="relatorioDispo()" style="background:transparent;border:1px solid var(--line,#c7cdfb);color:var(--brand,#3730a3);border-radius:999px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer" title="Baixar o relatorio de cancelamentos"><i class="fa-solid fa-file-excel"></i> Relatorio</button>
           <button onclick="excluirSelecionadosDispo()" style="display:flex;align-items:center;gap:7px;background:#dc2626;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-trash-can" style="font-size:12px"></i> Excluir selecionados</button>
           <!-- Cada um aparece só na sua aba: arquivar na Ag desmembramento,
-               desarquivar na dos Arquivados. Fora delas não fazem sentido e
+               desarquivar na dos Finalizados. Fora delas não fazem sentido e
                só dariam chance de erro. -->
           <!-- Desmembrar: só na Ag desmembramento, que é a fila do trabalho.
                O robô do Chris faz um pedido mãe por vez; aqui a seleção é
@@ -1115,6 +1326,7 @@
                 <th class="sortable" data-col="gci">GCI<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th class="sortable" data-col="produto">Produto<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th>Cor</th>
+                <th class="sortable col-origem" data-col="origemNome">Origem<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th class="sortable" data-col="dataEntrega">Prev. Fat<i class="fa-solid fa-sort sort-icon"></i><button id="btnFiltroMes" class="th-filtro" title="Filtrar por mês"><i class="fa-solid fa-filter"></i></button></th>
                 <th class="sortable text-right" data-col="saldo">Saldo DISPO<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th class="sortable text-right col-pendente" data-col="pendente">Pendente<i class="fa-solid fa-sort sort-icon"></i></th>
@@ -1122,7 +1334,6 @@
                 <th class="sortable text-right" data-col="saldoReal">Saldo real<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th class="text-right col-desmembrado" data-col="desmembrado">Desmembrado</th>
                 <th class="sortable col-pedidoMae" data-col="pedidoMae">Pedido Mãe<i class="fa-solid fa-sort sort-icon"></i></th>
-                <th class="sortable" data-col="situacao">Situação<i class="fa-solid fa-sort sort-icon"></i></th>
                 <th></th>
               </tr>
             </thead>
@@ -1130,6 +1341,9 @@
           </table>
         </div>
       </div>
+
+      <!-- Informações da encomenda -->
+      <div id="infoLoteModal" class="hidden"><div class="mi" id="infoLoteCaixa"></div></div>
 
       <!-- Limpar filtros: flutuante em qualquer tela, só aparece com filtro ligado -->
       <button id="fabLimparDispo" onclick="limparFiltrosDispo()" class="hidden" title="Limpar os filtros">
@@ -1260,6 +1474,7 @@ const STATE = {
   sortCol: 'saldoReal',
   sortDir: 'asc',
   activeFilter: 'all',
+  familia: 'repasse',      // 'repasse' | 'colecao' — ver .familia-tabs
   searchQuery: '',
   filtroMes: '',      // AAAA-MM da Prev. Fat, ou 'sem' para linhas sem data
   filtroNum: '',      // pedaço do Nº digitado na coluna
@@ -1546,7 +1761,7 @@ async function loadDispo(){
    uma vez em computeAllRows. */
 function textoDaLinha(row){
   if(row._txt != null) return row._txt;
-  return `${row.num} ${row.gci} ${row.codigo} ${row.produto} ${row.cor}`.toLowerCase();
+  return `${row.num} ${row.gci} ${row.codigo} ${row.produto} ${row.cor} ${row.origem || ''} ${row.origemNome || ''}`.toLowerCase();
 }
 
 // Mês da Prev. Fat. no formato AAAA-MM, para filtrar e agrupar.
@@ -1573,6 +1788,11 @@ function computeRows(){
 
   return computeAllRows().filter(row => {
     const f = STATE.activeFilter;
+    /* A família manda em TODAS as abas, antes de qualquer outra regra:
+       repasse comum e bolsão nunca aparecem na mesma lista. Era o pedido de
+       19/11/2026 - com os dois juntos, o Desmembramento mostrava lote de um
+       lado e de outro, e nada dizia qual era qual. */
+    if(STATE.familia === 'colecao' ? !ehColecaoDispo(row) : ehColecaoDispo(row)) return false;
     // o mês da Prev. Fat. vale para qualquer aba
     if(STATE.filtroMes){
       const m = mesDaLinha(row) || 'sem';
@@ -1599,19 +1819,19 @@ function computeRows(){
        ou aprovado, tenha ele sobrado saldo ou não.
        Encomenda cheia, sem pedido nenhum, não tem o que desmembrar - essa
        fica em "A distribuir", que é onde se trabalha para vendê-la.
-       Repasse comum e bolsão convivem aqui, então cada linha leva a
-       etiqueta de onde veio (ver `selo-origem` no desenho da linha). */
+       Repasse comum e bolsão conviviam aqui e cada linha levava uma
+       etiqueta dizendo de qual dos dois era. Desde 19/11/2026 eles são
+       abas separadas (ver .familia-tabs), então a etiqueta saiu: a lista
+       inteira é de uma família só. */
     if(f === 'esgotados')
       return (Number(row.pendente || 0) + Number(row.aprovado || 0)) > 0;
-    if(f === 'colecao') return ehColecaoDispo(row) && row.saldoReal > 0;
     if(f === 'saldo-positivo') return row.saldoReal > 0;
     /* 'all' deixou de ser "tudo": é o que ainda tem par para distribuir.
-       O resto está esgotado e só atrapalha quem procura o que dar. E desde
-       16/11 também não traz o bolsão - ele tem fila própria, senão as ~14
-       linhas do repasse de todo dia somem no meio de 633. Ag desmembramento,
-       Pendentes e Arquivados seguem mostrando os dois: ali o que importa é
-       a situação do lote, não de onde ele veio. */
-    if(f === 'all') return row.saldoReal > 0 && !ehColecaoDispo(row);
+       O resto está esgotado e só atrapalha quem procura o que dar. Não
+       precisa mais tirar o bolsão à mão - a família já cuidou disso lá
+       em cima, e aqui dentro "A distribuir" quer dizer a mesma coisa nas
+       duas: o que ainda tem par para dar. */
+    if(f === 'all' || f === 'colecao') return row.saldoReal > 0;
     return true;
   });
 }
@@ -1849,7 +2069,7 @@ function atualizarBulkBarDispo(){
      primeiro desenho e estava errado: o modal já avisa quando um selecionado
      ainda tem saldo, e esse aviso só faz sentido se der para arquivar fora
      dos esgotados — um produto que vai sair de linha, por exemplo, some da
-     vista antes de zerar. Na aba Arquivados o botão vira Desarquivar, que é
+     vista antes de zerar. Na aba Finalizados o botão vira Desarquivar, que é
      a única coisa que cabe ali. */
   const naArquivados = STATE.activeFilter === 'arquivados';
   const mostrar = (id, cond) => {
@@ -2015,6 +2235,8 @@ function montarPacoteDesm(nums, incluirIrmaos){
       C.linhas.push({ num:String(row.num), codigo:String(row.codigo || ''),
                       produto:row.produto || '', cor:row.cor || '',
                       grade:item.grade || [], pares, caixas, porCaixa,
+                      // a planilha do robô pede a data do lote, não a do pedido
+                      dataEntrega:row.dataEntrega || '',
                       pedidoId:order.id, status });
       C.pares += pares;
       P.pares += pares;
@@ -2205,6 +2427,12 @@ function desenharConferenciaDesm(){
     bc.disabled = !t.linhas;
     bc.title = v ? `Extensão CMS · EBM ${v}` : '';
   }
+  const bpl = $('desmConfPlanilha');
+  if(bpl){
+    bpl.style.display = t.linhas ? 'inline-flex' : 'none';
+    bpl.disabled = p.temErro;
+    bpl.style.opacity = p.temErro ? '.5' : '1';
+  }
   const bx = $('desmConfRaioX');
   if(bx) bx.style.display = (versaoExtensaoDesm() && primeiroClienteDesm(p)) ? 'inline-flex' : 'none';
   const bp = $('desmConfPiloto');
@@ -2336,6 +2564,91 @@ function iniciarDesmembramento(){
   $('desmExecModal').style.display = 'flex';
   desmAndar();
   ensaiarDesmembramento(p);
+}
+
+/* ───────── A PLANILHA DO ROBÔ ──────────────────────────────────────────
+   O CMS_DESMEMBRA do Chris come uma planilha. Hoje ela é digitada à mão
+   a partir do que já está aqui dentro — a mesma informação, escrita duas
+   vezes, e é daí que vem o GCI diferente entre a planilha e a DISPO.
+   Este botão escreve o arquivo com o que a CMS já sabe.
+
+   O LAYOUT é o da planilha dele, validada em 17/11 contra o validador do
+   próprio robô (16 linhas, zero apontamentos): total solto na linha 1,
+   cabeçalho na linha 2, e os tamanhos 28 a 48 no fim.
+
+   A ARMADILHA, que já travou lote inteiro: os números nas colunas de
+   tamanho são a composição de UMA CAIXA, não o total. O robô faz
+   QTD PARES ÷ soma da grade e recusa o lote se não der inteiro. Como na
+   vitrine só se pede caixa fechada, a conta sempre fecha — mas é por
+   isso que aqui vai a grade da caixa, e não o que o cliente levou. */
+const TAMS_ROBO = Array.from({ length: 21 }, (_, i) => String(28 + i));   // 28..48
+/* A ordem das colunas é escrita à mão de propósito. Montando a linha como
+   objeto, o JavaScript joga as chaves numéricas ("28".."48") para o
+   começo — a planilha saía com os tamanhos antes do CÓD REPASSE. O robô
+   lê por nome e nem repara, mas quem abre o arquivo repara. */
+const COLUNAS_ROBO = ['CÓD REPASSE', 'VENDEDOR', 'CÓD CLIENTE', 'CLIENTE', 'PRAZO',
+                      'CAMPANHA', 'QTD PARES', 'STATUS', 'EBM', 'GCI', 'REFERENCIA',
+                      'DESCRICAO', 'COR', 'DATA ENTREGA', ...TAMS_ROBO];
+
+function linhasDaPlanilhaRobo(p){
+  const linhas = [];
+  for(const P of p.pedidos){
+    for(const C of P.clientes){
+      for(const L of C.linhas){
+        const porTam = {};
+        for(const g of (L.grade || [])){
+          const t = String(g.size);
+          if(TAMS_ROBO.includes(t)) porTam[t] = Number(g.qty || 0);
+        }
+        linhas.push({
+          'CÓD REPASSE': L.num,
+          'VENDEDOR': C.vendedor || '',
+          'CÓD CLIENTE': C.cod,
+          'CLIENTE': C.nome || '',
+          'PRAZO': C.prazo || '',
+          'CAMPANHA': C.campanha || '',
+          'QTD PARES': L.pares,
+          'STATUS': '',
+          'EBM': P.ebm,
+          'GCI': P.gci || '',
+          'REFERENCIA': L.codigo,
+          'DESCRICAO': L.produto || '',
+          'COR': L.cor || '',
+          'DATA ENTREGA': L.dataEntrega || '',
+          ...Object.fromEntries(TAMS_ROBO.map(t => [t, porTam[t] || ''])),
+        });
+      }
+    }
+  }
+  return linhas;
+}
+
+function gerarPlanilhaRobo(){
+  const p = DESM.pacote;
+  if(!p || !p.totais.linhas){ showToast('Nada para gerar.', 'error'); return; }
+  if(p.temErro){ showToast('Corrija os erros da conferência antes.', 'error'); return; }
+  const linhas = linhasDaPlanilhaRobo(p);
+  if(!linhas.length){ showToast('Nada para gerar.', 'error'); return; }
+
+  const colunas = COLUNAS_ROBO;
+  const total = linhas.reduce((s, l) => s + Number(l['QTD PARES'] || 0), 0);
+  /* Linha 1 com o total solto e o cabeçalho na 2: é como a planilha dele
+     chega, e o robô acha o cabeçalho em qualquer linha. */
+  const matriz = [['TOTAL', total], colunas, ...linhas.map(l => colunas.map(c => l[c]))];
+  const ws = XLSX.utils.aoa_to_sheet(matriz);
+  ws['!cols'] = colunas.map(c => ({ wch: c === 'CLIENTE' ? 34
+                                       : c === 'DESCRICAO' ? 22
+                                       : c.length <= 2 ? 4 : 13 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'DESMEMBRAMENTO');
+  const lotes = [...new Set(p.pedidos.flatMap(P => P.lotes))].join('-').slice(0, 40);
+  const d = new Date();
+  const dd = String(d.getDate()).padStart(2, '0') + String(d.getMonth() + 1).padStart(2, '0');
+  XLSX.writeFile(wb, `DESMEMBRAMENTO_${dd}_lote${lotes}.xlsx`);
+
+  desmLog && null;
+  showToast(`Planilha gerada: ${linhas.length} linha(s), ${formatInt(total)} pares.`, 'success');
+  fecharConferenciaDesm();
 }
 
 /* ───────── CONFERIR NO EBM (pela extensão) ─────────────────────────────
@@ -2835,7 +3148,7 @@ async function arquivarSelecionadosDispo(){
              + `o saldo, a grade e o histórico ficam como estão, e a encomenda da `
              + `Detalhada não é tocada.
 `
-             + `Para ver de novo, use a aba Arquivados — dá para desarquivar a qualquer hora.`
+             + `Para ver de novo, use a aba Finalizados — dá para desarquivar a qualquer hora.`
              + (comSaldo.length
                  ? `
 
@@ -2870,7 +3183,7 @@ Atenção: ${comSaldo.length} ${comSaldo.length === 1
     atualizarBadgeFinalizados();
     concluirProgresso(true,
       nums.length > 1 ? `${nums.length} lotes arquivados` : 'Lote arquivado',
-      'Estão na aba Arquivados. Nada foi apagado.');
+      'Estão na aba Finalizados. Nada foi apagado.');
   }catch(err){
     console.error(err);
     concluirProgresso(false, 'Não deu para arquivar', String(err && err.message || err));
@@ -5105,7 +5418,9 @@ function resumoRateio(row){
 function atualizarBadgeRateados(){
   const badge = $('rateadosBadge');
   if(!badge || !STATE.dispoRows?.length) return;
-  const n = STATE.dispoRows.filter(r => rateioDaLinha(r)).length;
+  // só os da família na tela, como as outras pílulas
+  const n = STATE.dispoRows.filter(r => rateioDaLinha(r)
+    && (STATE.familia === 'colecao' ? ehColecaoDispo(r) : !ehColecaoDispo(r))).length;
   badge.textContent = n;
   badge.classList.toggle('hidden', n === 0);
 }
@@ -5246,6 +5561,8 @@ function sortRows(rows){
       case 'aprovado':va = a.aprovado; vb = b.aprovado; break;
       case 'saldoReal':va = a.saldoReal; vb = b.saldoReal; break;
       case 'pedidoMae': va = a.pedidoMae||''; vb = b.pedidoMae||''; break;
+      // sem origem vai para o fim da lista A-Z, não para o começo
+      case 'origemNome': va = a.origemNome || a.origem || '\uffff'; vb = b.origemNome || b.origem || '\uffff'; break;
       case 'situacao': va = a.situacao.sortVal; vb = b.situacao.sortVal; break;
       default: va = 0; vb = 0;
     }
@@ -5287,7 +5604,9 @@ function computeAllRows(){
     const saldoReal = Number(row.saldo || 0) - pendente - aprovado;
     const situacao = getSituacao(saldoReal, Number(row.saldo || 0));
     return { ...row, pendente, aprovado, saldoReal, situacao,
-             _txt: `${row.num} ${row.gci} ${row.codigo} ${row.produto} ${row.cor}`.toLowerCase() };
+             // a origem entra na busca: procurar por "AZTECA" tem de
+             // trazer os lotes que vieram de lá, pelo nome ou pelo código
+             _txt: `${row.num} ${row.gci} ${row.codigo} ${row.produto} ${row.cor} ${row.origem || ''} ${row.origemNome || ''}`.toLowerCase() };
   });
 
   /* ── a antecipação, por índice em vez de varredura ──────────────────
@@ -5322,6 +5641,15 @@ function computeAllRows(){
       pedidosPorGci.get(g).add(order);
     }
   }
+
+  /* ANTECIPACAO DESLIGADA em 19/11/2026, a pedido: "o usuario nunca nem
+     usou isso". Saiu da tela o botao da linha, o destaque, o selo "Nova",
+     o sino do cabecalho e o aviso. O calculo abaixo tambem parou - ele
+     cruzava cada linha com as irmas de mesmo produto+cor a cada repintura
+     da tabela, em 1001 linhas.
+     O modal e as funcoes continuam no arquivo: para religar, basta tirar
+     este `return` e devolver o botao no desenho da linha. */
+  return allRows;
 
   allRows.forEach(row => {
     row._antecipavel = null;
@@ -5365,6 +5693,10 @@ function renderDispo(){
   pintarAvisoDatasVelhas();     // some sozinha quando nao ha pedido para tras
 
   const rows = computeRows();
+  /* A coluna "Situação" saiu da tabela em 19/11/2026: dizia o que o Saldo
+     real já mostra, e ocupava espaço numa tabela que rola de lado. A
+     situação continua viva no código — é ela que pinta a linha e o número
+     do saldo real. */
   const sorted = sortRows(rows);
 
   atualizarBadgeRateados();
@@ -5374,7 +5706,6 @@ function renderDispo(){
   atualizarFunilNum();
   atualizarFabLimpar();
   requestAnimationFrame(ajustarAlturaTabela);
-  renderBannerAntecipacao(computeAllRows());
 
   $('tableCount').textContent = `${sorted.length} ${sorted.length === 1 ? 'item' : 'itens'}`;
   // saldo real negativo (ruptura) não desconta do que ainda há para vender
@@ -5398,17 +5729,18 @@ function renderDispo(){
     $('dispoAvisoCelula').appendChild(aviso);
     aviso.classList.remove('hidden');
     contarComOQueSumiu();
+    avisarOutraFamilia();
     return;
   }
 
   if(casaDoAviso && aviso.parentElement !== casaDoAviso) casaDoAviso.appendChild(aviso);
   aviso.classList.add('hidden');
+  $('dispoOutraFamilia')?.classList.add('hidden');
 
   $('dispoTableBody').innerHTML = sorted.map((row, idx) => {
     const sit = row.situacao;
     const cancPares = paresCanceladosDoNum(row.num);
-    const isNovaDestinoAntecipacao = sorted.some(r => r._antecipavel?.novaLinha?.gci === row.gci);
-    const rowClass = [sit.rowClass, row._antecipavel ? 'row-antecipa' : '', isNovaDestinoAntecipacao ? 'row-nova-dispo' : ''].filter(Boolean).join(' ');
+    const rowClass = sit.rowClass || '';
     const saldoRealDisplay = row.saldoReal < 0
       ? `<span class="${sit.className}">−${formatInt(Math.abs(row.saldoReal))}</span>`
       : `<span class="${sit.className}">${formatInt(row.saldoReal)}</span>`;
@@ -5423,14 +5755,24 @@ function renderDispo(){
       ? '<span class="badge-total ml-1">Total</span>'
       : isParcial ? '<span class="badge-parcial ml-1">Parcial</span>' : '';
 
-    /* De onde o lote veio. Só aparece na fila do desmembramento, que é a
-       única aba onde repasse comum e bolsão ficam lado a lado - nas outras
-       seria repetir em toda linha o nome da própria aba. */
-    const seloOrigem = STATE.activeFilter === 'esgotados'
-      ? (ehColecaoDispo(row)
-          ? `<span class="selo-origem so-colecao" title="Lote do bolsão ${safeHtml(String(row.colecao||''))}">${safeHtml(String(row.colecao||'')) }</span>`
-          : '<span class="selo-origem so-repasse" title="Lote do repasse de todo dia">Repasse</span>')
-      : '';
+    /* De onde o lote veio: o cliente que abriu mão da encomenda. Nos
+       repasses do Chris isso vinha só na planilha dele e se perdia na
+       importação; desde 19/11/2026 fica guardado no lote (origem = código,
+       origemNome = nome) e tem coluna própria.
+       O selo "Repasse / 1S27" que ficava aqui saiu no mesmo dia: as duas
+       famílias viraram abas, então a linha não precisa mais dizer de qual
+       delas ela é - toda a lista é da mesma. */
+    const origemCod  = sanitizeDisplayText(String(row.origem || ''));
+    const origemNome = sanitizeDisplayText(String(row.origemNome || ''));
+    const tituloOrigem = origemNome || origemCod
+      ? `Veio de ${origemNome || origemCod}${origemNome && origemCod ? ' (' + origemCod + ')' : ''}`
+      : 'Sem origem registrada';
+    const origemCel = origemNome || origemCod
+      ? `<span class="font-semibold text-slate-700">${safeHtml(origemNome || origemCod)}</span>`
+        + (origemNome && origemCod
+            ? `<span class="text-[10.5px] text-slate-400 font-semibold ml-1 tabular-nums">${safeHtml(origemCod)}</span>`
+            : '')
+      : '<span class="text-slate-300">—</span>';
 
     return `
       <tr class="${rowClass}${cancPares ? (Number(row.saldo||0) <= 0 ? ' linha-cancelada' : ' linha-canc-parcial') : ''}">
@@ -5440,27 +5782,20 @@ function renderDispo(){
         <td>
           <span class="font-extrabold text-slate-800">${safeHtml(row.produto)}</span>
           <span class="text-xs text-slate-400 font-semibold ml-1">${safeHtml(row.codigo||'')}</span>
-          ${seloOrigem}
           ${desmBadge}
-          ${row.origemNome || row.origem
-            ? `<div class="text-[10.5px] font-semibold text-slate-400" title="Cliente de onde este lote veio">
-                 <i class="fa-solid fa-arrow-turn-up fa-rotate-180" style="font-size:9px"></i>
-                 ${safeHtml(row.origemNome || row.origem)}${row.fam ? ' · ' + safeHtml(row.fam) : ''}</div>` : ''}
         </td>
         <td class="text-slate-500 font-semibold">${safeHtml(row.cor)}</td>
-        <td class="tabular-nums font-semibold ${row._antecipavel ? 'text-[#3C3489]' : 'text-slate-600'}">
-          ${safeHtml(formatDate(row.dataEntrega))}
-          ${isNovaDestinoAntecipacao ? '<span class="badge-nova">Nova</span>' : ''}
-        </td>
+        <td class="col-origem" title="${safeHtml(tituloOrigem)}">${origemCel}</td>
+        <td class="tabular-nums font-semibold text-slate-600">${safeHtml(formatDate(row.dataEntrega))}</td>
         <td class="text-right font-extrabold tabular-nums">${formatInt(row.saldo)}${cancPares ? `<div class="td-canc" style="font-size:10.5px" title="${cancPares} pares cancelados">-${formatInt(cancPares)}</div>` : ''}</td>
         <td class="col-pendente text-right tabular-nums ${row.pendente > 0 ? 'text-amber-600 font-extrabold' : 'text-slate-400 font-semibold'}">${formatInt(row.pendente)}</td>
         <td class="col-aprovado text-right tabular-nums ${row.aprovado > 0 ? 'text-emerald-600 font-extrabold' : 'text-slate-400 font-semibold'}">${formatInt(row.aprovado)}</td>
         <td class="text-right tabular-nums">${saldoRealDisplay}</td>
         <td class="text-right tabular-nums col-desmembrado ${totalDesm > 0 ? 'text-[var(--brand)] font-extrabold' : 'text-slate-300'}">${totalDesm > 0 ? formatInt(totalDesm) : '—'}</td>
         <td class="col-pedidoMae text-center font-semibold text-[11px] ${row.pedidoMae === 'SIM' ? 'text-emerald-600' : 'text-slate-400'}">${safeHtml(row.pedidoMae || '—')}</td>
-        <td><span class="chip ${sit.chipClass}">${safeHtml(sit.label)}</span></td>
         <td>
           <div class="btn-group">
+            <button class="icon-btn btn-info-dispo" title="Ver tudo deste lote" onclick="abrirInfoLote('${safeHtml(String(row.num||''))}')" style="color:var(--muted)"><i class="fa-solid fa-circle-info" style="font-size:12px"></i></button>
             <button class="icon-btn btn-editar-dispo" title="Editar dados do produto" onclick="abrirEditarProduto('${safeHtml(String(row.num||''))}')" style="color:var(--brand);border-color:var(--brand-soft)"><i class="fa-solid fa-pen" style="font-size:12px"></i></button>
             ${STATE.activeFilter === 'ocultos'
               ? `<button class="icon-btn reexibir btn-reexibir" data-gci="${safeHtml(String(row.gci||''))}" title="Reexibir"><i class="fa-solid fa-eye" style="font-size:12px"></i></button>
@@ -5471,8 +5806,7 @@ function renderDispo(){
               : `<button class="icon-btn desm btn-desmembrar" data-idx="${idx}" title="Desmembrar"><i class="fa-solid fa-table-list" style="font-size:12px"></i></button>
                  <button class="icon-btn btn-ratear ${rateioDaLinha(row) ? 'rateado' : ''}" title="${safeHtml(dicaRateio(row))}" onclick="abrirRateio('${safeHtml(String(row.num||''))}')"><i class="fa-solid fa-users" style="font-size:12px"></i></button>
                  <button class="icon-btn ocultar btn-ocultar" data-gci="${safeHtml(String(row.gci||''))}" title="Ocultar"><i class="fa-solid fa-eye-slash" style="font-size:12px"></i></button>
-                 <button class="icon-btn btn-excluir-dispo" data-idx="${idx}" title="Excluir da DISPO" style="color:#b91c1c;border-color:#fca5a5" onclick="excluirDaDispoJson(STATE.dispoRows.find(r=>String(r.num)===String('${safeHtml(String(row.num||''))}')))"><i class="fa-solid fa-trash-can" style="font-size:12px"></i></button>
-                 ${row._antecipavel ? `<button class="icon-btn btn-antecipa-row ${row._antecipavel.gradeDiferente ? 'btn-antecipa-warn' : 'btn-antecipa-ok'}" data-gci="${safeHtml(String(row.gci||''))}" title="${row._antecipavel.gradeDiferente ? 'Grade diferente — confira antes de antecipar' : `${row._antecipavel.pedidosVinculados.length} pedido${row._antecipavel.pedidosVinculados.length>1?'s':''} para antecipar`}"><i class="fa-solid fa-angles-up" style="font-size:12px"></i></button>` : ''}`
+                 <button class="icon-btn btn-excluir-dispo" data-idx="${idx}" title="Excluir da DISPO" style="color:#b91c1c;border-color:#fca5a5" onclick="excluirDaDispoJson(STATE.dispoRows.find(r=>String(r.num)===String('${safeHtml(String(row.num||''))}')))"><i class="fa-solid fa-trash-can" style="font-size:12px"></i></button>`
             }
           </div>
         </td>
@@ -6067,6 +6401,7 @@ function limparFiltrosDispo(){
   const limpar = $('btnClearSearchDispo');
   if(limpar) limpar.classList.add('hidden');
   document.querySelectorAll('.filter-pill').forEach(x => x.classList.toggle('active', x.dataset.filter === 'all'));
+  if(typeof sincronizarMaisFiltros === 'function') sincronizarMaisFiltros();
   renderDispo();
 }
 
@@ -6196,6 +6531,7 @@ const ORDENS_DISPO = [
   ['dataEntrega:asc', 'Prev. Faturamento — mais próxima'],
   ['situacao:asc', 'Situação — mais crítico primeiro'],
   ['produto:asc', 'Produto (A-Z)'],
+  ['origemNome:asc', 'Origem (A-Z)'],
 ];
 
 function renderOrdenarMenu(){
@@ -6283,7 +6619,7 @@ function voltarParaPedidos(){
 
 
 // ── TOGGLE COLUNAS ────────────────────────────────────────────────────────────
-const _colState = { pendente:false, aprovado:false, pedidoMae:false, desmembrado:false };
+const _colState = { pendente:false, aprovado:false, pedidoMae:false, desmembrado:false, origem:true };
 function toggleColMenu(){
   $('colMenu').classList.toggle('hidden');
 }
@@ -6377,7 +6713,10 @@ function atualizarBadgeOcultos(){
       salvarOcultos();
     }
   }
-  const n = STATE.ocultos.size;
+  // o badge conta os ocultos DA FAMILIA na tela; STATE.ocultos guarda os dois
+  const n = computeAllRows().filter(r =>
+    (STATE.familia === 'colecao' ? ehColecaoDispo(r) : !ehColecaoDispo(r)) && isOculto(r)
+  ).length;
   badge.textContent = n;
   badge.classList.toggle('hidden', n === 0);
   atualizarBadgeFinalizados();
@@ -6390,13 +6729,19 @@ function atualizarBadgeOcultos(){
 function atualizarBadgeFinalizados(){
   if(!STATE.dispoRows?.length) return;
   recalcArquivados();
-  let distribuir = 0, esgotados = 0, arquivados = 0, colecao = 0;
+  let distribuir = 0, esgotados = 0, arquivados = 0;
   for(const r of computeAllRows()){
+    // só a família que está na tela: o número tem de ser o da lista que o
+    // clique vai abrir, senão a pílula promete o que a aba não mostra
+    if(STATE.familia === 'colecao' ? !ehColecaoDispo(r) : ehColecaoDispo(r)) continue;
     if(isArquivado(r)){ arquivados++; continue; }
     if(isOculto(r)) continue;
-    if(r.saldoReal <= 0){ esgotados++; continue; }
-    // com saldo: ou é bolsão, ou é o repasse de todo dia — nunca os dois
-    if(ehColecaoDispo(r)) colecao++; else distribuir++;
+    /* Desmembramento conta pela MESMA regra da aba (lote que já tem pedido),
+       não por "saldo zerado". Eram duas contas diferentes para a mesma
+       pílula: o número batia por coincidência e ia divergir no dia em que
+       um lote com saldo recebesse pedido. */
+    if((Number(r.pendente || 0) + Number(r.aprovado || 0)) > 0) esgotados++;
+    if(r.saldoReal > 0) distribuir++;
   }
   const pintar = (id, n) => {
     const b = $(id);
@@ -6407,7 +6752,6 @@ function atualizarBadgeFinalizados(){
   pintar('distribuirBadge', distribuir);
   pintar('esgotadosBadge', esgotados);
   pintar('arquivadosBadge', arquivados);
-  pintar('colecaoBadge', colecao);
 }
 
 // ── EVENT LISTENERS ───────────────────────────────────────────────────────────
@@ -6455,6 +6799,316 @@ $('filterPills').addEventListener('click', (e) => {
 
   renderDispo();
 });
+
+
+/* ── INFORMAÇÕES DA ENCOMENDA ───────────────────────────────────────────────
+   O que se sabe de um lote, numa tela só. Os números de pares saem da
+   própria linha (row.pendente / row.aprovado / row.saldoReal), que é a conta
+   que a tabela mostra - fazer a conta de novo aqui seria pedir para os dois
+   números divergirem um dia.
+   Quem pediu sai pelo Nº do lote, a mesma chave de buildImpactMap: o GCI se
+   repete entre lotes irmãos e somaria pedido dos outros. */
+
+function pedidosDoLote(num){
+  const alvo = sanitizeDisplayText(String(num || ''));
+  if(!alvo) return [];
+  const saida = [];
+  for(const order of (STATE.orders || [])){
+    if(order.archived) continue;
+    const st = canonicalStatus(order.status);
+    if(st === 'Cancelado') continue;
+    for(const item of (order.items || [])){
+      if(sanitizeDisplayText(String(item.num || '')) !== alvo) continue;
+      saida.push({
+        vendedor: (order.preposto && (order.preposto.nome || order.preposto.codigo)) || '—',
+        cliente: order.clienteNome || '—',
+        clienteCod: order.clienteCodigo || '',
+        status: st,
+        pares: getItemUnits(item)
+      });
+    }
+  }
+  return saida.sort((a, b) => b.pares - a.pares);
+}
+
+function _miClasseStatus(st){
+  const t = String(st || '').toLowerCase();
+  if(t.startsWith('aprov') || t.startsWith('export')) return 'a';
+  if(t.startsWith('cancel')) return 'c';
+  return 'p';
+}
+
+
+/* "Quem pediu" nasce fechado: o que se procura ao abrir o modal é a grade e
+   os pares, e num lote movimentado a lista empurrava tudo para baixo. */
+function togglePedidosInfo(btn){
+  const lista = btn.parentElement.querySelector('.mi-lista');
+  if(!lista) return;
+  const abrir = btn.getAttribute('aria-expanded') !== 'true';
+  btn.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+  lista.classList.toggle('mi-oculto', !abrir);
+}
+
+function abrirInfoLote(num){
+  const row = computeAllRows().find(r => String(r.num) === String(num));
+  if(!row){ showToast('Lote não encontrado.', 'error'); return; }
+
+  const grade = Object.entries(row.grade || {}).filter(([, q]) => Number(q) > 0);
+  const paresCaixa = grade.reduce((t, [, q]) => t + Number(q || 0), 0);
+  const saldo = Number(row.saldo || 0);
+  const caixas = paresCaixa ? Math.floor(saldo / paresCaixa) : 0;
+
+  const pend = Math.max(0, Number(row.pendente || 0));
+  const aprov = Math.max(0, Number(row.aprovado || 0));
+  const livre = Math.max(0, Number(row.saldoReal || 0));
+  const base = Math.max(1, saldo);
+  const pct = n => (n / base * 100).toFixed(2) + '%';
+
+  const desm = Object.values((STATE.desmembramentos || {})[desmKey(row)] || {})
+    .reduce((t, v) => t + Number(v || 0), 0);
+
+  const pedidos = pedidosDoLote(row.num);
+  const [f1, ...resto] = fotosDoProduto(row.codigo, row.cor);
+
+  $('infoLoteCaixa').innerHTML = `
+    <div class="mi-topo">
+      <div class="mi-foto">
+        <img src="${f1}" alt="" data-fb='${safeHtml(JSON.stringify(resto))}' onerror="proximaFoto(this)">
+      </div>
+      <div class="mi-ident">
+        <div class="mi-nome">${safeHtml(row.produto || '—')}</div>
+        <div class="mi-cor">${safeHtml(row.cor || '—')}</div>
+        <div class="mi-chips">
+          <span class="mi-chip marca">ref ${safeHtml(row.codigo || '—')}</span>
+          ${row.colecao
+            ? `<span class="mi-chip bolsao"><i class="fa-solid fa-layer-group"></i> ${safeHtml(row.colecao)}</span>`
+            : `<span class="mi-chip">Repasse</span>`}
+          ${row.pedidoMae === 'SIM' ? `<span class="mi-chip mae">Pedido mãe</span>` : ''}
+          ${row.filial ? `<span class="mi-chip">filial ${safeHtml(row.filial)}</span>` : ''}
+        </div>
+      </div>
+      <div class="mi-num">
+        <div><div class="l">Lote</div><div class="v">${safeHtml(String(row.num || '—'))}</div></div>
+        <button class="mi-x" title="Fechar" onclick="fecharInfoLote()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+
+    <div class="mi-pares">
+      <div class="mi-barra">
+        <span class="mi-f-pend"  style="width:${pct(pend)}"></span>
+        <span class="mi-f-aprov" style="width:${pct(aprov)}"></span>
+        <span class="mi-f-livre" style="width:${pct(livre)}"></span>
+      </div>
+      <div class="mi-nums">
+        <div><div class="l">Na DISPO</div><div class="v">${formatInt(saldo)}</div></div>
+        <div><div class="l"><i class="fa-solid fa-circle" style="color:#f59e0b"></i> Pendente</div>
+          <div class="v mi-v-pend">${formatInt(pend)}</div></div>
+        <div><div class="l"><i class="fa-solid fa-circle" style="color:#22c55e"></i> Aprovado</div>
+          <div class="v mi-v-aprov">${formatInt(aprov)}</div></div>
+        <div><div class="l"><i class="fa-solid fa-circle" style="color:var(--brand)"></i> Saldo real</div>
+          <div class="v mi-v-livre">${formatInt(Number(row.saldoReal || 0))}</div></div>
+      </div>
+    </div>
+
+    <div class="mi-grid">
+      <div class="mi-bloco">
+        <div class="mi-tit">Encomenda</div>
+        <div class="mi-linha"><span class="k">EBM</span>
+          <span class="v copiavel" title="Clique para copiar" onclick="copiarTexto('${safeHtml(String(row.ebm || ''))}')">${safeHtml(row.ebm || '—')}</span></div>
+        <div class="mi-linha"><span class="k">GCI</span>
+          <span class="v copiavel" title="Clique para copiar" onclick="copiarTexto('${safeHtml(String(row.gci || ''))}')">${safeHtml(row.gci || '—')}</span></div>
+        <div class="mi-linha"><span class="k">Prev. faturamento</span>
+          <span class="v">${safeHtml(formatDate(row.dataEntrega) || '—')}</span></div>
+        <div class="mi-linha"><span class="k">Origem</span>
+          <span class="v">${(row.origemNome || row.origem)
+            ? safeHtml(row.origemNome || '—') + (row.origem
+                ? ` <small style="color:var(--muted)">${safeHtml(row.origem)}</small>` : '')
+            : '<span style="color:var(--muted);font-weight:600">não registrada</span>'}</span></div>
+        ${desm > 0 ? `<div class="mi-linha"><span class="k">Desmembrado</span>
+          <span class="v">${formatInt(desm)} pares</span></div>` : ''}
+      </div>
+
+      <div class="mi-bloco">
+        <div class="mi-tit">Grade da caixa</div>
+        ${grade.length ? `<div class="mi-grade">
+          ${grade.map(([t, q]) => `<div class="mi-tam"><div class="t">${safeHtml(t)}</div><div class="q">${Number(q)}</div></div>`).join('')}
+        </div>
+        <div class="mi-caixa"><b>${paresCaixa}</b> pares por caixa · <b>${formatInt(caixas)}</b> caixa${caixas === 1 ? '' : 's'} no lote</div>`
+        : `<div class="mi-vazio">Este lote não tem grade registrada.</div>`}
+      </div>
+    </div>
+
+    <div class="mi-ped">
+      <button type="button" class="mi-abrir" aria-expanded="false"
+              onclick="togglePedidosInfo(this)">
+        <span class="mi-tit" style="margin:0">Quem pediu</span>
+        ${pedidos.length ? `<span class="mi-chip">${formatInt(pedidos.length)} pedido${pedidos.length > 1 ? 's' : ''}</span>` : ''}
+        <i class="fa-solid fa-chevron-down mi-seta"></i>
+      </button>
+      ${pedidos.length ? `<div class="mi-lista mi-oculto">${pedidos.map(p => `
+        <div class="mi-item">
+          <div class="quem">
+            <div class="vend">${safeHtml(p.vendedor)}</div>
+            <div class="cli">${safeHtml(p.cliente)}${p.clienteCod ? ' · ' + safeHtml(String(p.clienteCod)) : ''}</div>
+          </div>
+          <span class="mi-st ${_miClasseStatus(p.status)}">${safeHtml(p.status)}</span>
+          <span class="pares">${formatInt(p.pares)} pares</span>
+        </div>`).join('')}</div>`
+        : `<div class="mi-vazio">Ninguém pediu deste lote ainda — os ${formatInt(saldo)} pares estão inteiros.</div>`}
+    </div>
+
+    <div class="mi-rod">
+      <button class="mi-bt" onclick="copiarTexto('${safeHtml(String(row.ebm || ''))} ${safeHtml(String(row.gci || ''))}')">Copiar EBM e GCI</button>
+      <button class="mi-bt cheio" onclick="fecharInfoLote()">Fechar</button>
+    </div>`;
+
+  $('infoLoteModal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function fecharInfoLote(){
+  $('infoLoteModal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+function copiarTexto(t){
+  const txt = String(t || '').trim();
+  if(!txt) return;
+  navigator.clipboard.writeText(txt)
+    .then(() => showToast(`"${txt}" copiado!`, 'success'))
+    .catch(() => showToast('Não deu para copiar.', 'error'));
+}
+
+$('infoLoteModal').addEventListener('click', (e) => {
+  if(e.target === $('infoLoteModal')) fecharInfoLote();
+});
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape' && !$('infoLoteModal').classList.contains('hidden')) fecharInfoLote();
+});
+
+// ── As duas famílias ────────────────────────────────────────────────────────
+// Repasse e bolsão 1S27 deixaram de conviver na mesma lista em 19/11/2026.
+// A aba de baixo NÃO se mexe ao trocar de família: quem está olhando o
+// Desmembramento quer ver o desmembramento do outro lado, não voltar para o
+// começo. Se ficar vazia, o aviso embaixo conta onde está o que falta.
+function setFamilia(nome){
+  if(nome !== 'repasse' && nome !== 'colecao') return;
+  if(STATE.familia === nome) return;
+  STATE.familia = nome;
+  document.querySelectorAll('#familiaTabs .familia-tab').forEach(t => {
+    const on = t.dataset.familia === nome;
+    t.classList.toggle('active', on);
+    t.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  fecharMaisFiltros();
+  atualizarBadgeRateados();
+  atualizarBadgeOcultos();          // chama atualizarBadgeFinalizados no fim
+  renderDispo();
+}
+
+$('familiaTabs').addEventListener('click', (e) => {
+  const tab = e.target.closest('[data-familia]');
+  if(tab) setFamilia(tab.dataset.familia);
+});
+
+/* O que a lista não mostrou pode estar na outra família. Conta quantos são e
+   leva lá num clique - sem isso, "nenhum item" é uma mentira por omissão. */
+function avisarOutraFamilia(){
+  const caixa = $('dispoOutraFamilia');
+  if(!caixa) return;
+  caixa.classList.add('hidden');
+  const outra = STATE.familia === 'colecao' ? 'repasse' : 'colecao';
+  const guardada = STATE.familia;
+  let quantos = 0;
+  try{
+    STATE.familia = outra;
+    quantos = computeRows().length;   // mesmos filtros, só a família muda
+  }catch(e){ /* nao e motivo para derrubar o render */ }
+  finally{ STATE.familia = guardada; }
+  if(!quantos) return;
+  const paraBolsao = outra === 'colecao';
+  const nome = paraBolsao ? '1S27' : 'Repasse';
+  const cor  = paraBolsao
+    ? { fundo:'#ecfeff', borda:'#a5f3fc', titulo:'#0e7490', texto:'#0891b2', btn:'#0891b2' }
+    : { fundo:'#eef2ff', borda:'#c7d2fe', titulo:'#3730a3', texto:'#4338ca', btn:'#2836d4' };
+  caixa.style.background = cor.fundo;
+  caixa.style.borderColor = cor.borda;
+  caixa.innerHTML = `<div style="font-size:13.5px;font-weight:900;color:${cor.titulo}">
+      Nada aqui, mas há ${quantos} ${quantos === 1 ? 'linha' : 'linhas'} em ${safeHtml(nome)}</div>
+    <div style="font-size:12px;font-weight:700;color:${cor.texto};margin-top:4px">
+      Esta aba, com os mesmos filtros, do outro estoque</div>
+    <button type="button" onclick="setFamilia('${outra}')"
+      style="margin-top:10px;background:${cor.btn};color:#fff;border:0;border-radius:999px;
+             padding:8px 18px;font-weight:800;font-size:12.5px;cursor:pointer">
+      Ver em ${safeHtml(nome)}</button>`;
+  caixa.classList.remove('hidden');
+}
+
+// ── Abas em lista ───────────────────────────────────────────────────────────
+// Pendentes, Aprovados, Rateados e Ocultos moraram na fileira até 19/11/2026.
+// Saíram para a tela abrir limpa; o filtro é o mesmo, só o lugar mudou.
+const FILTROS_NA_LISTA = { pendente:'Pendentes', aprovado:'Aprovados',
+                           rateados:'Rateados', ocultos:'Ocultos' };
+
+function fecharMaisFiltros(){
+  const m = $('menuMaisFiltros'), b = $('btnMaisFiltros');
+  if(m) m.classList.add('hidden');
+  if(b) b.setAttribute('aria-expanded', 'false');
+}
+
+// O botao "Mais" pode parar em qualquer ponto da largura - a fileira quebra
+// em varias linhas no celular. Entao o menu abre alinhado a esquerda e, se
+// passar da borda, e puxado para dentro. Media query nao resolvia: o que
+// manda e onde o botao caiu, nao o tamanho da tela.
+function ajustarMenuMais(){
+  const m = $('menuMaisFiltros');
+  if(!m || m.classList.contains('hidden')) return;
+  m.style.transform = '';
+  const folga = 12;
+  const r = m.getBoundingClientRect();
+  const sobra = r.right - (window.innerWidth - folga);
+  if(sobra > 0){
+    // nunca puxa tanto que a borda esquerda saia pelo outro lado
+    const puxa = Math.min(sobra, Math.max(0, r.left - folga));
+    if(puxa > 0) m.style.transform = `translateX(${-puxa}px)`;
+  }
+}
+
+function toggleMaisFiltros(ev){
+  if(ev) ev.stopPropagation();          // abrir o menu nao troca o filtro
+  const m = $('menuMaisFiltros'), b = $('btnMaisFiltros');
+  if(!m) return;
+  const abrir = m.classList.contains('hidden');
+  m.classList.toggle('hidden', !abrir);
+  if(b) b.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+  if(abrir) ajustarMenuMais();
+}
+
+window.addEventListener('resize', ajustarMenuMais);
+
+// O botao mostra o recorte escolhido. Aba ativa escondida dentro de um menu e
+// aba que o dono da tela nao acha mais - o nome no botao e o que diz onde ele
+// esta.
+function sincronizarMaisFiltros(){
+  const b = $('btnMaisFiltros'), l = $('lblMaisFiltros');
+  if(!b || !l) return;
+  const nome = FILTROS_NA_LISTA[STATE.activeFilter];
+  l.textContent = nome || 'Mais';
+  b.classList.toggle('active', !!nome);
+}
+
+$('filterPills').addEventListener('click', (e) => {
+  if(!e.target.closest('[data-filter]')) return;
+  fecharMaisFiltros();
+  sincronizarMaisFiltros();
+});
+document.addEventListener('click', (e) => {
+  if(!e.target.closest('#maisFiltros')) fecharMaisFiltros();
+});
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape') fecharMaisFiltros();
+});
+sincronizarMaisFiltros();
 
 // Sortable columns
 document.querySelector('thead').addEventListener('click', (e) => {
@@ -6609,6 +7263,9 @@ loadDispo();
       <button id="desmConfPiloto" onclick="pilotarNoEbm()" style="display:none;align-items:center;justify-content:center;gap:8px;background:transparent;border:1px solid #0d9488;color:#0d9488;border-radius:999px;padding:11px 16px;font-weight:800;font-size:13px;cursor:pointer"
         title="Preenche o primeiro cliente no EBM e para antes de salvar">
         <i class="fa-solid fa-user-pen"></i> Piloto: 1 cliente</button>
+      <button id="desmConfPlanilha" onclick="gerarPlanilhaRobo()" style="display:none;align-items:center;justify-content:center;gap:8px;background:#15803d;color:#fff;border:0;border-radius:999px;padding:11px 16px;font-weight:800;font-size:13px;cursor:pointer"
+        title="Gera o arquivo no layout que o robô CMS_DESMEMBRA lê">
+        <i class="fa-solid fa-file-excel"></i> Planilha do robô</button>
       <button id="desmConfIniciar" onclick="iniciarDesmembramento()" style="flex:1;min-width:200px;background:#0d9488;color:#fff;border:0;border-radius:999px;padding:11px;font-weight:800;font-size:14px;cursor:pointer">Iniciar desmembramento</button>
       <button onclick="fecharConferenciaDesm()" style="background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:11px 16px;font-weight:700;font-size:13px;cursor:pointer">Cancelar</button>
     </div>

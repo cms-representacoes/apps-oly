@@ -630,7 +630,7 @@
             </div>
           </div>
 
-          <!-- Ordem de uso: exportar, estoque, configurações, pausar, portal -->
+          <!-- Ordem de uso: exportar, estoque, datas, configurações, pausar, portal -->
           <div class="hdr-dir flex flex-wrap items-center justify-end gap-2">
             <button id="btnNotifAdmin" title="Pedidos que acabaram de chegar"
               class="focus-ring relative rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 flex items-center gap-2 hover:bg-slate-50">
@@ -639,9 +639,12 @@
               <span id="badgeNotifAdmin" class="hidden absolute -top-2 -right-2 min-w-[20px] h-[20px] px-1 bg-rose-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white" style="animation:pulse-badge 1s infinite">0</span>
             </button>
 
+            <!-- Voltou em 19/11/2026: enquanto o robo do desmembramento nao
+                 estiver na maquina do Chris, a digitacao no EBM continua
+                 saindo de planilha. Sai de novo quando o robo entrar. -->
             <button id="btnExportarTodosPendentes"
               class="focus-ring rounded-full px-3.5 py-2 text-sm font-bold text-white flex items-center gap-2 hidden"
-              title="Exportar em XLSX os pedidos pendentes"
+              title="Exportar em XLSX os aprovados que ainda não saíram"
               style="background:linear-gradient(135deg,#34d399,#059669);border:none;box-shadow:0 4px 14px rgba(5,150,105,.35)">
               <i class="fa-solid fa-file-excel"></i>
               <i class="fa-solid fa-arrow-up-from-bracket text-xs"></i>
@@ -1019,10 +1022,11 @@
               <option value="alterados">Alterados por último</option>
             </select>
             <div class="text-xs font-bold text-slate-400 ml-auto" id="ordersCountBadge">0 pedidos</div>
-            <button id="btnExportarSelecionados" onclick="exportarSelecionados()"
+            <button id="btnAprovarSelecionados" onclick="aprovarSelecionados()"
+              title="Aprovar os pendentes marcados e gerar a planilha dos selecionados"
               class="hidden focus-ring rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 flex items-center gap-1.5 hover:bg-emerald-100 transition-colors">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              Exportar selecionados <span id="badgeSelecionados" class="bg-emerald-600 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+              Aprovar <span id="badgeSelecionados" class="bg-emerald-600 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
             </button>
             <button id="btnExcluirSelecionados" onclick="excluirSelecionados()"
               class="hidden focus-ring rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 flex items-center gap-1.5 hover:bg-rose-100 transition-colors">
@@ -1124,6 +1128,8 @@
           </div>
         </div>
 
+        <div id="dispoAvisoOrigem" class="hidden mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-800"></div>
+
         <!-- Novos -->
         <div id="dispoNovosBlock" class="hidden mb-4">
           <div class="flex items-center gap-2 mb-2">
@@ -1134,7 +1140,7 @@
             <div class="overflow-auto max-h-48">
               <table class="w-full text-xs">
                 <thead><tr class="bg-green-100 text-green-800">
-                  <th class="text-left px-3 py-2" title="Dado pelo sistema, continuando a série da DISPO">Nº novo</th><th class="text-left px-3 py-2">Código</th><th class="text-left px-3 py-2">Produto</th><th class="text-left px-3 py-2">COR</th><th class="text-right px-3 py-2">Saldo</th><th class="text-left px-3 py-2">Prev. Fat.</th>
+                  <th class="text-left px-3 py-2" title="Dado pelo sistema, continuando a série da DISPO">Nº novo</th><th class="text-left px-3 py-2">Código</th><th class="text-left px-3 py-2">Produto</th><th class="text-left px-3 py-2">COR</th><th class="text-left px-3 py-2">Origem</th><th class="text-right px-3 py-2">Saldo</th><th class="text-left px-3 py-2">Prev. Fat.</th>
                 </tr></thead>
                 <tbody id="dispoNovosBody"></tbody>
               </table>
@@ -1815,6 +1821,29 @@
             <button onclick="closeDeleteModal()" class="focus-ring rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700">Não, cancelar</button>
             <button id="btnConfirmDelete" class="focus-ring rounded-2xl bg-rose-600 px-5 py-3 text-sm font-extrabold text-white">Sim, excluir</button>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Aprovar em lote: a conferência antes de mexer em vários pedidos de uma vez -->
+  <div id="aprovarLoteModal" class="hidden fixed inset-0 z-[140] bg-slate-950/45 p-4">
+    <div class="flex min-h-full items-center justify-center">
+      <div class="w-full max-w-md rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,.24)]">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
+            <i class="fa-solid fa-check-double text-emerald-600"></i>
+          </div>
+          <div>
+            <div class="text-base font-extrabold">Aprovar e gerar a planilha</div>
+            <div id="aprovarLoteSub" class="text-xs font-semibold text-slate-500">—</div>
+          </div>
+        </div>
+        <div id="aprovarLoteResumo" class="rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700"></div>
+        <div id="aprovarLoteAviso" class="hidden mt-3 rounded-[20px] border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800" style="max-height:38vh;overflow:auto"></div>
+        <div class="mt-5 flex flex-col-reverse sm:flex-row justify-end gap-2">
+          <button onclick="fecharAprovarLote()" class="focus-ring rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700">Cancelar</button>
+          <button id="btnConfirmAprovarLote" class="focus-ring rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-extrabold text-white">Aprovar</button>
         </div>
       </div>
     </div>
@@ -4187,6 +4216,29 @@ async function processarDispoXlsx(file){
      maioria dos arquivos, e um lote do bolsão sem ela ia parar na prateleira
      errada sem ninguém ver. */
   const colSaldo  = _resolve('SALDO');
+  /* ORIGEM: o cliente que abriu mão da encomenda. Na planilha do Chris (aba
+     RECOLOCAÇÕES) são as colunas CÓD e CLIENTE; em outros arquivos aparece
+     como CÓD CLIENTE2 / CLIENTE2, que é o par "de quem veio" ao lado do
+     "para quem vai". Até 19/11/2026 a coluna era lida e jogada fora: nenhum
+     dos 368 repasses na DISPO tinha de onde veio, e a informação só existia
+     na planilha de quem importou. */
+  const colOrigemCod  = _resolve('ORIGEM','CÓD ORIGEM','COD ORIGEM',
+                                 'CÓD CLIENTE2','COD CLIENTE2','CÓD','COD');
+  const colOrigemNome = _resolve('CLIENTE ORIGEM','NOME ORIGEM','ORIGEM NOME',
+                                 'CLIENTE2','CLIENTE');
+
+  /* O bolsão não vem de um cliente: ele é a cota que a fábrica reservou ao
+     escritório, e o que distingue um lote do outro é o mês de faturamento.
+     Então a origem dele é GTM - JAN, GTM - FEV... Assim o lote do 1S27
+     também responde "de onde veio" na coluna Origem e na busca, como
+     qualquer repasse. Os 633 que já estavam na DISPO foram preenchidos
+     assim em 19/11/2026. */
+  const MESES_GTM = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+  function _origemBolsao(destino, dataBr){
+    if(!destino) return '';
+    const m = Number(String(dataBr || '').split('/')[1]);
+    return (m >= 1 && m <= 12) ? `GTM - ${MESES_GTM[m - 1]}` : 'GTM';
+  }
 
   // Grade = só colunas que são tamanho (28–48, combinados 33/34, ou PP…U)
   const _APPAREL = new Set(['PP','P','M','G','GG','XG','XGG','U','UN']);
@@ -4231,6 +4283,11 @@ async function processarDispoXlsx(file){
       _dataTexto: colData ? String(_g(colData) ?? '').trim() : '',
       _dataAviso: _data.aviso,
       pedidoMae: String(_g(colPedMae) || '').trim(),
+      // a DISPO lê estes dois: origem é o código, origemNome o nome.
+      // No bolsão não há cliente nem código — só o mês da cota.
+      origem: String(_g(colOrigemCod) || '').trim(),
+      origemNome: String(_g(colOrigemNome) || '').trim()
+                  || _origemBolsao(_dispoDestino, _data.br),
       colecao: _dispoDestino,
       saldo: Number(_g(colSaldo) || 0),
       grade
@@ -4475,6 +4532,9 @@ function renderPreviewDispo(fileName, totalLinhas){
         <td class="px-3 py-2 font-semibold">${safeHtml(r.codigo)}</td>
         <td class="px-3 py-2 font-bold">${safeHtml(r.produto)}</td>
         <td class="px-3 py-2">${safeHtml(r.cor)}</td>
+        <td class="px-3 py-2 ${r.origemNome || r.origem ? '' : 'text-amber-600 font-bold'}"
+            title="${safeHtml(r.origemNome || r.origem ? 'De onde o lote veio' : 'A planilha não trouxe a origem deste lote')}">
+          ${safeHtml(r.origemNome || r.origem || 'sem origem')}</td>
         <td class="px-3 py-2 text-right font-bold">${r.saldo}</td>
         <td class="px-3 py-2 text-slate-500">${safeHtml(r.dataEntrega||'—')}</td>
       </tr>`).join('');
@@ -4492,6 +4552,18 @@ function renderPreviewDispo(fileName, totalLinhas){
 function atualizarResumoImportDispo(){
   const n = _dispoNovos.length;
   const onde = _dispoDestino ? ('GTM ' + _dispoDestino) : 'repasse comum';
+  /* Sem origem o lote entra assim mesmo - a importação não é o lugar de
+     barrar trabalho -, mas o aviso aparece: descobrir isso depois, com o
+     lote já na DISPO, custa a planilha de volta e um cruzamento à mão. */
+  const semOrigem = _dispoNovos.filter(r => !String(r.origem || '').trim()
+                                         && !String(r.origemNome || '').trim()).length;
+  const avisoOrigem = $('dispoAvisoOrigem');
+  if(avisoOrigem){
+    avisoOrigem.classList.toggle('hidden', semOrigem === 0);
+    avisoOrigem.textContent = semOrigem
+      ? `${semOrigem} de ${n} lote(s) vêm sem origem: a planilha não trouxe as colunas CÓD e CLIENTE.`
+      : '';
+  }
   $('dispoResumoImport').textContent = n
     ? `${n} lote(s) novo(s) em ${onde}, Nº ${_dispoFaixaNums}. A DISPO fica com ${_dispoJsonAtual.length + n} lote(s).`
     : 'Nenhuma linha aproveitável no arquivo.';
@@ -6420,11 +6492,11 @@ async function relatorioExportXlsx(){
   }
 }
 
+$('btnExportarTodosPendentes').addEventListener('click', exportarTodosPendentes);
 $('btnGerarRelatorio').addEventListener('click', renderRelatorio);
 $('btnRelatorioWhatsapp').addEventListener('click', relatorioWhatsapp);
 $('btnRelatorioPdf').addEventListener('click', relatorioExportPdf);
 $('btnRelatorioXlsx').addEventListener('click', relatorioExportXlsx);
-$('btnExportarTodosPendentes').addEventListener('click', exportarTodosPendentes);
 
 // Filtros de exportação
 document.querySelectorAll('.filtro-export-btn').forEach(btn=>{
@@ -6519,16 +6591,21 @@ function atualizarSelecaoUI(){
   const total = STATE.filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const contEl = $('selecaoCount');
-  const btnExp = $('btnExportarSelecionados');
+  const btnExp = $('btnAprovarSelecionados');
   const badge  = $('badgeSelecionados');
+  /* O numero no botao e o de TUDO que esta marcado, nao so dos pendentes:
+     alem de aprovar, ele gera a planilha dos selecionados - e isso vale
+     tambem para quem ja esta aprovado. Volta a ser so dos pendentes no dia
+     em que a exportacao sair daqui. */
+  const nPend = n;   // o botao vale para qualquer selecao: ele tambem exporta
   const chkAll = $('chkSelecionarTodos');
   if(contEl){
     contEl.textContent = n > 0
       ? `${n} de ${total} selecionado${n>1?'s':''} · ${totalPages} página${totalPages>1?'s':''}`
       : `${total} pedido${total!==1?'s':''} · ${totalPages} página${totalPages>1?'s':''}`;
   }
-  if(badge)  badge.textContent = n;
-  if(btnExp) btnExp.classList.toggle('hidden', n === 0);
+  if(badge)  badge.textContent = nPend;
+  if(btnExp) btnExp.classList.toggle('hidden', nPend === 0);
   const btnDel = $('btnExcluirSelecionados');
   const badgeDel = $('badgeExcluir');
   if(badgeDel) badgeDel.textContent = n;
@@ -6556,11 +6633,56 @@ document.addEventListener('change', e => {
   atualizarSelecaoUI();
 });
 
-async function exportarSelecionados(){
+let _aprovarLoteResolve = null;
+
+function fecharAprovarLote(){
+  $('aprovarLoteModal').classList.add('hidden');
+  document.body.style.overflow = '';
+  const f = _aprovarLoteResolve; _aprovarLoteResolve = null;
+  if(f) f(false);
+}
+
+function perguntarAprovarLote({ sub = '', resumo = '', aviso = '' }){
+  return new Promise(resolve => {
+    $('aprovarLoteSub').textContent = sub;
+    $('aprovarLoteResumo').innerHTML = resumo;
+    const av = $('aprovarLoteAviso');
+    if(aviso){ av.innerHTML = aviso; av.classList.remove('hidden'); }
+    else { av.innerHTML = ''; av.classList.add('hidden'); }
+    _aprovarLoteResolve = resolve;
+    $('aprovarLoteModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    setTimeout(()=>$('btnConfirmAprovarLote')?.focus(), 30);
+  });
+}
+
+$('btnConfirmAprovarLote').addEventListener('click', ()=>{
+  const f = _aprovarLoteResolve; _aprovarLoteResolve = null;
+  $('aprovarLoteModal').classList.add('hidden');
+  document.body.style.overflow = '';
+  if(f) f(true);
+});
+$('aprovarLoteModal').addEventListener('click', e => {
+  if(e.target === $('aprovarLoteModal')) fecharAprovarLote();
+});
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape' && !$('aprovarLoteModal').classList.contains('hidden')) fecharAprovarLote();
+});
+
+/* Aprovar em lote - e, por enquanto, exportar junto.
+   Em 19/11/2026 o botao "Exportar selecionados" virou "Aprovar", porque o
+   desmembramento passou a sair da DISPO. No mesmo dia o Marcos pediu a
+   planilha de volta: ate o robo estar instalado na maquina do Chris, a
+   digitacao no EBM ainda sai dela. O nome ficou Aprovar; a planilha
+   continua saindo. Quando o robo entrar, some so a parte do XLSX e o
+   `exportedAt` - o resto desta funcao fica. */
+async function aprovarSelecionados(){
   if(!_pedidosSelecionados.size){ showToast('Nenhum pedido selecionado.','info'); return; }
   const orders = STATE.orders.filter(o => _pedidosSelecionados.has(o.id));
+  const pendentes = orders.filter(o => canonicalStatus(o.status) === 'Pendente');
 
-  // Ponto 2 — Alerta de saldo insuficiente
+  // Saldo da DISPO: o mesmo cuidado que a exportacao tinha. Aprovar item sem
+  // saldo e prometer par que nao existe mais.
   const dispoJson = await fetch(WORKER_URL, {
     method:'PATCH', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({action:'getDispo'})
@@ -6574,82 +6696,93 @@ async function exportarSelecionados(){
     for(const item of (o.items||[])){
       const gci = String(item.gci||'').trim();
       const saldo = saldoMap.get(gci);
-      const qtde = Number(item.totalUnits||0)||(item.grade||[]).reduce((s,g)=>s+Number(g.qty||0),0);
+      const qtde = getItemUnits(item);
       if(saldo !== undefined && qtde > saldo){
-        semSaldo.push(`${item.produto||gci} (pedido ${o.id.slice(-6)}) — solicitado: ${qtde}, saldo DISPO: ${saldo}`);
+        semSaldo.push(`${item.produto||gci} (pedido ${o.id.slice(-6)}) — pedido: ${qtde}, saldo: ${saldo}`);
       }
     }
   }
-  if(semSaldo.length > 0){
-    const lista = semSaldo.slice(0,5).join('\n');
-    const mais = semSaldo.length > 5 ? `\n...e mais ${semSaldo.length-5} item(ns)` : '';
-    if(!confirm(`⚠️ Saldo insuficiente detectado:\n\n${lista}${mais}\n\nDeseja exportar mesmo assim?`)) return;
-  }
 
-  // Já exportados
-  const jaExportados = orders.filter(o => o.exportedAt);
-  if(jaExportados.length > 0){
-    const nomes = jaExportados.map(o=>o.preposto?.nome||o.id).join(', ');
-    if(!confirm(`${jaExportados.length} pedido(s) já exportados (${nomes}).\nDeseja exportar mesmo assim?`)) return;
-  }
+  const pares = orders.reduce((t,o) => t + (o.items||[]).reduce((sx,i)=>sx+getItemUnits(i), 0), 0);
+  const jaExportados = orders.filter(o => o.exportedAt).length;
+  const resumo = `${orders.length} pedido${orders.length>1?'s':''} · ${pares} par${pares!==1?'es':''} na planilha`
+    + `<div class="mt-1 text-xs font-semibold text-slate-500">`
+    + (pendentes.length
+        ? (pendentes.length > 1
+            ? `${pendentes.length} pendentes serão aprovados.`
+            : '1 pendente será aprovado.')
+        : 'Nenhum pendente: só a planilha sai.')
+    + (jaExportados ? ` ${jaExportados} já ${jaExportados>1?'foram exportados':'foi exportado'} antes.` : '')
+    + `</div>`;
+  const aviso = semSaldo.length
+    ? `<div class="font-extrabold mb-1">Saldo insuficiente na DISPO em ${semSaldo.length} item(ns):</div>`
+      + semSaldo.slice(0,8).map(t=>`• ${safeHtml(t)}`).join('<br>')
+      + (semSaldo.length > 8 ? `<br>…e mais ${semSaldo.length-8}` : '')
+    : '';
 
-  const btn = $('btnExportarSelecionados');
-  const prev = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Exportando...';
+  if(!(await perguntarAprovarLote({
+        sub: semSaldo.length ? 'Confira o aviso antes de liberar' : 'Aprova e gera a planilha',
+        resumo, aviso }))) return;
+
+  const btn = $('btnAprovarSelecionados');
+  const prev = btn ? btn.innerHTML : '';
+  if(btn){ btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Aprovando...'; }
   try{
+    /* A planilha sai ANTES de gravar: se o XLSX falhar, nada foi marcado como
+       exportado e dá para tentar de novo sem sujeira no histórico. */
     const gciMap = await getDispoGciMap();
-    const rows = buildRelatorioXlsxRows(orders, gciMap);
-    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const linhas = buildRelatorioXlsxRows(orders, gciMap);
+    const ws = XLSX.utils.aoa_to_sheet(linhas);
     ws['!cols'] = [8,18,12,20,14,16,12,10,24,10,6,12,10,28].map(w=>({wch:w}));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Pedidos');
-    const now = new Date();
-    XLSX.writeFile(wb, `pedidos_selecionados_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.xlsx`);
+    const hoje = new Date();
+    XLSX.writeFile(wb, `pedidos_selecionados_${hoje.getFullYear()}${String(hoje.getMonth()+1).padStart(2,'0')}${String(hoje.getDate()).padStart(2,'0')}.xlsx`);
 
-    // Ponto 3 — Aprovar pendentes ao exportar + marcar exportedAt
-    // Se o salvamento falhar, o estado local é REVERTIDO. Antes o erro era
-    // engolido: a tela mostrava "Aprovado · exportado", mas o servidor seguia
-    // com "Pendente" — e no recarregamento seguinte o pedido "voltava" sozinho.
-    const now2 = new Date().toISOString();
+    const agora = new Date().toISOString();
     const alvos = [];
     for(const order of orders){
       const idx = STATE.orders.findIndex(o => o.id === order.id);
       if(idx === -1) continue;
       const anterior = STATE.orders[idx];
-      const isPendente = canonicalStatus(order.status) === 'Pendente';
-      const campos = { exportedAt: now2 };
-      let historyAppend = null;
-      if(isPendente){
-        campos.status = 'Aprovado';
-        // id proprio: se a resposta se perder e o admin reexportar, o mesmo
+      const eraPendente = canonicalStatus(order.status) === 'Pendente';
+      alvos.push({
+        idx, anterior,
+        campos: eraPendente ? { status:'Aprovado', exportedAt: agora }
+                            : { exportedAt: agora },
+        // id proprio: se a resposta se perder e alguem repetir, o mesmo
         // evento nao entra duas vezes no historico.
-        historyAppend = { id: `exp-${order.id}-${now2}`, action:'Aprovado e exportado em lote', at: now2 };
-      }
-      alvos.push({ idx, anterior, campos, historyAppend });
+        historyAppend: eraPendente
+          ? { id:`aprov-${order.id}-${agora}`, action:'Aprovado e exportado em lote', at: agora }
+          : { id:`exp-${order.id}-${agora}`, action:'Exportado em lote', at: agora }
+      });
     }
-    // Atualiza a tela e grava tudo num commit so.
+    // Atualiza a tela e grava tudo num commit so; _gravarLote desfaz na tela
+    // o que o servidor nao aceitar.
     for(const t of alvos){
-      const novo = { ...t.anterior, ...t.campos, updatedAt: now2 };
-      if(t.historyAppend) novo.history = [ ...(t.anterior.history || []), t.historyAppend ];
-      STATE.orders[t.idx] = novo;
+      STATE.orders[t.idx] = { ...t.anterior, ...t.campos, updatedAt: agora,
+        history: [ ...(t.anterior.history || []), t.historyAppend ] };
     }
     const falhas = await _gravarLote(alvos);
 
     atualizarBadgeGlobal();
     if(falhas.length){
-      const ok = orders.length - falhas.length;
-      showToast(
-        `Planilha gerada, mas ${falhas.length} pedido(s) NÃO salvaram no servidor` +
-        (ok ? ` (${ok} salvos)` : '') + '. Eles seguem pendentes — exporte de novo.',
-        'error'
-      );
+      const ok = alvos.length - falhas.length;
+      showToast(`${falhas.length} pedido(s) NÃO salvaram no servidor` +
+                (ok ? ` (${ok} aprovado${ok>1?'s':''})` : '') +
+                '. Eles seguem pendentes — tente de novo.', 'error');
     }else{
-      showToast(`${orders.length} pedido(s) exportado(s)!`, 'success');
+      showToast(`Planilha gerada · ${alvos.length} pedido${alvos.length>1?'s':''} atualizado${alvos.length>1?'s':''}!`, 'success');
+      _pedidosSelecionados.clear();
     }
-    renderList();
-  }catch(err){ console.error(err); showToast('Erro ao exportar.','error');
-  }finally{ btn.disabled=false; btn.innerHTML=prev; }
+    if(typeof applyFilters === 'function') applyFilters(); else renderList();
+    atualizarSelecaoUI();
+  }catch(err){
+    console.error(err);
+    showToast('Erro ao aprovar/exportar.','error');
+  }finally{
+    if(btn){ btn.disabled = false; btn.innerHTML = prev; }
+  }
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
