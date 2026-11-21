@@ -3727,10 +3727,19 @@ const { desinverte, distanciaMes, mesDaData, posTamanho, faixaDeGrade } = DISPON
    não lista. Sem o arquivo, ou sem o artigo nele, o chip simplesmente não
    aparece - nunca se inventa uma fábrica. */
 const CIRCULAR_URL = 'https://cms-representacoes.github.io/apps-oly-v2/data/circular-1s27.json';
-let FABRICAS = null;
+let FABRICAS = null;        // artigo -> empresa, pela circular (reserva)
+let FABRICAS_1S27 = null;   // artigo -> empresa, pela planilha do bolsão
 async function carregarFabricas(){
   if(FABRICAS) return FABRICAS;
   const mapa = new Map();
+  /* Primeiro o de-para do bolsão: sai da planilha que originou os lotes
+     (BOLSÃO 1S27.xlsx, coluna Empresa) e cobre os 22 artigos. A circular
+     cobre 10 deles e discorda em um - o AXIS 43277511, VULTS na planilha e
+     AZABA nela. */
+  try{
+    const d = await json('fabricas-1s27.json');
+    FABRICAS_1S27 = (d && d.artigos) || {};
+  }catch(_){ FABRICAS_1S27 = {}; }
   try{
     const r = await fetch(CIRCULAR_URL);
     const d = await r.json();
@@ -3738,15 +3747,30 @@ async function carregarFabricas(){
       const emp = String(it.empresa || '').trim().toUpperCase();
       if(emp) mapa.set(String(it.artigo || '').trim(), emp);
     }
-  }catch(_){ /* sem a circular, os cards seguem como antes */ }
+  }catch(_){ /* sem a circular, sobra o de-para, que é a fonte principal */ }
   FABRICAS = mapa;
   return FABRICAS;
 }
 /* Só no bolsão, a pedido dele: no repasse comum e no estoque o chip não
-   aparece, mesmo que o artigo esteja na circular. */
+   aparece, mesmo que o artigo tenha fábrica conhecida.
+
+   Quem manda, por decisão dele em 21/11/2026: a DISPONIBILIDADE primeiro -
+   é a empresa que o próprio produto já traz, e em divergência vale ela -,
+   depois a coluna FILIAL do lote (hoje vazia; quando a planilha da DISPO a
+   trouxer, entra sozinha), depois o de-para do bolsão, e a circular por
+   último. O campo o.fabrica já carrega os dois primeiros nessa ordem: em
+   js/disponivel.js a disponibilidade é lida antes dos lotes.
+
+   Medido no dia: nos 6 artigos que estão nas duas fontes elas concordam; a
+   única divergência era o AXIS 43277511, VULTS na planilha e AZABA na
+   circular, e ele confirmou VULTS. */
 function fabricaDe(o){
-  if(!FABRICAS || !o || !(o.colecoes || []).length) return '';
-  return FABRICAS.get(String(o.artigo || '').trim()) || '';
+  if(!o || !(o.colecoes || []).length) return '';
+  const doProduto = String(o.fabrica || '').trim().toUpperCase();
+  if(doProduto) return doProduto;
+  const art = String(o.artigo || '').trim();
+  if(FABRICAS_1S27 && FABRICAS_1S27[art]) return FABRICAS_1S27[art];
+  return (FABRICAS && FABRICAS.get(art)) || '';
 }
 
 /* ── última atualização do estoque ──────────────────────────────── */
@@ -5927,7 +5951,7 @@ function cardHtml(o, i){
         <span class="nome">${esc(o.nome || o.artigo)}</span>
         <span class="cod">${esc(o.artigo)} · ${esc(o.cor)}${(() => {
           const f = fabricaDe(o);
-          return f ? `<span class="chip-fabrica" title="Fábrica do produto, pela circular da coleção">${esc(f)}</span>` : '';
+          return f ? `<span class="chip-fabrica" title="Fábrica que produz este artigo">${esc(f)}</span>` : '';
         })()}</span>
       </span>
       ${(o.pdv || fichaDe(o)) ? `<span class="linha-preco">

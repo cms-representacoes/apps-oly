@@ -230,6 +230,11 @@ window.DISPONIVEL = (() => {
          e devolver podeVerBolsao() para ehCmsSessao() na vitrine. */
       const colecaoDoLote = String(r.colecao || '').trim().toUpperCase();
       const o = pega(cod, r.cor, colecaoDoLote);
+      /* A fabrica, quando a planilha da DISPO trouxer a coluna FILIAL
+         preenchida. Hoje ela vem vazia nos 633 lotes do bolsao, e por isso
+         existe o de-para em data/fabricas-1s27.json - mas o dia em que vier,
+         manda ela, que e do proprio lote. */
+      o.fabrica = o.fabrica || String(r.filial || '').trim().toUpperCase();
       const pc = refCor.get(chave(cod, r.cor));      // mesma cor
       const p  = pc || refArt.get(norm(cod));         // qualquer cor do artigo
       o.nome      = o.nome      || nome || String(p && p.produto || '').trim();
