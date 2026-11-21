@@ -2417,6 +2417,12 @@ body:has(#sacola:not([hidden])) .aviso-desfazer.on{ transform:translate(50%, 0);
 .selo-colecao{ font-size:10px; font-weight:800; letter-spacing:.04em;
   color:#fff; background:#0891B2; border-radius:999px; padding:3px 9px;
   box-shadow:0 4px 10px rgba(8,145,178,.35); }
+/* A fábrica do produto do bolsão: discreta, na linha do código, porque é
+   informação de conferência - o vendedor olha quando o lojista pergunta. */
+.chip-fabrica{ display:inline-flex; align-items:center; gap:4px;
+  font-size:9.5px; font-weight:800; letter-spacing:.04em;
+  color:#0E7490; background:#ECFEFF; border:1px solid #A5F3FC;
+  border-radius:999px; padding:1px 7px; margin-left:6px; vertical-align:middle; }
 /* Lote dividido por vendedor: o selo diz de qual ação ele é. Roxo, a mesma
    cor que o rateio tem no admin e no Repasses. */
 .selo-rateio{ font-size:10px; font-weight:800; letter-spacing:.03em;
@@ -3711,6 +3717,38 @@ function semMiniatura(img){
 
 const { desinverte, distanciaMes, mesDaData, posTamanho, faixaDeGrade } = DISPONIVEL;
 
+/* ── a fábrica de cada artigo ─────────────────────────────────────
+   Vem da circular da coleção, no repositório do Catálogo Digital - a mesma
+   fonte que lá dá o chip "filial" na ficha do produto. O Pages responde com
+   CORS aberto, então é leitura direta, sem passar pelo Worker.
+
+   Por ARTIGO, não por artigo+cor: a fábrica é do modelo (nenhum artigo da
+   circular aparece com duas empresas) e o bolsão traz cores que a circular
+   não lista. Sem o arquivo, ou sem o artigo nele, o chip simplesmente não
+   aparece - nunca se inventa uma fábrica. */
+const CIRCULAR_URL = 'https://cms-representacoes.github.io/apps-oly-v2/data/circular-1s27.json';
+let FABRICAS = null;
+async function carregarFabricas(){
+  if(FABRICAS) return FABRICAS;
+  const mapa = new Map();
+  try{
+    const r = await fetch(CIRCULAR_URL);
+    const d = await r.json();
+    for(const it of ((d && d.itens) || [])){
+      const emp = String(it.empresa || '').trim().toUpperCase();
+      if(emp) mapa.set(String(it.artigo || '').trim(), emp);
+    }
+  }catch(_){ /* sem a circular, os cards seguem como antes */ }
+  FABRICAS = mapa;
+  return FABRICAS;
+}
+/* Só no bolsão, a pedido dele: no repasse comum e no estoque o chip não
+   aparece, mesmo que o artigo esteja na circular. */
+function fabricaDe(o){
+  if(!FABRICAS || !o || !(o.colecoes || []).length) return '';
+  return FABRICAS.get(String(o.artigo || '').trim()) || '';
+}
+
 /* ── última atualização do estoque ──────────────────────────────── */
 const WORKER_URL = 'https://repasse-worker-cms.marcosrep-cms.workers.dev';
 // Não há timestamp dentro do disponibilidades.json: o Worker devolve a data do
@@ -3862,6 +3900,8 @@ async function carregar(){
     STATE.produtos = montar(dispo, disponib, produtos, pedidos, oculto);
     STATE.assinatura = assinaturaRepasse(STATE.produtos);
     await carregarNovidades();
+    // a fábrica do bolsão: chega depois e repinta, como as metas
+    carregarFabricas().then(() => { if(FABRICAS.size) aplicar(); }).catch(() => {});
     carregarMetas();          // a barra não segura a vitrine: entra quando chegar
     carregarReativar();       // idem: o chip aparece quando a lista chegar
     carregarVistos();
@@ -5885,7 +5925,10 @@ function cardHtml(o, i){
     <div class="corpo">
       <span>
         <span class="nome">${esc(o.nome || o.artigo)}</span>
-        <span class="cod">${esc(o.artigo)} · ${esc(o.cor)}</span>
+        <span class="cod">${esc(o.artigo)} · ${esc(o.cor)}${(() => {
+          const f = fabricaDe(o);
+          return f ? `<span class="chip-fabrica" title="Fábrica do produto, pela circular da coleção">${esc(f)}</span>` : '';
+        })()}</span>
       </span>
       ${(o.pdv || fichaDe(o)) ? `<span class="linha-preco">
         ${o.pdv ? `<span class="preco">${brl(o.pdv)}</span>` : '<span></span>'}
@@ -7872,20 +7915,42 @@ function economiaDePor(o, c){
 }
 // A foto vem do mesmo domínio, então o canvas não fica manchado e o PDF
 // consegue lê-la de volta.
-function fotoDataUrl(o){
+/* A MESMA escada dos <img> da tela (ver semMiniatura), para quem desenha
+   fora dela: o PDF e a planilha com foto. Até 21/11/2026 as duas liam só o
+   banco do Catalogo e desistiam no primeiro erro - e no catálogo do GTM
+   isso era quase metade dos produtos: dos 89 artigo+cor do bolsão, 48 têm
+   foto no Catalogo e 41 só no banco do catálogo digital.
+
+   crossOrigin não é detalhe: sem ele o canvas fica contaminado pela imagem
+   de outro domínio e o toDataURL morre com SecurityError - ou seja, a foto
+   apareceria e mesmo assim não entraria no arquivo. O Pages do apps-oly-v2
+   responde com Access-Control-Allow-Origin: *, então o canvas segue limpo. */
+function imagemCarregada(o){
   return new Promise(resolve => {
+    const nome = arquivoFoto(o);
+    const fontes = [IMG + nome, IMG_ALT + nome];
+    let i = 0;
     const img = new Image();
-    img.onload = () => {
-      try{
-        const c = document.createElement('canvas');
-        c.width = img.naturalWidth; c.height = img.naturalHeight;
-        c.getContext('2d').drawImage(img, 0, 0);
-        resolve({ url:c.toDataURL('image/jpeg', 0.82), w:img.naturalWidth, h:img.naturalHeight });
-      }catch(_){ resolve(null); }
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => {
+      i++;
+      if(i < fontes.length) img.src = fontes[i];
+      else resolve(null);
     };
-    img.onerror = () => resolve(null);
-    img.src = foto(o);
+    img.src = fontes[0];
   });
+}
+
+async function fotoDataUrl(o){
+  const img = await imagemCarregada(o);
+  if(!img) return null;
+  try{
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    c.getContext('2d').drawImage(img, 0, 0);
+    return { url:c.toDataURL('image/jpeg', 0.82), w:img.naturalWidth, h:img.naturalHeight };
+  }catch(_){ return null; }
 }
 
 // Nem todo botao tem <span> por dentro — os da barra tem, o de gerar link nao.
@@ -8041,7 +8106,23 @@ async function gerarCatalogoPdf(){
       doc.text(doc.splitTextToSize(String(o.nome || o.artigo), tw).slice(0,1), tx, ty);
       ty += 13;
       cor(C.fraco); doc.setFont('helvetica','normal'); doc.setFontSize(8);
-      doc.text(`${o.artigo}  ·  ${o.cor}`, tx, ty);
+      const linhaCod = `${o.artigo}  ·  ${o.cor}`;
+      doc.text(linhaCod, tx, ty);
+      // A fábrica do bolsão, em pílula: é o que o lojista pergunta e no papel
+      // não dá para clicar em nada (ver carregarFabricas).
+      const fab = fabricaDe(o);
+      if(fab){
+        const fx = tx + doc.getTextWidth(linhaCod) + 8;
+        doc.setFont('helvetica','bold'); doc.setFontSize(6.5);
+        const wf = doc.getTextWidth(fab);
+        if(fx + wf + 11 <= tx + tw){
+          doc.setFillColor(236, 254, 255);
+          doc.setDrawColor(165, 243, 252); doc.setLineWidth(0.5);
+          doc.roundedRect(fx, ty - 6, wf + 11, 10, 5, 5, 'FD');
+          doc.setTextColor(14, 116, 144);
+          doc.text(fab, fx + 5.5, ty + 0.6);
+        }
+      }
       ty += 12;
 
       // Composição e origem, quando a ficha existe: é o que o lojista pergunta
@@ -8230,23 +8311,19 @@ const _fotoPlan = new Map();
 function fotoPlanilha(o){
   const chave = o.artigo + '|' + o.cor;
   if(_fotoPlan.has(chave)) return _fotoPlan.get(chave);
-  const pr = new Promise(res => {
-    const img = new Image();
-    img.onload = () => {
-      try{
-        const k = Math.min(1, 320 / Math.max(img.naturalWidth, img.naturalHeight));
-        const cv = document.createElement('canvas');
-        cv.width = Math.max(1, Math.round(img.naturalWidth * k));
-        cv.height = Math.max(1, Math.round(img.naturalHeight * k));
-        const cx = cv.getContext('2d');
-        cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
-        cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
-        cx.drawImage(img, 0, 0, cv.width, cv.height);
-        res({ url: cv.toDataURL('image/jpeg', 0.9), w: cv.width, h: cv.height });
-      }catch(_){ res(null); }
-    };
-    img.onerror = () => res(null);
-    img.src = foto(o);
+  const pr = imagemCarregada(o).then(img => {
+    if(!img) return null;
+    try{
+      const k = Math.min(1, 320 / Math.max(img.naturalWidth, img.naturalHeight));
+      const cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(img.naturalWidth * k));
+      cv.height = Math.max(1, Math.round(img.naturalHeight * k));
+      const cx = cv.getContext('2d');
+      cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+      cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+      cx.drawImage(img, 0, 0, cv.width, cv.height);
+      return { url: cv.toDataURL('image/jpeg', 0.9), w: cv.width, h: cv.height };
+    }catch(_){ return null; }
   });
   _fotoPlan.set(chave, pr);
   return pr;
@@ -10118,7 +10195,12 @@ function pintarMarca(){
   }
   document.title = m.nome + ' · Vitrine CMS';
   const outro = MARCAS[MARCA === 'oly' ? 'ua' : 'oly'];
+  /* O botao de trocar de marca saiu do cabecalho para dentro do menu e, em
+     algumas telas, nao existe. Sem esta guarda a funcao estourava aqui e
+     deixava de chamar montarFormulario() no fim - o erro aparecia no console
+     bem longe da causa. */
   const b = $('btnMarca');
+  if(!b){ montarFormulario(); return; }
   b.title = 'Trocar para ' + outro.nome;
   b.setAttribute('aria-label', m.nome + ' — trocar para ' + outro.nome);
   b.innerHTML = `<img src="${esc(m.logo)}" alt="${esc(m.nome)}">
