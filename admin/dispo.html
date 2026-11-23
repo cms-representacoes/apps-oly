@@ -600,6 +600,15 @@
     .row-antecipa td:first-child { border-left:3px solid #534AB7; }
     .row-nova-dispo td { background:#f0fdf4 !important; }
     .badge-nova { font-size:10px; background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border-radius:999px; padding:1px 7px; margin-left:5px; font-weight:700; box-shadow:0 2px 6px rgba(22,163,74,.3); }
+    /* A faixa de "onde esta o lote". O display mora aqui, e nao no
+       elemento: com style="display:flex" inline, .hidden (display:none)
+       perdia para ele e a faixa nunca sumia - ela ficava na tela falando
+       de um lote de duas buscas atras. */
+    #dispoAchouFaixa:not(.hidden){ display:flex; gap:11px; align-items:center; flex-wrap:wrap;
+      border:1px solid #a5f3fc; background:#ecfeff; border-radius:14px;
+      padding:10px 14px; margin-bottom:10px; }
+    .dark #dispoAchouFaixa:not(.hidden){ background:rgba(8,145,178,.12)!important;
+      border-color:rgba(8,145,178,.35)!important; }
     /* o selo do desmembramento: verde quando acabou, ambar quando falta */
     .selo-desm{ font-size:9.5px; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
       border-radius:999px; padding:1px 7px; margin-left:6px; white-space:nowrap;
@@ -1350,9 +1359,7 @@
         <!-- TABLE -->
         <!-- A busca trouxe linhas, mas nao o Nº procurado: a faixa diz onde
              ele esta. Ver avisarLoteForaDaLista. -->
-        <div id="dispoAchouFaixa" class="hidden" style="display:flex;gap:11px;align-items:center;
-             flex-wrap:wrap;border:1px solid #a5f3fc;background:#ecfeff;border-radius:14px;
-             padding:10px 14px;margin-bottom:10px"></div>
+        <div id="dispoAchouFaixa" class="hidden"></div>
 
         <div id="tableWrap" class="table-wrap hidden">
           <table class="col-hide-pendente col-hide-aprovado col-hide-pedidoMae col-hide-desmembrado">
@@ -1811,12 +1818,31 @@ function loteTodoDesmembrado(row){
 function seloDesmembrado(row){
   const c = desmFeitosPorLote().get(String(row.num || ''));
   if(!c || !c.total || !c.prontas) return '';
-  const tudo = c.prontas >= c.total;
-  const dica = tudo
-    ? `As ${c.total} linha(s) pedidas deste lote ja foram digitadas no EBM`
+  /* O saldo que sobrou manda. O 496 tinha as duas linhas pedidas digitadas
+     no EBM, mas elas levaram 24 dos 48 pares: contando so linha, o selo
+     dizia "desmembrado" com meio lote ainda na mao. Quem olha a lista
+     conta PAR, nao linha pedida. */
+  const sobra = Math.max(0, Number(row.saldoReal || 0));
+  const feitos = Number(c.paresFeitos || 0);
+  const todasAsLinhas = c.prontas >= c.total;
+  const tudo = todasAsLinhas && sobra <= 0;
+  if(tudo){
+    const dica = `As ${c.total} linha(s) pedidas foram digitadas no EBM e o lote nao tem mais saldo`;
+    return `<span class="selo-desm ok" title="${dica}">desmembrado</span>`;
+  }
+  /* Com par sobrando, a conta que interessa e de pares; sem par sobrando e
+     com linha esperando, e de linhas. A unidade vai escrita no selo - "3/9"
+     sozinho nao diz se sao linhas ou pares. */
+  const porPar = sobra > 0 && feitos > 0;
+  const rotulo = porPar
+    ? `parcial ${formatInt(feitos)}/${formatInt(feitos + sobra)} pares`
+    : `parcial ${c.prontas}/${c.total} linhas`;
+  const dica = porPar
+    ? `${formatInt(feitos)} dos ${formatInt(feitos + sobra)} pares ja foram para o EBM; `
+      + `sobram ${formatInt(sobra)} para distribuir`
+      + (todasAsLinhas ? '' : ` · ${c.prontas} de ${c.total} linhas digitadas`)
     : `${c.prontas} de ${c.total} linha(s) ja digitadas no EBM; o resto continua na fila`;
-  return `<span class="selo-desm${tudo ? ' ok' : ''}" title="${dica}">`
-       + (tudo ? 'desmembrado' : `parcial ${c.prontas}/${c.total}`) + '</span>';
+  return `<span class="selo-desm" title="${dica}">${rotulo}</span>`;
 }
 
 function getSituacao(saldoReal, saldo){
@@ -5972,6 +5998,13 @@ function gradesIguais(a, b){
 
 function renderDispo(){
   if(!STATE.dispoRows.length) return;
+  /* Os avisos de "onde esta o lote" morrem aqui, no comeco: quem precisar
+     deles os acende de novo mais abaixo, neste mesmo desenho. Ele viu em
+     23/11/2026 uma faixa falando de um lote que ja estava na tela - aviso
+     de um desenho anterior que sobreviveu. Apagar na entrada fecha essa
+     porta para qualquer caminho, inclusive os que ainda nao conheco. */
+  $('dispoAchouFaixa')?.classList.add('hidden');
+  $('dispoAchouLote')?.classList.add('hidden');
   pintarAvisoDatasVelhas();     // some sozinha quando nao ha pedido para tras
 
   /* A coluna "Situação" saiu da tabela em 19/11/2026: dizia o que o Saldo
@@ -7086,7 +7119,21 @@ let _tBuscaDispo = null;
 $('dispoSearch').addEventListener('input', (e) => {
   STATE.searchQuery = e.target.value;
   clearTimeout(_tBuscaDispo);
-  if(!e.target.value){ renderDispo(); return; }
+  if(!e.target.value){
+    /* Apagar a busca limpa tambem o funil do Nº. Ele costuma ter sido ligado
+       pelo botao "Ver o lote" do aviso, e quem apaga o campo quer a lista
+       inteira de volta - nao uma lista ainda presa a um Nº que o campo nao
+       mostra mais. Pedido dele em 23/11/2026. */
+    if(STATE.filtroNum){
+      STATE.filtroNum = '';
+      const campoNum = $('inputFiltroNum');
+      if(campoNum) campoNum.value = '';
+      const conta = $('contaFiltroNum');
+      if(conta) conta.textContent = '';
+    }
+    renderDispo();
+    return;
+  }
   _tBuscaDispo = setTimeout(renderDispo, 130);
 });
 
