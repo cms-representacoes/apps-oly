@@ -9503,6 +9503,24 @@ const reservaSaldo = p => p && !p.archived && RESERVA_STATUS.has(norm(p.status |
 const unidadesDoItem = it => Number(it.totalUnits) ||
   (it.mode === 'boxed' ? Number(it.amount || 0) * Number(it.packSize || 12) : Number(it.amount || 0));
 // Data como o Repasses compara duplicata: dd/mm/aaaa.
+/* O mês de uma data, nos dois formatos que circulam por aqui: '2027-01-30'
+   da DISPO e '30/01/2027' do que já foi para o pedido. Vazio quando não dá
+   para saber - e aí nada é tratado como duplicado. */
+const mesAnoDaData = v => {
+  const t = String(v == null ? '' : v).trim();
+  let m = /^(\d{4})-(\d{2})/.exec(t);
+  if(m) return m[1] + '-' + m[2];
+  m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(t);
+  if(m) return m[3] + '-' + m[2];
+  return '';
+};
+const MES_EXTENSO = ['janeiro','fevereiro','março','abril','maio','junho',
+                     'julho','agosto','setembro','outubro','novembro','dezembro'];
+const mesPorExtenso = mes => {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(mes || ''));
+  return m ? `${MES_EXTENSO[Number(m[2]) - 1]}/${m[1]}` : '';
+};
+
 const dataCurta = v => {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v || ''));
   return m ? `${m[3]}/${m[2]}/${m[1]}` : String(v || '').trim();
@@ -9757,27 +9775,52 @@ async function enviarRepasse(op = {}){
     return { ...l, amount: c ? c.cabe : Number(l.it.amount) };
   }).filter(l => l.amount > 0);
 
-  // ── 2) pedido parecido para o mesmo cliente ──
+  /* ── 2) pedido parecido para o mesmo cliente ──────────────────────────
+     Por MÊS desde 23/11/2026, decisão dele: o mesmo par chegando duas vezes
+     no mesmo mês é duplicidade; em meses diferentes é informação, e a palavra
+     "duplicado" não aparece. Antes a comparação era pela data cheia, então
+     janeiro e janeiro com dias diferentes passavam batido. */
   if(!op.aceitouDuplicata){
-    const chaves = new Set(vao.map(l =>
-      `${norm(l.cod)}|${norm(l.row.cor)}|${dataCurta(l.row.dataEntrega)}`));
-    const achados = [];
+    const porMes = new Map();        // artigo|cor|mês -> o que vai agora
+    for(const l of vao) porMes.set(`${norm(l.cod)}|${norm(l.row.cor)}|${mesAnoDaData(l.row.dataEntrega)}`,
+                                   { cod:l.cod, cor:l.row.cor, mes:mesAnoDaData(l.row.dataEntrega) });
+    const porProduto = new Map();    // artigo|cor -> meses que vão agora
+    for(const v of porMes.values()){
+      const k = `${norm(v.cod)}|${norm(v.cor)}`;
+      if(!porProduto.has(k)) porProduto.set(k, new Set());
+      if(v.mes) porProduto.get(k).add(v.mes);
+    }
+    const iguais = [], outros = [];
     for(const p of pedidos){
       if(norm(p && p.clienteCodigo) !== norm(cliente)) continue;
+      // pedido cancelado não duplica nada - ele deixou de existir
+      if(String(p.status || '') === 'Cancelado') continue;
       for(const it of (p.items || [])){
-        if(chaves.has(`${norm(it.codigo)}|${norm(it.cor)}|${dataCurta(it.prevFaturamento)}`))
-          achados.push(`<li><b>${esc(it.produto || it.codigo)}</b> ${esc(it.cor)} · fatura ` +
-            `${esc(dataCurta(it.prevFaturamento))} — pedido ${esc(p.id)} (${esc(p.status || 'Pendente')})</li>`);
+        const k = `${norm(it.codigo)}|${norm(it.cor)}`;
+        const meses = porProduto.get(k);
+        if(!meses) continue;
+        const mesDele = mesAnoDaData(it.prevFaturamento);
+        const linha = `<li><b>${esc(it.produto || it.codigo)}</b> ${esc(it.cor)} · ` +
+          `${esc(mesPorExtenso(mesDele) || dataCurta(it.prevFaturamento))} — pedido ` +
+          `${esc(p.id)} (${esc(p.status || 'Pendente')})</li>`;
+        if(mesDele && meses.has(mesDele)) iguais.push(linha); else outros.push(linha);
       }
     }
-    if(achados.length){
+    if(iguais.length || outros.length){
       liberado(btn);
+      const dup = iguais.length > 0;
+      const lista = [...new Set(dup ? iguais : outros)].join('');
       mostrarDialogo({
-        titulo:'Esse cliente já tem pedido parecido',
-        texto:`Já existe pedido do cliente <b>${esc(cliente)}</b> com:` +
-              `<ul class="dlg-lista">${[...new Set(achados)].join('')}</ul>Enviar mesmo assim?`,
-        ok:'Enviar mesmo assim', cancelar:'Voltar',
-        aoConfirmar: () => enviarRepasse({ ...op, aceitouDuplicata:true })
+        titulo: dup ? 'Produto duplicado neste mês' : 'Esse cliente já tem este produto',
+        texto: dup
+          ? `O cliente <b>${esc(cliente)}</b> já tem, <b>no mesmo mês</b>:` +
+            `<ul class="dlg-lista">${lista}</ul>Enviar mesmo assim?`
+          : `O cliente <b>${esc(cliente)}</b> já tem este produto, <b>em outro mês</b>:` +
+            `<ul class="dlg-lista">${lista}</ul>Não é duplicidade. Quer pedir também?`,
+        ok: dup ? 'Enviar mesmo assim' : 'Pedir assim mesmo',
+        cancelar:'Voltar',
+        aoConfirmar: () => enviarRepasse({ ...op, aceitouDuplicata:true,
+                                           duplicataNoMes: dup })
       });
       return;
     }
@@ -9790,7 +9833,7 @@ async function enviarRepasse(op = {}){
   // (js/carteira.js): mostra GCI e data de faturamento, e quem decide é o
   // vendedor. Fica depois das duas de cima de propósito: só pergunta sobre o
   // que realmente vai embora.
-  let avisoCarteira = false;
+  let avisoCarteira = false, duplicadoNoMes = !!op.duplicataNoMes;
   if(window.CarteiraAviso){
     passo(btn, 'Conferindo a carteira…');
     const resp = await CarteiraAviso.conferir({
@@ -9798,6 +9841,9 @@ async function enviarRepasse(op = {}){
       itens: vao.map(l => ({
         codigo: l.cod,
         cor: l.row.cor,
+        // a data manda: é dela que sai o mês, e é o mês que decide se o
+        // aviso fala em duplicidade ou só conta que o cliente já tem
+        data: l.row.dataEntrega || '',
         produto: l.nome || l.it.nome || l.cod,
         pares: l.amount * l.pack,
         // a miniatura que o card já usa: o nome do arquivo nem sempre é
@@ -9806,7 +9852,10 @@ async function enviarRepasse(op = {}){
       }))
     });
     if(resp === 'revisar'){ liberado(btn); return; }
-    avisoCarteira = resp === 'enviar';
+    /* 'enviar-dup' é a duplicidade de verdade (mesmo mês) e marca o pedido;
+       'enviar' é o aviso de outro mês, que só registra que ele viu. */
+    avisoCarteira = resp === 'enviar' || resp === 'enviar-dup';
+    if(resp === 'enviar-dup') duplicadoNoMes = true;
   }
 
   // ── 3) o pedido, no formato do Repasses ──
@@ -9838,7 +9887,10 @@ async function enviarRepasse(op = {}){
     createdAt: agora, updatedAt: agora,
     status: 'Pendente',
     archived: false,
-    isDuplicate: !!op.aceitouDuplicata,
+    /* O selo "Duplicata" no admin passou a valer só para o MESMO MÊS
+       (23/11/2026): vem do aviso de pedido parecido, que agora compara mês,
+       ou da carteira, quando o cliente já tem aquele par no mês. */
+    isDuplicate: !!op.aceitouDuplicata || duplicadoNoMes,
     // Viu o aviso de carteira e mandou mesmo assim: o admin precisa saber que
     // a decisão foi tomada com a informação na frente.
     avisoCarteira,

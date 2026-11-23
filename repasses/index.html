@@ -4973,7 +4973,9 @@ async function submitOrder(options = {}){
         itens: items.map(i => ({ codigo:i.codigo, cor:i.cor, produto:i.produto, pares:i.totalUnits }))
       });
       if(resposta === 'revisar') return;      // o `finally` devolve o botão
-      avisoCarteira = resposta === 'enviar';
+      // 'enviar-dup' = duplicidade no mesmo mês; 'enviar' = outro mês. Esta
+      // tela só registra que o aviso foi visto (ver js/carteira.js).
+      avisoCarteira = resposta === 'enviar' || resposta === 'enviar-dup';
     }
 
     // ── DETECÇÃO DE DUPLICATAS ────────────────────────────────────────────

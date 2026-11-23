@@ -65,6 +65,39 @@
     return `${String(dt.getUTCDate()).padStart(2, '0')}/${MESES[dt.getUTCMonth()]}`;
   }
 
+  /* ── o mês, que decide a palavra ────────────────────────────────────────
+     Desde 23/11/2026 "duplicado" é só o que cai no MESMO MÊS. Mês diferente
+     continua aparecendo - o cliente precisa saber que já tem -, mas como
+     aviso, não como duplicidade, e sem marcar o pedido.
+     Os dois lados viram "AAAA-MM": a carteira guarda dia inteiro desde
+     1970 e o repasse carrega a data em texto (30/01/2027 ou 2027-01-30). */
+  function mesDoDia(d) {
+    if (d == null || d < 0) return '';
+    const dt = new Date(d * 86400000);
+    return dt.getUTCFullYear() + '-' + String(dt.getUTCMonth() + 1).padStart(2, '0');
+  }
+  function mesDoTexto(v) {
+    const t = String(v == null ? '' : v).trim();
+    if (!t) return '';
+    let m = /^(\d{4})-(\d{2})/.exec(t);              // 2027-01-30
+    if (m) return m[1] + '-' + m[2];
+    m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(t);        // 30/01/2027
+    if (m) return m[3] + '-' + m[2];
+    m = /^(\d{2})\/(\d{4})/.exec(t);                 // 01/2027
+    if (m) return m[2] + '-' + m[1];
+    return '';
+  }
+  const MES_EXT = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+                   'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  function mesPorExtenso(mes) {
+    const m = /^(\d{4})-(\d{2})$/.exec(String(mes || ''));
+    return m ? `${MES_EXT[Number(m[2]) - 1]}/${m[1]}` : '';
+  }
+  function mesCurto(mes) {
+    const m = /^(\d{4})-(\d{2})$/.exec(String(mes || ''));
+    return m ? `${MESES[Number(m[2]) - 1]}/${m[1].slice(2)}` : '';
+  }
+
   /* ── a base ──────────────────────────────────────────────────────────── */
 
   function montarIndice(b) {
@@ -138,9 +171,18 @@
     for (const it of itens || []) {
       const k = chave(it.codigo) + '|' + chave(it.cor);
       const ja = juntos.get(k);
-      if (ja) { ja.pares += Number(it.pares || 0); ja.imagem = ja.imagem || it.imagem; }
-      else juntos.set(k, { codigo: it.codigo, cor: it.cor, produto: it.produto || it.nome,
-                           pares: Number(it.pares || 0), imagem: it.imagem || '' });
+      /* Dois lotes do mesmo artigo e cor, em meses diferentes, viram duas
+         entradas: é o mês que decide a palavra, então ele entra na chave. */
+      const mes = mesDoTexto(it.data || it.dataEntrega || it.prevFaturamento || it.prev);
+      if (ja) {
+        ja.pares += Number(it.pares || 0);
+        ja.imagem = ja.imagem || it.imagem;
+        if (mes) ja.meses.add(mes);
+      } else {
+        juntos.set(k, { codigo: it.codigo, cor: it.cor, produto: it.produto || it.nome,
+                        pares: Number(it.pares || 0), imagem: it.imagem || '',
+                        meses: new Set(mes ? [mes] : []) });
+      }
     }
 
     for (const it of juntos.values()) {
@@ -149,17 +191,25 @@
       if (!ref) continue;
       const cart = reg.cart.get(ref) || [];
       const fat = reg.fat.get(ref) || [];
+      const meses = it.meses || new Set();
+      /* Cada linha da carteira sabe se bate com o mês do repasse. Sem a data
+         do repasse (chamador antigo) nada bate, e o aviso sai como "já tem",
+         nunca como duplicado - prefiro errar para o lado de não acusar. */
+      const marcar = x => ({ ...x, mes: mesDoDia(x.dia),
+                             mesmoMes: meses.has(mesDoDia(x.dia)) });
       const linha = {
         produto: it.produto || it.nome || ref,
         codigo: ref,
         cor,
         imagem: it.imagem || '',
         pares: Number(it.pares || 0),
-        cart: cart.filter(x => x.cor === cor),
-        fat: fat.filter(x => x.cor === cor),
+        meses: [...meses].sort(),
+        cart: cart.filter(x => x.cor === cor).map(marcar),
+        fat: fat.filter(x => x.cor === cor).map(marcar),
         outrasCart: cart.filter(x => x.cor !== cor),
         outrasFat: fat.filter(x => x.cor !== cor)
       };
+      linha.duplicado = linha.cart.some(x => x.mesmoMes) || linha.fat.some(x => x.mesmoMes);
       // Dispara só a mesma cor: é o par que chega igual na loja. Cor diferente
       // entra como contexto, nunca como motivo do aviso.
       if (linha.cart.length || linha.fat.length) alertas.push(linha);
@@ -202,6 +252,20 @@
   .cav-dup{display:inline-block;margin:5px 0 0;font-size:10.5px;font-weight:800;
     letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:999px;
     background:#fee2e2;color:#b91c1c}
+  /* Mês diferente não é duplicidade: muda a palavra e muda a cor, do
+     vermelho para o azul de informação. */
+  .cav-dup.mes{background:#e0f2fe;color:#075985}
+  .cav-topo.dup{background:#fef2f2;border-bottom-color:#fecaca}
+  .cav-topo.dup .cav-ico{background:#fee2e2;color:#b91c1c}
+  .cav-topo.dup .cav-chapeu{color:#b91c1c}
+  .cav-topo.dup .cav-tit{color:#7f1d1d}
+  .cav-topo.dup .cav-sub{color:#991b1b}
+  .cav-mesmo,.cav-outro{font-size:10.5px;font-weight:800;text-transform:uppercase;
+    letter-spacing:.04em;padding:2px 7px;border-radius:999px;margin-left:auto}
+  .cav-mesmo{background:#fee2e2;color:#b91c1c}
+  .cav-outro{background:#e2e8f0;color:#475569}
+  .cav-bts .cav-ok.dup{background:#b91c1c}
+  .cav-bts .cav-ok.dup:hover{background:#991b1b}
   .cav-rep{margin:3px 0 0;font-size:12px;font-weight:700;color:#0d9488}
   .cav-linhas{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
   .cav-linhas li{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;font-size:12.5px;
@@ -258,11 +322,15 @@
     cssPosto = true;
   }
 
+  const selo = item => item.mesmoMes
+    ? '<span class="cav-mesmo">mesmo mês</span>'
+    : (item.mes ? `<span class="cav-outro">${esc(mesCurto(item.mes))}</span>` : '');
   const linhaHtml = (item, tipo) =>
     `<li class="cav-l-${tipo}"><span class="cav-tag">${tipo === 'cart' ? 'Em carteira' : 'Faturado'}</span>` +
     `<span class="cav-dado">GCI ${esc(item.gci || '—')}</span>` +
     `<span class="cav-dado"><small>${tipo === 'cart' ? 'fatura em' : 'saiu em'}</small> ${esc(diaBR(item.dia) || '—')}</span>` +
-    `<span class="cav-dado">${nf(item.pares)} ${item.pares === 1 ? 'par' : 'pares'}</span></li>`;
+    `<span class="cav-dado">${nf(item.pares)} ${item.pares === 1 ? 'par' : 'pares'}</span>` +
+    selo(item) + `</li>`;
 
   /* Um cliente grande tem seis, oito encomendas do mesmo par em meses
      seguidos. Listar todas empurra o botão para fora da tela do celular: as
@@ -326,8 +394,10 @@
           ${fotoHtml(a)}
           <div>
             <p class="cav-nome">${esc(a.produto)} <span>· ${esc(a.cor)}</span></p>
-            <p class="cav-dup">Duplicado · mesma cor</p>
-            ${a.pares ? `<p class="cav-rep">neste repasse: ${nf(a.pares)} ${a.pares === 1 ? 'par' : 'pares'}</p>` : ''}
+            <p class="cav-dup${a.duplicado ? '' : ' mes'}">${
+              a.duplicado ? 'Duplicado · mesmo mês' : 'Já tem · outro mês'}</p>
+            ${a.pares ? `<p class="cav-rep">neste repasse: ${nf(a.pares)} ${a.pares === 1 ? 'par' : 'pares'}${
+              (a.meses && a.meses.length) ? ' · ' + a.meses.map(mesCurto).join(' e ') : ''}</p>` : ''}
           </div>
         </div>
         <ul class="cav-linhas">
@@ -358,28 +428,47 @@
     const velha = idade != null && idade > DIAS_BASE_VELHA;
     const antes = document.activeElement;
 
+    /* Duas caras, uma tela: duplicidade de verdade (mesmo mês) fala em
+       vermelho e chama o que é; mês diferente é informação, e a palavra
+       "duplicado" não aparece em lugar nenhum. */
+    const dup = res.alertas.some(a => a.duplicado);
+    const nDup = res.alertas.filter(a => a.duplicado).length;
+    /* Quando o cliente tem o par em um mês só, o cabeçalho nomeia o mês;
+       com vários, nomear um deles seria meia verdade - a lista abaixo já
+       mostra todos, cada linha com o seu. */
+    const mesesOutros = [...new Set(res.alertas
+      .flatMap(a => [...a.cart, ...a.fat].filter(x => !x.mesmoMes && x.mes).map(x => x.mes))
+    )].sort();
+    const mesOutro = mesesOutros.length === 1 ? mesesOutros[0] : '';
+
     const f = document.createElement('div');
     f.className = 'cav-fundo';
     f.innerHTML = `<div class="cav-folha" role="alertdialog" aria-modal="true" aria-labelledby="cav-tit">
-      <header class="cav-topo">
+      <header class="cav-topo${dup ? ' dup' : ''}">
         <div class="cav-ico">${ICO}</div>
         <div>
           <p class="cav-chapeu">Confira antes de enviar</p>
-          <h2 class="cav-tit" id="cav-tit">${n === 1 ? 'Produto duplicado' : `${nf(n)} produtos duplicados`}</h2>
-          <p class="cav-sub">Cliente ${esc(cliente)}</p>
+          <h2 class="cav-tit" id="cav-tit">${dup
+            ? (nDup === 1 ? 'Produto duplicado' : `${nf(nDup)} produtos duplicados`)
+            : (n === 1 ? 'Esse cliente já tem este produto' : `Esse cliente já tem ${nf(n)} destes produtos`)}</h2>
+          <p class="cav-sub">Cliente ${esc(cliente)}${dup ? ' · chega no mesmo mês'
+            : (mesOutro ? ' · ele já tem para ' + esc(mesPorExtenso(mesOutro))
+                        : (mesesOutros.length > 1 ? ' · ele já tem em outros meses' : ''))}</p>
         </div>
       </header>
       <div class="cav-corpo">
-        <p class="cav-intro">Mesmo artigo e <b>mesma cor</b> do que ${n === 1 ? 'já está' : 'já estão'} na carteira do cliente
-          ou saiu para ele nos últimos ${esc((base && base.janela) || 90)} dias. Enviando assim, a loja recebe o mesmo par duas vezes.</p>
+        <p class="cav-intro">${dup
+          ? `Mesmo artigo, <b>mesma cor</b> e <b>mesmo mês</b> do que ${nDup === 1 ? 'já está' : 'já estão'} na carteira do cliente ou saiu para ele nos últimos ${esc((base && base.janela) || 90)} dias. Enviando assim, a loja recebe o mesmo par duas vezes no mês.`
+          : `Mesmo artigo e <b>mesma cor</b>, mas a entrega cai em <b>outro mês</b> — não é duplicidade. Vale conferir se a loja precisa dos dois.`}</p>
         ${corpoHtml(res)}
       </div>
       <footer class="cav-pe">
         <p class="cav-base${velha ? ' velha' : ''}">Carteira da Detalhada de ${esc(diaBR(base && base.dataDia) || '—')}` +
         `${velha ? ` · a base está com ${nf(idade)} dias; o que entrou depois não aparece aqui` : ''}</p>
         <div class="cav-bts">
-          <button type="button" class="cav-nao">Revisar o pedido</button>
-          <button type="button" class="cav-ok">Enviar mesmo assim</button>
+          <button type="button" class="cav-nao">${dup ? 'Revisar o pedido' : 'Voltar à sacola'}</button>
+          <button type="button" class="cav-ok${dup ? ' dup' : ''}">${
+            dup ? 'Enviar mesmo assim' : 'Pedir assim mesmo'}</button>
         </div>
       </footer>
     </div>`;
@@ -403,7 +492,7 @@
         else if (e.key === 'Tab') { e.preventDefault(); (document.activeElement === btOk ? btNao : btOk).focus(); }
       };
       window.addEventListener('keydown', tecla, true);
-      btOk.onclick = () => fim('enviar');
+      btOk.onclick = () => fim(dup ? 'enviar-dup' : 'enviar');
       btNao.onclick = () => fim('revisar');
       // Clicar fora é voltar, nunca enviar.
       f.addEventListener('click', e => { if (e.target === f) fim('revisar'); });
@@ -459,7 +548,10 @@
 
   /* ── a porta de entrada ──────────────────────────────────────────────── */
 
-  /** 'livre' (nada parecido) · 'enviar' (viu o aviso e mandou) · 'revisar'. */
+  /** 'livre' (nada parecido) · 'enviar' (viu o aviso de OUTRO MÊS e mandou) ·
+   *  'enviar-dup' (viu a duplicidade do MESMO MÊS e mandou) · 'revisar'.
+   *  Quem chama passa a data prevista de cada item (campo `data`): é dela que
+   *  sai o mês, e sem ela nada é tratado como duplicado. */
   async function conferir({ cliente, itens } = {}) {
     const cod = chave(cliente);
     if (!cod || !Array.isArray(itens) || !itens.length) return 'livre';
