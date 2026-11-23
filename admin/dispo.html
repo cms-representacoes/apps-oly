@@ -600,6 +600,13 @@
     .row-antecipa td:first-child { border-left:3px solid #534AB7; }
     .row-nova-dispo td { background:#f0fdf4 !important; }
     .badge-nova { font-size:10px; background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border-radius:999px; padding:1px 7px; margin-left:5px; font-weight:700; box-shadow:0 2px 6px rgba(22,163,74,.3); }
+    /* o selo do desmembramento: verde quando acabou, ambar quando falta */
+    .selo-desm{ font-size:9.5px; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
+      border-radius:999px; padding:1px 7px; margin-left:6px; white-space:nowrap;
+      background:#FEF3C7; color:#92400E; border:1px solid #FDE68A; cursor:help; }
+    .selo-desm.ok{ background:#DCFCE7; color:#166534; border-color:#BBF7D0; }
+    .dark .selo-desm{ background:rgba(180,83,9,.22)!important; color:#fcd34d!important; border-color:rgba(180,83,9,.4)!important; }
+    .dark .selo-desm.ok{ background:rgba(22,101,52,.25)!important; color:#86efac!important; border-color:rgba(22,101,52,.45)!important; }
     .badge-parcial { font-size:10px; background:linear-gradient(135deg,#fb923c,#c2410c); color:#fff; border-radius:999px; padding:1px 7px; margin-left:5px; font-weight:700; box-shadow:0 2px 6px rgba(194,65,12,.3); }
     .badge-total { font-size:10px; background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border-radius:999px; padding:1px 7px; margin-left:5px; font-weight:700; box-shadow:0 2px 6px rgba(22,163,74,.3); }
     /* Tooltips */
@@ -1654,9 +1661,11 @@ function buildImpactMap(){
       const units = getItemUnits(item);
       const num = sanitizeDisplayText(String(item.num || ''));
       if(num){
-        const c = feitos.get(num) || { total:0, prontas:0 };
+        const c = feitos.get(num) || { total:0, prontas:0, pares:0, paresFeitos:0 };
         c.total++;
-        if(linhaJaDesmembrada(num, order, item)) c.prontas++;
+        c.pares += units;
+        // os pares que ja foram para o EBM: e o numero que o modal mostra
+        if(linhaJaDesmembrada(num, order, item)){ c.prontas++; c.paresFeitos += units; }
         feitos.set(num, c);
         if(status === 'Pendente'){
           pendMap.set(num, (pendMap.get(num) || 0) + units);
@@ -1679,11 +1688,124 @@ function buildImpactMap(){
   return { pendMap, aprovMap, pendGci, aprovGci };
 }
 
+
+/* ── Conclusão do desmembramento ────────────────────────────────────────
+   A tela avisa UMA vez por lote concluído: guarda o que já mostrou em
+   dispo_desm_avisados (Nº + quantas linhas), então remarcar não repete o
+   aviso, e um lote que ganhou linha nova e foi concluído de novo avisa de
+   novo. Hoje a marca vem da planilha ou da mão; quando o robô passar a
+   avisar sozinho, é aqui que a rodada dele aparece. */
+const DESM_AVISADOS = 'dispo_desm_avisados';
+
+function _desmAvisados(){
+  try{ return new Set(JSON.parse(localStorage.getItem(DESM_AVISADOS) || '[]')); }
+  catch(e){ return new Set(); }
+}
+function _guardarAvisados(set){
+  try{ localStorage.setItem(DESM_AVISADOS, JSON.stringify([...set].slice(-400))); }
+  catch(e){}
+}
+
+function avisarDesmembramentosConcluidos(){
+  const modal = $('desmConcluidoModal');
+  if(!modal) return;
+  const feitos = desmFeitosPorLote();
+  const jaVistos = _desmAvisados();
+  /* Primeira vez nesta máquina: 264 lotes já vinham concluídos da planilha
+     do Chris, e o aviso viraria um despejo do histórico. Então a primeira
+     carga só anota o que existe; o modal passa a valer do próximo
+     desmembramento em diante - que é o que ele quer ver. */
+  const primeiraVez = jaVistos.size === 0;
+  const novos = [];
+  for(const [num, c] of feitos){
+    if(!c.total || c.prontas < c.total) continue;      // ainda falta linha
+    const assinatura = num + ':' + c.prontas;
+    if(jaVistos.has(assinatura)) continue;
+    novos.push({ num, c });
+  }
+  if(!novos.length) return;
+  /* A linha vem de computeAllRows, não de STATE.rows: esta última é só o que
+     a aba aberta mostra, e o lote concluído quase nunca está nela - foi isso
+     que fez o modal dizer "encerrado" para um lote com 24 pares sobrando. */
+  const todas = computeAllRows();
+  for(const x of novos) x.row = todas.find(r => String(r.num || '') === String(x.num));
+  if(primeiraVez){
+    for(const x of novos) jaVistos.add(x.num + ':' + x.c.prontas);
+    _guardarAvisados(jaVistos);
+    return;
+  }
+
+  const nf = n => Number(n || 0).toLocaleString('pt-BR');
+  const n = novos.length;
+  $('desmConcluidoTitulo').textContent = n === 1
+    ? 'Lote desmembrado' : `${nf(n)} lotes desmembrados`;
+  const destinos = novos.reduce((s, x) => s + x.c.prontas, 0);
+  const pares = novos.reduce((s, x) => s + (x.c.paresFeitos || 0), 0);
+  $('desmConcluidoSub').textContent =
+    `${nf(destinos)} destino(s) · ${nf(pares)} pares digitados no EBM`;
+
+  const MOSTRA = 6;
+  const sobraLotes = novos.length - MOSTRA;
+  $('desmConcluidoLista').innerHTML = novos.slice(0, MOSTRA).map(x => {
+    const r = x.row || {};
+    const sobra = Number(r.saldoReal || 0);
+    const nome = [r.produto, r.cor].filter(Boolean).join(' · ') || '—';
+    /* O saldo que sobrou é o que decide o destino do lote na tela: zerou,
+       ele vai para Finalizados; sobrou, volta para "A distribuir" com o
+       selo de desmembrado. Dizer isso aqui evita a pergunta seguinte. */
+    const fim = sobra > 0
+      ? `<span style="color:#B45309;font-weight:700">sobram ${nf(sobra)} pares — volta para A distribuir</span>`
+      : `<span style="color:#047857;font-weight:700">lote encerrado — foi para Finalizados</span>`;
+    return `<div style="border:1px solid var(--line,#e2e8f0);border-radius:14px;
+                        padding:11px 13px;margin-bottom:9px">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+        <span style="font-weight:800;font-size:14px">Nº ${safeHtml(x.num)}</span>
+        <span style="font-weight:700;color:var(--muted,#64748b)">${safeHtml(nome)}</span>
+      </div>
+      <div style="margin-top:4px;font-size:12.5px;color:var(--muted,#64748b)">
+        ${nf(x.c.prontas)} destino(s) · ${nf(x.c.paresFeitos || 0)} pares
+      </div>
+      <div style="margin-top:3px;font-size:12.5px">${fim}</div>
+    </div>`;
+  }).join('') + (sobraLotes > 0
+    ? `<div style="font-size:12.5px;font-weight:700;color:var(--muted,#64748b);padding:4px 2px 8px">
+         e mais ${nf(sobraLotes)} lote(s) — a lista inteira está em Finalizados</div>`
+    : '');
+
+  for(const x of novos) jaVistos.add(x.num + ':' + x.c.prontas);
+  _guardarAvisados(jaVistos);
+
+  modal.classList.remove('hidden');
+  const fechar = () => modal.classList.add('hidden');
+  $('desmConcluidoOk').onclick = fechar;
+  $('desmConcluidoVer').onclick = () => {
+    fechar();
+    const pill = document.querySelector('[data-filter="arquivados"]');
+    if(pill) pill.click();
+  };
+  modal.onclick = e => { if(e.target === modal) fechar(); };
+}
+
 /* Lote sem nenhuma linha esperando: tudo o que tinha destino ja foi
    digitado no EBM. */
 function loteTodoDesmembrado(row){
   const c = desmFeitosPorLote().get(String(row.num || ''));
   return !!c && c.total > 0 && c.prontas >= c.total;
+}
+
+/* O que ja foi para o EBM, dito na propria linha. "Desmembrado" quando
+   todas as linhas pedidas foram digitadas; "parcial" quando falta - e o
+   numero diz quanto, porque "parcial" sozinho nao ajuda ninguem a decidir
+   se vale mandar o lote de novo. */
+function seloDesmembrado(row){
+  const c = desmFeitosPorLote().get(String(row.num || ''));
+  if(!c || !c.total || !c.prontas) return '';
+  const tudo = c.prontas >= c.total;
+  const dica = tudo
+    ? `As ${c.total} linha(s) pedidas deste lote ja foram digitadas no EBM`
+    : `${c.prontas} de ${c.total} linha(s) ja digitadas no EBM; o resto continua na fila`;
+  return `<span class="selo-desm${tudo ? ' ok' : ''}" title="${dica}">`
+       + (tudo ? 'desmembrado' : `parcial ${c.prontas}/${c.total}`) + '</span>';
 }
 
 function getSituacao(saldoReal, saldo){
@@ -1804,6 +1926,10 @@ async function loadDispo(){
     atualizarBadgeOcultos();
     renderDispo();
     showToast('DISPO carregada com sucesso.', 'success');
+    /* Depois de pintar: o aviso vem por cima da tela pronta, não no escuro.
+       Ele só aparece quando há lote concluído que esta máquina ainda não
+       mostrou (ver avisarDesmembramentosConcluidos). */
+    setTimeout(avisarDesmembramentosConcluidos, 400);
   }catch(err){
     console.error(err);
     showToast('Não foi possível carregar a DISPO. Verifique se o dispo.json foi importado.', 'error');
@@ -1871,7 +1997,12 @@ function computeRows(){
        sozinho (todas as linhas desmembradas). Sem a segunda metade, o
        lote concluido sairia da fila e nao apareceria em aba nenhuma:
        ele nao tem saldo para "A distribuir" e ninguem o arquivou. */
-    if(f === 'arquivados') return isArquivado(row) || loteTodoDesmembrado(row);
+    /* ... e que nao tenha mais saldo. O lote com as linhas desmembradas
+       mas com par sobrando continua sendo trabalho: ele volta para "A
+       distribuir", com o selo dizendo o que ja foi (ver seloDesmembrado).
+       Sem este "&&", o 496 do teste de 23/11 aparecia nas duas abas. */
+    if(f === 'arquivados')
+      return isArquivado(row) || (loteTodoDesmembrado(row) && Number(row.saldoReal || 0) <= 0);
     if(f === 'ocultos') return isOculto(row);
     // Arquivado só aparece na aba dele. Vale para TODAS as outras, inclusive
     // a busca por Nº: quem arquivou tirou da vista de propósito.
@@ -5865,6 +5996,9 @@ function renderDispo(){
     const key = desmKey(row);
     const savedDesm = STATE.desmembramentos && STATE.desmembramentos[key] ? STATE.desmembramentos[key] : {};
     const totalDesm = Object.values(savedDesm).reduce((s, v) => s + Number(v || 0), 0);
+    /* Vinha de quando o desmembramento guardava QUANTIDADE por linha; hoje
+       a marca e a palavra "Desmembrado" (ver seloDesmembrado), entao estes
+       dois badges so acendem em registro antigo. */
     const isParcial = totalDesm > 0 && row.saldoReal > 0;
     const isTotal   = totalDesm > 0 && row.saldoReal <= 0;
     const desmBadge = isTotal
@@ -5898,7 +6032,7 @@ function renderDispo(){
         <td>
           <span class="font-extrabold text-slate-800">${safeHtml(row.produto)}</span>
           <span class="text-xs text-slate-400 font-semibold ml-1">${safeHtml(row.codigo||'')}</span>
-          ${desmBadge}
+          ${desmBadge}${seloDesmembrado(row)}
         </td>
         <td class="text-slate-500 font-semibold">${safeHtml(row.cor)}</td>
         <td class="col-origem" title="${safeHtml(tituloOrigem)}">${origemCel}</td>
@@ -7739,5 +7873,39 @@ loadDispo();
     </div>
   </div>
 </div>
+
+  <!-- Conclusão do desmembramento: ver avisarDesmembramentosConcluidos -->
+  <div id="desmConcluidoModal" class="hidden fixed inset-0 z-[95] flex items-center justify-center p-4"
+       style="background:rgba(15,23,42,.45)" role="alertdialog" aria-modal="true"
+       aria-labelledby="desmConcluidoTitulo">
+    <div class="rounded-3xl shadow-2xl w-full max-w-[560px] overflow-hidden"
+         style="background:var(--card,#fff);max-height:88vh;display:flex;flex-direction:column">
+      <div style="display:flex;gap:12px;align-items:flex-start;padding:18px 20px 16px;
+                  background:#ECFDF5;border-bottom:1px solid #A7F3D0">
+        <div style="width:40px;height:40px;flex:none;border-radius:12px;display:flex;
+                    align-items:center;justify-content:center;background:#D1FAE5;color:#047857">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <div style="min-width:0">
+          <p style="margin:0;font-size:11.5px;font-weight:800;letter-spacing:.06em;
+                    text-transform:uppercase;color:#047857">Desmembramento</p>
+          <h2 id="desmConcluidoTitulo" style="margin:2px 0 0;font-size:18px;font-weight:800;
+              line-height:1.25;color:#065F46">—</h2>
+          <p id="desmConcluidoSub" style="margin:4px 0 0;font-size:13px;font-weight:600;color:#047857"></p>
+        </div>
+      </div>
+      <div id="desmConcluidoLista" style="padding:14px 20px 6px;overflow-y:auto;flex:1"></div>
+      <div style="border-top:1px solid var(--line,#e2e8f0);background:var(--bg-soft,#f8fafc);
+                  padding:12px 20px;display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" id="desmConcluidoVer"
+                style="height:42px;padding:0 16px;border-radius:12px;border:1px solid var(--line,#e2e8f0);
+                       background:#fff;color:#334155;font-weight:800;font-size:13.5px;cursor:pointer">
+          Ver em Finalizados</button>
+        <button type="button" id="desmConcluidoOk"
+                style="height:42px;padding:0 18px;border-radius:12px;border:0;background:#047857;
+                       color:#fff;font-weight:800;font-size:13.5px;cursor:pointer">Entendi</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
