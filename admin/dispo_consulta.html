@@ -59,6 +59,21 @@
     .chip-fin{ background:var(--success-soft); color:var(--success); border:0.5px solid #bbf7d0; }
     .chip-parc{ background:#ffedd5; color:#c2410c; border:0.5px solid #fdba74; }
 
+    /* As duas visoes da tela. Mesmo trilho da DISPO e do Repasses: diz que
+       a escolha esta um nivel acima dos filtros. */
+    .visao-tabs{ display:inline-flex; gap:3px; padding:3px; background:#eef1f7;
+      border:0.5px solid var(--line,#e2e8f0); border-radius:999px; }
+    .visao-tab{ display:inline-flex; align-items:center; gap:6px; border:0;
+      background:transparent; cursor:pointer; border-radius:999px; padding:5px 14px;
+      font-size:12.5px; font-weight:800; color:#64748b; white-space:nowrap;
+      transition:background .15s, color .15s, box-shadow .15s; }
+    .visao-tab:hover{ color:#0f172a; }
+    .visao-tab.active{ background:#fff; color:var(--brand); box-shadow:0 2px 8px rgba(15,23,42,.14); }
+    .dark .visao-tabs{ background:rgba(255,255,255,.05)!important; border-color:rgba(255,255,255,.10)!important; }
+    .dark .visao-tab{ color:#a9b8d6!important; }
+    .dark .visao-tab.active{ background:#1e293b!important; color:#93c5fd!important; }
+    .cli-linha{ cursor:pointer; }
+    .cli-linha:hover{ background:var(--brand-soft,#eef2ff); }
     .periodo-btn{ border-radius:999px; padding:4px 12px; font-size:12px; font-weight:700; border:none; cursor:pointer; background:transparent; color:#64748b; transition:all .12s; }
     .periodo-btn.active{ background:#fff; color:#0f172a; box-shadow:0 1px 3px rgba(0,0,0,.08); }
     .dark .periodo-btn.active{ background:#334155; color:#f1f5f9; }
@@ -131,8 +146,20 @@
             </button>
           </div>
 
+          <!-- As duas visões -->
+          <div class="visao-tabs" id="visaoTabs" role="tablist" aria-label="Visão">
+            <button type="button" class="visao-tab active" data-visao="lote" role="tab"
+                    aria-selected="true" title="Os lotes desmembrados, como sempre">
+              <i class="fa-solid fa-boxes-stacked"></i>Por lote
+            </button>
+            <button type="button" class="visao-tab" data-visao="cliente" role="tab"
+                    aria-selected="false" title="Quem recebeu e quantos pares, pela planilha do Chris">
+              <i class="fa-solid fa-store"></i>Por cliente
+            </button>
+          </div>
+
           <!-- Filtro período -->
-          <div class="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1 gap-0.5">
+          <div class="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1 gap-0.5" id="filtroPeriodo">
             <button class="periodo-btn active" data-periodo="all">Todos</button>
             <button class="periodo-btn" data-periodo="24h">24h</button>
             <button class="periodo-btn" data-periodo="7d">7d</button>
@@ -183,6 +210,17 @@
       </span>
     </div>
 
+    <!-- resumo da visão por cliente -->
+    <div id="pillsClientes" class="flex flex-wrap items-center gap-2 mb-4 hidden">
+      <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold" style="background:var(--brand-soft);color:var(--brand);border:0.5px solid var(--brand)">
+        <span id="pillCliQtd">—</span> cliente(s)
+      </span>
+      <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold" style="background:#dcfce7;color:#166534;border:0.5px solid #bbf7d0">
+        <span id="pillCliPares">—</span>
+      </span>
+      <span class="text-[11px] font-bold text-slate-400" id="pillCliFonte"></span>
+    </div>
+
     <!-- TABELA -->
     <div class="rounded-[28px] border border-slate-200 bg-white shadow-card p-4">
       <div class="flex items-center justify-between gap-3 mb-4">
@@ -195,6 +233,27 @@
       <div id="emptyState" class="hidden empty-state">
         <i class="fa-solid fa-inbox"></i>
         <p class="font-semibold">Nenhum desmembramento encontrado.</p>
+      </div>
+
+      <!-- POR CLIENTE: quem recebeu desmembramento, pela planilha do Chris -->
+      <div id="wrapClientes" class="table-wrap hidden">
+        <table>
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <!-- centralizadas a pedido dele: o nome do cliente é o único
+                   texto corrido da linha; o resto é número ou etiqueta curta,
+                   e alinhado ao meio a coluna lê de cima a baixo. O style é
+                   inline porque .table-wrap thead th força o alinhamento. -->
+              <th style="text-align:center">Pares</th>
+              <th style="text-align:center">Repasses</th>
+              <th style="text-align:center">Último</th>
+              <th style="text-align:center">Vendedor</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="bodyClientes"></tbody>
+        </table>
       </div>
 
       <div id="tableWrap" class="table-wrap hidden">
@@ -250,6 +309,7 @@ const $ = id => document.getElementById(id);
 const DISPO_FILE_URL = '../DISPO.xlsx';
 let _allProdutos = [];
 let _dispoMap = new Map();
+let _dispoPorNum = new Map();   // Nº do lote -> linha da DISPO (ver loadDispoMap)
 let _periodoAtivo = localStorage.getItem('consulta_desm_periodo') || 'all';
 let _searchQuery  = '';
 const _expandidos  = new Set(JSON.parse(localStorage.getItem('consulta_desm_expandidos') || '[]'));
@@ -312,13 +372,24 @@ async function loadDispoMap(){
     const ws = wb.Sheets[wb.SheetNames.find(n=>n.toUpperCase()==='DISPO')||wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(ws, { defval:null, raw:false });
     _dispoMap = new Map();
+    _dispoPorNum = new Map();
     for(const r of rows){
       const gci  = String(r['GCI']||r['Gci']||'').trim();
       const ebm  = String(r['EBM']||r['Ebm']||'').trim();
       const num  = String(r['Nº']??r['N']??r['Numero']??'').trim();
       const saldo = Number(r['SALDO']||r['Saldo']||0);
-      if(gci) _dispoMap.set(gci, { num, saldo });
-      if(ebm && !_dispoMap.has(ebm)) _dispoMap.set(ebm, { num, saldo });
+      /* A planilha tem Código, Produto, COR e DATA ENTREGA e a tela lia só
+         o saldo - era por isso que a linha do lote importado ficava quase
+         toda vazia. */
+      const d = { num, saldo,
+                  codigo:  String(r['Código']||r['CODIGO']||r['Codigo']||'').trim(),
+                  produto: String(r['Produto']||r['PRODUTO']||'').trim(),
+                  cor:     String(r['COR']||r['Cor']||'').trim(),
+                  prevFat: String(r['DATA ENTREGA']||r['Data Entrega']||'').trim(),
+                  gci, ebm };
+      if(gci) _dispoMap.set(gci, d);
+      if(ebm && !_dispoMap.has(ebm)) _dispoMap.set(ebm, d);
+      if(num && !_dispoPorNum.has(num)) _dispoPorNum.set(num, d);
     }
   }catch(e){ console.warn('DISPO.xlsx não carregado:', e); }
 }
@@ -339,15 +410,33 @@ async function loadData(){
     const pedidoMap = new Map();
     for(const p of (Array.isArray(pedidos)?pedidos:[])) pedidoMap.set(p.id, p);
 
+    /* O histórico do Chris também serve aqui: nos lotes antigos é ele que
+       sabe o artigo, a cor e a entrega. Carrega junto e não segura a tela. */
+    await carregarHistorico().catch(()=>{});
+    const histPorLote = new Map();
+    for(const l of ((_hist && _hist.linhas) || [])){
+      const k = String(l.lote || '');
+      if(k && !histPorLote.has(k)) histPorLote.set(k, l);
+    }
+
     _allProdutos = [];
     for(const [chave, lojas] of Object.entries(desm||{})){
-      const [codigo, cor, prevFat] = chave.split('|');
+      /* Duas gerações de chave convivem: "<código>|<cor>|<prev fat>", dos
+         pedidos nascidos na CMS, e "lote:<Nº>", da importação da planilha.
+         A segunda não tem o que a tela mostrava nas colunas - daí o "lote:36"
+         no lugar do código e o resto em branco. */
+      const ehLote = chave.startsWith('lote:');
+      let [codigo, cor, prevFat] = ehLote ? ['', '', ''] : chave.split('|');
+      const numChave = ehLote ? chave.slice(5).trim() : '';
       const linhasLojas = [];
       let totalDesmembrado=0, ultimoUpdate=null, gciRef='';
 
       for(const [lineKey, situacao] of Object.entries(lojas||{})){
         const [orderId, gci] = lineKey.split('||');
-        if(!gciRef && gci) gciRef=gci;
+        /* Nos registros "lote:<Nº>" esse pedaço É o Nº, não o GCI - usá-lo
+           como GCI punha o número do lote na coluna errada. O GCI de verdade
+           vem da DISPO ou do histórico, logo abaixo. */
+        if(!ehLote && !gciRef && gci) gciRef=gci;
         const pedido = pedidoMap.get(orderId);
         const cliente = pedido ? (pedido.clienteNome?`${pedido.clienteCodigo} — ${pedido.clienteNome}`:pedido.clienteCodigo||'—') : '—';
         let qtde=0,produto='—',prazo=pedido?.prazo||'—';
@@ -355,7 +444,14 @@ async function loadData(){
         let orderStatus=pedido?.status||'—';
         let updatedAt=pedido?.updatedAt||pedido?.createdAt||null;
         if(pedido && Array.isArray(pedido.items)){
-          const item=pedido.items.find(it=>String(it.gci||'').trim()===String(gci||'').trim()||String(it.ebm||'').trim()===String(gci||'').trim());
+          /* O pedaço do meio da lineKey é GCI em umas linhas e o Nº do lote
+             em outras: a importação da planilha do Chris gravou o Nº. Sem
+             o terceiro teste, esses repasses apareciam com Qtde 0 - era o
+             que estava na tela em 23/11/2026. */
+          const alvo=String(gci||'').trim();
+          const item=pedido.items.find(it=>String(it.gci||'').trim()===alvo
+                                        ||String(it.ebm||'').trim()===alvo
+                                        ||String(it.num||'').trim()===alvo);
           if(item){ produto=item.produto||produto; qtde=Number(item.totalUnits||0)||(item.grade||[]).reduce((s,g)=>s+Number(g.qty||0),0); }
         }
         totalDesmembrado+=qtde;
@@ -363,10 +459,19 @@ async function loadData(){
         linhasLojas.push({ lineKey,gci,codigo,cor,prevFat,produto,cliente,prazo,campanha,qtde,situacao,orderStatus,orderId,updatedAt });
       }
 
-      const produtoNome = linhasLojas[0]?.produto||'—';
-      const dispoInfo = _dispoMap.get(gciRef)||{ num:'—', saldo:null };
-      const saldoDispo = dispoInfo.saldo;
-      const num = dispoInfo.num||'—';
+      /* A DISPO pelo Nº da chave, pelo GCI ou pelo EBM — o que existir. */
+      const daDispo = (numChave && _dispoPorNum.get(numChave))
+                      || _dispoMap.get(gciRef) || null;
+      const daPlanilha = numChave ? histPorLote.get(numChave) : null;
+      codigo  = codigo  || daDispo?.codigo  || daPlanilha?.ref  || '—';
+      cor     = cor     || daDispo?.cor     || daPlanilha?.cor  || '—';
+      prevFat = prevFat || daDispo?.prevFat || daPlanilha?.data || '';
+      if(!gciRef) gciRef = daDispo?.gci || daPlanilha?.gci || '';
+
+      const produtoNome = linhasLojas[0]?.produto
+                          || daDispo?.produto || daPlanilha?.desc || '—';
+      const saldoDispo = daDispo ? daDispo.saldo : null;
+      const num = numChave || daDispo?.num || '—';
 
       // Situação baseada no saldo real
       let situacaoProd;
@@ -387,6 +492,164 @@ async function loadData(){
   }
 }
 
+/* ── POR CLIENTE ───────────────────────────────────────────────────────
+   Quem recebeu desmembramento e quantos pares, somando a BASE DE VENDAS da
+   planilha do Chris (data/repasses_historico.json). É a pergunta que ele faz
+   quando o cliente liga: "quanto este já pegou de repasse?".
+
+   A planilha é a fonte porque é ela que tem o histórico inteiro - a CMS só
+   registra o que passou por ela. Quando o desmembramento todo vier pela
+   casa, esta visão troca de fonte e a planilha sai de cena. */
+let _visao = localStorage.getItem('consulta_desm_visao') || 'lote';
+let _hist = null;          // { fonte, lido_em, linhas:[...] }
+let _clientes = [];        // agrupado, já ordenado por pares
+let _cliAbertos = new Set();
+
+async function carregarHistorico(){
+  if(_hist) return _hist;
+  try{
+    const r = await fetch('../data/repasses_historico.json?t=' + Date.now(), { cache:'no-cache' });
+    _hist = r.ok ? await r.json() : { linhas:[] };
+  }catch(e){ _hist = { linhas:[] }; }
+  const por = new Map();
+  for(const l of (_hist.linhas || [])){
+    const k = String(l.cod || '');
+    if(!k) continue;
+    if(!por.has(k)) por.set(k, { cod:k, nome:l.cli || '', pares:0, feitos:0,
+                                 repasses:0, ultimo:'', vend:new Map(), linhas:[] });
+    const c = por.get(k);
+    c.pares += Number(l.pares || 0);
+    /* O total é o que o cliente levou; o desmembrado é o que já virou pedido
+       no EBM. A diferença é trabalho que ainda está na fila - e é ela que faz
+       o número da tela discordar do que o Chris já digitou. */
+    if(String(l.status || '').toUpperCase() === 'DESMEMBRADO')
+      c.feitos += Number(l.pares || 0);
+    c.repasses++;
+    if(l.cli && !c.nome) c.nome = l.cli;
+    if(l.data && l.data > c.ultimo) c.ultimo = l.data;
+    if(l.vend) c.vend.set(l.vend, (c.vend.get(l.vend) || 0) + 1);
+    c.linhas.push(l);
+  }
+  _clientes = [...por.values()].map(c => ({
+    ...c,
+    // o vendedor que mais atendeu aquele cliente; os outros aparecem no detalhe
+    vendedor: [...c.vend.entries()].sort((a,b) => b[1] - a[1]).map(x => x[0])[0] || '—',
+    linhas: c.linhas.sort((a,b) => String(b.data||'').localeCompare(String(a.data||'')))
+  })).sort((a,b) => b.pares - a.pares);
+  return _hist;
+}
+
+function filtrarClientes(){
+  const q = _searchQuery.toLowerCase().trim();
+  if(!q) return _clientes;
+  return _clientes.filter(c =>
+    `${c.cod} ${c.nome} ${c.vendedor}`.toLowerCase().includes(q)
+    || c.linhas.some(l => `${l.lote} ${l.ref} ${l.desc} ${l.cor} ${l.ebm} ${l.gci}`
+         .toLowerCase().includes(q)));
+}
+
+function renderClientes(){
+  const lista = filtrarClientes();
+  const nf = n => Number(n || 0).toLocaleString('pt-BR');
+  const dataBR = d => { const m = String(d||'').match(/^(\d{4})-(\d{2})-(\d{2})/);
+                        return m ? `${m[3]}/${m[2]}/${m[1]}` : '—'; };
+  $('pillCliQtd').textContent = nf(lista.length);
+  const totPares = lista.reduce((s,c) => s + c.pares, 0);
+  const totFeitos = lista.reduce((s,c) => s + c.feitos, 0);
+  $('pillCliPares').textContent = nf(totPares) + ' pares · ' + nf(totFeitos) + ' já desmembrados';
+  $('pillCliFonte').textContent = _hist && _hist.lido_em
+    ? `planilha do Chris, lida em ${dataBR(String(_hist.lido_em).slice(0,10))}` : '';
+  $('tableCount').textContent = `${nf(lista.length)} cliente(s)`;
+
+  const tb = $('bodyClientes');
+  tb.innerHTML = '';
+  if(!lista.length){
+    $('wrapClientes').classList.add('hidden');
+    $('emptyState').classList.remove('hidden');
+    return;
+  }
+  $('emptyState').classList.add('hidden');
+  $('wrapClientes').classList.remove('hidden');
+
+  for(const c of lista){
+    const aberto = _cliAbertos.has(c.cod);
+    const tr = document.createElement('tr');
+    tr.className = 'tr-main cli-linha' + (aberto ? ' open' : '');
+    tr.innerHTML = `
+      <td style="font-weight:800;color:var(--text)">${safeHtml(c.cod)} — ${safeHtml(c.nome || '—')}</td>
+      <td style="text-align:center">
+        <div style="font-weight:800;color:var(--brand)">${nf(c.pares)}</div>
+        <div style="font-size:10px;font-weight:700;color:var(--muted)">${
+          c.feitos >= c.pares ? 'tudo desmembrado'
+            : c.feitos ? nf(c.feitos) + ' desmembrados' : 'nada desmembrado'}</div>
+      </td>
+      <td style="text-align:center;font-weight:700;color:var(--muted)">${nf(c.repasses)}</td>
+      <td style="text-align:center;color:var(--muted);white-space:nowrap;font-size:11px">${dataBR(c.ultimo)}</td>
+      <td style="text-align:center;color:var(--muted);font-size:11px;font-weight:700">${safeHtml(c.vendedor)}</td>
+      <td><button class="btn-det${aberto ? ' open' : ''}">${aberto ? '↑ Fechar' : '↓ Detalhes'}
+          <span class="badge-lojas">${c.repasses}</span></button></td>`;
+
+    const tre = document.createElement('tr');
+    tre.className = 'tr-expand';
+    tre.style.display = aberto ? '' : 'none';
+    tre.innerHTML = `<td colspan="6">
+      <div class="tr-expand-inner">
+        <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Repasses que recebeu</div>
+        <div style="overflow-x:auto"><table class="sub-table">
+          <thead><tr><th>Entrega</th><th>Nº</th><th>Produto</th><th>Cor</th>
+            <th style="text-align:right">Pares</th><th>Vendedor</th><th>Veio de</th><th>Situação</th></tr></thead>
+          <tbody>${c.linhas.map(l => `<tr>
+            <td style="color:var(--muted);white-space:nowrap;font-size:11px">${dataBR(l.data)}</td>
+            <td class="tabular-nums" style="font-size:11px;font-weight:700">${safeHtml(l.lote || '—')}</td>
+            <td style="font-weight:700;color:var(--text)">${safeHtml(l.desc || l.ref || '—')}</td>
+            <td style="color:var(--muted);font-size:11px">${safeHtml(l.cor || '—')}</td>
+            <td style="text-align:right;font-weight:800">${nf(l.pares)}</td>
+            <td style="color:var(--muted);font-size:11px">${safeHtml(l.vend || '—')}</td>
+            <td style="color:var(--muted);font-size:11px">${safeHtml(l.deCli || l.deCod || '—')}</td>
+            <td>${chipDesmSit(l.status === 'DESMEMBRADO' ? 'Desmembrado' : (l.status || 'Pendente'))}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+      </div></td>`;
+
+    const alternar = () => {
+      if(_cliAbertos.has(c.cod)) _cliAbertos.delete(c.cod); else _cliAbertos.add(c.cod);
+      renderClientes();
+    };
+    tr.addEventListener('click', alternar);
+    tb.appendChild(tr);
+    tb.appendChild(tre);
+  }
+}
+
+async function setVisao(nome){
+  if(nome !== 'lote' && nome !== 'cliente') return;
+  _visao = nome;
+  try{ localStorage.setItem('consulta_desm_visao', nome); }catch(e){}
+  document.querySelectorAll('#visaoTabs .visao-tab').forEach(t => {
+    const on = t.dataset.visao === nome;
+    t.classList.toggle('active', on);
+    t.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  const porCliente = nome === 'cliente';
+  // o período filtra pela data do PEDIDO, que a planilha não tem
+  $('filtroPeriodo').classList.toggle('hidden', porCliente);
+  $('pillsResumo').classList.toggle('hidden', porCliente);
+  $('pillsClientes').classList.toggle('hidden', !porCliente);
+  $('tableWrap').classList.toggle('hidden', porCliente);
+  $('wrapClientes').classList.add('hidden');
+  $('searchInput').placeholder = porCliente
+    ? 'Cliente, código, produto, Nº...' : 'Produto, código, Nº, GCI...';
+  if(porCliente){
+    $('loadingState').classList.remove('hidden');
+    await carregarHistorico();
+    $('loadingState').classList.add('hidden');
+    renderClientes();
+  }else{
+    $('emptyState').classList.add('hidden');
+    renderTable();
+  }
+}
+
 function filtrarProdutos(){
   const q=_searchQuery.toLowerCase().trim();
   const ms=PERIODO_MS[_periodoAtivo];
@@ -397,6 +660,11 @@ function filtrarProdutos(){
     return true;
   });
 }
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('#visaoTabs [data-visao]');
+  if(t) setVisao(t.dataset.visao);
+});
 
 function salvarExpandidos(){ localStorage.setItem('consulta_desm_expandidos', JSON.stringify([..._expandidos])); }
 
@@ -446,6 +714,10 @@ function renderTable(){
     const isSel=_selecionados.has(p.chave);
     const saldoDispoTxt=p.saldoDispo!==null?p.saldoDispo:'—';
     const saldoRestTxt=p.saldoRestante!==null?p.saldoRestante:'—';
+    /* Lote antigo já saiu da DISPO: o traço é a verdade, mas sem explicação
+       parece dado faltando. A dica diz o que houve. */
+    const dicaSemSaldo=p.saldoDispo===null
+      ? ' title="Este lote não está mais na DISPO de hoje — por isso não há saldo a mostrar."' : '';
     const saldoRestColor=p.saldoRestante===0?'var(--danger)':p.saldoRestante!==null&&p.saldoRestante<12?'var(--warning)':'var(--text)';
 
     const trMain=document.createElement('tr');
@@ -460,10 +732,10 @@ function renderTable(){
       <td style="font-weight:800;color:var(--text)">${safeHtml(p.produto)}</td>
       <td style="font-size:11px;font-weight:600;color:var(--muted)">${safeHtml(p.codigo)}</td>
       <td style="font-weight:600;color:var(--muted)">${safeHtml(p.cor)}</td>
-      <td style="font-weight:600;white-space:nowrap;color:var(--muted)">${safeHtml(p.prevFat)}</td>
-      <td style="text-align:right;font-weight:800;color:var(--text)">${saldoDispoTxt}</td>
+      <td style="font-weight:600;white-space:nowrap;color:var(--muted)">${safeHtml(formatDateUTC(p.prevFat))}</td>
+      <td${dicaSemSaldo} style="text-align:right;font-weight:800;color:var(--text)">${saldoDispoTxt}</td>
       <td style="text-align:right;font-weight:800;color:${p.totalDesmembrado>0?'var(--brand)':'var(--muted)'}">${p.totalDesmembrado||'—'}</td>
-      <td style="text-align:right;font-weight:800;color:${saldoRestColor}">${saldoRestTxt}</td>
+      <td${dicaSemSaldo} style="text-align:right;font-weight:800;color:${saldoRestColor}">${saldoRestTxt}</td>
       <td>${chipSituacao(p.situacao)}</td>
       <td><button class="btn-det${isOpen?' open':''}" data-chave="${safeHtml(p.chave)}">${isOpen?'↑ Fechar':'↓ Detalhes'} <span class="badge-lojas">${p.lojas.length}</span></button></td>`;
 
@@ -532,10 +804,10 @@ function exportarSelecionados(){
   const rows=[['Nº','GCI','Produto','Código','Cor','Prev. Fat.','Saldo DISPO','Desmembrado','Saldo restante','Situação','Cliente','Prazo','Campanha','Qtde loja','Status pedido','Sit. desm.']];
   for(const p of produtos){
     if(!p.lojas.length){
-      rows.push([p.num,p.gci,p.produto,p.codigo,p.cor,p.prevFat,p.saldoDispo??'—',p.totalDesmembrado,p.saldoRestante??'—',p.situacao,'','','','','','']);
+      rows.push([p.num,p.gci,p.produto,p.codigo,p.cor,formatDateUTC(p.prevFat),p.saldoDispo??'—',p.totalDesmembrado,p.saldoRestante??'—',p.situacao,'','','','','','']);
     } else {
       p.lojas.forEach((l,i)=>{
-        rows.push([i===0?p.num:'',i===0?p.gci:'',i===0?p.produto:'',i===0?p.codigo:'',i===0?p.cor:'',i===0?p.prevFat:'',i===0?(p.saldoDispo??'—'):'',i===0?p.totalDesmembrado:'',i===0?(p.saldoRestante??'—'):'',i===0?p.situacao:'',l.cliente,l.prazo,l.campanha,l.qtde,canonicalStatus(l.orderStatus),l.situacao]);
+        rows.push([i===0?p.num:'',i===0?p.gci:'',i===0?p.produto:'',i===0?p.codigo:'',i===0?p.cor:'',i===0?formatDateUTC(p.prevFat):'',i===0?(p.saldoDispo??'—'):'',i===0?p.totalDesmembrado:'',i===0?(p.saldoRestante??'—'):'',i===0?p.situacao:'',l.cliente,l.prazo,l.campanha,l.qtde,canonicalStatus(l.orderStatus),l.situacao]);
       });
     }
   }
@@ -549,11 +821,18 @@ function exportarSelecionados(){
 }
 
 
+/* Repinta a visão que está na tela. A busca, o ESC e o botão de limpar
+   chamavam renderTable() direto, e na visão por cliente isso não repintava
+   nada - a lista ficava parada no que estava antes de digitar. */
+function repintar(){
+  if(_visao === 'cliente') renderClientes(); else renderTable();
+}
+
 // ── BUSCA ─────────────────────────────────────────────────────────────────────
 $('searchInput').addEventListener('input', e => {
   _searchQuery = e.target.value;
   $('btnClearSearch').classList.toggle('hidden', !_searchQuery);
-  renderTable();
+  repintar();
 });
 
 $('searchInput').addEventListener('keydown', e => {
@@ -562,7 +841,7 @@ $('searchInput').addEventListener('keydown', e => {
     $('searchInput').value = '';
     $('btnClearSearch').classList.add('hidden');
     $('searchInput').blur();
-    renderTable();
+    repintar();
   }
 });
 
@@ -571,7 +850,7 @@ $('btnClearSearch').addEventListener('click', () => {
   $('searchInput').value = '';
   $('btnClearSearch').classList.add('hidden');
   $('searchInput').focus();
-  renderTable();
+  repintar();
 });
 
 // ESC global limpa busca se campo ativo
@@ -580,7 +859,7 @@ document.addEventListener('keydown', e => {
     _searchQuery = '';
     $('searchInput').value = '';
     $('btnClearSearch').classList.add('hidden');
-    renderTable();
+    repintar();
   }
 });
 
@@ -621,7 +900,10 @@ document.addEventListener('fullscreenchange', () => {
 });
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-loadData();
+/* loadData() sempre roda: a visão por lote é o coração da tela e o usuário
+   troca de aba a qualquer momento. A visão guardada só entra depois, para
+   não pintar a lista de lotes por cima da de clientes. */
+loadData().then(() => { if(_visao === 'cliente') setVisao('cliente'); });
 </script>
 </body>
 </html>
