@@ -7159,6 +7159,24 @@ async function _fotoParaRel(meta){
   return saida;
 }
 
+
+/* Uma celula de varias linhas. O texto que nao cabia na largura era
+   simplesmente descartado (so a primeira linha de splitTextToSize ia para
+   o papel), e numa grade de oito tamanhos isso comia metade dela. Como a
+   linha tem a altura da foto, ha espaco de sobra para tres linhas. */
+function _celulaPdf(doc, texto, x, y, larg, altura, align, maxLinhas){
+  const max = maxLinhas || 3;
+  let linhas = doc.splitTextToSize(String(texto == null ? '' : texto), larg);
+  if(!linhas.length) return;
+  if(linhas.length > max){
+    linhas = linhas.slice(0, max);
+    linhas[max - 1] = String(linhas[max - 1]).replace(/\s*\S*$/, '') + '…';
+  }
+  const lh = 2.6;                                   // mm entre linhas a 6,5 pt
+  const y0 = y + altura / 2 - ((linhas.length - 1) * lh) / 2 + 1;
+  linhas.forEach((t, i) => doc.text(t, x, y0 + i * lh, { align }));
+}
+
 async function relatorioPdf(){
   const alvos = selecionados();
   if(!alvos.length) return;
@@ -7250,8 +7268,8 @@ async function relatorioPdf(){
           doc.setTextColor(c[0], c[1], c[2]);
         }else if(i === 9 && val && val !== '—'){ doc.setTextColor(40, 54, 212); }
         else { doc.setTextColor(15, 23, 42); }
-        doc.text(doc.splitTextToSize(val, col.w - 2)[0] || '', tx, y + rowH / 2 + 1,
-                 { align: col.align === 'right' ? 'right' : 'left' });
+        _celulaPdf(doc, val, tx, y, col.w - 2, rowH,
+                   col.align === 'right' ? 'right' : 'left');
         cx += col.w;
       }
       y += rowH;
