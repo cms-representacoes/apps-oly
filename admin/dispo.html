@@ -1811,6 +1811,16 @@ function loteTodoDesmembrado(row){
   return !!c && c.total > 0 && c.prontas >= c.total;
 }
 
+/* ACABOU: todas as linhas pedidas foram digitadas no EBM E nao sobrou par
+   nenhum. E esta a definicao que manda na tela inteira - aba Finalizados,
+   aba Desmembramento, selo da linha e contadores das pilulas.
+   Olhar so a linha pedida nao basta: o 496 teve as duas linhas digitadas,
+   que levaram 24 dos 48 pares, e saiu do Desmembramento com meio lote
+   ainda para distribuir. Enquanto sobrar par, o lote e trabalho. */
+function loteEncerrado(row){
+  return loteTodoDesmembrado(row) && Number(row.saldoReal || 0) <= 0;
+}
+
 /* O que ja foi para o EBM, dito na propria linha. "Desmembrado" quando
    todas as linhas pedidas foram digitadas; "parcial" quando falta - e o
    numero diz quanto, porque "parcial" sozinho nao ajuda ninguem a decidir
@@ -1825,7 +1835,7 @@ function seloDesmembrado(row){
   const sobra = Math.max(0, Number(row.saldoReal || 0));
   const feitos = Number(c.paresFeitos || 0);
   const todasAsLinhas = c.prontas >= c.total;
-  const tudo = todasAsLinhas && sobra <= 0;
+  const tudo = loteEncerrado(row);
   if(tudo){
     const dica = `As ${c.total} linha(s) pedidas foram digitadas no EBM e o lote nao tem mais saldo`;
     return `<span class="selo-desm ok" title="${dica}">desmembrado</span>`;
@@ -2038,8 +2048,7 @@ function computeRows(){
        mas com par sobrando continua sendo trabalho: ele volta para "A
        distribuir", com o selo dizendo o que ja foi (ver seloDesmembrado).
        Sem este "&&", o 496 do teste de 23/11 aparecia nas duas abas. */
-    if(f === 'arquivados')
-      return isArquivado(row) || (loteTodoDesmembrado(row) && Number(row.saldoReal || 0) <= 0);
+    if(f === 'arquivados') return isArquivado(row) || loteEncerrado(row);
     if(f === 'ocultos') return isOculto(row);
     // Arquivado só aparece na aba dele. Vale para TODAS as outras, inclusive
     // a busca por Nº: quem arquivou tirou da vista de propósito.
@@ -2057,9 +2066,12 @@ function computeRows(){
        etiqueta dizendo de qual dos dois era. Desde 19/11/2026 eles são
        abas separadas (ver .familia-tabs), então a etiqueta saiu: a lista
        inteira é de uma família só. */
+    /* Sai da fila so o lote ENCERRADO. O parcial continua aqui, com o
+       selo dizendo quanto ja foi - os pares que sobraram vao virar pedido
+       e desmembramento de novo. */
     if(f === 'esgotados')
       return (Number(row.pendente || 0) + Number(row.aprovado || 0)) > 0
-             && !loteTodoDesmembrado(row);
+             && !loteEncerrado(row);
     if(f === 'saldo-positivo') return row.saldoReal > 0;
     /* 'all' deixou de ser "tudo": é o que ainda tem par para distribuir.
        O resto está esgotado e só atrapalha quem procura o que dar. Não
@@ -2365,9 +2377,11 @@ const DESM = { pacote:null, irmaos:[], incluirIrmaos:false, exec:null };
 function lotesNaFilaDesm(){
   return computeAllRows().filter(r => !isArquivado(r) && !isOculto(r)
     && (Number(r.pendente || 0) + Number(r.aprovado || 0)) > 0
-    /* lote com tudo desmembrado nao e trabalho: sai da fila e vai para
-       Finalizados. Antes ele ficava aqui para sempre, e a carga do robo
-       levava de novo quem ja tinha sido digitado. */
+    /* Aqui a regra e MAIS APERTADA que a da aba, de proposito: a aba
+       mostra o lote parcial (ainda ha par para distribuir), mas a carga do
+       robo so leva lote com LINHA por digitar. Com todas as linhas feitas
+       o robo nao tem o que fazer, e levar o lote de novo so faria ele
+       reabrir o que ja foi ao EBM. */
     && !loteTodoDesmembrado(r));
 }
 
@@ -7085,7 +7099,10 @@ function atualizarBadgeFinalizados(){
     // só a família que está na tela: o número tem de ser o da lista que o
     // clique vai abrir, senão a pílula promete o que a aba não mostra
     if(STATE.familia === 'colecao' ? !ehColecaoDispo(r) : ehColecaoDispo(r)) continue;
-    if(isArquivado(r)){ arquivados++; continue; }
+    /* O encerrado conta em Finalizados mesmo sem ninguem ter arquivado:
+       e la que a aba o mostra. Sem isto, o numero da pilula e a lista que
+       o clique abre diziam coisas diferentes. */
+    if(isArquivado(r) || loteEncerrado(r)){ arquivados++; continue; }
     if(isOculto(r)) continue;
     /* Desmembramento conta pela MESMA regra da aba (lote que já tem pedido),
        não por "saldo zerado". Eram duas contas diferentes para a mesma
