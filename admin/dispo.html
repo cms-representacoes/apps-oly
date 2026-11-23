@@ -1272,12 +1272,17 @@
           <!-- Lote que saiu da DISPO ainda responde por si: quem procura o Nº
                488 depois de ele ser excluído merece saber o que houve. Toma o
                lugar do "nenhum item", em vez de aparecer solto embaixo dele. -->
-          <div id="dispoSumiu" class="hidden" style="margin:0 auto;max-width:460px;text-align:center;
+          <div id="dispoSumiu" class="hidden" style="margin:0 auto;max-width:min(460px,calc(100vw - 56px));text-align:center;
             background:#fffbeb;border:1px solid #fde68a;border-radius:16px;padding:16px 18px"></div>
           <!-- Lista vazia pode ser efeito da família escolhida, não falta de
                dado. Sem este aviso o lote "desaparece" e quem olha a tela
                acha que a DISPO perdeu o item. -->
-          <div id="dispoOutraFamilia" class="hidden" style="margin:12px auto 0;max-width:460px;
+          <!-- Procurou um Nº e nao veio nada: o lote pode estar vivo em
+               outra familia ou em outra aba. Este bloco diz onde e leva la -
+               ver avisarOndeEstaOLote. -->
+          <div id="dispoAchouLote" class="hidden" style="margin:0 auto;max-width:min(500px,calc(100vw - 56px));
+            text-align:center;border-radius:16px;padding:16px 18px;border:1px solid #a5f3fc;background:#ecfeff"></div>
+          <div id="dispoOutraFamilia" class="hidden" style="margin:12px auto 0;max-width:min(460px,calc(100vw - 56px));
             text-align:center;border-radius:16px;padding:14px 16px;border:1px solid #a5f3fc;background:#ecfeff"></div>
         </div>
         </div>
@@ -1343,6 +1348,12 @@
         <div id="menuFiltroMes" class="hidden fixed z-[120] bg-white border border-slate-200 rounded-2xl shadow-lg p-2 flex flex-col gap-1 min-w-[190px] max-h-[320px] overflow-y-auto"></div>
 
         <!-- TABLE -->
+        <!-- A busca trouxe linhas, mas nao o Nº procurado: a faixa diz onde
+             ele esta. Ver avisarLoteForaDaLista. -->
+        <div id="dispoAchouFaixa" class="hidden" style="display:flex;gap:11px;align-items:center;
+             flex-wrap:wrap;border:1px solid #a5f3fc;background:#ecfeff;border-radius:14px;
+             padding:10px 14px;margin-bottom:10px"></div>
+
         <div id="tableWrap" class="table-wrap hidden">
           <table class="col-hide-pendente col-hide-aprovado col-hide-pedidoMae col-hide-desmembrado">
             <thead>
@@ -5818,6 +5829,30 @@ function sortRows(rows){
   });
 }
 
+/* A busca e so numeros? Entao quem procura esta atras de um Nº de lote, e
+   nao de um pedaco de codigo de produto. */
+function buscaSoNumero(){
+  const q = String(STATE.searchQuery || '').trim();
+  return /^\d+$/.test(q) ? q : '';
+}
+
+/* A lista como a tela mostra: ordenada e, numa busca por numero, com os
+   lotes cujo Nº casa na frente - o resto casou pelo codigo ou pelo GCI e
+   vai para baixo de uma linha que diz isso (procurar 496 trazia 33 linhas,
+   porque o CICLO tem codigo 43231496).
+   Ela e a FONTE UNICA da lista visivel: o botao Desmembrar guarda o indice
+   dela em data-idx e o clique le a mesma funcao. Com duas listas diferentes,
+   o botao abriria o lote de outra linha. */
+function linhasVisiveis(){
+  const lista = sortRows(computeRows());
+  const q = buscaSoNumero();
+  if(!q) return { lista, corte: -1 };
+  const peloNum = [], peloResto = [];
+  for(const r of lista) (String(r.num || '').includes(q) ? peloNum : peloResto).push(r);
+  if(!peloNum.length || !peloResto.length) return { lista, corte: -1 };
+  return { lista: peloNum.concat(peloResto), corte: peloNum.length };
+}
+
 function updateSortHeaders(){
   document.querySelectorAll('thead th.sortable').forEach(th => {
     const col = th.dataset.col;
@@ -5939,12 +5974,11 @@ function renderDispo(){
   if(!STATE.dispoRows.length) return;
   pintarAvisoDatasVelhas();     // some sozinha quando nao ha pedido para tras
 
-  const rows = computeRows();
   /* A coluna "Situação" saiu da tabela em 19/11/2026: dizia o que o Saldo
      real já mostra, e ocupava espaço numa tabela que rola de lado. A
      situação continua viva no código — é ela que pinta a linha e o número
      do saldo real. */
-  const sorted = sortRows(rows);
+  const { lista: sorted, corte: corteBusca } = linhasVisiveis();
 
   atualizarBadgeRateados();
   updateSortHeaders();
@@ -5974,17 +6008,36 @@ function renderDispo(){
     $('dispoTableBody').innerHTML =
       '<tr class="linha-aviso"><td colspan="14" id="dispoAvisoCelula"></td></tr>';
     $('dispoAvisoCelula').appendChild(aviso);
+    /* A celula tem a largura da TABELA (1.100 px e mais) e ela rola de
+       lado: centralizado nela, o aviso nasce fora da vista no celular -
+       nascia a 362 px de uma tela de 390. Preso em sticky e com a largura
+       do que se ve, ele fica no meio da vista e acompanha o rolar. */
+    const wrapAviso = $('tableWrap');
+    aviso.style.position = 'sticky';
+    aviso.style.left = '0';
+    aviso.style.boxSizing = 'border-box';
+    aviso.style.width = Math.max(240, (wrapAviso ? wrapAviso.clientWidth : 0) - 4) + 'px';
     aviso.classList.remove('hidden');
     contarComOQueSumiu();
-    avisarOutraFamilia();
+    /* Dizer onde o lote esta e melhor que contar quantas linhas ha do outro
+       lado: so um dos dois aparece, para a tela nao empilhar avisos. */
+    if(!avisarOndeEstaOLote()) avisarOutraFamilia();
+    else $('dispoOutraFamilia')?.classList.add('hidden');
+    $('dispoAchouFaixa')?.classList.add('hidden');   // o cartao ja conta tudo
     return;
   }
 
-  if(casaDoAviso && aviso.parentElement !== casaDoAviso) casaDoAviso.appendChild(aviso);
+  if(casaDoAviso && aviso.parentElement !== casaDoAviso){
+    casaDoAviso.appendChild(aviso);
+    // fora da tabela ele volta a ser um bloco comum (ver o sticky acima)
+    aviso.style.position = aviso.style.left = aviso.style.width = aviso.style.boxSizing = '';
+  }
   aviso.classList.add('hidden');
   $('dispoOutraFamilia')?.classList.add('hidden');
+  $('dispoAchouLote')?.classList.add('hidden');
+  avisarLoteForaDaLista(sorted);
 
-  $('dispoTableBody').innerHTML = sorted.map((row, idx) => {
+  const htmlLinhas = sorted.map((row, idx) => {
     const sit = row.situacao;
     const cancPares = paresCanceladosDoNum(row.num);
     const rowClass = sit.rowClass || '';
@@ -6062,7 +6115,21 @@ function renderDispo(){
         </td>
       </tr>
     `;
-  }).join('');
+  });
+
+  /* A fronteira entre "casou no Nº" e "casou no codigo": sem ela, os dois
+     grupos viram uma lista so e o lote procurado se perde no meio. */
+  if(corteBusca > 0){
+    const quantos = sorted.length - corteBusca;
+    htmlLinhas.splice(corteBusca, 0, `<tr class="linha-corte-busca"><td colspan="14"
+      style="padding:7px 14px;font-size:11px;font-weight:800;letter-spacing:.05em;
+             text-transform:uppercase;color:var(--muted,#64748b);
+             background:var(--muted-soft,#f8fafc);border-top:1px solid var(--line,#e2e8f0)">
+      <i class="fa-solid fa-turn-down" style="margin-right:7px;opacity:.65"></i>
+      ${formatInt(quantos)} ${quantos === 1 ? 'linha' : 'linhas'} achada${quantos === 1 ? '' : 's'}
+      pelo código ou pelo GCI, não pelo Nº</td></tr>`);
+  }
+  $('dispoTableBody').innerHTML = htmlLinhas.join('');
 
   atualizarBulkBarDispo();
 }
@@ -7262,6 +7329,169 @@ $('familiaTabs').addEventListener('click', (e) => {
   if(tab) setFamilia(tab.dataset.familia);
 });
 
+
+/* -- Onde esta o lote ---------------------------------------------------
+   Procurar um Nº e nao achar nada nao quer dizer que o lote nao existe:
+   quase sempre ele esta na outra familia (a tela abre na Repasse e o lote
+   e do bolsao) ou em outra aba (Finalizados, Ocultos). Em 23/11/2026 o 496
+   estava em GTM - 1S27 / A distribuir e a tela dizia "nenhum item".
+   O aviso de familia que ja existia nao cobria isso: ele repete os MESMOS
+   filtros do outro lado, e um lote que mora em outra aba nao aparece nele. */
+const ABAS_PROCURA = [
+  ['all', 'A distribuir'], ['esgotados', 'Desmembramento'],
+  ['arquivados', 'Finalizados'], ['pendente', 'Pendentes'],
+  ['aprovado', 'Aprovados'], ['rateados', 'Rateados'], ['ocultos', 'Ocultos'],
+];
+
+/* A casa natural do lote: a primeira familia e aba em que ele aparece SEM
+   filtro de busca, de Nº ou de mes. A regra de cada aba muda com o tempo
+   (mudou duas vezes nesta semana), por isso a procura chama computeRows em
+   vez de refazer a conta aqui - o preco e rodar o filtro ate 14 vezes, e
+   isso so acontece com a lista vazia, nao a cada tecla. */
+function acharLoteEmQualquerAba(num){
+  const alvo = String(num || '').trim();
+  if(!alvo) return null;
+  const row = computeAllRows().find(r => String(r.num || '') === alvo);
+  if(!row) return null;
+  const antes = { familia: STATE.familia, aba: STATE.activeFilter,
+                  q: STATE.searchQuery, fnum: STATE.filtroNum, mes: STATE.filtroMes };
+  let achado = null;
+  try{
+    STATE.searchQuery = ''; STATE.filtroNum = ''; STATE.filtroMes = '';
+    for(const fam of ['repasse', 'colecao']){
+      for(const [aba, rotulo] of ABAS_PROCURA){
+        STATE.familia = fam; STATE.activeFilter = aba;
+        if(computeRows().some(r => String(r.num || '') === alvo)){
+          achado = { familia: fam, aba, rotulo, row };
+          break;
+        }
+      }
+      if(achado) break;
+    }
+  }catch(e){ /* nao e motivo para derrubar o render */ }
+  finally{
+    STATE.familia = antes.familia; STATE.activeFilter = antes.aba;
+    STATE.searchQuery = antes.q; STATE.filtroNum = antes.fnum; STATE.filtroMes = antes.mes;
+  }
+  // existe na DISPO mas nao cai em aba nenhuma: ainda vale dizer que existe
+  return achado || { familia: ehColecaoDispo(row) ? 'colecao' : 'repasse',
+                     aba: '', rotulo: '', row };
+}
+
+
+/* O miolo do aviso - o mesmo texto no cartao (lista vazia) e na faixa
+   (lista cheia, sem o Nº procurado). Juntar os dois evita que um dia um
+   diga uma coisa e o outro diga outra. */
+function _avisoLoteTexto(alvo, achado){
+  const r = achado.row;
+  const nome = [r.produto, r.cor].filter(Boolean).join(' · ') || '—';
+  const selo = seloDesmembrado(r).replace(/<[^>]+>/g, '').trim();
+  const aqui = achado.familia === STATE.familia && achado.aba === STATE.activeFilter;
+  const famNome = achado.familia === 'colecao' ? 'GTM - 1S27' : 'Repasse';
+  return {
+    aqui,
+    titulo: `O lote Nº ${safeHtml(alvo)} ` + (aqui
+      ? 'está nesta aba — um filtro o esconde'
+      : `está em ${safeHtml(famNome)}${achado.rotulo ? ' · ' + safeHtml(achado.rotulo) : ''}`),
+    detalhe: `${safeHtml(nome)} · ${formatInt(r.saldoReal)} pares`
+             + (selo ? ' · ' + safeHtml(selo) : '')
+             + (r.gci ? ' · GCI ' + safeHtml(r.gci) : ''),
+    botao: `<button type="button"
+      onclick="irAteOLote('${safeHtml(alvo)}','${achado.familia}','${achado.aba}')"
+      style="background:#0891b2;color:#fff;border:0;border-radius:999px;padding:9px 18px;
+             font-weight:800;font-size:12.5px;cursor:pointer;white-space:nowrap">
+      ${aqui ? 'Mostrar' : 'Ver'} o lote ${safeHtml(alvo)}</button>`,
+  };
+}
+
+/* A procura custa ~50 ms e a busca redesenha a tela a cada tecla: sem este
+   cache, digitar "496" pagaria tres vezes. Cinco segundos e o bastante para
+   a digitacao e curto para nao guardar aba velha depois de um
+   desmembramento. */
+let _cacheOnde = { quando: 0, assinatura: '', mapa: new Map() };
+function acharLoteComCache(num){
+  const assinatura = [ (STATE.dispoRows || []).length, (STATE.orders || []).length,
+                       Object.keys(STATE.desmembramentos || {}).length,
+                       (STATE.cancelamentos || []).length ].join(':');
+  const agora = Date.now();
+  if(_cacheOnde.assinatura !== assinatura || agora - _cacheOnde.quando > 5000){
+    _cacheOnde = { quando: agora, assinatura, mapa: new Map() };
+  }
+  const alvo = String(num || '').trim();
+  if(!_cacheOnde.mapa.has(alvo)) _cacheOnde.mapa.set(alvo, acharLoteEmQualquerAba(alvo));
+  return _cacheOnde.mapa.get(alvo);
+}
+
+/* Lista com resultados, mas nenhum deles e o lote pedido: procurar 562 na
+   GTM - 1S27 traz 32 linhas que casaram pelo codigo do produto, e o 562
+   esta em Finalizados. Sem este aviso a tela mostra uma lista e nao diz que
+   o que foi pedido nao esta nela. */
+function avisarLoteForaDaLista(lista){
+  const faixa = $('dispoAchouFaixa');
+  if(!faixa) return;
+  faixa.classList.add('hidden');
+  const alvo = buscaSoNumero() || String(STATE.filtroNum || '').trim();
+  if(!alvo) return;
+  if((lista || []).some(r => String(r.num || '') === alvo)) return;   // esta na tela
+  const achado = acharLoteComCache(alvo);
+  if(!achado) return;
+  const t = _avisoLoteTexto(alvo, achado);
+  faixa.innerHTML = `<i class="fa-solid fa-circle-info"
+      style="color:#0891b2;font-size:17px;flex:none"></i>
+    <div style="flex:1;min-width:170px">
+      <div style="font-size:13px;font-weight:900;color:#0e7490">${t.titulo}</div>
+      <div style="font-size:12px;font-weight:700;color:#0891b2;margin-top:2px;line-height:1.55">
+        ${t.detalhe}<br>As linhas abaixo casaram pelo código ou pelo GCI.</div>
+    </div>${t.botao}`;
+  faixa.classList.remove('hidden');
+}
+
+/* Mostra o aviso e devolve true se mostrou - quem chama usa isso para nao
+   empilhar o aviso generico de familia em cima deste. */
+function avisarOndeEstaOLote(){
+  const caixa = $('dispoAchouLote');
+  if(!caixa) return false;
+  caixa.classList.add('hidden');
+  // o lote que saiu da DISPO ja tem explicacao melhor (ver contarComOQueSumiu)
+  const sumiu = $('dispoSumiu');
+  if(sumiu && !sumiu.classList.contains('hidden')) return false;
+  const alvo = buscaSoNumero() || String(STATE.filtroNum || '').trim();
+  if(!alvo) return false;
+  const achado = acharLoteComCache(alvo);
+  if(!achado) return false;
+
+  const t = _avisoLoteTexto(alvo, achado);
+  caixa.innerHTML = `<div style="font-size:13.5px;font-weight:900;color:#0e7490">${t.titulo}</div>
+    <div style="font-size:12.5px;font-weight:700;color:#0891b2;margin-top:5px;line-height:1.6">
+      ${t.detalhe}</div>
+    <div style="margin-top:11px">${t.botao}</div>`;
+  caixa.classList.remove('hidden');
+  return true;
+}
+
+/* Leva a tela ate o lote: troca a familia e a aba, limpa o que escondia
+   (busca de texto e mes) e deixa o funil do Nº ligado, para a lista ficar
+   na linha procurada e a tela dizer que ha um filtro ativo. */
+function irAteOLote(num, familia, aba){
+  const alvo = String(num || '').trim();
+  STATE.searchQuery = '';
+  const busca = $('dispoSearch');
+  if(busca) busca.value = '';
+  STATE.filtroMes = '';
+  STATE.filtroNum = alvo;
+  const campoNum = $('inputFiltroNum');
+  if(campoNum) campoNum.value = alvo;
+  if(aba){
+    STATE.activeFilter = aba;
+    document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+    const pill = document.querySelector(`.filter-pill[data-filter="${aba}"]`);
+    if(pill) pill.classList.add('active');
+  }
+  // setFamilia ja redesenha; chamar os dois pintaria a tela duas vezes
+  if(familia && familia !== STATE.familia){ setFamilia(familia); return; }
+  renderDispo();
+}
+
 /* O que a lista não mostrou pode estar na outra família. Conta quantos são e
    leva lá num clique - sem isso, "nenhum item" é uma mentira por omissão. */
 function avisarOutraFamilia(){
@@ -7396,8 +7626,8 @@ $('dispoTableBody').addEventListener('click', (e)=>{
   const btnDesm = e.target.closest('.btn-desmembrar');
   if(btnDesm){
     const idx = parseInt(btnDesm.dataset.idx, 10);
-    const sorted = sortRows(computeRows());
-    const row = sorted[idx];
+    // a MESMA lista que o render numerou - ver linhasVisiveis
+    const row = linhasVisiveis().lista[idx];
     if(row) openDesmModal(row);
     return;
   }
