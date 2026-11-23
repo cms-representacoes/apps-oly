@@ -546,6 +546,23 @@ button{font:inherit}
 .sel-todos[hidden]{display:none}
 .sel-x{width:28px;height:28px;flex:none;border:0;border-radius:999px;background:none;
   color:var(--tenue);font-size:14px;cursor:pointer}
+/* A barra dos PEDIDOS: as mesmas pecas da barra dos produtos, mas acima da
+   tela de Meus pedidos (que e z-index 85) - senao ela fica atras dela. */
+#pedSelBarra{z-index:86}
+.sel-btn.doc{background:linear-gradient(145deg,#94A3B8 0%,#475569 55%,#334155 100%);
+  box-shadow:0 4px 12px rgba(71,85,105,.32), inset 0 1px 0 rgba(255,255,255,.26)}
+.sel-btn.ebm{background:linear-gradient(145deg,var(--marca-claro),var(--marca) 55%,var(--marca-escuro));
+  box-shadow:0 4px 12px color-mix(in srgb,var(--marca) 32%,transparent),
+             inset 0 1px 0 rgba(255,255,255,.26)}
+.sel-apagar{display:inline-flex;align-items:center;gap:6px;flex:none;cursor:pointer;
+  border:1px solid #FCA5A5;background:#FEF2F2;color:#B91C1C;border-radius:999px;
+  padding:7px 11px;font:inherit;font-size:11.5px;font-weight:800}
+.sel-apagar:hover{filter:brightness(.98)}
+.sel-apagar[hidden],.sel-btn[hidden]{display:none}
+@media(max-width:640px){
+  .sel-apagar{padding:7px 9px;gap:0}
+  .sel-apagar span{display:none}
+}
 .sel-x:hover{background:var(--linha);color:var(--tinta)}
 @media(max-width:640px){
   body.com-selecao .grade{padding-bottom:88px}
@@ -844,31 +861,36 @@ button{font:inherit}
 .ped{display:flex;flex-direction:column;flex:1;min-height:0;
   width:100%;max-width:1180px;margin:0 auto}
 
-.ped-topo{display:flex;align-items:center;gap:12px;flex:none;
+/* A linha do titulo carrega os filtros desde 23/11/2026. Ela rola de lado
+   como as outras fileiras: no celular nao ha largura para o nome da tela
+   mais quatro campos, e quebrar em duas linhas era o que se queria tirar. */
+.ped-topo{display:flex;align-items:center;gap:10px;flex:none;
   padding:calc(12px + env(safe-area-inset-top)) 16px 12px;
-  border-bottom:1px solid var(--linha-forte);background:var(--barra)}
-.ped-tit{flex:1;min-width:0}
+  border-bottom:1px solid var(--linha-forte);background:var(--barra);
+  overflow-x:auto;scrollbar-width:none}
+.ped-topo::-webkit-scrollbar{display:none}
+.ped-topo > *{flex:none}
+.ped-tit{min-width:0}
+.ped-tit h2,.ped-tit p{white-space:nowrap}
+/* o X fica colado na direita de quem rola ate o fim */
+.ped-topo .icone{margin-left:auto;padding-left:6px}
 .ped-tit h2{margin:0;font-size:17px;font-weight:800;letter-spacing:-.02em;color:var(--tinta)}
 .ped-tit p{margin:1px 0 0;font-size:11.5px;font-weight:600;color:var(--fraco)}
-.ped-atualizar{display:inline-flex;align-items:center;gap:6px;flex:none;cursor:pointer;
-  border:1px solid var(--linha-forte);background:var(--carta);color:var(--texto);
-  border-radius:999px;padding:7px 13px 7px 11px;font:inherit;font-size:11.5px;font-weight:700}
+.ped-atualizar{display:inline-flex;align-items:center;justify-content:center;flex:none;
+  cursor:pointer;border:1px solid var(--linha-forte);background:var(--carta);
+  color:var(--texto);border-radius:999px;width:32px;height:32px;font:inherit}
 .ped-atualizar:hover{border-color:var(--marca);color:var(--marca-tinta)}
 .ped-atualizar[disabled]{opacity:.55;cursor:progress}
 
-/* Uma linha so, que rola: quebrados, os quatro filtros comiam 172px de altura
-   no celular e empurravam o primeiro pedido para fora da tela. */
-.ped-filtros{display:flex;gap:8px;flex:none;padding:12px 16px 0;
-  overflow-x:auto;scrollbar-width:none}
-.ped-filtros::-webkit-scrollbar{display:none}
-.ped-filtros > *{flex:none}
 .ped-campo{display:flex;align-items:center;gap:6px;
   border:1px solid var(--linha);background:var(--carta);border-radius:10px;
   padding:7px 10px;font-size:11.5px;font-weight:700;color:var(--fraco)}
 .ped-campo:focus-within{border-color:var(--marca)}
 .ped-campo select,.ped-campo input{border:0;background:none;font:inherit;font-size:12px;
   font-weight:700;color:var(--tinta);outline:none;min-width:0}
-.ped-busca{flex:1;min-width:180px}
+/* largura fixa: na mesma linha do titulo ela nao pode mais crescer sozinha */
+.ped-busca{width:210px}
+@media(max-width:640px){ .ped-busca{width:150px} }
 /* tipos: mesma leitura das origens da vitrine, cada uma na sua cor */
 .ped-tipos{display:flex;gap:6px;flex:none;padding:10px 16px 0;overflow-x:auto;
   scrollbar-width:none}
@@ -883,9 +905,14 @@ button{font:inherit}
 .ped-tipos button.t-est.on{background:var(--pronta);border-color:var(--pronta)}
 /* "Alterados" não é uma origem como as outras: é um aviso. Fica na mesma
    fileira porque é ali que o vendedor filtra, mas com cor só dele. */
+/* GTM na cor da coleção, a mesma que a DISPO usa na aba do bolsão */
+.ped-tipos button.t-gtm{border-color:#A5F3FC;color:#0E7490;background:#ECFEFF}
+.ped-tipos button.t-gtm.on{background:#0E7490;border-color:#0E7490;color:#fff}
 .ped-tipos button.t-alt{border-color:#DDD6FE;color:#6D28D9;background:#F5F3FF}
 .ped-tipos button.t-alt.on{background:#7C3AED;border-color:#7C3AED;color:#fff}
 .ped-tipos button .n{margin-left:5px;font-size:10px;opacity:.75}
+/* espaco para a barra flutuante nao tapar o ultimo pedido da lista */
+body.ped-marcado .ped-lista{padding-bottom:84px}
 .ped-selo.rep{background:var(--repasse-fundo);color:var(--repasse-tinta)}
 
 /* ── Pedido de cancelamento ou alteração ─────────────────────────────
@@ -1012,23 +1039,8 @@ button{font:inherit}
 .ped-vazio h3{margin:0 0 5px;font-size:15px;font-weight:700;color:var(--tinta)}
 .ped-vazio p{margin:0;font-size:12.5px;line-height:1.5}
 
-.ped-pe{display:flex;align-items:center;gap:10px;flex:none;
-  padding:11px 16px calc(11px + env(safe-area-inset-bottom));
-  border-top:1px solid var(--linha-forte);background:var(--barra)}
-.ped-pe[hidden]{display:none}
-.ped-sel{flex:1;font-size:11.5px;font-weight:700;color:var(--fraco);
-  font-variant-numeric:tabular-nums}
-.ped-acao{margin-top:0;width:auto;flex:none;gap:7px;padding:9px 15px;
-  font-size:12px;font-weight:800;color:#fff;border:0;border-radius:999px}
-.ped-acao.pdf{background:linear-gradient(145deg,#F2557A 0%,#D6294B 55%,#96122E 100%)}
-.ped-acao.xls{background:linear-gradient(145deg,#34C77B 0%,#128A4F 55%,#0A5C35 100%)}
-/* Contornado, nao preenchido: apagar nao pode competir com PDF e planilha,
-   que sao o que o vendedor vem fazer aqui. */
-.ped-acao.apagar{background:var(--carta);color:#C2183F;
-  border:1px solid color-mix(in srgb,#C2183F 40%,transparent)}
-.ped-acao.apagar:hover{background:rgba(224,36,94,.07);border-color:#C2183F}
-.ped-acao:hover{filter:brightness(1.06)}
-.ped-acao:disabled{opacity:.6;cursor:progress}
+/* O rodape de acoes (.ped-pe) saiu em 23/11/2026: as acoes viraram a barra
+   flutuante #pedSelBarra, a mesma dos produtos marcados na vitrine. */
 
 @media(max-width:900px){
   /* A marca desce para a segunda linha em vez de sumir: Oly e UA não podem
@@ -1041,10 +1053,7 @@ button{font:inherit}
   .ped-marca{grid-area:marca;align-self:center}
   .ped-nums{grid-area:nums;text-align:left}
   .ped-abrir{grid-area:abrir;justify-self:end}
-  .ped-lista,.ped-filtros,.ped-barra,.ped-topo,.ped-pe{padding-left:12px;padding-right:12px}
-  .ped-acao span{display:none}
-  .ped-acao{padding:10px 13px}
-  .ped-busca{min-width:150px}
+  .ped-lista,.ped-barra,.ped-topo{padding-left:12px;padding-right:12px}
 }
 
 /* ── link para o cliente ──────────────────────────────────────────── */
@@ -2030,7 +2039,7 @@ body.com-selecao.com-limpar .grade{ padding-bottom:150px; }
 .cli-sug{ border-radius:14px; box-shadow:var(--sombra-alta); }
 
 /* ── meus pedidos e respostas ── */
-.ped-topo,.ped-pe{ background:var(--carta); }
+.ped-topo{ background:var(--carta); }
 .ped-item{ border-radius:16px; box-shadow:var(--sombra); }
 .ped-campo{ border-radius:999px; }
 .lk-item,.rs-item{ border-radius:16px; }
@@ -2870,20 +2879,14 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
 
 <div class="ped-bg" id="pedidos" hidden>
   <section class="ped" role="dialog" aria-modal="true" aria-labelledby="pedTit">
-    <header class="ped-topo">
+    <!-- Tudo numa linha so: o nome, a busca e os tres filtros. Era titulo
+         em cima e filtros embaixo, duas fileiras para o que cabe em uma.
+         No celular e no tablet a linha rola para os dois lados. -->
+    <header class="ped-topo" id="pedTopo">
       <div class="ped-tit">
         <h2 id="pedTit">Meus pedidos</h2>
         <p id="pedSub">—</p>
       </div>
-      <button class="ped-atualizar" id="pedAtualizar" title="Buscar de novo no servidor">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
-        <span>Atualizar</span></button>
-      <button class="icone" id="pedFechar" aria-label="Fechar">✕</button>
-    </header>
-
-    <div class="ped-filtros" id="pedFiltros">
       <label class="ped-campo ped-busca">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
@@ -2906,13 +2909,26 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
         </select></label>
       <label class="ped-campo" id="pedCampoVend" hidden><span>Vendedor</span>
         <select id="pedVendedor"></select></label>
-    </div>
+      <!-- so o icone: a palavra "Atualizar" custava 80px de uma linha que
+           agora carrega os filtros -->
+      <button class="ped-atualizar" id="pedAtualizar" title="Buscar de novo no servidor"
+              aria-label="Atualizar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg></button>
+      <button class="icone" id="pedFechar" aria-label="Fechar">✕</button>
+    </header>
 
     <!-- O que foi feito, por origem: o repasse vem do app de repasses; estoque
          e produção vêm das planilhas do EBM geradas aqui. -->
     <div class="ped-tipos" id="pedTipos">
       <button data-tipo="" class="on">Tudo</button>
       <button data-tipo="repasse" class="t-rep">Repasses</button>
+      <!-- A cota da colecao e repasse tambem, mas o vendedor precisa olhar
+           uma de cada vez: o chip separa o bolsao 1S27 do repasse do dia a
+           dia, como as duas familias da DISPO. -->
+      <button data-tipo="gtm" class="t-gtm"
+              title="Pedidos do bolsão da coleção (GTM - 1S27)">GTM</button>
       <button data-tipo="producao" class="t-pro">Produção</button>
       <button data-tipo="estoque" class="t-est">Estoque</button>
       <button data-tipo="alterados" class="t-alt"
@@ -2926,30 +2942,49 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
 
     <div class="ped-lista" id="pedLista"></div>
 
-    <footer class="ped-pe" id="pedPe" hidden>
-      <span class="ped-sel" id="pedSel">—</span>
-      <button class="acao ped-acao apagar" id="pedApagar">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
-          <path d="M10 11v6M14 11v6"/></svg>
-        <span>Apagar</span></button>
-      <button class="acao ped-acao pdf" id="pedPdf">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <path d="M14 2v6h6"/><path d="M8 13h2.5a1.5 1.5 0 0 1 0 3H8v-3zM8 16v3"/>
-          <path d="M14 13h3M14 16h2M14 13v6"/></svg>
-        <span>PDF do pedido</span></button>
-      <button class="acao ped-acao xls" id="pedXlsx">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <path d="M14 2v6h6"/><path d="m9 13 6 6M15 13l-6 6"/></svg>
-        <span>Reemitir XLSX</span></button>
-    </footer>
   </section>
+
+  <!-- As acoes sairam do rodape fixo e viraram a barra flutuante da vitrine,
+       a mesma dos produtos marcados: ela so existe quando ha pedido marcado.
+       Relatorio (PDF/XLSX) vale para qualquer pedido; o PDF do pedido, a
+       planilha do EBM e o Apagar so para os que nasceram aqui - por isso
+       eles se escondem quando a selecao e so de repasse. -->
+  <div class="sel-barra" id="pedSelBarra" hidden>
+    <span class="cont" id="pedSelCont">0</span>
+    <button class="sel-btn pdf" id="pedRelPdf" title="PDF da lista dos pedidos marcados">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <path d="M14 2v6h6"/><path d="M8 13h2.5a1.5 1.5 0 0 1 0 3H8v-3zM8 16v3"/>
+        <path d="M14 13h3M14 16h2M14 13v6"/></svg>
+      <span>PDF</span></button>
+    <button class="sel-btn xls" id="pedRelXlsx" title="XLSX da lista dos pedidos marcados">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <path d="M14 2v6h6"/><path d="m9 13 6 6M15 13l-6 6"/></svg>
+      <span>XLSX</span></button>
+    <button class="sel-btn doc" id="pedPdf" title="PDF do pedido de compra">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <path d="M14 2v6h6"/><path d="M9 13h6M9 17h6"/></svg>
+      <span>Pedido</span></button>
+    <button class="sel-btn ebm" id="pedXlsx" title="Planilha de importação do EBM">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M4 21h16"/></svg>
+      <span>EBM</span></button>
+    <button class="sel-apagar" id="pedApagar" title="Apagar os marcados">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+        <path d="M10 11v6M14 11v6"/></svg>
+      <span>Apagar</span></button>
+    <button class="sel-x" id="pedSelLimpar" title="Desmarcar todos"
+            aria-label="Desmarcar todos">✕</button>
+  </div>
 </div>
 
 <div class="fundo" id="modalResp" hidden>
@@ -6434,6 +6469,13 @@ function repasseComoPedido(p){
       corCodigo: String(it.cor || '').trim().toUpperCase(),
       origem: 'repasse',
       num: String(it.num || '').trim(),
+      /* Estes quatro nao vinham e por isso o relatorio saia sem GCI, sem
+         EBM e sem data - e o chip GTM nao tinha como saber de que colecao
+         e o pedido. O item do repasse ja os guarda (ver itemRepasse). */
+      gci: String(it.gci || '').trim(),
+      ebm: String(it.ebm || '').trim(),
+      prevFat: it.prevFaturamento || '',
+      colecao: String(it.colecao || '').trim(),
       caixas: Number(it.amount || 0),
       total: Number(it.totalUnits || 0),
       gradeSaida: grade,
@@ -6575,10 +6617,20 @@ function dentroDoPeriodo(iso, modo){
 
 // Um pedido da vitrine pode misturar estoque e produção; o de repasse é só
 // repasse. O filtro pergunta se o pedido tem aquilo dentro.
+/* O pedido do bolsao e repasse tambem, mas o vendedor olha um de cada vez:
+   com colecao no item ele e GTM, sem colecao e repasse comum. Pedido misto
+   entra nos dois, que e o que ele e. Mesma divisao da DISPO. */
 function tiposDoPedido(p){
-  if(p.tipo === 'repasse') return ['repasse'];
   const t = new Set();
-  for(const i of (p.itens || [])) t.add(i.origem === 'producao' ? 'producao' : 'estoque');
+  if(p.tipo === 'repasse'){
+    const itens = p.itens || [];
+    const temGtm = itens.some(i => String(i.colecao || '').trim());
+    const temComum = itens.some(i => !String(i.colecao || '').trim());
+    if(temGtm) t.add('gtm');
+    if(temComum || !temGtm) t.add('repasse');
+  }else{
+    for(const i of (p.itens || [])) t.add(i.origem === 'producao' ? 'producao' : 'estoque');
+  }
   return [...t];
 }
 
@@ -6624,8 +6676,11 @@ function pedidoHtml(p){
   const classeSol = solAberta ? (solAberta.tipo === 'cancelar' ? ' sol-canc' : ' sol-alt') : '';
   return `<article class="ped-item${sel ? ' sel' : ''}${aberto ? ' aberto' : ''}${classeSol}" data-id="${esc(p.id)}">
     <div class="ped-linha">
+      <!-- Marcar vale para TODOS desde 23/11/2026. A caixinha do repasse
+           nascia desabilitada ("so para consulta") e, como a lista e quase
+           toda de repasse, a selecao parecia nao funcionar. Quem distingue
+           os tipos agora sao os botoes da barra, nao a caixinha. -->
       <input type="checkbox" data-sel="${esc(p.id)}" ${sel ? 'checked' : ''}
-             ${p.tipo === 'repasse' ? 'disabled title="Pedido do app de repasses: aqui ele é só para consulta"' : ''}
              aria-label="Selecionar pedido de ${esc(q.dia)}">
       <span class="ped-quando">${esc(q.dia)}<small>${esc(q.hora)}</small></span>
       <span class="ped-cli"><b>${esc(p.clienteNome || 'Cliente ' + p.cliente)}</b>
@@ -6877,7 +6932,7 @@ function pintarPedidos(){
     lista.innerHTML = '<div class="ped-vazio"><span class="girando"></span>' +
       '<h3>Buscando os pedidos</h3></div>';
     $('pedConta').textContent = '—';
-    $('pedPe').hidden = true;
+    $('pedSelBarra').hidden = true;
     return;
   }
   filtrarPedidos();
@@ -6907,13 +6962,22 @@ function pintarPedidos(){
   // Só conta o que está na tela: marcar "todos" e exportar um pedido filtrado
   // fora seria uma surpresa.
   const selVis = PED.filtrados.filter(p => PED.sel.has(p.id));
-  const marcaveis = PED.filtrados.filter(p => p.tipo !== 'repasse').length;
-  $('pedTodos').checked = marcaveis > 0 && selVis.length === marcaveis;
-  $('pedTodos').disabled = marcaveis === 0;
-  $('pedPe').hidden = !selVis.length;
+  $('pedTodos').checked = PED.filtrados.length > 0 && selVis.length === PED.filtrados.length;
+  $('pedTodos').disabled = PED.filtrados.length === 0;
   const selPares = selVis.reduce((a, p) => a + Number(p.totalPares || 0), 0);
-  $('pedSel').textContent = `${nf(selVis.length)} ${selVis.length === 1 ? 'pedido' : 'pedidos'}` +
-    ` · ${nf(selPares)} pares`;
+  $('pedSelBarra').hidden = !selVis.length;
+  // a lista ganha folga no fim para a barra nao tapar o ultimo pedido
+  document.body.classList.toggle('ped-marcado', !!selVis.length);
+  $('pedSelCont').textContent =
+    `${nf(selVis.length)} ${selVis.length === 1 ? 'marcado' : 'marcados'} · ${nf(selPares)} pares`;
+  /* PDF do pedido, planilha do EBM e Apagar tratam do pedido nascido AQUI:
+     o de repasse vive no app de repasses e nao tem o que reemitir nem o que
+     apagar. Marcando so repasse sobram o PDF e o XLSX da lista, que valem
+     para qualquer um. */
+  const daCasa = selVis.some(p => p.tipo !== 'repasse');
+  $('pedPdf').hidden = !daCasa;
+  $('pedXlsx').hidden = !daCasa;
+  $('pedApagar').hidden = !daCasa;
 }
 
 const nomeDoVendedor = cod => {
@@ -6960,13 +7024,15 @@ $('pedVendedor').addEventListener('change', e => {
   carregarPedidos();
 });
 $('pedTodos').addEventListener('change', e => {
-  // o repasse fica de fora: apagar e exportar tratam do histórico da vitrine
+  // marca tudo o que esta na tela, repasse inclusive - quem separa o que
+  // cada acao alcanca e a barra (ver pintarPedidos)
   for(const p of PED.filtrados){
-    if(p.tipo === 'repasse'){ PED.sel.delete(p.id); continue; }
     e.target.checked ? PED.sel.add(p.id) : PED.sel.delete(p.id);
   }
   pintarPedidos();
 });
+
+$('pedSelLimpar').onclick = () => { PED.sel.clear(); pintarPedidos(); };
 $('pedLista').addEventListener('change', e => {
   const c = e.target.closest('[data-sel]');
   if(!c) return;
@@ -6984,6 +7050,227 @@ $('pedLista').addEventListener('click', e => {
   PED.abertos.has(id) ? PED.abertos.delete(id) : PED.abertos.add(id);
   pintarPedidos();
 });
+
+
+/* ── Relatório da lista: PDF e XLSX ──────────────────────────────────────
+   O mesmo formato da tela de Repasses, que ele pediu para trazer para cá:
+   uma linha por item do pedido, com Nº, GCI, EBM, prev. fat. e a grade. No
+   PDF a foto do produto abre a linha.
+   Não confundir com os outros dois botões: "Pedido" é o PDF de compra (um
+   documento por pedido) e "EBM" é a planilha de importação. Este aqui é a
+   lista, para conferir e mandar para o escritório. */
+const REL_COLS = ['Nº','Vendedor','Cod. Cliente','Nome','Prazo','Campanha','Qtde',
+                  'EBM','GCI','Descrição','Cor','Prev Fat','Status','Grade'];
+
+function _relData(v){
+  const t = String(v || '').trim();
+  if(!t) return '—';
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(t)) return t;
+  const d = new Date(t);
+  if(isNaN(d)) return t;
+  const p2 = n => String(n).padStart(2, '0');
+  return `${p2(d.getUTCDate())}/${p2(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`;
+}
+function _relGrade(it){
+  const g = it.gradeSaida || it.gradeCaixa || {};
+  const tam = Object.keys(g).filter(t => Number(g[t]) > 0)
+    .sort((a, b) => Number(a) - Number(b));
+  return tam.length ? tam.map(t => `${t}(${g[t]})`).join(' ') : '—';
+}
+
+/* `metas` (opcional) recebe, na mesma ordem das linhas, o artigo e a cor de
+   cada uma — é por eles que o PDF acha a foto. */
+function linhasRelatorio(pedidos, metas){
+  const linhas = [REL_COLS.slice()];
+  let n = 0;
+  for(const p of pedidos){
+    const vend = nomeCurto(p.comissionistaNome || '') || nomeDoVendedor(p.comissionista) || '—';
+    const camp = String(p.campanha || '').replace(/\s*\bOLY\b\s*/gi, '').trim() || '—';
+    const status = p.status || (p.tipo === 'repasse' ? 'Pendente' : 'Enviado');
+    const itens = p.itens || [];
+    if(!itens.length){
+      n++;
+      linhas.push([n, vend, p.cliente || '—', p.clienteNome || '—', p.prazo || '—', camp,
+                   '—','—','—','—','—','—', status, '—']);
+      if(metas) metas.push({ artigo:'', cor:'' });
+      continue;
+    }
+    for(const it of itens){
+      n++;
+      if(metas) metas.push({ artigo: it.artigo || '', cor: it.cor || '', imagem: it.imagem || '' });
+      linhas.push([n, vend, p.cliente || '—', p.clienteNome || '—', p.prazo || '—', camp,
+        Number(it.total || 0), it.ebm || '—', it.gci || '—',
+        it.nome || it.produto || '—', it.cor || '—',
+        _relData(it.prevFat || it.prevFaturamento || it.dataDesejada), status, _relGrade(it)]);
+    }
+  }
+  return linhas;
+}
+
+function nomeDoArquivoRel(alvos){
+  const cli = [...new Set(alvos.map(p => String(p.clienteNome || p.cliente || '')))];
+  const base = cli.length === 1
+    ? cli[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)
+    : `${alvos.length}-pedidos`;
+  return `pedidos_${base || 'lista'}_${carimboAgora()}`;
+}
+
+function relatorioXlsx(){
+  const alvos = selecionados();
+  if(!alvos.length) return;
+  try{
+    const linhas = linhasRelatorio(alvos);
+    const ws = XLSX.utils.aoa_to_sheet(linhas);
+    ws['!cols'] = [4,18,12,22,20,16,6,12,10,24,10,12,10,28].map(w => ({ wch:w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Pedidos');
+    XLSX.writeFile(wb, nomeDoArquivoRel(alvos) + '.xlsx');
+  }catch(e){
+    console.error(e);
+    avisar('Não deu para gerar o XLSX', 'Tente de novo; se repetir, me chame.');
+  }
+}
+
+/* A foto do site tem 1.000 px ou mais e no papel ocupa 28 mm. Sem reduzir,
+   um PDF de poucos pedidos passa de 10 MB. */
+const _fotoRel = new Map();
+function _miniRel(img, max = 260){
+  const r = img.naturalWidth / img.naturalHeight || 1;
+  const w = r >= 1 ? max : Math.round(max * r);
+  const h = r >= 1 ? Math.round(max / r) : max;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(img, 0, 0, w, h);
+  try{ return { dataUrl: c.toDataURL('image/jpeg', .72), w, h }; }
+  catch(e){ return null; }   // canvas sujo: segue sem foto
+}
+async function _fotoParaRel(meta){
+  const chave = `${meta.artigo}|${meta.cor}`;
+  if(_fotoRel.has(chave)) return _fotoRel.get(chave);
+  let saida = null;
+  try{
+    const img = await imagemCarregada({ artigo: meta.artigo, cor: meta.cor, imagem: meta.imagem });
+    if(img) saida = _miniRel(img);
+  }catch(e){ /* sem foto nao e motivo para perder o PDF */ }
+  _fotoRel.set(chave, saida);
+  return saida;
+}
+
+async function relatorioPdf(){
+  const alvos = selecionados();
+  if(!alvos.length) return;
+  const btn = $('pedRelPdf');
+  ocupado(btn, '…');
+  try{
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4', compress:true });
+    const pw = doc.internal.pageSize.getWidth();
+    const ph = doc.internal.pageSize.getHeight();
+    const agora = new Date();
+    const quem = nomeCurto(nomeDoVendedor(PED.vendedor)) || (SESSAO && SESSAO.nome) || 'Vendedor';
+
+    doc.setFillColor(40, 54, 212); doc.rect(0, 0, pw, 16, 'F');
+    doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+    doc.text('PEDIDOS · CMS REPRESENTAÇÕES', 12, 10);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+    doc.text(`${quem} · ${alvos.length} ${alvos.length === 1 ? 'pedido' : 'pedidos'}` +
+             ` · ${agora.toLocaleDateString('pt-BR')}`, pw - 12, 10, { align:'right' });
+
+    const IMG = 28, GAP = 3;
+    const cols = [
+      { label:'Foto', w:IMG + GAP },
+      { label:'Nº', w:8, align:'right' }, { label:'Vendedor', w:16 }, { label:'Cod.Cli', w:13 },
+      { label:'Nome', w:30 }, { label:'Prazo', w:14 }, { label:'Campanha', w:14 },
+      { label:'Qtde', w:10, align:'right' }, { label:'EBM', w:14 }, { label:'GCI', w:13 },
+      { label:'Descrição', w:32 }, { label:'Cor', w:14 }, { label:'Prev Fat', w:14 },
+      { label:'Status', w:14 }, { label:'Grade', w:37 }
+    ];
+    const startX = 12, rowH = IMG + 4, hdrH = 7;
+    let y = 22;
+    function cabecalho(){
+      doc.setFillColor(248, 250, 252); doc.rect(startX, y, pw - 24, hdrH, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(71, 85, 105);
+      let cx = startX + 1.5;
+      for(const c of cols){
+        doc.text(c.label, c.align === 'right' ? cx + c.w - 2 : cx, y + 4.8,
+                 { align: c.align === 'right' ? 'right' : 'left' });
+        cx += c.w;
+      }
+      y += hdrH;
+    }
+    cabecalho();
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5);
+
+    const metas = [];
+    const linhas = linhasRelatorio(alvos, metas).slice(1);
+
+    // as fotos vem antes de desenhar: baixar no meio do laco deixaria a
+    // montagem aos pedacos, e o botao conta quanto falta
+    const distintas = [...new Map(metas.filter(m => m.artigo)
+      .map(m => [`${m.artigo}|${m.cor}`, m])).values()];
+    let feitas = 0;
+    for(const m of distintas){
+      await _fotoParaRel(m);
+      feitas++;
+      passo(btn, `${Math.round(feitas / distintas.length * 100)}%`);
+    }
+    passo(btn, '…');
+
+    for(let r = 0; r < linhas.length; r++){
+      const linha = linhas[r];
+      if(y > ph - 14 - rowH){ doc.addPage(); y = 10; cabecalho(); }
+      doc.setDrawColor(237, 242, 247); doc.line(startX, y, pw - 12, y);
+      let cx = startX + 1.5;
+      for(let i = 0; i < cols.length; i++){
+        const col = cols[i];
+        if(i === 0){
+          const f = _fotoRel.get(`${metas[r].artigo}|${metas[r].cor}`);
+          const ix = cx, iy = y + 2;
+          if(f && f.dataUrl){
+            let w2 = IMG, h2 = IMG;
+            const rr = f.w / f.h;
+            if(rr > 1) h2 = IMG / rr; else w2 = IMG * rr;
+            doc.addImage(f.dataUrl, 'JPEG', ix + (IMG - w2) / 2, iy + (IMG - h2) / 2,
+                         w2, h2, undefined, 'FAST');
+          }else{
+            doc.setTextColor(148, 163, 184);
+            doc.text('sem foto', ix + IMG / 2, iy + IMG / 2, { align:'center' });
+          }
+          cx += col.w;
+          continue;
+        }
+        const val = String(linha[i - 1] == null ? '' : linha[i - 1]);
+        const tx = col.align === 'right' ? cx + col.w - 2 : cx;
+        // setTextColor nao aceita array: passar [r,g,b] derruba o PDF inteiro
+        if(i === 13){
+          const c = val === 'Aprovado' ? [21,128,61] : val === 'Cancelado' ? [185,28,28] : [180,83,9];
+          doc.setTextColor(c[0], c[1], c[2]);
+        }else if(i === 9 && val && val !== '—'){ doc.setTextColor(40, 54, 212); }
+        else { doc.setTextColor(15, 23, 42); }
+        doc.text(doc.splitTextToSize(val, col.w - 2)[0] || '', tx, y + rowH / 2 + 1,
+                 { align: col.align === 'right' ? 'right' : 'left' });
+        cx += col.w;
+      }
+      y += rowH;
+    }
+    doc.setDrawColor(40, 54, 212); doc.line(startX, y, pw - 12, y);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(148, 163, 184);
+    doc.text(`Gerado em ${agora.toLocaleDateString('pt-BR')} às ` +
+             `${agora.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' })}`,
+             12, ph - 5);
+    doc.text('CMS Representações', pw - 12, ph - 5, { align:'right' });
+    doc.save(nomeDoArquivoRel(alvos) + '.pdf');
+  }catch(e){
+    console.error(e);
+    avisar('Não deu para gerar o PDF', 'Tente de novo; se repetir, me chame.');
+  }finally{ liberado(btn); }
+}
+
+$('pedRelPdf').onclick = relatorioPdf;
+$('pedRelXlsx').onclick = relatorioXlsx;
 
 // Reemissão: cada pedido tem o seu cliente e o seu prazo, então as linhas
 // saem por pedido e se juntam numa planilha só.
@@ -10351,7 +10638,7 @@ function arrastavel(fila){
 // Toda fila de botoes se move igual: dedo no celular, arrasto e roda no
 // desktop. Valem as barras de navegacao e acao — os chips dentro de um card
 // continuam quebrando linha, porque ali esconder opcao seria pior.
-for(const sel of ['#linha2', '#topoAcoes', '#selBarra', '#pedFiltros', '#pedPe', '#topoRolo'])
+for(const sel of ['#linha2', '#topoAcoes', '#selBarra', '#pedTopo', '#pedTipos', '#topoRolo'])
   arrastavel(document.querySelector(sel));
 
 /* ── o cabeçalho em telas estreitas ──────────────────────────────────
