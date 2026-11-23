@@ -663,7 +663,7 @@
             <div class="hdr-busca flex flex-1 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2"
               title="Buscar por número do pedido, cliente ou preposto">
               <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
-              <input id="adminSearch" class="focus-ring w-full bg-transparent text-sm outline-none" placeholder="Buscar pedido, cliente ou preposto" />
+              <input id="adminSearch" class="focus-ring w-full bg-transparent text-sm outline-none" placeholder="Buscar pedido, cliente, preposto ou Nº" />
               <button id="btnClearSearch" class="focus-ring hidden text-slate-400 hover:text-slate-600" title="Limpar a busca (Esc)">
                 <i class="fa-solid fa-xmark text-xs"></i>
               </button>
@@ -2775,10 +2775,23 @@ function _passaNosFiltros(order, q, sf, scope){
     order.preposto?.codigo,
     order.prazo,
     order.campanha,
-    ...(order.items || []).flatMap(item => [item.codigo, item.produto, item.cor, item.gci])
+    /* O Nº do lote e o EBM entram na busca em 23/11/2026: quem olha um lote
+       na DISPO vem para cá perguntar quem pediu dele, e digitava o número
+       sem achar nada - o item guarda os dois, mas só o GCI era varrido. */
+    ...(order.items || []).flatMap(item => [item.codigo, item.produto, item.cor,
+                                            item.gci, item.num, item.ebm])
   ].join(' ').toLowerCase();
 
-  const matchQ = !q || hay.includes(q);
+  /* Número curto é Nº de lote (ou código de cliente), e aí a busca é EXATA.
+     Por dentro do texto, "521" casava com qualquer GCI que tivesse 521 no
+     meio e trazia pedidos de outros lotes - o número é o que mais se digita
+     aqui, e precisa responder o que foi perguntado. O resto segue livre. */
+  const soNumero = /^\d{1,4}$/.test(q);
+  const matchQ = !q || (soNumero
+    ? ((order.items || []).some(it => String(it.num || '').trim() === q)
+       || String(order.clienteCodigo || '').trim() === q
+       || String(order.preposto?.codigo || '').trim() === q)
+    : hay.includes(q));
   const matchScope = orderMatchesScope(order, scope);
   const matchFamilia = pedidoNaFamilia(order, STATE.familia);
   let matchStatus = true;
