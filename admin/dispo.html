@@ -448,6 +448,22 @@
        família é a primeira escolha da tela e vale para TODAS as abas.
        O desenho é de trilho (não de pílula) de propósito: diz que
        está um nível acima dos filtros.                              */
+    /* Saída para o Portal, a mesma peça de todas as telas (15/10/2026):
+       pílula branca de 36px, seta à esquerda e a palavra Portal. Branca
+       também no modo escuro — manter o botão idêntico vale mais que combinar
+       com cada cabeçalho. */
+    .portal-btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:7px;
+      flex:none; height:36px; padding:0 12px; border-radius:999px;
+      border:1px solid #E2E8F0; background:#FFFFFF; color:#475569;
+      font-family:inherit; font-size:14px; font-weight:700; line-height:1;
+      text-decoration:none; cursor:pointer; white-space:nowrap;
+      transition:background .15s ease, border-color .15s ease;
+    }
+    .portal-btn:hover{ background:#F8FAFC; border-color:#CBD5E1; color:#334155; }
+    .portal-btn:focus-visible{ outline:2px solid #475569; outline-offset:2px; }
+    .portal-btn svg{ width:14px; height:14px; flex:none; }
+
     .familia-tabs{
       display:inline-flex; gap:3px; padding:3px;
       background:#eef1f7;
@@ -1144,6 +1160,8 @@
               class="focus-ring h-9 w-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors">
               <i class="fa-solid fa-moon text-slate-400 text-sm" id="darkIcon"></i>
             </button>
+
+            <a class="portal-btn" href="https://cms-representacoes.github.io/apps-oly/" title="Voltar ao Portal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg><span>Portal</span></a>
           </div>
         </div>
 
@@ -2675,12 +2693,18 @@ const TAMS_ROBO = Array.from({ length: 21 }, (_, i) => String(28 + i));   // 28.
    objeto, o JavaScript joga as chaves numéricas ("28".."48") para o
    começo — a planilha saía com os tamanhos antes do CÓD REPASSE. O robô
    lê por nome e nem repara, mas quem abre o arquivo repara. */
+/* SIGLA entrou em 23/11/2026. É ela que vira o "Pedido do Cliente" no
+   EBM (CL 58568). Antes só existia na conferência desta tela, e quem
+   mandava no EBM era a sigla guardada no config do robô - então trocar
+   aqui não mudava nada lá. Planilha sem a coluna (a do Chris) continua
+   valendo a sigla do robô. */
 const COLUNAS_ROBO = ['CÓD REPASSE', 'VENDEDOR', 'CÓD CLIENTE', 'CLIENTE', 'PRAZO',
-                      'CAMPANHA', 'QTD PARES', 'STATUS', 'EBM', 'GCI', 'REFERENCIA',
-                      'DESCRICAO', 'COR', 'DATA ENTREGA', ...TAMS_ROBO];
+                      'CAMPANHA', 'SIGLA', 'QTD PARES', 'STATUS', 'EBM', 'GCI',
+                      'REFERENCIA', 'DESCRICAO', 'COR', 'DATA ENTREGA', ...TAMS_ROBO];
 
 function linhasDaPlanilhaRobo(p){
   const linhas = [];
+  const sigla = siglaDesm();
   for(const P of p.pedidos){
     for(const C of P.clientes){
       for(const L of C.linhas){
@@ -2696,6 +2720,7 @@ function linhasDaPlanilhaRobo(p){
           'CLIENTE': C.nome || '',
           'PRAZO': C.prazo || '',
           'CAMPANHA': C.campanha || '',
+          'SIGLA': sigla,
           'QTD PARES': L.pares,
           'STATUS': '',
           'EBM': P.ebm,
