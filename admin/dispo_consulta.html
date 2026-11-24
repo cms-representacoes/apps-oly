@@ -739,6 +739,25 @@ async function setVisao(nome){
   }
 }
 
+/* Quao bem este lote responde ao que foi digitado. Menor = mais perto.
+   O numero do lote ganha do GCI e do codigo porque e por ele que se
+   procura aqui: digitar "521" e perguntar pelo lote 521, nao pelo GCI
+   que por acaso tem 521 no meio (o 5521969, do lote 289). */
+function _relevancia(p, q){
+  const num  = String(p.num ?? '').toLowerCase();
+  const gci  = String(p.gci ?? '').toLowerCase();
+  const cod  = String(p.codigo ?? '').toLowerCase();
+  const nome = String(p.produto ?? '').toLowerCase();
+  if(num === q) return 0;
+  if(gci === q) return 1;
+  if(cod === q) return 2;
+  if(num.startsWith(q)) return 3;
+  if(gci.startsWith(q) || cod.startsWith(q)) return 4;
+  if(nome.startsWith(q)) return 5;
+  if(nome.includes(q)) return 6;
+  return 7;                       // achado em algum outro campo
+}
+
 function filtrarProdutos(){
   // o foco manda em tudo: com um lote escolhido, a lista e so ele
   if(_foco){
@@ -749,11 +768,18 @@ function filtrarProdutos(){
   const q=_searchQuery.toLowerCase().trim();
   const ms=PERIODO_MS[_periodoAtivo];
   const desde=ms?Date.now()-ms:null;
-  return _allProdutos.filter(p=>{
+  const achados = _allProdutos.filter(p=>{
     if(desde&&p.ultimoUpdate){ const t=new Date(p.ultimoUpdate).getTime(); if(!isNaN(t)&&t<desde) return false; }
     if(q){ const hay=`${p.produto} ${p.codigo} ${p.gci} ${p.cor} ${p.prevFat} ${p.num} ${p.lojas.map(l=>l.cliente).join(' ')}`.toLowerCase(); if(!hay.includes(q)) return false; }
     return true;
   });
+  if(!q) return achados;         // sem busca, a ordem de sempre
+  /* O indice entra no criterio para o empate ficar estavel: dois lotes
+     com a mesma relevancia saem na ordem em que ja estavam. */
+  return achados
+    .map((p, i) => ({ p, i, r: _relevancia(p, q) }))
+    .sort((a, b) => a.r - b.r || a.i - b.i)
+    .map(x => x.p);
 }
 
 document.addEventListener('click', e => {
