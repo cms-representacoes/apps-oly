@@ -6771,8 +6771,17 @@ function limparFiltrosDispo(){
   if(limpar) limpar.classList.add('hidden');
   document.querySelectorAll('.filter-pill').forEach(x => x.classList.toggle('active', x.dataset.filter === 'all'));
   if(typeof sincronizarMaisFiltros === 'function') sincronizarMaisFiltros();
+  limparSelecaoDispo();   // a selecao era de OUTRA lista; ver a nota abaixo
   renderDispo();
 }
+
+/* ── POR QUE A SELECAO MORRE JUNTO COM A LISTA ────────────────────────
+   Marcar um lote na aba Desmembramento, limpar os filtros e cair em
+   "A distribuir" deixava a barra dizendo "1 selecionado" sobre uma
+   linha que nao estava mais na tela - e os botoes "Excluir" e
+   "Cancelar selecionados" ligados, prontos para agir no escuro.
+   Trocar de aba e trocar de familia tem o mesmo efeito, e por isso
+   limpam tambem. */
 
 // ── FILTRO DE Nº (coluna Nº) ─────────────────────────────────────────────────
 function atualizarFunilNum(){
@@ -7183,6 +7192,7 @@ $('filterPills').addEventListener('click', (e) => {
   document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
   pill.classList.add('active');
 
+  limparSelecaoDispo();   // outra aba, outra lista
   renderDispo();
 });
 
@@ -7389,6 +7399,7 @@ function setFamilia(nome){
   fecharMaisFiltros();
   atualizarBadgeRateados();
   atualizarBadgeOcultos();          // chama atualizarBadgeFinalizados no fim
+  limparSelecaoDispo();   // outra familia, outra lista
   renderDispo();
 }
 
