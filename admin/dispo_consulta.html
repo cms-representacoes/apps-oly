@@ -47,10 +47,20 @@
     .focus-ring:focus-visible{ outline:none; box-shadow:0 0 0 4px rgba(40,54,212,.15); }
 
     /* TABLE */
-    .table-wrap{ overflow:auto; border-radius:20px; border:1px solid var(--line); background:var(--card); max-height:calc(100vh - 280px); }
+    /* A altura vem do JS (ver ajustarAlturaTabela): o 280px fixo foi
+       calculado para o cabecalho antigo, de tres fileiras, e com o novo
+       sobravam 100 px de vazio embaixo da tabela. O valor aqui e so o
+       primeiro desenho, antes de o JS medir. */
+    .table-wrap{ overflow:auto; border-radius:20px; border:1px solid var(--line); background:var(--card); max-height:calc(100vh - 210px); }
     .table-wrap table{ width:100%; min-width:1000px; border-collapse:separate; border-spacing:0; }
     .table-wrap thead th{ position:sticky; top:0; z-index:2; background:#f8fafc; color:#475569; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); white-space:nowrap; user-select:none; }
     .table-wrap tbody td{ padding:11px 14px; font-size:13px; border-bottom:1px solid #edf2f7; vertical-align:middle; }
+    /* A linha da visao por LOTE carrega duas alturas de texto (Nº com o GCI
+       embaixo, produto com o codigo), entao ela engordou de 50 para 59 px -
+       e o que o cabecalho devolveu em altura, a linha comia de volta. Com o
+       respiro menor e a segunda linha mais junta, ela volta para ~46 px. */
+    #tableWrap tbody td{ padding:8px 12px; }
+    #tableWrap .cel-fraca{ line-height:1.25; }
     .table-wrap tbody tr:last-child td{ border-bottom:none; }
     .table-wrap tbody tr:hover td{ background:#f8fafc; cursor:default; }
 
@@ -74,9 +84,6 @@
     .dark .visao-tab.active{ background:#1e293b!important; color:#93c5fd!important; }
     .cli-linha{ cursor:pointer; }
     .cli-linha:hover{ background:var(--brand-soft,#eef2ff); }
-    .periodo-btn{ border-radius:999px; padding:4px 12px; font-size:12px; font-weight:700; border:none; cursor:pointer; background:transparent; color:#64748b; transition:all .12s; }
-    .periodo-btn.active{ background:#fff; color:#0f172a; box-shadow:0 1px 3px rgba(0,0,0,.08); }
-    .dark .periodo-btn.active{ background:#334155; color:#f1f5f9; }
 
     .toast-wrap{ position:fixed; top:18px; right:18px; display:flex; flex-direction:column; gap:10px; z-index:9999; pointer-events:none; }
     .toast{ pointer-events:auto; min-width:240px; border-radius:16px; padding:12px 16px; box-shadow:0 8px 24px rgba(15,23,42,.14); font-size:13px; font-weight:700; border:1px solid transparent; }
@@ -111,6 +118,39 @@
     .badge-lojas{ background:#e0e7ff; color:#3730a3; border-radius:999px; padding:1px 6px; font-size:10px; font-weight:700; }
     .dark .badge-lojas{ background:#1e2a4a; color:#818cf8; }
 
+    /* o cabecalho numa linha: tudo nele e flex:none e a linha rola */
+    .cab-uma-linha{ display:flex; align-items:center; gap:8px;
+      overflow-x:auto; scrollbar-width:none; }
+    .cab-uma-linha::-webkit-scrollbar{ display:none; }
+    .campo-periodo.hidden{ display:none; }
+    .campo-periodo{ display:inline-flex; align-items:center; gap:6px; flex:none;
+      border:1px solid var(--line); background:#fff; border-radius:999px;
+      padding:5px 10px 5px 13px; font-size:11.5px; font-weight:700; color:#64748b; }
+    .campo-periodo select{ border:0; background:none; font:inherit; font-size:12.5px;
+      font-weight:800; color:var(--text); outline:none; cursor:pointer; }
+    .dark .campo-periodo{ background:var(--card); }
+    .pill-resumo{ display:inline-flex; align-items:center; gap:4px; flex:none;
+      border-radius:999px; padding:4px 9px; font-size:11px; font-weight:700; white-space:nowrap; }
+    .pill-resumo b{ font-weight:800; }
+    /* a linha da tabela: nome forte em cima, dado fraco embaixo */
+    .cel-forte{ font-weight:800; color:var(--text); }
+    .cel-fraca{ font-size:11px; font-weight:600; color:var(--muted); }
+    /* Com so o numero dentro de um circulo, ninguem via que era um botao -
+       ele precisa da seta para dizer que abre. */
+    .det-abrir{ display:inline-flex; align-items:center; gap:5px; border:1px solid var(--line);
+      border-radius:999px; padding:3px 10px 3px 8px; background:#fff; color:var(--muted);
+      font-size:11px; font-weight:800; cursor:pointer; white-space:nowrap; transition:all .1s; }
+    .det-abrir i{ font-size:9px; }
+    .det-abrir:hover,.det-abrir.open{ border-color:var(--brand); color:var(--brand);
+      background:var(--brand-soft); }
+    .dark .det-abrir{ background:var(--card); }
+    /* recolher todos: so existe quando ha algo aberto */
+    #btnRecolher[hidden]{ display:none; }
+    /* O display mora aqui, e nao no elemento: com style="display:flex"
+       inline, a classe .hidden (display:none) perdia para ele e as pilulas
+       nunca sumiam - foi o que aconteceu ao entrar no foco. */
+    #pillsResumo:not(.hidden){ display:flex; gap:6px; align-items:center; margin-left:6px; }
+
     @keyframes shimmer{ 100%{ transform:translateX(100%); } }
     .loading-shimmer{ position:relative; overflow:hidden; }
     .loading-shimmer::after{ content:""; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent); animation:shimmer 1.2s infinite; }
@@ -124,21 +164,24 @@
 
     <!-- HEADER -->
     <header class="rounded-[32px] border border-slate-200 bg-white p-4 sm:p-5 shadow-card mb-4 sticky top-4 z-30">
-      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div class="flex items-center gap-4">
+      <!-- Uma linha so, que rola de lado no celular e no tablet: eram tres
+           fileiras (titulo, busca+visoes+periodo, botoes) e 303 px antes da
+           primeira linha da tabela. -->
+      <div class="cab-uma-linha">
+        <div class="flex items-center gap-3" style="flex:none">
           <button onclick="voltarParaDispo()" data-tip="Voltar ao DISPO"
             class="focus-ring flex items-center justify-center h-10 w-10 rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors">
             <i class="fa-solid fa-arrow-left text-sm"></i>
           </button>
           <div>
-            <div class="text-xs font-bold text-slate-500">Controle de estoque</div>
-            <div class="text-2xl sm:text-3xl font-extrabold">Desmembramentos</div>
+            <div class="text-[11px] font-bold text-slate-500">Controle de estoque</div>
+            <div class="text-lg font-extrabold" style="white-space:nowrap">Desmembramentos</div>
           </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2">
+        <div class="flex items-center gap-2" style="flex:none">
           <!-- Busca -->
-          <div class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 min-w-[280px]">
+          <div class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 min-w-[220px]" style="flex:none">
             <i class="fa-solid fa-magnifying-glass text-slate-400 text-sm"></i>
             <input id="searchInput" class="focus-ring w-full bg-transparent text-sm outline-none" placeholder="Produto, código, Nº, GCI..."/>
             <button id="btnClearSearch" class="hidden text-slate-400 hover:text-slate-600" data-tip="Limpar busca (ESC)">
@@ -158,15 +201,20 @@
             </button>
           </div>
 
-          <!-- Filtro período -->
-          <div class="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1 gap-0.5" id="filtroPeriodo">
-            <button class="periodo-btn active" data-periodo="all">Todos</button>
-            <button class="periodo-btn" data-periodo="24h">24h</button>
-            <button class="periodo-btn" data-periodo="7d">7d</button>
-            <button class="periodo-btn" data-periodo="15d">15d</button>
-            <button class="periodo-btn" data-periodo="1m">1m</button>
-            <button class="periodo-btn" data-periodo="6m">6m</button>
-          </div>
+          <!-- Periodo: lista suspensa desde 24/11/2026. Os seis botoes
+               ocupavam quase a largura da busca, e o que esta escolhido se
+               le igual aqui. -->
+          <label class="campo-periodo" id="campoPeriodo">
+            <span>Período</span>
+            <select id="selPeriodo" aria-label="Período">
+              <option value="all">Todos</option>
+              <option value="24h">24 horas</option>
+              <option value="7d">7 dias</option>
+              <option value="15d">15 dias</option>
+              <option value="1m">1 mês</option>
+              <option value="6m">6 meses</option>
+            </select>
+          </label>
 
           <!-- Exportar XLSX selecionados -->
           <button id="btnExportarXlsx" onclick="exportarSelecionados()" data-tip="Exportar selecionados para XLSX"
@@ -175,40 +223,40 @@
             Exportar <span id="badgeExport" class="bg-emerald-600 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
           </button>
 
-          <!-- Tela cheia -->
-          <button id="btnFullscreen" onclick="toggleFullscreen()" data-tip="Tela cheia"
-            class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
-            <i id="iconFullscreen" class="fa-solid fa-expand text-xs"></i>
-          </button>
+          <!-- Tela cheia e modo escuro sairam em 24/11/2026: esta tela ja
+               le o tema que a DISPO guardou (admin_dark / dispo_dark), e o
+               botao daqui dava duas verdades para a mesma coisa. Quem
+               escolhe o tema na DISPO escolhe aqui. -->
 
-          <!-- Dark mode -->
-          <button onclick="toggleDark()" data-tip="Modo escuro"
-            class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 transition-colors">
-            <i id="darkIcon" class="fa-solid fa-moon text-slate-400 text-xs"></i>
+          <!-- So existe com um lote em foco: abrir um lote recorta a lista
+               para ele (ver entrarNoFoco), e este botao desfaz. -->
+          <button id="btnRecolher" hidden onclick="recolherTodos()" data-tip="Recolher os lotes abertos"
+            class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2"
+            style="flex:none">
+            <i class="fa-solid fa-arrow-left text-[10px]"></i>
+            Voltar à lista<span id="badgeRecolher" hidden></span>
           </button>
 
           <!-- Atualizar -->
           <button id="btnRefresh" onclick="loadData()" data-tip="Atualizar dados"
-            class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2">
-            <i class="fa-solid fa-rotate-right text-slate-400"></i>
-            Atualizar
+            class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
+            <i class="fa-solid fa-rotate-right text-xs"></i>
           </button>
+
+          <!-- as pilulas de resumo moram no fim da linha, nao numa fileira
+               propria abaixo dela -->
+          <span id="pillsResumo" class="hidden">
+            <span class="pill-resumo" style="background:#fef3c7;color:#92400e;border:.5px solid #fde68a">
+              <b id="pillPendente">—</b> pendente(s)</span>
+            <span class="pill-resumo" style="background:#dcfce7;color:#166534;border:.5px solid #bbf7d0">
+              <b id="pillFinalizado">—</b> finalizado(s)</span>
+            <span class="pill-resumo" style="background:var(--brand-soft);color:var(--brand);border:.5px solid var(--brand)">
+              <b id="pillTotal">—</b> lote(s)</span>
+          </span>
         </div>
       </div>
     </header>
 
-    <!-- PILLS RESUMO -->
-    <div id="pillsResumo" class="flex flex-wrap gap-2 mb-4 hidden">
-      <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold" style="background:#fef3c7;color:#92400e;border:0.5px solid #fde68a">
-        <span id="pillPendente">—</span> pendente(s)
-      </span>
-      <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold" style="background:#dcfce7;color:#166534;border:0.5px solid #bbf7d0">
-        <span id="pillFinalizado">—</span> finalizado(s)
-      </span>
-      <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold" style="background:var(--brand-soft);color:var(--brand);border:0.5px solid var(--brand)">
-        <span id="pillTotal">—</span> linha(s) no total
-      </span>
-    </div>
 
     <!-- resumo da visão por cliente -->
     <div id="pillsClientes" class="flex flex-wrap items-center gap-2 mb-4 hidden">
@@ -259,19 +307,23 @@
       <div id="tableWrap" class="table-wrap hidden">
         <table>
           <thead>
+            <!-- Oito colunas desde 24/11/2026, no lugar de doze. Saldo DISPO
+                 e Saldo restante sairam: estavam em branco em 60 de 60
+                 linhas, porque os lotes ja sairam da DISPO, e o que existe
+                 agora aparece em texto ao lado do desmembrado.
+                 O Nº e o GCI voltaram a ser colunas proprias - empilhados
+                 ficavam apertados -, e o codigo e a cor foram para a linha
+                 do produto, que tinha largura sobrando. Assim a linha tem
+                 UMA altura de texto, e cabem mais lotes na tela. -->
             <tr>
               <th style="width:36px"><input type="checkbox" id="chkAll" title="Selecionar todos" style="cursor:pointer"></th>
-              <th>Nº</th>
-              <th>GCI</th>
+              <th style="width:62px">Nº</th>
+              <th style="width:104px">GCI</th>
               <th>Produto</th>
-              <th>Código</th>
-              <th>Cor</th>
-              <th>Prev. Fat.</th>
-              <th class="text-right">Saldo DISPO</th>
-              <th class="text-right">Desmembrado</th>
-              <th class="text-right">Saldo restante</th>
-              <th>Situação</th>
-              <th></th>
+              <th style="width:104px">Prev. Fat.</th>
+              <th style="width:168px">Pares</th>
+              <th style="width:186px">Situação</th>
+              <th style="width:58px"></th>
             </tr>
           </thead>
           <tbody id="tableBody"></tbody>
@@ -317,11 +369,6 @@ const _selecionados = new Set();
 
 const PERIODO_MS = { '24h':86400000, '7d':604800000, '15d':1296000000, '1m':2592000000, '6m':15552000000 };
 
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.periodo-btn').forEach(b => b.classList.toggle('active', b.dataset.periodo === _periodoAtivo));
-  const isDark = localStorage.getItem('admin_dark')==='1'||localStorage.getItem('dispo_dark')==='1';
-  if(isDark && $('darkIcon')) $('darkIcon').className = 'fa-solid fa-sun text-amber-400 text-xs';
-});
 
 function voltarParaDispo(){
   if(document.fullscreenElement){
@@ -661,6 +708,7 @@ function renderClientes(){
 }
 
 async function setVisao(nome){
+  _foco = null;        // trocar de visao sempre volta para a lista
   if(nome !== 'lote' && nome !== 'cliente') return;
   _visao = nome;
   try{ localStorage.setItem('consulta_desm_visao', nome); }catch(e){}
@@ -671,7 +719,9 @@ async function setVisao(nome){
   });
   const porCliente = nome === 'cliente';
   // o período filtra pela data do PEDIDO, que a planilha não tem
-  $('filtroPeriodo').classList.toggle('hidden', porCliente);
+  // (o id mudou em 24/11/2026: os seis botões viraram uma lista suspensa,
+  //  e com o id velho esta linha estourava ao trocar de visão)
+  $('campoPeriodo').classList.toggle('hidden', porCliente);
   $('pillsResumo').classList.toggle('hidden', porCliente);
   $('pillsClientes').classList.toggle('hidden', !porCliente);
   $('tableWrap').classList.toggle('hidden', porCliente);
@@ -690,6 +740,12 @@ async function setVisao(nome){
 }
 
 function filtrarProdutos(){
+  // o foco manda em tudo: com um lote escolhido, a lista e so ele
+  if(_foco){
+    const so = _allProdutos.filter(p => p.chave === _foco);
+    if(so.length) return so;
+    _foco = null;            // o lote sumiu (recarregou os dados): volta
+  }
   const q=_searchQuery.toLowerCase().trim();
   const ms=PERIODO_MS[_periodoAtivo];
   const desde=ms?Date.now()-ms:null;
@@ -706,6 +762,76 @@ document.addEventListener('click', e => {
 });
 
 function salvarExpandidos(){ localStorage.setItem('consulta_desm_expandidos', JSON.stringify([..._expandidos])); }
+
+/* ── Um lote por vez ────────────────────────────────────────────────────
+   Abrir um lote poe ele em FOCO: a lista passa a mostrar so ele, aberto, e
+   o cabecalho ganha "Voltar a lista". E o mesmo jeito da Detalhada, que ele
+   pediu para trazer - e resolve o que incomodava aqui: com dois ou tres
+   abertos, a tela virava uma coluna de detalhes e achar o proximo lote
+   exigia rolar por cima deles.
+   O foco NAO fica guardado: recarregar a tela volta para a lista. Ele e um
+   jeito de olhar, nao uma preferencia. */
+let _foco = null;
+
+function entrarNoFoco(chave){
+  _foco = chave;
+  _expandidos.clear();
+  _expandidos.add(chave);
+  salvarExpandidos();
+  renderTable();
+  // a tela sobe junto: o lote em foco e a primeira coisa a ver
+  const w = $('tableWrap');
+  if(w) w.scrollTop = 0;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function sairDoFoco(){
+  _foco = null;
+  _expandidos.clear();
+  salvarExpandidos();
+  renderTable();
+}
+
+/* ── Recolher todos ─────────────────────────────────────────────────────
+   Com meia duzia de lotes abertos, a lista vira uma coluna de detalhes e
+   achar o proximo lote exige fechar um por um. O botao so existe quando ha
+   algo aberto - um botao que nao faz nada em 99% das visitas e ruido. */
+/* A tabela vai ate o fim da janela, com um respiro. Medir a posicao real
+   e melhor que descontar um numero fixo do 100vh: o cabecalho muda de
+   altura entre o computador, o tablet e o celular, e quando a busca ou as
+   pilulas quebram de linha. */
+function ajustarAlturaTabela(){
+  for(const id of ['tableWrap', 'wrapClientes']){
+    const w = $(id);
+    if(!w || w.classList.contains('hidden')) continue;
+    const topo = w.getBoundingClientRect().top;
+    /* O <main> tem respiro embaixo; sem desconta-lo a tabela encosta no fim
+       da janela e a PAGINA passa a rolar 24 px - o que, numa tela que ja
+       rola por dentro da tabela, e rolagem em cima de rolagem. */
+    const main = w.closest('main');
+    const folga = main ? (parseFloat(getComputedStyle(main).paddingBottom) || 0) : 0;
+    let alvo = Math.max(240, Math.round(window.innerHeight - topo - folga - 6));
+    w.style.maxHeight = alvo + 'px';
+    /* Segunda passada: o card em volta tem bordas e respiros proprios, e
+       somados eles ainda deixavam a pagina rolar uns pixels. Em vez de
+       adivinhar cada um, mede-se a sobra e tira-se dela. */
+    const sobra = document.documentElement.scrollHeight - window.innerHeight;
+    if(sobra > 0 && alvo - sobra >= 240) w.style.maxHeight = (alvo - sobra) + 'px';
+  }
+}
+window.addEventListener('resize', ajustarAlturaTabela);
+
+function atualizarBotaoRecolher(){
+  const b = $('btnRecolher');
+  if(!b) return;
+  b.hidden = !_foco;
+  const badge = $('badgeRecolher');
+  if(badge) badge.hidden = true;
+  b.setAttribute('data-tip', 'Voltar à lista de todos os lotes');
+}
+
+// o mesmo botao de antes, com o nome que o foco pede
+function recolherTodos(){ sairDoFoco(); }
 
 function atualizarBotaoExportar(){
   const btn=$('btnExportarXlsx'); const badge=$('badgeExport');
@@ -802,8 +928,18 @@ function renderTable(){
   $('pillPendente').textContent  = produtos.filter(p=>p.situacao==='pendente').length;
   $('pillFinalizado').textContent = produtos.filter(p=>p.situacao==='total').length;
   $('pillTotal').textContent     = produtos.length;
-  $('tableCount').textContent    = `${produtos.length} produto${produtos.length!==1?'s':''}`;
-  $('pillsResumo').classList.toggle('hidden', produtos.length===0);
+  /* Em foco a contagem perde o sentido ("1 produto" nao diz nada), e no
+     lugar dela vai o aviso de que a lista esta recortada. */
+  $('tableCount').innerHTML = _foco
+    ? `<span style="color:var(--brand);font-weight:800">mostrando só este lote</span>
+       <button type="button" onclick="sairDoFoco()"
+         style="margin-left:8px;border:1px solid var(--line);background:#fff;color:var(--muted);
+                border-radius:999px;padding:2px 10px;font-size:11px;font-weight:800;cursor:pointer">
+         ← Voltar à lista</button>`
+    : `${produtos.length} produto${produtos.length!==1?'s':''}`;
+  /* Em foco as pilulas contariam so o lote aberto ("0 pendentes · 1 lote"),
+     o que nao diz nada sobre a lista - elas somem e voltam ao sair. */
+  $('pillsResumo').classList.toggle('hidden', produtos.length===0 || !!_foco);
 
   if(!produtos.length){ $('tableWrap').classList.add('hidden'); $('emptyState').classList.remove('hidden'); return; }
   $('emptyState').classList.add('hidden');
@@ -826,32 +962,41 @@ function renderTable(){
     const trMain=document.createElement('tr');
     trMain.className=`tr-main${isOpen?' open':''}`;
     trMain.dataset.chave=p.chave;
+    /* Os tres numeros de pares numa frase so. Quando o lote ja saiu da
+       DISPO nao ha saldo a mostrar, e antes isso eram duas colunas de
+       tracos - 252 px de largura dizendo nada. */
+    const faltam = p.lojas.filter(l => l.situacao === 'a-fazer').length;
+    const paresTxt = p.totalDesmembrado > 0
+      ? `<b style="font-size:14px;font-weight:900;color:var(--brand)">${p.totalDesmembrado}</b>`
+        + (p.saldoDispo !== null
+            ? ` <span class="cel-fraca">de ${p.saldoDispo}`
+              + (p.saldoRestante > 0 ? ` · sobram ${p.saldoRestante}` : '') + '</span>'
+            : ' <span class="cel-fraca">desmembrados</span>')
+      : '<span class="cel-fraca">nada desmembrado ainda</span>';
+
     trMain.innerHTML=`
       <td onclick="event.stopPropagation()" style="padding:0 8px">
         <input type="checkbox" class="chk-produto" data-chave="${safeHtml(p.chave)}" ${isSel?'checked':''} style="cursor:pointer;width:15px;height:15px">
       </td>
-      <td class="tabular-nums font-semibold" style="font-size:11px;color:var(--muted)">${safeHtml(p.num)}</td>
-      <td class="font-extrabold" style="font-size:12px;color:var(--brand)">${safeHtml(p.gci)}</td>
-      <td style="font-weight:800;color:var(--text)">${safeHtml(p.produto)}</td>
-      <td style="font-size:11px;font-weight:600;color:var(--muted)">${safeHtml(p.codigo)}</td>
-      <td style="font-weight:600;color:var(--muted)">${safeHtml(p.cor)}</td>
-      <td style="font-weight:600;white-space:nowrap;color:var(--muted)">${safeHtml(formatDateUTC(p.prevFat))}</td>
-      <td${dicaSemSaldo} style="text-align:right;font-weight:800;color:var(--text)">${saldoDispoTxt}</td>
-      <td style="text-align:right;font-weight:800;color:${p.totalDesmembrado>0?'var(--brand)':'var(--muted)'}">${p.totalDesmembrado||'—'}</td>
-      <td${dicaSemSaldo} style="text-align:right;font-weight:800;color:${saldoRestColor}">${saldoRestTxt}</td>
-      <td>${chipSituacao(p.situacao)}${(() => {
-        const n = p.lojas.filter(l => l.situacao === 'a-fazer').length;
-        /* Quantos destinos ainda esperam o robo. E o numero que ele procura
-           nesta tela: "o que falta?" - sem ele, so abrindo os detalhes. */
-        return n ? `<span class="chip" title="${n} destino(s) com cliente definido que ainda não foram digitados no EBM"
-          style="background:#FEF3C7;color:#92400E;font-size:10px;margin-left:5px">faltam ${n}</span>` : '';
-      })()}</td>
-      <td><button class="btn-det${isOpen?' open':''}" data-chave="${safeHtml(p.chave)}">${isOpen?'↑ Fechar':'↓ Detalhes'} <span class="badge-lojas">${p.lojas.length}</span></button></td>`;
+      <td class="tabular-nums cel-forte">${safeHtml(p.num)}</td>
+      <td class="tabular-nums" style="font-weight:800;color:var(--brand)">${safeHtml(p.gci)}</td>
+      <td>
+        <span class="cel-forte">${safeHtml(p.produto)}</span>
+        <span class="cel-fraca"> · ${safeHtml(p.cor)} · ${safeHtml(p.codigo)}</span></td>
+      <td class="tabular-nums cel-fraca" style="white-space:nowrap">${safeHtml(formatDateUTC(p.prevFat))}</td>
+      <td${dicaSemSaldo} class="tabular-nums">${paresTxt}</td>
+      <td>${chipSituacao(p.situacao)}${faltam ? `<span class="chip"
+          title="${faltam} destino(s) com cliente definido que ainda não foram digitados no EBM"
+          style="background:#FEF3C7;color:#92400E;font-size:10px;margin-left:5px">faltam ${faltam}</span>` : ''}</td>
+      <td style="text-align:right">
+        <button class="det-abrir${isOpen?' open':''}" data-chave="${safeHtml(p.chave)}"
+          title="${isOpen ? 'Fechar os ' : 'Ver os '}${p.lojas.length} destino(s)">
+          <i class="fa-solid fa-chevron-${isOpen?'up':'down'}"></i>${p.lojas.length}</button></td>`;
 
     const trExp=document.createElement('tr');
     trExp.className='tr-expand';
     trExp.style.display=isOpen?'':'none';
-    trExp.innerHTML=`<td colspan="12">
+    trExp.innerHTML=`<td colspan="8">
       <div class="tr-expand-inner">
         <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Lojas que receberam ou esperam</div>
         <div style="overflow-x:auto"><table class="sub-table">
@@ -879,20 +1024,18 @@ function renderTable(){
       if($('chkAll')){ $('chkAll').indeterminate=sel>0&&sel<total; $('chkAll').checked=sel===total; }
     });
 
-    trMain.querySelector('.btn-det').addEventListener('click', e=>{
+    trMain.querySelector('.det-abrir').addEventListener('click', e=>{
       e.stopPropagation();
       const chave=e.currentTarget.dataset.chave;
-      const nowOpen=_expandidos.has(chave);
-      if(nowOpen){_expandidos.delete(chave);}else{_expandidos.add(chave);}
-      salvarExpandidos();
-      trMain.classList.toggle('open',!nowOpen);
-      trExp.style.display=nowOpen?'none':'';
-      e.currentTarget.classList.toggle('open',!nowOpen);
-      e.currentTarget.innerHTML=`${!nowOpen?'↑ Fechar':'↓ Detalhes'} <span class="badge-lojas">${p.lojas.length}</span>`;
+      // abrir = entrar no foco (so este lote na tela); clicar de novo volta
+      if(_foco === chave) sairDoFoco(); else entrarNoFoco(chave);
     });
 
-    trMain.addEventListener('click', e=>{ if(e.target.closest('.btn-det,.chk-produto')) return; trMain.querySelector('.btn-det').click(); });
+    trMain.addEventListener('click', e=>{ if(e.target.closest('.det-abrir,.chk-produto')) return; trMain.querySelector('.det-abrir').click(); });
   });
+
+  atualizarBotaoRecolher();
+  requestAnimationFrame(ajustarAlturaTabela);
 
   if($('chkAll')){
     const newChkAll = $('chkAll').cloneNode(true);
@@ -939,6 +1082,8 @@ function repintar(){
 
 // ── BUSCA ─────────────────────────────────────────────────────────────────────
 $('searchInput').addEventListener('input', e => {
+  // quem comeca a buscar quer a lista inteira de novo, nao o lote em foco
+  _foco = null;
   _searchQuery = e.target.value;
   $('btnClearSearch').classList.toggle('hidden', !_searchQuery);
   repintar();
@@ -973,40 +1118,32 @@ document.addEventListener('keydown', e => {
 });
 
 // ── PERÍODO ───────────────────────────────────────────────────────────────────
-document.querySelectorAll('.periodo-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.periodo-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    _periodoAtivo = btn.dataset.periodo;
+// Lista suspensa desde 24/11/2026 (eram seis botoes). A escolha continua
+// guardada na mesma chave, entao quem ja tinha um periodo escolhido o
+// encontra onde deixou.
+(function(){
+  const sel = $('selPeriodo');
+  if(!sel) return;
+  sel.value = _periodoAtivo;
+  if(sel.value !== _periodoAtivo) sel.value = 'all';   // periodo antigo que saiu
+  sel.addEventListener('change', () => {
+    _foco = null;                       // outro recorte, outra lista
+    _periodoAtivo = sel.value;
     localStorage.setItem('consulta_desm_periodo', _periodoAtivo);
     renderTable();
   });
-});
+})();
 
-// ── DARK MODE ─────────────────────────────────────────────────────────────────
-function toggleDark(){
-  const isDark = document.documentElement.classList.toggle('dark');
-  localStorage.setItem('admin_dark', isDark ? '1' : '0');
-  localStorage.setItem('dispo_dark', isDark ? '1' : '0');
-  $('darkIcon').className = isDark ? 'fa-solid fa-sun text-amber-400 text-xs' : 'fa-solid fa-moon text-slate-400 text-xs';
-}
-document.addEventListener('DOMContentLoaded', () => {
-  const isDark = localStorage.getItem('admin_dark') === '1' || localStorage.getItem('dispo_dark') === '1';
-  if(isDark) $('darkIcon').className = 'fa-solid fa-sun text-amber-400 text-xs';
-});
+// ── TEMA ──────────────────────────────────────────────────────────────────────
+// Esta tela nao escolhe o tema: ela OBEDECE o que a DISPO guardou. A troca
+// acontece la, e aqui a classe 'dark' ja e posta no carregamento, bem no
+// comeco do arquivo. O botao daqui foi tirado em 24/11/2026 porque dava uma
+// segunda verdade para a mesma coisa: quem trocasse aqui via a DISPO de um
+// jeito e esta tela de outro ate recarregar.
 
-// ── TELA CHEIA ────────────────────────────────────────────────────────────────
-function toggleFullscreen(){
-  if(!document.fullscreenElement){
-    document.documentElement.requestFullscreen().catch(()=>{});
-  } else {
-    document.exitFullscreen();
-  }
-}
-document.addEventListener('fullscreenchange', () => {
-  const icon = $('iconFullscreen');
-  if(icon) icon.className = document.fullscreenElement ? 'fa-solid fa-compress text-xs' : 'fa-solid fa-expand text-xs';
-});
+// A tela cheia saiu junto com o botao em 24/11/2026 - o F11 do navegador
+// faz o mesmo. Quem volta para a DISPO ainda sai do modo tela cheia, se
+// estiver nele: ver voltarParaDispo.
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 /* loadData() sempre roda: a visão por lote é o coração da tela e o usuário
