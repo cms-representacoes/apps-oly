@@ -1504,6 +1504,22 @@
       border-radius:999px; padding:4px 11px; font-size:11.5px; font-weight:700; white-space:nowrap;
       background:var(--warning-soft); color:var(--warning); font-family:inherit; }
     .adm-cli-novo:hover{ filter:brightness(.97); }
+    /* Codigo que nao esta na base: a tela aceita, mas nao deixa passar
+       despercebido. O aviso e o mesmo nos tres lugares onde ele aparece. */
+    .adm-cli-fora{ display:block; width:100%; text-align:left; border:0; cursor:pointer;
+      font-family:inherit; padding:11px 14px; background:var(--warning-soft);
+      color:var(--warning); border-top:1px solid var(--line); }
+    .adm-cli-fora:hover{ filter:brightness(.97); }
+    .adm-cli-fora b{ font-size:13px; font-weight:800; display:block; }
+    .adm-cli-fora span{ font-size:11.5px; font-weight:600; opacity:.85; display:block;
+      margin-top:2px; line-height:1.4; }
+    .adm-cli-alerta{ display:flex; align-items:flex-start; gap:8px; margin-top:8px;
+      border-radius:14px; padding:9px 12px; font-size:12px; font-weight:700;
+      line-height:1.45; background:var(--warning-soft); color:var(--warning); }
+    @media (max-width:420px){
+      .adm-cli-fora b{ font-size:12.5px; }
+      .adm-cli-alerta{ font-size:11.5px; }
+    }
     /* ── Ajustar prev. faturamento em bloco ──────────────────────────────── */
     .dt-caixa{width:100%;max-width:980px;margin:14px 0;background:var(--card);border:1px solid var(--line);
       border-radius:24px;box-shadow:0 30px 70px -20px rgba(0,0,0,.5);overflow:hidden}
@@ -3305,7 +3321,19 @@ function cliPintarSug(){
   CLI.matches = cliBuscar(termo);
   CLI.ativo = CLI.matches.length ? 0 : -1;
   if(!CLI.matches.length){
-    box.innerHTML = `<div class="adm-cli-vazio">Nenhum cliente com “${safeHtml(termo)}”.</div>`;
+    /* Nao achou. Se o que foi digitado parece um codigo, a tela OFERECE
+       usa-lo: a base do admin sao quatro arquivos de carteira que nem
+       sempre tem o cliente, e sem esta saida um pedido com o codigo
+       errado ficava sem conserto aqui - o erro ia aparecer so quando o
+       robo tentasse digitar no EBM. */
+    box.innerHTML = `<div class="adm-cli-vazio">Nenhum cliente com “${safeHtml(termo)}”.</div>`
+      + (cliPareceCodigo(termo)
+         ? `<button type="button" class="adm-cli-fora" data-fora="${safeHtml(termo)}">
+              <b>Usar ${safeHtml(termo)} mesmo assim</b>
+              <span>Este código não está na base de clientes.
+                Confira no EBM se é o cliente certo antes de salvar.</span>
+            </button>`
+         : '');
     box.hidden = false; return;
   }
   const sobra = CLI.totalAchados - CLI.matches.length;
@@ -3328,6 +3356,21 @@ function cliMover(passo){
     el.classList.toggle('on', i === CLI.ativo);
     if(i === CLI.ativo) el.scrollIntoView({ block:'nearest' });
   });
+}
+
+/* Codigo plausivel: so digitos, de 3 a 12. Nome de cliente nao entra
+   aqui - "modas" nao vira codigo. */
+function cliPareceCodigo(termo){
+  return /^\d{3,12}$/.test(String(termo || '').trim());
+}
+
+function cliUsarFora(cod){
+  const codigo = String(cod || '').trim();
+  if(!codigo) return;
+  CLI.sel = { codigo, nome:'', vend:'', fora:true };
+  $('editarPedidoCliBusca').value = '';
+  cliFecharSug();
+  cliPintarAtual();
 }
 
 function cliEscolher(i){
@@ -3365,9 +3408,12 @@ function cliPintarDica(){
     el.innerHTML = `<span>O vendedor citou <b>${safeHtml(cod)} — ${safeHtml(achado.nome || 'sem nome')}</b></span>` +
       `<button type="button" id="editarPedidoCliUsar" class="adm-cli-usar">usar este cliente</button>`;
   }else{
-    el.innerHTML = `<span>O vendedor citou o código <b>${safeHtml(cod)}</b>, que não está na base — busque pelo nome.</span>`;
+    el.innerHTML = `<span>O vendedor citou o código <b>${safeHtml(cod)}</b>, que não está na base.</span>`
+      + `<button type="button" id="editarPedidoCliForaDica" class="adm-cli-usar"
+           style="background:var(--warning)">usar mesmo assim</button>`;
   }
   el.hidden = false;
+  $('editarPedidoCliForaDica')?.addEventListener('click', () => cliUsarFora(cod));
   $('editarPedidoCliUsar')?.addEventListener('click', () => {
     CLI.sel = { codigo: cod, nome: String(achado.nome || '').trim(), vend: achado._vend || '' };
     cliFecharSug();
@@ -3387,7 +3433,14 @@ function cliPintarAtual(){
     `<span style="margin:0 6px">→</span>` +
     `<span>${safeHtml(CLI.sel.codigo)} — ${safeHtml(CLI.sel.nome || 'sem nome')}</span>` +
     `<button type="button" id="editarPedidoCliDesfaz" class="adm-cli-novo" title="Voltar para o cliente original">` +
-    `<i class="fa-solid fa-rotate-left"></i> desfazer</button>`;
+    `<i class="fa-solid fa-rotate-left"></i> desfazer</button>` +
+    // escolhido de fora da base: o aviso segue junto ate salvar
+    (CLI.sel.fora
+      ? `<div class="adm-cli-alerta"><i class="fa-solid fa-triangle-exclamation" style="margin-top:2px"></i>
+          <span>O código <b>${safeHtml(CLI.sel.codigo)}</b> não está na base de clientes.
+          Confira no EBM se é o cliente certo — ele vai para o pedido do jeito que
+          você digitou.</span></div>`
+      : '');
   $('editarPedidoCliDesfaz')?.addEventListener('click', () => { CLI.sel = null; cliPintarAtual(); });
 }
 
@@ -3406,6 +3459,8 @@ $('editarPedidoCliBusca').addEventListener('keydown', e => {
 // mousedown no botão tiraria o foco do campo antes do clique
 $('editarPedidoCliLista').addEventListener('mousedown', e => e.preventDefault());
 $('editarPedidoCliLista').addEventListener('click', e => {
+  const fora = e.target.closest('.adm-cli-fora');
+  if(fora){ cliUsarFora(fora.dataset.fora); return; }
   const btn = e.target.closest('.adm-cli-item');
   if(btn) cliEscolher(Number(btn.dataset.i));
 });
@@ -3495,7 +3550,11 @@ async function salvarEdicaoPedido(){
   // Código e nome andam juntos: uma linha só, para o vendedor ler de uma vez.
   if(novo.clienteCodigo !== undefined){
     const quem = (cod, nome) => nome ? `${cod} — ${nome}` : (cod || '—');
-    mudou.unshift(`Cliente: ${quem(atual.clienteCodigo, atual.clienteNome)} → ${quem(novo.clienteCodigo, novo.clienteNome)}`);
+    // quem ler o historico depois precisa saber que este codigo nao foi
+    // conferido contra a base - foi digitado e aceito
+    mudou.unshift(`Cliente: ${quem(atual.clienteCodigo, atual.clienteNome)} → `
+      + quem(novo.clienteCodigo, novo.clienteNome)
+      + (CLI.sel && CLI.sel.fora ? ' (código fora da base)' : ''));
   }
 
   const sol = solicitacaoAberta(atual);

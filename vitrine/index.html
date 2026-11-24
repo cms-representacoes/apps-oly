@@ -790,7 +790,15 @@ button{font:inherit}
 .cli-opt .loc{display:block;font-size:10px;color:var(--tenue);margin-top:1px}
 .cli-sug .mais{padding:6px 8px;font-size:10px;color:var(--tenue);text-align:center}
 .cli-dica{font-size:10px;font-weight:600;min-height:12px}
-.cli-dica.ok{color:var(--pronta)} .cli-dica.na{color:#E0245E}
+.cli-dica.ok{color:var(--pronta)}
+/* Codigo que nao esta na carteira: a tela aceita - a base nem sempre tem
+   o cliente -, mas o aviso precisa ser lido. Em 10px, do lado do campo,
+   ele passava batido: foi assim que um pedido saiu com um codigo que nao
+   existe e so apareceu quando o robo foi digitar no EBM. */
+.cli-dica.na{display:flex;gap:6px;align-items:flex-start;margin-top:5px;
+  padding:7px 10px;border-radius:12px;font-size:11px;line-height:1.4;
+  font-weight:700;background:rgba(224,36,94,.1);color:#E0245E}
+.cli-dica.na::before{content:"\26A0";font-size:12px;line-height:1.2}
 
 .mg-teto{margin:9px 0 0;font-size:10.5px;color:var(--tenue)}
 .mg-teto.estourou{color:#E0245E;font-weight:700}
@@ -6235,7 +6243,8 @@ function conferirCliente(){
       .filter(Boolean).join(' · ');
   }else{
     d.className = 'cli-dica na';
-    d.textContent = 'Código fora da carteira';
+    d.textContent = 'Este código não está na carteira — confira no EBM '
+      + 'se é o cliente certo antes de enviar.';
   }
 }
 
