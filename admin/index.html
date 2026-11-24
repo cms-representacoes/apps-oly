@@ -663,7 +663,7 @@
             <div class="hdr-busca flex flex-1 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2"
               title="Buscar por número do pedido, cliente ou preposto">
               <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
-              <input id="adminSearch" class="focus-ring w-full bg-transparent text-sm outline-none" placeholder="Buscar pedido, cliente, preposto ou Nº" />
+              <input id="adminSearch" class="focus-ring w-full bg-transparent text-sm outline-none" placeholder="Lote, GCI, cliente, produto… (separe por vírgula)" />
               <button id="btnClearSearch" class="focus-ring hidden text-slate-400 hover:text-slate-600" title="Limpar a busca (Esc)">
                 <i class="fa-solid fa-xmark text-xs"></i>
               </button>
@@ -1083,6 +1083,10 @@
             </button>
           </div>
 
+          <!-- O display mora na regra, nao no elemento: `style="display:flex"`
+               inline vence a classe .hidden e a faixa nunca sumiria. -->
+          <div id="ordersFora" class="hidden"></div>
+
           <div id="ordersEmpty" class="hidden rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center text-slate-500">
             Nenhum pedido encontrado.
           </div>
@@ -1482,9 +1486,14 @@
     .adm-cli-cx{ position:relative; }
     /* a lista flutua sobre os outros campos, então o fundo precisa ser opaco:
        no escuro o --card é translúcido e deixaria o Prazo aparecer por trás */
-    .adm-cli-lista{ position:absolute; z-index:5; left:0; right:0; top:calc(100% + 4px);
+    /* No fluxo, nao flutuando: com a oferta de "usar mesmo assim" (titulo
+       + explicacao) a lista flutuante cobria a Condicao de pagamento
+       inteira. Empurrando os campos, nada fica escondido - e o teto de
+       altura com rolagem propria impede que uma busca cheia estique o
+       modal. */
+    .adm-cli-lista{ position:static; margin-top:6px;
       max-height:246px; overflow:auto; border:1px solid var(--line); border-radius:18px;
-      background:#fff; box-shadow:0 18px 44px rgba(15,23,42,.18); padding:5px; }
+      background:#fff; box-shadow:0 6px 18px rgba(15,23,42,.10); padding:5px; }
     .dark .adm-cli-lista{ background:#151e38; box-shadow:0 18px 44px rgba(0,0,0,.6); }
     .adm-cli-lista[hidden]{ display:none; }
     .adm-cli-item{ display:block; width:100%; text-align:left; cursor:pointer; border:0;
@@ -1504,6 +1513,10 @@
       border-radius:999px; padding:4px 11px; font-size:11.5px; font-weight:700; white-space:nowrap;
       background:var(--warning-soft); color:var(--warning); font-family:inherit; }
     .adm-cli-novo:hover{ filter:brightness(.97); }
+    #ordersFora:not(.hidden){ display:flex; align-items:center; gap:11px;
+      flex-wrap:wrap; margin-bottom:12px; padding:11px 15px; border-radius:16px;
+      background:#ECFEFF; border:1px solid #A5F3FC; }
+    .dark #ordersFora:not(.hidden){ background:#083344; border-color:#155e75; }
     /* Codigo que nao esta na base: a tela aceita, mas nao deixa passar
        despercebido. O aviso e o mesmo nos tres lugares onde ele aparece. */
     .adm-cli-fora{ display:block; width:100%; text-align:left; border:0; cursor:pointer;
@@ -1647,10 +1660,16 @@
        O vendedor erra o prazo e pede alteração; até aqui a CMS só marcava a
        solicitação como resolvida e corrigia por fora, e o pedido na vitrine
        seguia com o dado errado. -->
-  <div id="editarPedidoModal" class="hidden fixed inset-0 z-[140] bg-slate-950/45 p-4">
+  <!-- O quadro tem TETO de altura e o miolo rola por dentro: com a lista
+       de clientes aberta o conteudo passa de 840px, e antes o botao
+       Salvar comecava fora da janela. Cabecalho e rodape ficam parados,
+       entao o Salvar esta sempre a vista. -->
+  <div id="editarPedidoModal" class="hidden fixed inset-0 z-[140] bg-slate-950/45 p-4"
+       style="overflow-y:auto">
     <div class="flex min-h-full items-center justify-center">
-      <div class="w-full max-w-lg rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,.24)]"
-           style="background:var(--card);border-color:var(--line)">
+      <div class="my-auto w-full max-w-lg rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,.24)]"
+           style="background:var(--card);border-color:var(--line);
+                  max-height:calc(100vh - 2rem);display:flex;flex-direction:column">
         <div class="flex items-start justify-between gap-3">
           <div>
             <div class="text-xl font-extrabold">Corrigir pedido</div>
@@ -1659,6 +1678,10 @@
           <button id="btnFecharEditar" type="button" class="focus-ring rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600" style="background:var(--card);border-color:var(--line);color:var(--muted)">Fechar</button>
         </div>
 
+        <!-- min-height:0 e o que deixa um filho de flex encolher e rolar;
+             sem ele o miolo estica e empurra o rodape para fora. -->
+        <div id="editarPedidoCorpo" style="flex:1 1 auto;min-height:0;overflow-y:auto;
+                                           margin:0 -4px;padding:0 4px">
         <div id="editarPedidoSol" class="mt-4 hidden rounded-[18px] px-4 py-3 text-sm font-semibold"
              style="background:var(--warning-soft);color:var(--warning)"></div>
         <div id="editarPedidoExp" class="mt-3 hidden rounded-[18px] px-4 py-3 text-xs font-bold"
@@ -1699,7 +1722,9 @@
           Marcar a solicitação como resolvida e avisar o vendedor
         </label>
 
-        <div class="mt-5 flex flex-wrap justify-end gap-2">
+        </div><!-- fim do miolo rolavel -->
+
+        <div class="mt-5 flex flex-wrap justify-end gap-2" style="flex:none">
           <button id="btnVoltarEditar" type="button" class="focus-ring rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700" style="background:var(--card);border-color:var(--line);color:var(--muted)">Voltar</button>
           <button id="btnSalvarEditar" type="button" class="focus-ring rounded-2xl border border-transparent bg-[var(--brand)] px-5 py-3 text-sm font-extrabold text-white">Salvar</button>
         </div>
@@ -2719,6 +2744,25 @@ function setFamiliaAdm(nome){
 function avisarOutraFamiliaAdm(){
   const caixa = $('ordersEmpty');
   if(!caixa) return;
+
+  /* Com busca, quem responde e o aviso de "onde esta": ele olha as duas
+     familias E os arquivados, e abre em "Todos" - o aviso antigo so
+     trocava de familia mantendo o status, e um pedido Aprovado continuava
+     invisivel para quem estava em Pendentes. */
+  const q = normalizeText($('adminSearch').value).toLowerCase();
+  const fora = ondeEstaoOsPedidos(q);
+  if(fora.length){
+    const total = fora.reduce((a, g) => a + g.n, 0);
+    caixa.innerHTML = `<div style="font-size:13.5px;font-weight:900;color:#0e7490">
+        Nada nesta aba — mas ${total} pedido${total === 1 ? '' : 's'}
+        ${total === 1 ? 'casa' : 'casam'} com a busca</div>
+      <div style="font-size:12px;font-weight:700;color:#64748b;margin-top:4px">
+        ${fora.map(g => `${g.n} ${g.mesmaAba ? '' : 'em '}${safeHtml(_ondeDiz(g))}`).join(' · ')}</div>
+      <div style="margin-top:11px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        ${fora.map(_botaoIrAte).join('')}</div>`;
+    return;
+  }
+
   const outra = STATE.familia === 'colecao' ? 'repasse' : 'colecao';
   const guardada = STATE.familia;
   let quantos = 0;
@@ -2777,6 +2821,155 @@ function updateFilterCounts(){
   if($('fsCountAlt'))    $('fsCountAlt').textContent    = c.alterados;
 }
 
+/* "521, 496" sao dois termos; "elevado" e um. Virgula e ponto-e-virgula
+   separam, espaco nao - nome de cliente tem espaco e quebra-lo acharia
+   qualquer um com "comercio". */
+function _termosDaBusca(q){
+  return String(q || '').split(/[,;]+/).map(t => t.trim()).filter(Boolean);
+}
+
+/* O texto varrido de um pedido. Fora da peneira porque o aviso de "onde
+   esta" pergunta a MESMA coisa, e duas copias da regra divergem. */
+function _textoDoPedido(order){
+  return [
+    order.id, order.clienteCodigo, order.clienteNome,
+    order.preposto?.nome, order.preposto?.codigo, order.prazo, order.campanha,
+    ...(order.items || []).flatMap(item => [item.codigo, item.produto, item.cor,
+                                            item.gci, item.num, item.ebm])
+  ].join(' ').toLowerCase();
+}
+
+/* SO a busca - sem status, familia nem escopo.
+
+   Cada termo e peneirado sozinho e vale "e tambem": "521, 496" traz os
+   dois lotes. Sem virgula, nada muda - e um termo so.
+
+   Número curto é Nº de lote (ou código de cliente), e aí a busca é EXATA.
+   Por dentro do texto, "521" casava com qualquer GCI que tivesse 521 no
+   meio e trazia pedidos de outros lotes - o número é o que mais se digita
+   aqui, e precisa responder o que foi perguntado. O resto segue livre. */
+function _casaBusca(order, q, hay){
+  const termos = _termosDaBusca(q);
+  if(!termos.length) return true;
+  const texto = hay !== undefined ? hay : _textoDoPedido(order);
+  return termos.some(t => /^\d{1,4}$/.test(t)
+    ? ((order.items || []).some(it => String(it.num || '').trim() === t)
+       || String(order.clienteCodigo || '').trim() === t
+       || String(order.preposto?.codigo || '').trim() === t)
+    : texto.includes(t));
+}
+
+/* ── ONDE ESTAO OS PEDIDOS QUE A BUSCA ACHOU ──────────────────────────
+   Do jeito da DISPO, a pedido dele em 24/11/2026: a tela nao se limita a
+   dizer "nenhum pedido encontrado" quando o que se procura esta na outra
+   aba - ela conta quantos sao, onde estao, e leva num clique.
+
+   Agrupa por FAMILIA e ESCOPO, nao por status: o botao leva para a aba
+   "Todos" daquele lado, e ali o pedido aparece qualquer que seja o
+   status - que e exatamente o que ele pediu ("independente do status").
+
+   A conta custa uma varredura por busca; o cache evita refaze-la a cada
+   tecla enquanto o termo nao muda. */
+let _cacheOnde = { chave:'', fora:null };
+
+/* Quem casa com a busca e NAO esta na lista da tela, agrupado por onde
+   esta. Contar pela lista da tela - e nao por familia e escopo - e o que
+   faz o aviso enxergar tambem o que o STATUS esconde: dois pendentes na
+   tela e 38 aprovados logo ali e exatamente o caso que ele descreveu. */
+function ondeEstaoOsPedidos(q){
+  const termos = _termosDaBusca(q);
+  if(!termos.length) return [];
+  const escopoAtual = getAdminScope();
+  const chave = [termos.join('|'), STATE.familia, escopoAtual,
+                 STATE.statusFilter, (STATE.orders || []).length,
+                 (STATE.filtered || []).length].join('::');
+  if(_cacheOnde.chave === chave) return _cacheOnde.fora;
+
+  const naTelaAgora = new Set((STATE.filtered || []).map(o => o.id));
+  const grupos = new Map();
+  for(const o of (STATE.orders || [])){
+    if(naTelaAgora.has(o.id)) continue;      // ja esta a vista
+    if(!_casaBusca(o, q)) continue;
+    const escopo = isOrderHistory(o) ? 'history' : 'active';
+    /* Um pedido misto cabe nas duas familias; conta na ATUAL quando
+       couber, para o aviso preferir "e so o status" a mandar o usuario
+       trocar de aba a toa. */
+    const fams = ['repasse', 'colecao'].filter(f => pedidoNaFamilia(o, f));
+    const fam = fams.includes(STATE.familia) ? STATE.familia : fams[0];
+    if(!fam) continue;
+    const k = fam + '::' + escopo;
+    grupos.set(k, (grupos.get(k) || 0) + 1);
+  }
+  const fora = [...grupos.entries()]
+    .map(([k, n]) => {
+      const [familia, escopo] = k.split('::');
+      return { familia, escopo, n,
+               mesmaAba: familia === STATE.familia && escopo === escopoAtual };
+    })
+    .sort((a, b) => b.n - a.n);
+  _cacheOnde = { chave, fora };
+  return fora;
+}
+
+function _nomeDaAba(familia, escopo){
+  return (familia === 'colecao' ? 'GTM - 1S27' : 'Repasses')
+         + (escopo === 'history' ? ' · arquivados' : '');
+}
+
+/* Onde o pedido esta, dito como quem le a tela: na mesma aba, o que o
+   esconde e o filtro de status, e dizer "em Repasses" seria confuso. */
+function _ondeDiz(g){
+  return g.mesmaAba ? 'nesta aba, em outro status'
+                    : _nomeDaAba(g.familia, g.escopo);
+}
+
+/* Leva a tela ate os pedidos: troca a familia e o escopo e abre em
+   "Todos", para o status nao esconder o que se acabou de achar. */
+function irAtePedidos(familia, escopo){
+  setAdminScope(escopo === 'history' ? 'history' : 'active');
+  STATE.statusFilter = 'todos';
+  document.querySelectorAll('.filter-status-btn').forEach(b => {
+    b.className = 'filter-status-btn';
+  });
+  const btn = document.querySelector('.filter-status-btn[data-fs="todos"]');
+  if(btn) btn.className = 'filter-status-btn fs-active-todos';
+  if(familia && familia !== STATE.familia){ setFamiliaAdm(familia); return; }
+  applyFilters();
+}
+
+function _botaoIrAte(g){
+  const cor = g.familia === 'colecao' ? '#0891b2' : 'var(--brand)';
+  const rotulo = g.mesmaAba
+    ? `Mostrar ${g.n === 1 ? 'o que falta' : 'os ' + g.n} de todos os status`
+    : `Ver ${g.n === 1 ? 'o pedido' : 'os ' + g.n} em ${safeHtml(_nomeDaAba(g.familia, g.escopo))}`;
+  return `<button type="button" onclick="irAtePedidos('${g.familia}','${g.escopo}')"
+    style="background:${cor};color:#fff;border:0;border-radius:999px;padding:8px 17px;
+           font-weight:800;font-size:12.5px;cursor:pointer;white-space:nowrap">
+    ${rotulo}</button>`;
+}
+
+/* A faixa de cima: ha pedidos na tela, mas ha MAIS noutra aba. Sem ela,
+   quem busca um lote ve cinco e vai embora achando que sao todos. */
+function avisarPedidosForaDaAba(q){
+  const faixa = $('ordersFora');
+  if(!faixa) return;
+  faixa.classList.add('hidden');
+  if(!STATE.filtered.length) return;        // o quadro vazio ja conta
+  const fora = ondeEstaoOsPedidos(q);
+  if(!fora.length) return;
+  const total = fora.reduce((a, g) => a + g.n, 0);
+  faixa.innerHTML = `<i class="fa-solid fa-circle-info"
+      style="color:#0891b2;font-size:16px;flex:none"></i>
+    <div style="flex:1;min-width:180px">
+      <div style="font-size:12.5px;font-weight:900;color:#0e7490">
+        Mais ${total} pedido${total === 1 ? '' : 's'} com esta busca:
+        ${fora.map(g => safeHtml(_ondeDiz(g))).join(' e ')}</div>
+      <div style="font-size:11.5px;font-weight:700;color:#0891b2;margin-top:2px">
+        A lista abaixo mostra só os que passam nos filtros de agora.</div>
+    </div>${fora.map(_botaoIrAte).join('')}`;
+  faixa.classList.remove('hidden');
+}
+
 /* A peneira de um pedido so. Virou funcao em 19/11/2026 para o aviso de
    "nada aqui, mas ha N na outra aba" poder contar com a MESMA regra - duas
    copias da peneira sempre acabam divergindo. */
@@ -2787,6 +2980,10 @@ function _passaNosFiltros(order, q, sf, scope){
   const hay = [
     order.id,
     order.clienteCodigo,
+    /* O NOME do cliente entra em 24/11/2026. Ate aqui so o codigo era
+       varrido, entao procurar "degraus" nao achava nada e era preciso
+       saber o numero de cor. */
+    order.clienteNome,
     order.preposto?.nome,
     order.preposto?.codigo,
     order.prazo,
@@ -2798,16 +2995,7 @@ function _passaNosFiltros(order, q, sf, scope){
                                             item.gci, item.num, item.ebm])
   ].join(' ').toLowerCase();
 
-  /* Número curto é Nº de lote (ou código de cliente), e aí a busca é EXATA.
-     Por dentro do texto, "521" casava com qualquer GCI que tivesse 521 no
-     meio e trazia pedidos de outros lotes - o número é o que mais se digita
-     aqui, e precisa responder o que foi perguntado. O resto segue livre. */
-  const soNumero = /^\d{1,4}$/.test(q);
-  const matchQ = !q || (soNumero
-    ? ((order.items || []).some(it => String(it.num || '').trim() === q)
-       || String(order.clienteCodigo || '').trim() === q
-       || String(order.preposto?.codigo || '').trim() === q)
-    : hay.includes(q));
+  const matchQ = _casaBusca(order, q, hay);
   const matchScope = orderMatchesScope(order, scope);
   const matchFamilia = pedidoNaFamilia(order, STATE.familia);
   let matchStatus = true;
@@ -2863,6 +3051,7 @@ let _currentPage = 1;
 
 function renderList(){
   $('ordersEmpty').classList.toggle('hidden', STATE.filtered.length !== 0);
+  avisarPedidosForaDaAba(normalizeText($('adminSearch').value).toLowerCase());
   if(!STATE.filtered.length) avisarOutraFamiliaAdm();
 
   const controles = $('selecaoControles');
@@ -2892,6 +3081,19 @@ function renderList(){
       : `Cliente ${safeHtml(order.clienteCodigo)}`;
     const totalUnits = getOrderUnits(order);
     const nItems = (order.items||[]).length;
+    /* O Nº do lote so aparecia ao expandir o pedido, e e por ele que se
+       procura aqui - quem vem da DISPO com um lote na mao precisava abrir
+       um por um para saber qual era qual. Ate tres cabem na linha; o
+       resto vira "+N", com todos na dica. */
+    const lotes = [...new Set((order.items || [])
+      .map(i => String(i.num || '').trim()).filter(Boolean))];
+    const chipLotes = lotes.length
+      ? `<span title="Lote${lotes.length > 1 ? 's' : ''} ${safeHtml(lotes.join(' · '))}"
+           style="font-size:11px;font-weight:800;background:var(--brand-soft);color:var(--brand);
+                  border-radius:999px;padding:2px 9px;flex-shrink:0;cursor:help">
+           Lote ${safeHtml(lotes.slice(0, 3).join(' · '))}${
+             lotes.length > 3 ? ' +' + (lotes.length - 3) : ''}</span>`
+      : '';
     const mudancasFat = (order.items||[])
       .map(item => checkPrevFaturamentoMudou(item))
       .filter(c => c.mudou);
@@ -3007,6 +3209,7 @@ function renderList(){
               <span style="color:var(--muted);font-size:11px">${safeHtml(formatDateTime(order.createdAt || order.updatedAt || order.data))}</span>
               <span style="color:var(--muted)">·</span>
               <span style="color:var(--muted);font-size:11px">${clienteDisplay}</span>
+              ${chipLotes}
               ${totalUnits > 0 ? `<span style="font-size:11px;font-weight:700;background:#EEEDFE;color:#3C3489;border-radius:999px;padding:2px 9px;flex-shrink:0">${formatInt(totalUnits)} pares</span>` : ''}
               ${order.campanha ? `<span style="font-size:11px;font-weight:700;background:var(--muted-soft);color:var(--muted);border-radius:999px;padding:2px 9px;flex-shrink:0">${safeHtml(order.campanha)}</span>` : ''}
               ${nItems > 1 ? `<span style="font-size:11px;font-weight:700;background:var(--muted-soft);color:var(--muted);border-radius:999px;padding:2px 9px;flex-shrink:0">${nItems} produtos</span>` : ''}
@@ -3559,7 +3762,18 @@ async function salvarEdicaoPedido(){
 
   const sol = solicitacaoAberta(atual);
   const resolver = sol && sol.tipo !== 'cancelar' && $('editarPedidoResolver').checked;
-  if(!mudou.length && !resolver){ showToast('Nada mudou no pedido.', 'info'); return; }
+  if(!mudou.length && !resolver){
+    /* O caso que o pegou: digitou o codigo, a oferta apareceu na lista e
+       ele clicou direto em Salvar. Sem escolher, o texto digitado nao
+       vira cliente nenhum - e "Nada mudou no pedido" era verdade sem
+       ser ajuda. */
+    const digitado = $('editarPedidoCliBusca').value.trim();
+    showToast(digitado
+      ? `Você digitou “${digitado}” mas não escolheu o cliente — clique na `
+        + `opção que aparece na lista para usar esse código.`
+      : 'Nada mudou no pedido.', digitado ? 'error' : 'info');
+    return;
+  }
 
   const base = { ...atual, ...novo };
   // campo legado: se o pedido ainda traz `cliente`, ele acompanha o código novo
