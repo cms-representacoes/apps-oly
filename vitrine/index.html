@@ -1086,6 +1086,25 @@ body.ped-marcado .ped-lista{padding-bottom:84px}
    verde é o que faturou, azul é o que está em carteira. */
 .mt{background:transparent}
 .mt[hidden]{display:none}
+/* Recolhida, a barra das metas gruda sob o cabecalho (que tambem e sticky)
+   e acompanha a rolagem: os atalhos do vendedor - Metas, Campanhas,
+   Reativar, a busca, o Forecast e os Novos - sao o que ele usa o tempo
+   todo, e ir atras deles custava subir a vitrine inteira.
+   --h-topo e a altura REAL do cabecalho, medida no JS: ela muda com a
+   largura da tela, com a busca aberta e com o trilho em duas linhas, e um
+   valor fixo aqui deixaria uma fresta (ou uma sobreposicao) em metade dos
+   tamanhos. */
+.mt.fechada{
+  position:sticky; top:var(--h-topo, 64px); z-index:19;
+  background:var(--barra);
+  -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+}
+/* Aberta ela deixa de ser uma fita: o painel das metas, o das campanhas e a
+   faixa de reativacao sao altos, e grudados comeriam a tela. Nesses casos a
+   barra volta a rolar com a pagina. */
+.mt:not(.fechada),
+.mt.fechada:has(#cmpPainel:not([hidden])),
+.mt.fechada:has(#rtFaixa:not([hidden])){ position:static; }
 .mt-in{max-width:1180px;margin:0 auto;padding:0 13px}
 @media(min-width:700px){ .mt-in{padding:0 18px} }
 .mt-topo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0 0}
@@ -10653,6 +10672,23 @@ function arrastavel(fila){
     fila.scrollLeft += e.deltaY;
   }, { passive:false });
 }
+
+/* A altura REAL do cabecalho, para a barra das metas grudar embaixo dele
+   sem fresta nem sobreposicao (ver .mt.fechada no CSS). Ele muda de altura
+   sozinho: no celular os filtros caem para a segunda linha, a busca abre, o
+   trilho ganha ou perde setas - entao a medida tem de ser viva. */
+(function(){
+  const topo = document.querySelector('header.topo');
+  if(!topo) return;
+  const medir = () => document.documentElement.style.setProperty(
+    '--h-topo', Math.round(topo.getBoundingClientRect().height) + 'px');
+  medir();
+  if(window.ResizeObserver) new ResizeObserver(medir).observe(topo);
+  window.addEventListener('resize', medir);
+  // a fonte pode chegar depois e mudar a altura por um fio
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(medir);
+})();
+
 // Toda fila de botoes se move igual: dedo no celular, arrasto e roda no
 // desktop. Valem as barras de navegacao e acao — os chips dentro de um card
 // continuam quebrando linha, porque ali esconder opcao seria pior.
