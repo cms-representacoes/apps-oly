@@ -2502,7 +2502,13 @@ function montarPacoteDesm(nums, incluirIrmaos){
                       grade:item.grade || [], pares, caixas, porCaixa,
                       // a planilha do robô pede a data do lote, não a do pedido
                       dataEntrega:row.dataEntrega || '',
-                      pedidoId:order.id, status });
+                      pedidoId:order.id, status,
+                      /* A chave que a CMS usa para saber se esta linha ja
+                         foi desmembrada. Calculada AQUI, com a mesma
+                         funcao que a tela usa para ler: duas formulas
+                         para a mesma chave e garantia de divergir. O robo
+                         a devolve no fim da rodada. */
+                      chaveCms:desmLineKey(order, item) });
       C.pares += pares;
       P.pares += pares;
     }
@@ -2884,9 +2890,15 @@ const TAMS_ROBO = Array.from({ length: 21 }, (_, i) => String(28 + i));   // 28.
    mandava no EBM era a sigla guardada no config do robô - então trocar
    aqui não mudava nada lá. Planilha sem a coluna (a do Chris) continua
    valendo a sigla do robô. */
+/* CHAVE CMS entrou em 24/11/2026, no fim de tudo: e por ela que o robo
+   avisa esta tela do que digitou. Fica depois dos tamanhos porque quem
+   abre o arquivo nao tem nada a fazer com ela - o robo le por nome e nem
+   repara na ordem. Planilha sem a coluna continua valendo; o robo
+   simplesmente nao tera o que devolver. */
 const COLUNAS_ROBO = ['CÓD REPASSE', 'VENDEDOR', 'CÓD CLIENTE', 'CLIENTE', 'PRAZO',
                       'CAMPANHA', 'SIGLA', 'QTD PARES', 'STATUS', 'EBM', 'GCI',
-                      'REFERENCIA', 'DESCRICAO', 'COR', 'DATA ENTREGA', ...TAMS_ROBO];
+                      'REFERENCIA', 'DESCRICAO', 'COR', 'DATA ENTREGA',
+                      ...TAMS_ROBO, 'CHAVE CMS'];
 
 function linhasDaPlanilhaRobo(p){
   const linhas = [];
@@ -2916,6 +2928,7 @@ function linhasDaPlanilhaRobo(p){
           'COR': L.cor || '',
           'DATA ENTREGA': L.dataEntrega || '',
           ...Object.fromEntries(TAMS_ROBO.map(t => [t, porTam[t] || ''])),
+          'CHAVE CMS': L.chaveCms || '',
         });
       }
     }
@@ -2938,6 +2951,7 @@ function gerarPlanilhaRobo(){
   const ws = XLSX.utils.aoa_to_sheet(matriz);
   ws['!cols'] = colunas.map(c => ({ wch: c === 'CLIENTE' ? 34
                                        : c === 'DESCRICAO' ? 22
+                                       : c === 'CHAVE CMS' ? 30
                                        : c.length <= 2 ? 4 : 13 }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'DESMEMBRAMENTO');

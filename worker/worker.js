@@ -1392,6 +1392,64 @@ export default {
           return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
         }
 
+        /* PATCH com action:"marcarDesmembrado" → ACRESCENTA marcas.
+           Entrou em 24/11/2026 para o robô do desmembramento fechar o
+           laço: ele digita no EBM e precisa contar à CMS o que fez,
+           senão a tela segue dizendo "nada desmembrado ainda" para um
+           lote que já está feito.
+
+           Por que não usar o "save" acima: ele troca cada lote INTEIRO
+           e exige o ADMIN_TOKEN. Levar esse token para dentro do robô,
+           que roda na máquina do Chris, seria espalhar a chave de tudo
+           por causa de uma marca.
+
+           Esta ação não remove, não troca o que já está marcado e não
+           escreve outro valor além de "Desmembrado" — por isso fica
+           fora do WRITE_ACTIONS. O pior que se consegue por aqui é
+           marcar lotes como desmembrados, e isso se desfaz na tela.
+           A defesa é a validação do payload, abaixo. */
+        if (body.action === "marcarDesmembrado") {
+          const linhas = Array.isArray(body.linhas) ? body.linhas : null;
+          if (!linhas || !linhas.length || linhas.length > 500) {
+            return new Response(
+              JSON.stringify({ success: false, error: "linhas inválidas (1 a 500)" }),
+              { status: 400, headers: corsHeaders });
+          }
+          // lote: só dígitos. chave: <id do pedido>||<meio>||<cor>
+          const okLote = (v) => /^[0-9]{1,8}$/.test(String(v || ""));
+          const okChave = (v) => /^[A-Za-z0-9._-]{3,60}\|\|[^|]{1,40}\|\|[^|]{0,40}$/
+            .test(String(v || ""));
+          for (const par of linhas) {
+            if (!Array.isArray(par) || par.length !== 2
+                || !okLote(par[0]) || !okChave(par[1])) {
+              return new Response(
+                JSON.stringify({ success: false, error: "linha fora do formato [lote, chave]" }),
+                { status: 400, headers: corsHeaders });
+            }
+          }
+
+          const { content, sha } = await getFile(GITHUB_DESM);
+          const desm = { ...(content || {}) };
+          let novas = 0;
+          for (const [lote, chave] of linhas) {
+            const k = "lote:" + String(lote);
+            const atual = { ...(desm[k] || {}) };
+            const ja = String(atual[chave] || "").toLowerCase();
+            // já marcada: não mexe (e não conta como nova)
+            if (ja === "desmembrado" || ja === "finalizado") continue;
+            atual[chave] = "Desmembrado";
+            desm[k] = atual;
+            novas++;
+          }
+          if (novas) {
+            await saveFile(GITHUB_DESM, desm, sha,
+                           `robo: ${novas} linha(s) desmembrada(s)`);
+          }
+          return new Response(
+            JSON.stringify({ success: true, novas, lotes: Object.keys(desm).length }),
+            { status: 200, headers: corsHeaders });
+        }
+
         // ── sacola do vendedor (CMS PASS) ──────────────────────────────
         // A sacola vivia so no aparelho: trocar de celular ou limpar o
         // navegador jogava fora a grade montada. Aqui ela fica no KV, uma
