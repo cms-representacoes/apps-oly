@@ -483,6 +483,45 @@ async function loadData(){
 
       _allProdutos.push({ chave,codigo,cor,prevFat,num,gci:gciRef,produto:produtoNome,saldoDispo,totalDesmembrado,saldoRestante,ultimoUpdate,situacao:situacaoProd,lojas:linhasLojas });
     }
+
+    /* A outra ponta: o que tem cliente e ainda nao foi digitado. Entra nas
+       linhas do lote que ja esta na tela, ou cria o lote - e so assim o
+       Chris ve o que FALTA, nao so o que ja foi. */
+    const faltando = linhasAindaNaoFeitas(pedidos, desm);
+    const porNum = new Map(_allProdutos.map(p => [String(p.num), p]));
+    for(const [num, linhas] of faltando){
+      const existente = porNum.get(num);
+      if(existente){
+        existente.lojas.push(...linhas);
+        /* Um lote com destino esperando nao pode aparecer como "Total":
+           o que a coluna Situacao compara e o saldo, e o saldo pode ter
+           acabado por outro caminho. Falta digitacao, entao e parcial. */
+        if(existente.situacao === 'total') existente.situacao = 'parcial';
+        continue;
+      }
+      const daDispo = _dispoPorNum.get(num) || null;
+      const daPlanilha = histPorLote.get(num) || null;
+      const base = linhas[0];
+      const saldoDispo = daDispo ? daDispo.saldo : null;
+      _allProdutos.push({
+        chave: `lote:${num}`,
+        codigo: base.codigo || daDispo?.codigo || daPlanilha?.ref || '—',
+        cor: base.cor || daDispo?.cor || daPlanilha?.cor || '—',
+        prevFat: base.prevFat || daDispo?.prevFat || daPlanilha?.data || '',
+        num,
+        gci: base.gci || daDispo?.gci || daPlanilha?.gci || '',
+        produto: base.produto !== '—' ? base.produto
+                 : (daDispo?.produto || daPlanilha?.desc || '—'),
+        saldoDispo,
+        totalDesmembrado: 0,
+        saldoRestante: saldoDispo !== null ? saldoDispo : null,
+        ultimoUpdate: linhas.reduce((m, l) =>
+          (l.updatedAt && (!m || new Date(l.updatedAt) > new Date(m))) ? l.updatedAt : m, null),
+        situacao: 'pendente',
+        lojas: linhas,
+      });
+    }
+
     renderTable();
   }catch(err){
     console.error(err);
@@ -676,6 +715,64 @@ function atualizarBotaoExportar(){
   if(badge) badge.textContent=n;
 }
 
+
+/* ── O que ainda NAO foi desmembrado ────────────────────────────────────
+   A tela nasce do arquivo de desmembramentos, que so tem o que ja foi
+   feito. Mas o Chris precisa ver o contrario: o lote que ja tem cliente
+   destino e ainda espera o robo. Essas linhas sao montadas a partir dos
+   PEDIDOS, com a mesma chave que a DISPO usa para marcar - assim uma
+   linha nunca aparece dos dois lados. */
+function _chaveLinhaDesm(order, item){
+  const meio = String(item.num || '').trim()
+            || String(item.gci || '').trim()
+            || String(item.codigo || '').trim();
+  return `${order.id}||${meio}||${item.cor}`;
+}
+function _jaTemMarca(desm, num, order, item){
+  const marcas = (desm || {})[`lote:${String(num)}`];
+  if(!marcas) return false;
+  const v = String(marcas[_chaveLinhaDesm(order, item)] || '').toLowerCase();
+  return v === 'desmembrado' || v === 'finalizado';
+}
+
+/* Devolve, por Nº de lote, as linhas de pedido que ainda nao foram
+   digitadas. Cancelado fica de fora: ele nao vai ser digitado. */
+function linhasAindaNaoFeitas(pedidos, desm){
+  const porLote = new Map();
+  for(const pedido of (Array.isArray(pedidos) ? pedidos : [])){
+    if(pedido.archived) continue;
+    if(canonicalStatus(pedido.status) === 'Cancelado') continue;
+    for(const item of (pedido.items || [])){
+      const num = String(item.num || '').trim();
+      if(!num) continue;                       // sem Nº nao da para casar
+      if(_jaTemMarca(desm, num, pedido, item)) continue;
+      const qtde = Number(item.totalUnits || 0)
+                || (item.grade || []).reduce((t, g) => t + Number(g.qty || 0), 0);
+      const lista = porLote.get(num) || [];
+      lista.push({
+        lineKey: _chaveLinhaDesm(pedido, item),
+        gci: String(item.gci || '').trim(),
+        codigo: String(item.codigo || '').trim(),
+        cor: item.cor || '',
+        prevFat: item.prevFaturamento || '',
+        produto: item.produto || '—',
+        cliente: pedido.clienteNome
+          ? `${pedido.clienteCodigo} — ${pedido.clienteNome}`
+          : (pedido.clienteCodigo || '—'),
+        prazo: pedido.prazo || '—',
+        campanha: (pedido.campanha || '').replace(/\s*\bOLY\b\s*/gi, '').trim() || '—',
+        qtde,
+        situacao: 'a-fazer',
+        orderStatus: pedido.status || '—',
+        orderId: pedido.id,
+        updatedAt: pedido.updatedAt || pedido.createdAt || null,
+      });
+      porLote.set(num, lista);
+    }
+  }
+  return porLote;
+}
+
 function chipSituacao(sit){
   if(sit==='total')   return `<span class="chip chip-fin" style="font-size:11px"><i class="fa-solid fa-circle-check" style="font-size:9px"></i> Total</span>`;
   if(sit==='parcial') return `<span class="chip chip-parc" style="font-size:11px"><i class="fa-solid fa-circle-half-stroke" style="font-size:9px"></i> Parcial</span>`;
@@ -688,8 +785,14 @@ function chipOrderStatus(s){
   return `<span class="chip chip-pend" style="font-size:10px">Pendente</span>`;
 }
 function chipDesmSit(s){
-  return (s||'').toLowerCase()==='finalizado'
-    ? `<span class="chip chip-fin" style="font-size:10px">Finalizado</span>`
+  const v = (s||'').toLowerCase();
+  /* "a-fazer" e a linha que TEM pedido e ainda nao tem marca nenhuma: ela
+     nao vem do arquivo de desmembramentos, e montada aqui a partir do
+     pedido (ver linhasAindaNaoFeitas). */
+  if(v === 'a-fazer')
+    return `<span class="chip" style="background:#FEF3C7;color:#92400E;font-size:10px">A desmembrar</span>`;
+  return (v === 'finalizado' || v === 'desmembrado')
+    ? `<span class="chip chip-fin" style="font-size:10px">${v === 'desmembrado' ? 'Desmembrado' : 'Finalizado'}</span>`
     : `<span class="chip chip-pend" style="font-size:10px">Pendente</span>`;
 }
 
@@ -736,7 +839,13 @@ function renderTable(){
       <td${dicaSemSaldo} style="text-align:right;font-weight:800;color:var(--text)">${saldoDispoTxt}</td>
       <td style="text-align:right;font-weight:800;color:${p.totalDesmembrado>0?'var(--brand)':'var(--muted)'}">${p.totalDesmembrado||'—'}</td>
       <td${dicaSemSaldo} style="text-align:right;font-weight:800;color:${saldoRestColor}">${saldoRestTxt}</td>
-      <td>${chipSituacao(p.situacao)}</td>
+      <td>${chipSituacao(p.situacao)}${(() => {
+        const n = p.lojas.filter(l => l.situacao === 'a-fazer').length;
+        /* Quantos destinos ainda esperam o robo. E o numero que ele procura
+           nesta tela: "o que falta?" - sem ele, so abrindo os detalhes. */
+        return n ? `<span class="chip" title="${n} destino(s) com cliente definido que ainda não foram digitados no EBM"
+          style="background:#FEF3C7;color:#92400E;font-size:10px;margin-left:5px">faltam ${n}</span>` : '';
+      })()}</td>
       <td><button class="btn-det${isOpen?' open':''}" data-chave="${safeHtml(p.chave)}">${isOpen?'↑ Fechar':'↓ Detalhes'} <span class="badge-lojas">${p.lojas.length}</span></button></td>`;
 
     const trExp=document.createElement('tr');
@@ -744,7 +853,7 @@ function renderTable(){
     trExp.style.display=isOpen?'':'none';
     trExp.innerHTML=`<td colspan="12">
       <div class="tr-expand-inner">
-        <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Lojas que receberam</div>
+        <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Lojas que receberam ou esperam</div>
         <div style="overflow-x:auto"><table class="sub-table">
           <thead><tr><th>Cliente</th><th>Prazo</th><th>Campanha</th><th style="text-align:right">Qtde</th><th>Status pedido</th><th>Sit. desm.</th></tr></thead>
           <tbody>${p.lojas.map(l=>`<tr>
