@@ -3455,8 +3455,12 @@ const FORM_HTML = `<p class="sc-form-tit">Dados do pedido</p>
       </button>
       <div class="sc-campos sc-ebm" id="scEbm" hidden>
         <label><span>Tabela de preço <i>*</i></span>
-          <input id="scTabela" list="scTabelas" autocomplete="off" placeholder="OL026">
+          <input id="scTabela" list="scTabelas" autocomplete="off" placeholder="OL029">
+          <!-- as da coleção de agora vêm primeiro; as anteriores ficam para
+               quem ainda digita pedido de coleção passada -->
           <datalist id="scTabelas">
+            <option value="OL029">Olympikus · 1S27</option>
+            <option value="UA040">Under Armour · SS27</option>
             <option value="OL026"></option><option value="OL025"></option>
             <option value="OL024"></option><option value="UA037"></option>
           </datalist></label>
@@ -8948,9 +8952,12 @@ const XLS_COLS = [
   "33/38","39/44",
   "Total"
 ];
-// Mesma tabela que o catálogo digital usa. O campo aceita edição: quando a
-// fábrica troca a tabela, o vendedor digita a nova sem esperar release.
-const TABELA_PRECO = { oly:'OL026', ua:'UA037' };
+/* Mesma tabela que o catálogo digital usa. O campo aceita edição: quando a
+   fábrica troca a tabela, o vendedor digita a nova sem esperar release.
+   Desde 24/11/2026 são as da coleção de agora - OL029 (1S27) e UA040
+   (SS27). Estavam nas anteriores, e o campo vinha preenchido com a tabela
+   velha: o pedido saía nela se ninguém reparasse. */
+const TABELA_PRECO = { oly:'OL029', ua:'UA040' };
 // Os seis do bloco do EBM quase nunca mudam — o padrão é o mesmo do catálogo.
 const PADRAO_EBM = {
   scEmbalar:'M: Musical', scEntrega:'3: Total Artigo/Cor',
