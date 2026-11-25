@@ -789,6 +789,32 @@ button{font:inherit}
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cli-opt .loc{display:block;font-size:10px;color:var(--tenue);margin-top:1px}
 .cli-sug .mais{padding:6px 8px;font-size:10px;color:var(--tenue);text-align:center}
+/* Aviso de cliente com mais de um prazo em aberto. Fica no fluxo, sob o
+   campo: flutuar taparia a campanha, que vem logo abaixo. */
+#scPrazoAviso[hidden]{display:none}
+#scPrazoAviso{margin-top:-6px;border-radius:13px;padding:11px 13px;
+  background:#fdf4dc;border:1px solid rgba(180,83,9,.3)}
+#scPrazoAviso.ok{background:#f2f9f5;border-color:rgba(14,107,71,.3)}
+.pz-topo{display:flex;gap:8px;align-items:flex-start}
+.pz-topo i{color:#b45309;font-size:13px;margin-top:2px;flex:none}
+#scPrazoAviso.ok .pz-topo i{color:var(--pronta)}
+.pz-tit{font-size:12px;font-weight:800;color:#b45309;line-height:1.4}
+#scPrazoAviso.ok .pz-tit{color:var(--pronta)}
+.pz-sub{font-size:11px;font-weight:600;color:#b45309;opacity:.85;margin-top:2px;line-height:1.45}
+.pz-lista{margin-top:9px;display:flex;flex-direction:column;gap:6px}
+.pz-item{display:flex;gap:9px;align-items:center;background:#fff;
+  border:1px solid rgba(180,83,9,.2);border-radius:10px;padding:7px 10px}
+.pz-item.atual{border-color:var(--pronta);background:#f2f9f5}
+.pz-nome{font-size:12px;font-weight:800;flex:1;min-width:0}
+.pz-det{font-size:10.5px;color:var(--fraco);font-weight:600;display:block;margin-top:1px}
+.pz-usar{border:0;background:var(--marca);color:#241c12;border-radius:999px;
+  padding:5px 12px;font:inherit;font-size:11px;font-weight:800;cursor:pointer;
+  white-space:nowrap;flex:none}
+.pz-item.atual .pz-usar{background:var(--pronta);color:#fff;cursor:default}
+@media (max-width:420px){
+  .pz-item{flex-wrap:wrap}
+  .pz-usar{width:100%}
+}
 .cli-dica{font-size:10px;font-weight:600;min-height:12px}
 /* As cores das dicas levam !important porque os modais pintam os
    <span> do formulario POR ID (#rpCorpo .sc-campos span, e o mesmo
@@ -3448,6 +3474,8 @@ const FORM_HTML = `<p class="sc-form-tit">Dados do pedido</p>
           <span class="cli-dica" id="scCliDica"></span></label>
         <label><span>Condição de pagamento <i>*</i></span>
           <select id="scPrazo"></select></label>
+        <!-- Cliente com mais de um prazo em aberto: ver avisarPrazos() -->
+        <div class="largo" id="scPrazoAviso" hidden></div>
         <label><span>Campanha</span>
           <select id="scCampanha"></select></label>
         <label class="largo"><span>Data para os itens sem data</span>
@@ -6238,10 +6266,113 @@ function escolherCliente(i){
   fecharSugestoes();
   conferirCliente();
 }
+/* ── CLIENTE COM MAIS DE UM PRAZO ─────────────────────────────────────
+   O cliente 17413 tinha dois prazos vivos ao mesmo tempo, e ninguem
+   percebeu ate o desmembramento: quando um lote que esta nos dois
+   pedidos entra na carga, o EBM recebe UMA digitacao por cliente e vale
+   o primeiro que aparecer - nao o certo.
+
+   So enxerga pedido do PROPRIO vendedor: a busca do Showroom e por
+   comissionista, e pedido de outro vendedor ele nao teria como saber. */
+function prazosDoCliente(cod){
+  const c = String(cod || '').trim();
+  if(!c) return [];
+  const porPrazo = new Map();
+  for(const p of (PED.lista || [])){
+    if(String(p.cliente || '').trim() !== c) continue;
+    const pr = String(p.prazo || '').trim();
+    if(!pr) continue;
+    if(String(p.status || '').toLowerCase().includes('cancel')) continue;
+    const g = porPrazo.get(pr) || { prazo: pr, n: 0, ultimo: '' };
+    g.n++;
+    const d = p.criadoEm || '';
+    if(d > g.ultimo) g.ultimo = d;
+    porPrazo.set(pr, g);
+  }
+  return [...porPrazo.values()].sort((a, b) =>
+    String(b.ultimo).localeCompare(String(a.ultimo)));
+}
+
+function usarPrazo(p){
+  const sel = $f('scPrazo');
+  if(!sel) return;
+  if(![...sel.options].some(o => o.value === p)){
+    sel.insertAdjacentHTML('beforeend',
+      `<option value="${esc(p)}">${esc(p)}</option>`);
+  }
+  sel.value = p;
+  salvarForm();
+  pintarResumoEbm();
+  avisarPrazos();
+}
+
+function avisarPrazos(){
+  const cx = $f('scPrazoAviso');
+  if(!cx) return;
+  const cod = ($f('scCliente') || {}).value || '';
+  const prazos = prazosDoCliente(cod);
+  /* Um prazo so (ou nenhum pedido) nao tem o que avisar - e o caso da
+     maioria. O aviso so vale quando ha escolha a fazer. */
+  if(prazos.length < 2){ cx.hidden = true; cx.innerHTML = ''; cx.className = 'largo'; return; }
+
+  const escolhido = String((($f('scPrazo') || {}).value) || '').trim();
+  if(escolhido && prazos.some(p => p.prazo === escolhido)){
+    cx.className = 'largo ok';
+    cx.innerHTML = `<div class="pz-topo">
+        <i class="fa-solid fa-circle-check"></i>
+        <span class="pz-tit">Este prazo o cliente já usa.</span></div>`;
+    cx.hidden = false;
+    return;
+  }
+
+  const total = prazos.reduce((s, p) => s + p.n, 0);
+  cx.className = 'largo';
+  cx.innerHTML = `<div class="pz-topo">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      <span>
+        <span class="pz-tit">Este cliente já tem ${prazos.length} prazos diferentes</span>
+        <span class="pz-sub">${total} pedido${total > 1 ? 's' : ''} em aberto.
+          Confira qual é o certo antes de enviar.</span>
+      </span></div>
+    <div class="pz-lista">
+      ${prazos.map(p => `
+        <div class="pz-item${p.prazo === escolhido ? ' atual' : ''}">
+          <span class="pz-nome">${esc(p.prazo)}
+            <span class="pz-det">${p.n} pedido${p.n > 1 ? 's' : ''}${
+              p.ultimo ? ' · último em ' + esc(dataCurta(p.ultimo)) : ''}</span></span>
+          <button type="button" class="pz-usar" data-prazo="${esc(p.prazo)}">
+            ${p.prazo === escolhido ? 'escolhido' : 'usar este'}</button>
+        </div>`).join('')}
+    </div>`;
+  cx.hidden = false;
+}
+
+/* A lista de pedidos so e carregada quando o vendedor abre "Meus
+   pedidos". Quem vai direto para a sacola precisa dela aqui - e o
+   cache do PED evita buscar de novo a cada tecla. */
+let _buscandoPrazos = false;
+async function garantirPedidosParaPrazos(){
+  if(_buscandoPrazos || (PED.lista || []).length) return;
+  const cod = PED.vendedor || (SESSAO && SESSAO.codigo) || '';
+  if(!cod) return;
+  _buscandoPrazos = true;
+  try{
+    PED.vendedor = PED.vendedor || String(cod);
+    PED.lista = await buscarPedidos(PED.vendedor);
+    avisarPrazos();
+  }catch(_){ /* sem historico: o aviso simplesmente nao aparece */ }
+  finally{ _buscandoPrazos = false; }
+}
+
 // Não bloqueia nada: só diz de quem é o código digitado.
 function conferirCliente(){
   const v = $f(CLI_ALVO.campo).value.trim();
   const d = $f(CLI_ALVO.dica);
+  /* Antes dos returns: o aviso de prazo não depende da base de clientes
+     estar carregada, e com ele lá embaixo um código digitado antes dela
+     chegar não acendia aviso nenhum. */
+  avisarPrazos();
+  garantirPedidosParaPrazos();
   if(!d) return;
   if(!v || !CLI.lista.length){ d.textContent = ''; d.className = 'cli-dica'; return; }
   const c = CLI.lista.find(x => String(x.codigo).trim() === v);
@@ -6322,6 +6453,11 @@ function carregarForm(){
 // Um ouvinte no fragmento inteiro: os campos são recriados a cada marca.
 FORM_PEDIDO.addEventListener('change', e => {
   if(CAMPOS_FORM.includes(e.target.id)){ salvarForm(); pintarResumoEbm(); }
+  if(e.target.id === 'scPrazo') avisarPrazos();
+});
+FORM_PEDIDO.addEventListener('click', e => {
+  const b = e.target.closest('.pz-usar');
+  if(b) usarPrazo(b.dataset.prazo);
 });
 FORM_PEDIDO.addEventListener('input', e => {
   if(e.target.id === 'scCliente' || e.target.id === 'scPedidoCli') salvarForm();
