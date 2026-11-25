@@ -36,6 +36,20 @@
       --partial:#c2410c;
       --partial-soft:#fef0e2;
     }
+    /* Pedidos pendentes antes de desmembrar */
+    .dpend-grupo{ margin-top:16px; border:1px solid var(--line); border-radius:14px; overflow:hidden; }
+    .dpend-topo{ display:flex; flex-wrap:wrap; gap:9px; align-items:baseline;
+      background:var(--muted-soft); padding:9px 13px; }
+    .dpend-linha{ display:flex; gap:11px; align-items:flex-start; padding:10px 13px;
+      border-top:1px solid var(--line); cursor:pointer; }
+    .dpend-linha:hover{ background:var(--brand-soft); }
+    .dpend-linha input[type=checkbox]{ width:16px; height:16px; margin-top:2px;
+      accent-color:var(--success); cursor:pointer; flex:none; }
+    .dpend-chip{ display:inline-flex; align-items:center; border-radius:999px;
+      padding:2px 9px; font-size:10.5px; font-weight:800; }
+    @media (max-width:520px){
+      #desmPendModal .dpend-linha{ padding:9px 10px; }
+    }
     .cms-badge{
       width:38px;height:38px;border-radius:12px;flex:none;display:flex;align-items:center;justify-content:center;
       background:linear-gradient(135deg,#5B69E8,#2836D4);color:#fff;
@@ -1332,7 +1346,7 @@
                por LOTE e o pacote se agrupa por pedido mãe, porque é assim
                que o EBM trabalha - abre o pedido uma vez e digita todos os
                clientes dele. -->
-          <button id="btnDesmembrarSel" onclick="abrirConferenciaDesm()" style="display:none;align-items:center;gap:7px;background:#0d9488;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-scissors" style="font-size:12px"></i> Desmembrar</button>
+          <button id="btnDesmembrarSel" onclick="checarPendentesDesm()" style="display:none;align-items:center;gap:7px;background:#0d9488;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-scissors" style="font-size:12px"></i> Desmembrar</button>
           <button id="btnArquivarSel" onclick="arquivarSelecionadosDispo()" style="display:none;align-items:center;gap:7px;background:#475569;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-box-archive" style="font-size:12px"></i> Arquivar selecionados</button>
           <button id="btnDesarquivarSel" onclick="desarquivarSelecionadosDispo()" style="display:none;align-items:center;gap:7px;background:var(--brand,#3730a3);color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-box-open" style="font-size:12px"></i> Desarquivar</button>
           <button onclick="limparSelecaoDispo()" style="background:transparent;border:1px solid var(--line,#c7cdfb);color:var(--brand,#3730a3);border-radius:999px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer">Limpar</button>
@@ -2571,11 +2585,198 @@ function desenharSiglaDesm(){
 }
 
 // ---------- tela 1: conferência ----------
+/* O caminho de sempre, sem porteiro nenhum. */
 function abrirConferenciaDesm(){
-  if(!_dispoSelecionados.size){ showToast('Selecione ao menos um lote.', 'error'); return; }
   DESM.incluirIrmaos = false;
   desenharConferenciaDesm();
   $('desmConfModal').style.display = 'flex';
+}
+
+/* ── PEDIDOS PENDENTES ANTES DE DESMEMBRAR ───────────────────────────
+   Clicar em "Desmembrar" passa por aqui. Sem pendente, segue direto
+   para a conferencia e nada muda. */
+const DPEND = { lotes:[], marcados:new Set() };
+
+function pendentesDosLotes(nums){
+  const lotes = [];
+  for(const num of nums){
+    const vivos = pedidosVivosDoLote(num);
+    const pend = vivos.filter(v => v.status === 'Pendente'
+                                   && !linhaJaDesmembrada(num, v.order, v.item));
+    if(!pend.length) continue;
+    const aprov = vivos.filter(v => v.status !== 'Pendente'
+                                    && !linhaJaDesmembrada(num, v.order, v.item));
+    const r = (STATE.dispoRows || []).find(x => String(x.num) === String(num)) || {};
+    lotes.push({
+      num: String(num), produto: r.produto || '', cor: r.cor || '',
+      gci: r.gci || '', ebm: r.ebm || '',
+      aprovados: aprov.length,
+      pendentes: pend.map(v => ({
+        id: v.order.id,
+        cod: String(v.order.clienteCodigo || ''),
+        nome: v.order.clienteNome || '',
+        pares: getItemUnits(v.item),
+        vend: _desmVendedor(v.order) || '',
+        criado: v.order.createdAt || v.order.updatedAt || '',
+        prazo: String(v.order.prazo || ''),
+      })),
+    });
+  }
+  return lotes;
+}
+
+function checarPendentesDesm(){
+  if(!_dispoSelecionados.size){ showToast('Selecione ao menos um lote.', 'error'); return; }
+  const lotes = pendentesDosLotes([..._dispoSelecionados]);
+  if(!lotes.length){ abrirConferenciaDesm(); return; }   // nada pendente
+  DPEND.lotes = lotes;
+  DPEND.marcados = new Set(lotes.flatMap(l => l.pendentes.map(p => p.id)));
+  desenharPendentesDesm();
+  $('desmPendModal').style.display = 'flex';
+}
+
+function fecharPendentesDesm(){ $('desmPendModal').style.display = 'none'; }
+
+function alternarPendente(id, el){
+  if(el && el.checked) DPEND.marcados.add(id); else DPEND.marcados.delete(id);
+  contarPendentesDesm();
+}
+
+function desenharPendentesDesm(){
+  const nPend = DPEND.lotes.reduce((s, l) => s + l.pendentes.length, 0);
+  const pares = DPEND.lotes.reduce((s, l) =>
+    s + l.pendentes.reduce((x, p) => x + p.pares, 0), 0);
+  const nAprov = DPEND.lotes.reduce((s, l) => s + l.aprovados, 0);
+
+  $('desmPendTitulo').textContent = nPend === 1
+    ? 'Há um pedido que ainda não foi aprovado'
+    : `Há ${nPend} pedidos que ainda não foram aprovados`;
+  $('desmPendSub').textContent =
+    `${formatInt(pares)} pares pendentes em ${DPEND.lotes.length} `
+    + `${DPEND.lotes.length === 1 ? 'lote' : 'lotes'} · `
+    + (nAprov ? `${nAprov} ${nAprov === 1 ? 'pedido já aprovado segue' : 'pedidos já aprovados seguem'} normalmente`
+              : 'nenhum pedido aprovado nestes lotes');
+
+  $('desmPendGrupos').innerHTML = DPEND.lotes.map(l => `
+    <div class="dpend-grupo">
+      <div class="dpend-topo">
+        <span style="font-weight:900;color:var(--brand);font-size:13px">Lote ${safeHtml(l.num)}</span>
+        <span style="font-size:11.5px;color:var(--muted);font-weight:700">
+          ${safeHtml([l.produto, l.cor].filter(Boolean).join(' · '))}
+          ${l.gci ? ' · GCI ' + safeHtml(l.gci) : ''}${l.ebm ? ' · EBM ' + safeHtml(l.ebm) : ''}</span>
+        <span style="margin-left:auto;font-size:12px;font-weight:800;color:var(--text)">
+          ${l.pendentes.length} pendente${l.pendentes.length > 1 ? 's' : ''}
+          ${l.aprovados ? `<span class="dpend-chip" style="background:var(--success-soft);color:var(--success);margin-left:6px">${l.aprovados} aprovado${l.aprovados > 1 ? 's' : ''}</span>` : ''}</span>
+      </div>
+      ${l.pendentes.map(p => `
+        <label class="dpend-linha">
+          <input type="checkbox" checked data-id="${safeHtml(p.id)}"
+                 onchange="alternarPendente('${safeHtml(p.id)}', this)">
+          <span style="flex:1;min-width:0">
+            <span style="font-size:12.5px;font-weight:800;color:var(--text)">
+              <span style="color:var(--muted);font-weight:700">${safeHtml(p.cod)}</span>
+              — ${safeHtml(p.nome || 'sem nome no pedido')}
+              <span class="dpend-chip" style="background:var(--warning-soft);color:var(--warning);margin-left:5px">pendente</span></span>
+            <span style="display:block;font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5">
+              ${safeHtml(p.vend || '—')}${p.criado ? ' · ' + safeHtml(formatDate(p.criado)) : ''}
+              · prazo ${safeHtml(p.prazo || '—')}</span>
+          </span>
+          <span style="font-size:12.5px;font-weight:800;white-space:nowrap">${formatInt(p.pares)} pares</span>
+        </label>`).join('')}
+    </div>`).join('');
+  contarPendentesDesm();
+}
+
+function contarPendentesDesm(){
+  const total = DPEND.lotes.reduce((s, l) => s + l.pendentes.length, 0);
+  const n = DPEND.marcados.size;
+  $('desmPendConta').textContent = n === total
+    ? `${n} de ${total} marcados`
+    : `${n} de ${total} marcados · ${total - n} fica${total - n > 1 ? 'm' : ''} de fora`;
+  const bt = $('desmPendAprovar');
+  bt.disabled = n === 0;
+  bt.style.opacity = n === 0 ? '.5' : '1';
+  bt.style.cursor = n === 0 ? 'not-allowed' : 'pointer';
+  bt.textContent = n === 0 ? 'Nenhum marcado'
+    : (n === 1 ? 'Aprovar 1 e desmembrar' : `Aprovar ${n} e desmembrar`);
+  $('desmPendSem').textContent = n === total
+    ? 'Desmembrar sem eles' : 'Desmembrar sem os pendentes';
+}
+
+/* O jeito de hoje: segue com os aprovados e deixa os pendentes na fila. */
+function seguirSemAprovar(){
+  fecharPendentesDesm();
+  abrirConferenciaDesm();
+}
+
+/* Aprova os marcados e so entao segue. O evento de historico sai no
+   MESMO formato da tela de pedidos (status_changed / "Pedido aprovado") -
+   outro formato apareceria torto la. */
+async function aprovarEDesmembrar(){
+  const ids = [...DPEND.marcados];
+  if(!ids.length) return;
+  const bt = $('desmPendAprovar');
+  const antes = bt.textContent;
+  bt.disabled = true;
+  bt.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Aprovando...';
+
+  const falhas = [];
+  let ok = 0;
+  for(const id of ids){
+    const order = (STATE.orders || []).find(o => o.id === id);
+    if(!order){ falhas.push(id); continue; }
+    const agora = new Date().toISOString();
+    const evento = {
+      eventId: `evt_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
+      at: agora,
+      action: 'status_changed',
+      label: 'Pedido aprovado',
+      statusFrom: 'Pendente',
+      statusTo: 'Aprovado',
+      archivedFrom: Boolean(order.archived),
+      archivedTo: Boolean(order.archived),
+      clientCode: sanitizeDisplayText(order.clienteCodigo),
+      prepostoCodigo: sanitizeDisplayText(order.preposto?.codigo),
+      prepostoNome: sanitizeDisplayText(order.preposto?.nome),
+      notes: 'Aprovado na hora de desmembrar',
+      meta: {},
+    };
+    const atualizado = {
+      ...order, status: 'Aprovado',
+      history: [evento, ...(Array.isArray(order.history) ? order.history : [])],
+      lastAction: evento.action, lastActionLabel: evento.label,
+      lastActionAt: agora, updatedAt: agora,
+    };
+    try{
+      const res = await workerFetch({ method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(atualizado) });
+      if(!res.ok) throw new Error(`PUT ${res.status}`);
+      const i = STATE.orders.findIndex(o => o.id === id);
+      if(i !== -1) STATE.orders[i] = atualizado;
+      ok++;
+    }catch(e){ console.error(e); falhas.push(id); }
+  }
+
+  bt.disabled = false;
+  bt.textContent = antes;
+
+  /* Falhou alguma: o desmembramento NAO comeca. Seguir com metade
+     aprovada e a receita de descobrir o resto so no EBM. */
+  if(falhas.length){
+    showToast(`${falhas.length} pedido(s) não puderam ser aprovados. `
+              + 'Nada foi desmembrado — confira e tente de novo.', 'error');
+    DPEND.lotes = pendentesDosLotes([..._dispoSelecionados]);
+    DPEND.marcados = new Set(DPEND.lotes.flatMap(l => l.pendentes.map(p => p.id)));
+    if(DPEND.lotes.length) desenharPendentesDesm(); else fecharPendentesDesm();
+    renderDispo();
+    return;
+  }
+
+  showToast(`${ok} pedido${ok > 1 ? 's' : ''} aprovado${ok > 1 ? 's' : ''}.`, 'success');
+  renderDispo();
+  fecharPendentesDesm();
+  abrirConferenciaDesm();
 }
 function fecharConferenciaDesm(){ $('desmConfModal').style.display = 'none'; }
 function alternarIrmaosDesm(el){
@@ -7792,6 +7993,38 @@ loadDispo();
 
 <!-- MODAL RATEIO -->
 <!-- MODAL: CONFERIR O DESMEMBRAMENTO -->
+<!-- ── PEDIDOS PENDENTES ANTES DE DESMEMBRAR ────────────────────────────
+     Ele desmembrou tres lotes e so depois viu que um levava dois pedidos
+     ainda nao aprovados. O aviso ja existia, como uma linha de texto no
+     meio dos outros da conferencia, e passou batido. Aqui ele vira uma
+     parada no caminho - com o que fazer a respeito. -->
+<div id="desmPendModal" style="position:fixed;inset:0;z-index:216;background:rgba(2,6,23,.6);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
+  <div style="width:100%;max-width:700px;margin:24px 0;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+      <div>
+        <div style="font-size:11px;font-weight:800;color:var(--warning);text-transform:uppercase;letter-spacing:.04em">Antes de desmembrar</div>
+        <div id="desmPendTitulo" style="font-size:17px;font-weight:900;color:var(--text)"></div>
+        <div id="desmPendSub" style="font-size:12.5px;font-weight:600;color:var(--muted);margin-top:3px;line-height:1.5"></div>
+      </div>
+      <button onclick="fecharPendentesDesm()" style="border:0;background:transparent;color:var(--muted);font-size:24px;cursor:pointer;line-height:1">&times;</button>
+    </div>
+
+    <div style="display:flex;gap:9px;align-items:flex-start;margin-top:15px;background:var(--warning-soft);border:1px solid rgba(180,83,9,.25);border-radius:12px;padding:11px 13px">
+      <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning);font-size:13px;margin-top:2px;flex:none"></i>
+      <span style="font-size:12.5px;line-height:1.5;color:var(--text)">O EBM aceita a digitação de qualquer jeito, mas um pedido pendente não foi conferido por ninguém. Aprove aqui o que estiver certo, ou siga sem ele — o pedido fica na fila e vai noutra rodada.</span>
+    </div>
+
+    <div id="desmPendGrupos"></div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:18px">
+      <span id="desmPendConta" style="font-size:12px;font-weight:700;color:var(--muted);margin-right:auto"></span>
+      <button onclick="fecharPendentesDesm()" style="border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:999px;padding:9px 17px;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer">Cancelar</button>
+      <button id="desmPendSem" onclick="seguirSemAprovar()" style="border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:9px 17px;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer">Desmembrar sem eles</button>
+      <button id="desmPendAprovar" onclick="aprovarEDesmembrar()" style="border:1px solid var(--success);background:var(--success);color:#fff;border-radius:999px;padding:9px 17px;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer;box-shadow:0 2px 10px rgba(21,128,61,.28)"></button>
+    </div>
+  </div>
+</div>
+
 <div id="desmConfModal" style="position:fixed;inset:0;z-index:215;background:rgba(2,6,23,.6);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
   <div style="width:100%;max-width:760px;margin:24px 0;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">

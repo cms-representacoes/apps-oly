@@ -145,7 +145,17 @@
       background:var(--brand-soft); }
     .dark .det-abrir{ background:var(--card); }
     /* recolher todos: so existe quando ha algo aberto */
-    #btnRecolher[hidden]{ display:none; }
+    /* Com um lote em foco a lista some, e este botao e a unica saida.
+       Vermelho com letra branca a pedido dele em 25/11/2026: antes era
+       branco com letra cinza, igual aos botoes que nao levam a lugar
+       nenhum, e quem nao sabia do foco ficava preso. #DC2626 da 4,8:1
+       contra o branco e e o mesmo vermelho que o Showroom ja usa. */
+    .btn-voltar-lista{ background:#DC2626 !important; color:#fff !important;
+      border-color:#DC2626 !important; font-weight:800 !important;
+      box-shadow:0 2px 8px rgba(220,38,38,.3); }
+    .btn-voltar-lista:hover{ background:#B91C1C !important;
+      border-color:#B91C1C !important; }
+    .btn-voltar-lista i{ color:#fff !important; }
     /* O display mora aqui, e nao no elemento: com style="display:flex"
        inline, a classe .hidden (display:none) perdia para ele e as pilulas
        nunca sumiam - foi o que aconteceu ao entrar no foco. */
@@ -230,13 +240,6 @@
 
           <!-- So existe com um lote em foco: abrir um lote recorta a lista
                para ele (ver entrarNoFoco), e este botao desfaz. -->
-          <button id="btnRecolher" hidden onclick="recolherTodos()" data-tip="Recolher os lotes abertos"
-            class="focus-ring rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2"
-            style="flex:none">
-            <i class="fa-solid fa-arrow-left text-[10px]"></i>
-            Voltar à lista<span id="badgeRecolher" hidden></span>
-          </button>
-
           <!-- Atualizar -->
           <button id="btnRefresh" onclick="loadData()" data-tip="Atualizar dados"
             class="focus-ring w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
@@ -847,16 +850,13 @@ function ajustarAlturaTabela(){
 }
 window.addEventListener('resize', ajustarAlturaTabela);
 
-function atualizarBotaoRecolher(){
-  const b = $('btnRecolher');
-  if(!b) return;
-  b.hidden = !_foco;
-  const badge = $('badgeRecolher');
-  if(badge) badge.hidden = true;
-  b.setAttribute('data-tip', 'Voltar à lista de todos os lotes');
-}
+/* O botao da barra de ferramentas saiu em 25/11/2026 - o "Voltar a
+   lista" ficou so ao lado do aviso "mostrando so este lote". Esta
+   funcao continua sendo chamada de varios pontos do render; nao some,
+   apenas nao tem mais o que acender. */
+function atualizarBotaoRecolher(){ /* nada a fazer */ }
 
-// o mesmo botao de antes, com o nome que o foco pede
+// Sair do foco por outros caminhos (ESC, por exemplo) passa por aqui.
 function recolherTodos(){ sairDoFoco(); }
 
 function atualizarBotaoExportar(){
@@ -956,11 +956,15 @@ function renderTable(){
   $('pillTotal').textContent     = produtos.length;
   /* Em foco a contagem perde o sentido ("1 produto" nao diz nada), e no
      lugar dela vai o aviso de que a lista esta recortada. */
+  /* O UNICO "Voltar a lista" da tela mora aqui, ao lado do aviso do
+     recorte: o foco e uma propriedade da LISTA, e a saida pertence ao
+     lugar onde o recorte e anunciado. Havia um segundo na barra de
+     ferramentas; saiu em 25/11/2026, a pedido dele. */
   $('tableCount').innerHTML = _foco
-    ? `<span style="color:var(--brand);font-weight:800">mostrando só este lote</span>
-       <button type="button" onclick="sairDoFoco()"
-         style="margin-left:8px;border:1px solid var(--line);background:#fff;color:var(--muted);
-                border-radius:999px;padding:2px 10px;font-size:11px;font-weight:800;cursor:pointer">
+    ? `<span style="color:#DC2626;font-weight:800">mostrando só este lote</span>
+       <button type="button" onclick="sairDoFoco()" class="btn-voltar-lista"
+         style="margin-left:9px;border:1px solid;border-radius:999px;
+                padding:4px 13px;font-size:11.5px;cursor:pointer">
          ← Voltar à lista</button>`
     : `${produtos.length} produto${produtos.length!==1?'s':''}`;
   /* Em foco as pilulas contariam so o lote aberto ("0 pendentes · 1 lote"),
