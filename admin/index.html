@@ -15,7 +15,7 @@
 
   <style>
     :root{
-      --bg:#f7f8fc;
+      --bg:#d9e0ee;        /* 26/11/2026: era #f7f8fc, quase branco */
       --card:#ffffff;
       --text:#0e1526;
       --line:#e6e9f3;
@@ -29,6 +29,18 @@
       --info:#1d4ed8;
       --info-soft:#e8effd;
       --cms-badge:38px;
+      /* Voltaram para dentro do :root em 26/11/2026: estavam orfas
+         depois do media query do cabecalho, atras de uma chave fechada
+         cedo demais, e nao valiam no tema claro. */
+      --cab-bg:#c5cfe3;    /* faixa de cabecalho da tabela */
+      --cab-tx:#3d4a61;
+      --det-bg:#f3f6fd;    /* fundo do pedido aberto */
+      --danger:#b91c1c;
+      --danger-soft:#fdeaea;
+      --muted:#5c6675;
+      --muted-soft:#eaedf5;
+      --partial:#c2410c;
+      --partial-soft:#fef0e2;
     }
     .cms-badge{
       width:38px;height:38px;border-radius:12px;flex:none;display:flex;align-items:center;justify-content:center;
@@ -56,14 +68,10 @@
       #adminHeader #btnExportarTodosPendentes,
       #adminHeader #btnManutencao{ padding-left:11px; padding-right:11px; }
     }
-      --danger:#b91c1c;
-      --danger-soft:#fdeaea;
-      --muted:#5c6675;
-      --muted-soft:#eaedf5;
-      --partial:#c2410c;
-      --partial-soft:#fef0e2;
-    }
     .dark{
+      --cab-bg:#0b1120;
+      --cab-tx:#94a3b8;
+      --det-bg:#182542;
       --bg:#0f172a;
       --card:#1e293b;
       --text:#f1f5f9;
@@ -109,13 +117,31 @@
     .chip-status-aprovado{ background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border-color:transparent; box-shadow:0 2px 8px rgba(22,163,74,.32); }
     .filter-status-btn{ display:inline-flex; align-items:center; gap:6px; border:0.5px solid var(--line); border-radius:999px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; background:none; color:#64748b; transition:all .12s; }
     .filter-status-btn:hover{ background:#f8fafc; }
-    .filter-status-btn.fs-active-todos{ background:linear-gradient(135deg,#334155,#0f172a); color:#fff; border-color:transparent; box-shadow:0 3px 10px rgba(15,23,42,.28); }
-    .filter-status-btn.fs-active-pend{ background:linear-gradient(135deg,#fbbf24,#d97706); color:#fff; border-color:transparent; box-shadow:0 3px 10px rgba(217,119,6,.3); }
-    .filter-status-btn.fs-active-aprov{ background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; border-color:transparent; box-shadow:0 3px 10px rgba(22,163,74,.3); }
-    .filter-status-btn.fs-active-export{ background:linear-gradient(135deg,#60a5fa,#2563eb); color:#fff; border-color:transparent; box-shadow:0 3px 10px rgba(37,99,235,.3); }
-    .filter-status-btn.fs-active-canc{ background:linear-gradient(135deg,#f87171,#dc2626); color:#fff; border-color:transparent; box-shadow:0 3px 10px rgba(220,38,38,.3); }
-    .filter-status-btn.fs-active-alt{ background:linear-gradient(135deg,#a78bfa,#7c3aed); color:#fff; border-color:transparent; box-shadow:0 3px 10px rgba(124,58,237,.3); }
-    .filter-status-btn[class*="fs-active-"] .fs-count{ background:rgba(255,255,255,.28); color:#fff; }
+    #ordersCountBadge b{ color:var(--text); font-weight:800; font-variant-numeric:tabular-nums; }
+    #ordersCountBadge .pt{ opacity:.4; }
+    .rc-alerta{ display:inline-flex; align-items:center; gap:5px; margin-left:9px;
+      background:var(--warning-soft); color:var(--warning);
+      border-radius:6px; padding:3px 8px; font-size:11px; font-weight:700; cursor:help; }
+    .regua-rot{ font-size:9.5px; font-weight:800; letter-spacing:.08em;
+      text-transform:uppercase; color:var(--muted); align-self:center; }
+    /* ── O filtro ABERTO (26/11/2026) ────────────────────────────────
+       Era a cor da familia chapada com texto branco: no ambar isso dava
+       1,67:1 de contraste, e o minimo para texto e 4,5:1. Pior, a cor
+       chapada competia com os selos de situacao da tabela — o mesmo
+       ambar dizia "filtro aberto", "pedido pendente" e "ja em carteira".
+       Agora a cor fica TINGIDA e o texto escurece: a cor continua
+       dizendo qual filtro e, o preenchimento diz que ele esta aberto.
+       E o desenho que o tema escuro desta tela ja usava. */
+    .filter-status-btn[class*="fs-active-"]{ border-width:1px; box-shadow:none; }
+    .filter-status-btn.fs-active-todos{ background:#e2e8f0; color:#0f172a; border-color:#cbd5e1; }
+    .filter-status-btn.fs-active-pend{ background:#fef3c7; color:#92400e; border-color:#fcd34d; }
+    .filter-status-btn.fs-active-aprov{ background:#dcfce7; color:#166534; border-color:#86efac; }
+    .filter-status-btn.fs-active-export{ background:#dbeafe; color:#1e40af; border-color:#93c5fd; }
+    .filter-status-btn.fs-active-canc{ background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
+    .filter-status-btn.fs-active-alt{ background:#ede9fe; color:#5b21b6; border-color:#c4b5fd; }
+    /* O contador tinge do proprio texto: com as cores fixas de cada
+       familia, o de "Todos" (#e2e8f0) sumia no fundo aberto de "Todos". */
+    .filter-status-btn[class*="fs-active-"] .fs-count{ background:rgba(15,23,42,.10); color:inherit; }
     .fs-count{ font-size:10px; font-weight:700; border-radius:999px; padding:1px 6px; }
     .fs-count-todos{ background:#e2e8f0; color:#475569; }
     .fs-count-pend{ background:#fde68a; color:#92400e; }
@@ -125,7 +151,7 @@
     .fs-count-alt{ background:#ddd6fe; color:#5b21b6; }
     /* Coleção (bolsão 1S27): o mesmo ciano do selo no Showroom, para quem
        vê as duas telas reconhecer na hora que é a mesma coisa. */
-    .filter-status-btn.fs-active-colecao{ background:linear-gradient(135deg,#22d3ee,#0891b2); color:#fff; border-color:transparent; box-shadow:0 3px 10px rgba(8,145,178,.3); }
+    .filter-status-btn.fs-active-colecao{ background:#cffafe; color:#155e75; border-color:#67e8f9; }
     .fs-count-colecao{ background:#a5f3fc; color:#155e75; }
     /* ── As duas familias (19/11/2026) ──────────────────────────────────
        O bolsao da colecao era uma pilula ao lado dos status: "1S27" ficava
@@ -151,6 +177,15 @@
       white-space:nowrap;
     }
     .familia-tab:hover{ color:#0f172a; }
+    /* Quantos pendentes esperam na OUTRA familia. So aparece na aba
+       que nao esta aberta: na aberta, o filtro "Pendente" ja diz. */
+    .fam-badge{
+      display:inline-flex; align-items:center; justify-content:center;
+      min-width:18px; height:18px; padding:0 5px; border-radius:999px;
+      background:#d97706; color:#fff; font-size:10px; font-weight:800;
+      font-variant-numeric:tabular-nums; margin-left:2px;
+    }
+    .familia-tab.active .fam-badge{ display:none; }
     .familia-tab.active{ background:#fff; color:var(--brand); box-shadow:0 2px 8px rgba(15,23,42,.14); }
     .familia-tab[data-familia="colecao"].active{ color:#0E7490; }
     .familia-tab i{ font-size:11px; }
@@ -351,8 +386,10 @@
     .dark .order-card-compact:hover{ border-color:var(--brand)!important; box-shadow:0 4px 16px rgba(0,0,0,.4)!important; }
     .dark #secaoPedidos > div{ background:#1e293b!important; border-color:#334155!important; }
     /* Fundo da lista de pedidos */
-    .secao-pedidos-bg{ background:linear-gradient(180deg,#e9edfb,#eef1f8); border:1px solid #c8d0dc; }
-    .dark .secao-pedidos-bg{ background:#0f172a!important; border-color:#1e293b!important; }
+    .secao-pedidos-bg{ background:linear-gradient(180deg,#e9edfb,#eef1f8); border:1px solid #c8d0dc;
+      --sec-topo:#e9edfb; }
+    .dark .secao-pedidos-bg{ background:#0f172a!important; border-color:#1e293b!important;
+      --sec-topo:#0f172a; }
     /* Chips de status no dark — suavizar cores fortes */
     .dark .chip-status-pendente{ background:#451a03!important; color:#fbbf24!important; border-color:#78350f!important; }
     .dark .chip-status-aprovado{ background:#14532d!important; color:#4ade80!important; border-color:#166534!important; }
@@ -379,6 +416,14 @@
     /* Checkbox nos cards */
     .card-chk{ width:16px; height:16px; cursor:pointer; accent-color:var(--brand); flex-shrink:0; }
     .chk-select-all-wrap{ display:flex; align-items:center; gap:8px; padding:2px 4px 3px; flex-wrap:wrap; }
+    /* Terceiro nivel grudado (o cabecalho de colunas e o quarto).
+       O fundo tem de ser opaco — ver --sec-topo. */
+    #selecaoControles{
+      position:sticky; z-index:15;
+      top:calc(var(--admin-header-h,68px) + 14px + var(--admin-filtros-h,67px));
+      background:var(--bg);
+      margin:0; padding:8px 2px 9px;
+    }
     .chk-select-all-lbl{ font-size:12px; font-weight:700; color:var(--muted); cursor:pointer; user-select:none; }
     .order-card-compact{ background:var(--card); border:1px solid #c8d0dc; border-radius:24px; overflow:hidden; transition:border-color .12s, box-shadow .12s; box-shadow:0 2px 8px rgba(15,23,42,.10); }
     .order-card-compact:hover{ border-color:var(--brand); box-shadow:0 4px 16px rgba(15,23,42,.13); }
@@ -411,7 +456,7 @@
     .bt-sol.ok.alt{ background:#d97706; }
     .bt-sol.no{ background:#fff; border-color:var(--line); color:var(--muted); }
     .bt-sol.no:hover{ background:var(--bg); }
-    .filter-status-btn.fs-active-sol{ background:linear-gradient(135deg,#f87171,#dc2626); color:#fff; border-color:transparent; box-shadow:0 3px 10px rgba(220,38,38,.3); }
+    .filter-status-btn.fs-active-sol{ background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
     .dark .adm-sol .motivo{ color:#cbd5e1; }
     .dark .adm-sol .motivo em{ color:#f1f5f9; }
     .dark .order-card-compact.sol-canc{ border-color:#7f1d1d !important; }
@@ -424,7 +469,14 @@
     .dark .filter-status-btn.fs-active-sol{ background:#450a0a !important; color:#f87171 !important; border-color:#7f1d1d !important; }
     @media (max-width:640px){ .adm-sol-btns .bt-sol{ flex:1; justify-content:center; } }
     .card-compact-top{ display:flex; align-items:center; gap:10px; padding:11px 16px; cursor:pointer; }
-    .card-compact-detail{ display:none; border-top:0.5px solid var(--line); padding:12px 16px; background:var(--bg); }
+    .card-compact-detail{
+      display:none; border-top:1px solid var(--line);
+      padding:13px 16px 15px 20px; background:var(--det-bg,#f3f6fd);
+      /* a faixa da marca na esquerda e a sombra no topo dizem que o
+         bloco esta DENTRO do pedido, sem depender so da cor */
+      border-left:3px solid var(--brand);
+      box-shadow:inset 0 7px 11px -9px rgba(15,23,42,.3);
+    }
     .card-compact-detail.open{ display:block; }
     .btn-expand-compact{ display:inline-flex; align-items:center; gap:4px; border:0.5px solid var(--line); border-radius:999px; padding:4px 11px; font-size:11px; font-weight:700; cursor:pointer; background:none; color:var(--muted); white-space:nowrap; flex-shrink:0; }
     .btn-expand-compact:hover{ background:var(--muted-soft); }
@@ -554,6 +606,7 @@
   
     /* ===================== MODO ESCURO — TEMA DASHBOARD ===================== */
     .dark{
+      --cab-bg:#0a1430; --cab-tx:#a9b8d6; --det-bg:#1a2a4e;
       --bg:#0c1a3a; --card:rgba(22,31,58,.80); --text:#eef3fc; --line:rgba(255,255,255,.10);
       --brand:#5b8cff; --brand-soft:rgba(91,140,255,.16); --muted:#a9b8d6;
       --shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 44px -16px rgba(0,0,0,.7);
@@ -571,19 +624,58 @@
       background:rgba(22,31,58,.80) !important; border-color:rgba(255,255,255,.10) !important;
       color:#eef3fc !important; -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
     }
-    .dark .secao-pedidos-bg{ background:rgba(0,0,0,.18) !important; border-color:rgba(255,255,255,.06) !important; }
+    .dark .secao-pedidos-bg{ background:rgba(0,0,0,.18) !important; border-color:rgba(255,255,255,.06) !important;
+      --sec-topo:#101b33; }
     .dark input, .dark select, .dark textarea{ background:rgba(255,255,255,.06) !important; border-color:rgba(255,255,255,.10) !important; color:#eef3fc !important; }
     .dark input::placeholder{ color:#7587ad !important; }
     .dark .text-slate-700, .dark .text-slate-800, .dark .text-slate-900{ color:#eef3fc !important; }
     .dark .text-slate-400, .dark .text-slate-500, .dark .text-slate-600{ color:#9fb0d0 !important; }
     .dark .filter-status-btn{ background:rgba(255,255,255,.04) !important; border-color:rgba(255,255,255,.10) !important; color:#a9b8d6 !important; }
     .dark .filter-status-btn:hover{ background:rgba(255,255,255,.07) !important; color:#eef3fc !important; }
-    .dark .filter-status-btn.fs-active-todos{ background:linear-gradient(135deg,#5b8cff,#4f7bff) !important; color:#fff !important; border-color:transparent !important; }
+    /* Era azul chapado com texto branco (3:1). Volta para o tingido
+       ardosia, igual aos vizinhos deste tema. */
+    .dark .filter-status-btn.fs-active-todos{ background:#334155 !important; color:#f1f5f9 !important; border-color:#475569 !important; }
+    /* No escuro o contador ESCURECE em vez de clarear: clareando, o
+       fundo subia na direcao do texto (que ja e claro) e o numero caia
+       para 3:1. */
+    .dark .filter-status-btn[class*="fs-active-"] .fs-count{ background:rgba(0,0,0,.32); color:inherit; }
     .dark .order-card-compact{ border-color:rgba(255,255,255,.10) !important; }
     .dark .order-card-compact:hover{ border-color:#5b8cff !important; box-shadow:0 10px 26px -10px rgba(0,0,0,.6) !important; }
 
     /* ── Cabeçalho + abas de filtro congelados ao rolar ── */
     #secaoFiltros{ position:sticky; top:calc(var(--admin-header-h, 68px) + 14px); z-index:20; background:var(--bg); padding:4px 0; }
+    /* Tampa do topo (26/11/2026). As barras grudam na posicao em que
+       ja estavam no fluxo — e o que impede o salto — mas isso deixa
+       abertas as folgas entre elas (52px e 18px). A lista passava por
+       ali. Esta tampa cobre do zero ate o fim da ultima barra: fica
+       ACIMA das linhas (z-5 contra o z-auto delas) e ABAIXO de todas
+       as barras (z-10 em diante). A altura vem de mediuFixosAdm(). */
+    /* Voltar ao topo — peca do Showroom, cores daqui. O anel branco
+       nao serve no tema escuro (a borda some no fundo claro dele),
+       entao ali ele vira um anel do proprio fundo. */
+    .topo-fab{
+      position:fixed; z-index:140; right:18px;
+      bottom:calc(18px + env(safe-area-inset-bottom,0px));
+      width:46px; height:46px; border-radius:50%; border:0; color:#fff; cursor:pointer;
+      background:linear-gradient(145deg,#5B69E8,#2836D4 60%,#1f2bb0);
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:0 10px 24px rgba(40,54,212,.42),
+                 0 0 0 3px rgba(255,255,255,.9), inset 0 1px 0 rgba(255,255,255,.25);
+      opacity:0; transform:translateY(10px); transition:opacity .2s, transform .2s;
+    }
+    .topo-fab[hidden]{ display:none; }
+    .topo-fab.on{ opacity:1; transform:none; }
+    .topo-fab:hover{ filter:brightness(1.1); }
+    .topo-fab:focus-visible{ outline:2px solid #fff; outline-offset:3px; }
+    .dark .topo-fab{ box-shadow:0 10px 24px rgba(0,0,0,.5),
+      0 0 0 3px var(--bg), inset 0 1px 0 rgba(255,255,255,.2); }
+    @media (prefers-reduced-motion:reduce){ .topo-fab{ transition:none; } }
+
+    #admTampa{
+      position:fixed; left:0; right:0; top:0; z-index:5;
+      height:var(--admin-fixo-h,0px);
+      background:var(--bg); pointer-events:none;
+    }
     #secaoFiltros > div{
       background:#ffffff; border:1px solid #e2e8f0; border-radius:16px;
       padding:10px 14px; margin-bottom:0;
@@ -616,6 +708,63 @@
    A mesma peça em todas as aplicações, para o vendedor reconhecer a saída
    sem procurar: pílula branca de 36px, seta à esquerda e a palavra Portal.
    Branca também sobre cabeçalho escuro — é o que mantém a peça a mesma. */
+/* Irmao do .portal-btn: o MESMO desenho, para os outros botoes do
+   cabecalho. Diferenciam-se pelo icone, nao pela cor. */
+.hdr-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:7px;
+  flex:none; height:36px; padding:0 13px; border-radius:999px;
+  border:1px solid #E2E8F0; background:#FFFFFF; color:#475569;
+  font-family:inherit; font-size:14px; font-weight:700; line-height:1;
+  text-decoration:none; cursor:pointer; white-space:nowrap;
+  transition:background .15s ease, border-color .15s ease, color .15s ease;
+}
+.hdr-btn:hover{ background:#F8FAFC; border-color:#CBD5E1; color:#334155; }
+.hdr-btn:focus-visible{ outline:2px solid #475569; outline-offset:2px; }
+.hdr-btn.so-icone{ width:36px; padding:0; }
+.hdr-cont{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:19px; height:19px; padding:0 5px; border-radius:999px;
+  background:#eef1f7; color:#64748b; font-size:10.5px; font-weight:800;
+  font-variant-numeric:tabular-nums;
+}
+.hdr-btn.tem-fila{ border-color:#f6d9a8; background:#fffaf0; color:#b45309; }
+.hdr-btn.tem-fila .hdr-cont{ background:#fdf4dc; color:#b45309; }
+.hdr-btn.fs-on{ border-color:var(--brand); background:var(--brand-soft); color:var(--brand); }
+.hdr-btn.fs-on .hdr-cont{ background:#fff; color:var(--brand); }
+.dark .hdr-cont{ background:rgba(255,255,255,.12) !important; color:#cbd5e1 !important; }
+.dark .hdr-btn{ background:rgba(255,255,255,.06) !important;
+  border-color:rgba(255,255,255,.14) !important; color:#cbd5e1 !important; }
+.dark .hdr-btn:hover{ background:rgba(255,255,255,.12) !important; color:#eef3fc !important; }
+
+/* O interruptor da vitrine, no lugar do botao laranja */
+.hdr-chave{ display:inline-flex; align-items:center; gap:8px; flex:none; }
+.hdr-chave .rot{ font-size:12px; font-weight:700; color:#64748b; white-space:nowrap; }
+.dark .hdr-chave .rot{ color:#9fb0d0; }
+.hdr-pino{
+  width:40px; height:22px; border-radius:999px; border:none; cursor:pointer;
+  background:#16a34a; position:relative; transition:background .18s; flex:none; padding:0;
+}
+.hdr-pino::after{
+  content:''; position:absolute; top:2.5px; left:2.5px; width:17px; height:17px;
+  border-radius:50%; background:#fff; transition:transform .18s;
+  box-shadow:0 1px 3px rgba(0,0,0,.3);
+}
+.hdr-pino[aria-checked="true"]{ background:#dc2626; }
+.hdr-pino[aria-checked="true"]::after{ transform:translateX(18px); }
+.hdr-pino:focus-visible{ outline:2px solid #475569; outline-offset:2px; }
+.hdr-pino:disabled{ opacity:.5; cursor:wait; }
+
+/* A tarja: pausado e um estado da tela inteira, nao a cor de um botao */
+#tarjaPausado{
+  display:none; align-items:center; justify-content:center; gap:9px;
+  background:#fdeaea; color:#b91c1c; border:1px solid #f7d4d4;
+  border-radius:14px; padding:7px 16px; margin:0 0 9px;
+  font-size:12.5px; font-weight:700; text-align:center;
+}
+#tarjaPausado.on{ display:flex; }
+.dark #tarjaPausado{ background:rgba(220,38,38,.16) !important;
+  border-color:#7f1d1d !important; color:#fca5a5 !important; }
+
 .portal-btn{
   display:inline-flex; align-items:center; justify-content:center; gap:7px;
   flex:none; height:36px; padding:0 12px; border-radius:999px;
@@ -636,7 +785,7 @@
 <body>
   <div id="toastWrap" class="toast-wrap"></div>
 
-  <main class="min-h-screen p-4 sm:p-6">
+  <main class="min-h-screen px-4 sm:px-6 pb-4 sm:pb-6 pt-3 sm:pt-3.5">
     <section id="loginScreen" class="mx-auto max-w-md pt-16 sm:pt-24">
       <div class="rounded-[32px] border border-slate-200 bg-white p-6 sm:p-8 shadow-card text-center">
         <div class="mx-auto h-14 w-14 rounded-2xl bg-[var(--brand-soft)] text-[var(--brand)] flex items-center justify-center text-2xl">
@@ -654,7 +803,25 @@
     </section>
 
     <section id="adminApp" class="hidden mx-auto max-w-7xl">
-      <header id="adminHeader" class="rounded-[28px] border border-slate-200 bg-white px-4 sm:px-5 py-2.5 shadow-card sticky top-3 z-30">
+      <div id="admTampa" aria-hidden="true"></div>
+
+      <!-- Voltar ao topo: a mesma peca do Showroom (.topo-fab), com as
+           cores daqui. So aparece depois de uma tela e meia rolada. -->
+      <button type="button" class="topo-fab" id="topoFab" hidden
+              aria-label="Voltar ao topo" title="Voltar ao topo"
+              onclick="window.scrollTo({ top:0, behavior: matchMedia('(prefers-reduced-motion:reduce)').matches ? 'auto' : 'smooth' })">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      </button>
+
+      <header id="adminHeader" class="rounded-[18px] border border-slate-200 bg-white px-4 sm:px-5 py-2.5 shadow-card sticky top-3 z-30">
+        <!-- Pausado e um estado da tela inteira, nao a cor de um botao
+             perdido entre outros cinco. Mora DENTRO do cabecalho: assim
+             fica sempre a vista enquanto durar. -->
+        <div id="tarjaPausado" role="status">
+          <i class="fa-solid fa-circle-pause"></i>
+          <span>Vitrine <b>pausada</b> — os vendedores estão vendo a tela de manutenção.</span>
+        </div>
         <div class="flex flex-wrap lg:flex-nowrap items-center justify-between gap-3">
           <!-- Marca e busca juntas: a busca é o que mais se usa aqui -->
           <div class="hdr-esq flex items-center gap-3 min-w-0 flex-1">
@@ -672,8 +839,18 @@
 
           <!-- Ordem de uso: exportar, estoque, datas, configurações, pausar, portal -->
           <div class="hdr-dir flex flex-wrap items-center justify-end gap-2">
+            <!-- Solicitacoes nao e uma situacao do pedido: e outra caixa
+                 de entrada, como "Pedidos". Por isso mora aqui. -->
+            <button id="btnSolicitacoes" type="button" class="hdr-btn"
+              onclick="setStatusFilter('solicitacoes')"
+              title="Pedidos em que o vendedor pediu alteração ou cancelamento">
+              <i class="fa-solid fa-hand" style="font-size:12px"></i>
+              <span class="hdr-lbl">Solicitações</span>
+              <span class="hdr-cont" id="fsCountSol">0</span>
+            </button>
+
             <button id="btnNotifAdmin" title="Pedidos que acabaram de chegar"
-              class="focus-ring relative rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 flex items-center gap-2 hover:bg-slate-50">
+              class="hdr-btn relative">
               <i class="fa-solid fa-bell"></i>
               <span class="hdr-lbl">Pedidos</span>
               <span id="badgeNotifAdmin" class="hidden absolute -top-2 -right-2 min-w-[20px] h-[20px] px-1 bg-rose-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white" style="animation:pulse-badge 1s infinite">0</span>
@@ -683,41 +860,30 @@
                  estiver na maquina do Chris, a digitacao no EBM continua
                  saindo de planilha. Sai de novo quando o robo entrar. -->
             <button id="btnExportarTodosPendentes"
-              class="focus-ring rounded-full px-3.5 py-2 text-sm font-bold text-white flex items-center gap-2 hidden"
+              class="hdr-btn hidden"
               title="Exportar em XLSX os aprovados que ainda não saíram"
-              style="background:linear-gradient(135deg,#34d399,#059669);border:none;box-shadow:0 4px 14px rgba(5,150,105,.35)">
+              style="background:#047857;border-color:#047857;color:#fff">
               <i class="fa-solid fa-file-excel"></i>
               <i class="fa-solid fa-arrow-up-from-bracket text-xs"></i>
               <span id="badgePendentesExport" class="inline-flex items-center justify-center rounded-full text-[10px] font-extrabold min-w-[18px] h-[18px] px-1" style="background:rgba(255,255,255,.28)">0</span>
             </button>
 
-            <a href="./dispo.html" title="Estoque: disponibilidade dos lotes"
-              class="focus-ring rounded-full px-4 py-2 text-sm font-bold text-white flex items-center gap-2 transition-transform hover:-translate-y-0.5"
-              style="background:linear-gradient(135deg,#5B69E8,#2836D4);box-shadow:0 4px 14px rgba(40,54,212,.35)">
+            <a href="./dispo.html" title="Estoque: disponibilidade dos lotes" class="hdr-btn">
               <i class="fa-solid fa-boxes-stacked"></i>
               <span class="hdr-lbl">Estoque</span>
             </a>
 
-            <button id="btnAjustarDatas" type="button" onclick="abrirAjusteDatas()"
-              title="Ajustar a prev. faturamento de vários pedidos pelo Nº da DISPO"
-              class="focus-ring rounded-full px-4 py-2 text-sm font-bold text-white flex items-center gap-2 transition-transform hover:-translate-y-0.5"
-              style="background:linear-gradient(135deg,#38bdf8,#0369a1);box-shadow:0 4px 14px rgba(3,105,161,.35)">
-              <i class="fa-regular fa-calendar-check"></i>
-              <span class="hdr-lbl">Datas</span>
-            </button>
-
-            <button id="btnIrConfig" title="Configurações do painel"
-              class="focus-ring h-9 w-9 rounded-full flex items-center justify-center text-white transition-transform hover:-translate-y-0.5"
-              style="background:linear-gradient(135deg,#a78bfa,#7c3aed);box-shadow:0 4px 14px rgba(124,58,237,.35)">
+            <button id="btnIrConfig" title="Configurações do painel" class="hdr-btn so-icone">
               <i class="fa-solid fa-gear text-sm"></i>
             </button>
 
-            <button id="btnManutencao" onclick="toggleManutencao()" title="Pausar o app: os vendedores veem a tela de manutenção"
-              class="focus-ring rounded-full px-4 py-2 text-sm font-bold text-white flex items-center gap-2 transition-transform hover:-translate-y-0.5"
-              style="background:linear-gradient(135deg,#fbbf24,#d97706);box-shadow:0 4px 14px rgba(217,119,6,.35)">
-              <i id="iconManutencao" class="fa-solid fa-screwdriver-wrench text-xs"></i>
-              <span id="lblManutencao" class="hdr-lbl">Pausar</span>
-            </button>
+            <span class="hdr-chave">
+              <span class="rot hdr-lbl" id="lblManutencao">Vitrine ativa</span>
+              <button id="btnManutencao" type="button" role="switch" aria-checked="false"
+                class="hdr-pino" onclick="toggleManutencao()"
+                title="Pausar o app: os vendedores veem a tela de manutenção"
+                aria-label="Pausar a vitrine"></button>
+            </span>
 
             <a class="portal-btn" href="https://cms-representacoes.github.io/apps-oly/" title="Voltar ao Portal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg><span>Portal</span></a>
 
@@ -1006,28 +1172,24 @@
       </section>
       <!-- ────────────────────────────────────────────────────────────────────── -->
 
-      <section class="mt-2" id="secaoFiltros">
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <section class="mt-1.5" id="secaoFiltros">
+        <div class="mb-1.5 flex flex-wrap items-center justify-between gap-3">
 
 
           <div class="flex flex-wrap items-center gap-2">
             <div id="familiaTabsAdm" class="familia-tabs" role="tablist" aria-label="Estoque do pedido">
-              <button type="button" class="familia-tab active" data-familia="repasse" role="tab"
-                      aria-selected="true" onclick="setFamiliaAdm('repasse')"
+              <button type="button" class="familia-tab" data-familia="repasse" role="tab"
+                      aria-selected="false" onclick="setFamiliaAdm('repasse')"
                       title="Pedidos de repasse do dia a dia">
-                <i class="fa-solid fa-right-left"></i>Repasses
+                <i class="fa-solid fa-right-left"></i>Repasses<span class="fam-badge" id="famBadgeRepasse" hidden>0</span>
               </button>
-              <button type="button" class="familia-tab" data-familia="colecao" role="tab"
-                      aria-selected="false" onclick="setFamiliaAdm('colecao')"
+              <button type="button" class="familia-tab active" data-familia="colecao" role="tab"
+                      aria-selected="true" onclick="setFamiliaAdm('colecao')"
                       title="Pedidos com item do GTM - 1S27, a cota da coleção">
-                <i class="fa-solid fa-layer-group"></i>GTM - 1S27
+                <i class="fa-solid fa-layer-group"></i>GTM - 1S27<span class="fam-badge" id="famBadgeColecao" hidden>0</span>
               </button>
             </div>
             <span class="barra-sep" aria-hidden="true"></span>
-            <button class="filter-status-btn" data-fs="solicitacoes" onclick="setStatusFilter('solicitacoes',this)">
-              <i class="fa-solid fa-hand" style="font-size:10px"></i>
-              Solicitações <span class="fs-count" id="fsCountSol">0</span>
-            </button>
             <button class="filter-status-btn" data-fs="todos" onclick="setStatusFilter('todos',this)">
               Todos <span class="fs-count fs-count-todos" id="fsCountTodos">0</span>
             </button>
@@ -1039,13 +1201,19 @@
               <span style="width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0"></span>
               Aprovado <span class="fs-count fs-count-aprov" id="fsCountAprov">0</span>
             </button>
-            <button class="filter-status-btn" data-fs="Exportado" onclick="setStatusFilter('Exportado',this)">
-              <span style="width:7px;height:7px;border-radius:50%;background:#3b82f6;display:inline-block;flex-shrink:0"></span>
-              Exportado <span class="fs-count fs-count-export" id="fsCountExport">0</span>
-            </button>
             <button class="filter-status-btn" data-fs="Cancelado" onclick="setStatusFilter('Cancelado',this)">
               <span style="width:7px;height:7px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0"></span>
               Cancelado <span class="fs-count fs-count-canc" id="fsCountCanc">0</span>
+            </button>
+            <!-- Recortes, nao situacoes: um pedido Exportado TAMBEM esta
+                 Aprovado (o filtro e `Aprovado && exportedAt`), e por isso
+                 os dois contavam 167. A divisoria diz que sao outra coisa. -->
+            <span class="barra-sep" aria-hidden="true"></span>
+            <span class="regua-rot">Recortes</span>
+            <button class="filter-status-btn" data-fs="Exportado" onclick="setStatusFilter('Exportado',this)"
+              title="Aprovados que já saíram na planilha">
+              <span style="width:7px;height:7px;border-radius:50%;background:#3b82f6;display:inline-block;flex-shrink:0"></span>
+              Exportado <span class="fs-count fs-count-export" id="fsCountExport">0</span>
             </button>
             <button class="filter-status-btn" data-fs="alterados" onclick="setStatusFilter('alterados',this)"
               title="Pedidos cujo conteúdo mudou depois de criados">
@@ -1056,17 +1224,20 @@
         </div>
       </section>
 
-      <section class="mt-4" id="secaoPedidos">
-        <div class="rounded-[28px] px-4 pt-2.5 pb-4 shadow-card secao-pedidos-bg">
+      <section class="mt-0" id="secaoPedidos">
+        <!-- Sem moldura propria (26/11/2026): quem desenha a caixa e o
+             .adm-quadro, logo abaixo. Duas molduras aninhadas so
+             comiam largura. -->
+        <div class="pt-0.5 pb-4">
           <!-- Controles de seleção (a contagem vem junto, na mesma fileira) -->
-          <div id="selecaoControles" class="hidden chk-select-all-wrap mb-1.5">
+          <div id="selecaoControles" class="hidden chk-select-all-wrap">
             <input type="checkbox" id="chkSelecionarTodos" class="card-chk" title="Selecionar todos">
             <label for="chkSelecionarTodos" class="chk-select-all-lbl">Selecionar todos</label>
             <span id="selecaoCount" class="text-xs font-bold text-slate-400 ml-2"></span>
             <select id="ordemLista" onchange="setOrdemLista(this.value)" title="Ordem da lista"
               class="focus-ring ml-3 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-600">
-              <option value="chegada">Mais recentes (chegada)</option>
-              <option value="antigos">Mais antigos (chegada)</option>
+              <option value="chegada">Mais recentes</option>
+              <option value="antigos">Mais antigos</option>
               <option value="alterados">Alterados por último</option>
             </select>
             <div class="text-xs font-bold text-slate-400 ml-auto" id="ordersCountBadge">0 pedidos</div>
@@ -1091,7 +1262,39 @@
             Nenhum pedido encontrado.
           </div>
 
-          <div id="adminOrdersList" class="space-y-3"></div>
+          <!-- Menu de acoes da linha. Um so, reposicionado a cada abertura:
+           um por pedido seriam centenas de nos na arvore a toa. -->
+      <div id="admMenuLinha" class="adm-menu" role="menu" aria-hidden="true">
+        <button type="button" data-mi="detalhes" role="menuitem">
+          <i class="fa-solid fa-list-ul"></i> Ver os produtos
+        </button>
+        <button type="button" data-action="editar" data-id="" role="menuitem" data-mi="editar">
+          <i class="fa-solid fa-pen"></i> Corrigir prazo ou campanha…
+        </button>
+        <button type="button" data-action="arquivar" data-id="" role="menuitem" data-mi="arquivar">
+          <i class="fa-solid fa-box-archive"></i> Arquivar
+        </button>
+        <hr data-mi="sep">
+        <button type="button" class="perigo" data-action="cancelar" data-id="" role="menuitem" data-mi="cancelar">
+          <i class="fa-solid fa-xmark"></i> Cancelar o pedido…
+        </button>
+      </div>
+
+      <!-- Cabecalho de colunas: usa a MESMA grade das linhas (.adm-cab),
+               por isso tudo alinha. Clicar ordena - ver setOrdemLista. -->
+          <div class="adm-quadro">
+          <div id="admCabColunas" class="adm-cab hidden">
+            <span></span>
+            <span>Cliente</span>
+            <span class="adm-col-vend">Vendedor</span>
+            <span class="adm-col-quando">Chegada</span>
+            <span class="dir">Pares</span>
+            <span class="dir adm-col-prod">Prod.</span>
+            <span>Situação</span>
+            <span></span>
+          </div>
+          <div id="adminOrdersList"></div>
+          </div><!-- /.adm-quadro -->
 
           <!-- Paginação -->
           <div id="paginacaoControles" class="hidden flex items-center justify-between gap-3 mt-4 pt-4 border-t border-slate-200">
@@ -1533,126 +1736,204 @@
       .adm-cli-fora b{ font-size:12.5px; }
       .adm-cli-alerta{ font-size:11.5px; }
     }
-    /* ── Ajustar prev. faturamento em bloco ──────────────────────────────── */
-    .dt-caixa{width:100%;max-width:980px;margin:14px 0;background:var(--card);border:1px solid var(--line);
-      border-radius:24px;box-shadow:0 30px 70px -20px rgba(0,0,0,.5);overflow:hidden}
-    .dt-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:20px 22px 0}
-    .dt-eyebrow{font:800 11px Inter,sans-serif;color:var(--brand);text-transform:uppercase;letter-spacing:.05em}
-    .dt-tit{font:800 19px Inter,sans-serif;margin-top:2px;color:var(--text)}
-    .dt-sub{font-size:12.5px;color:var(--muted);margin-top:3px}
-    .dt-x{border:0;background:transparent;color:var(--muted);font-size:26px;line-height:1;cursor:pointer}
-    .dt-corpo{padding:16px 22px 0}
-    .dt-pe{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:14px 22px;border-top:1px solid var(--line);
-      background:var(--bg);margin-top:16px}
-    .dt-rodape{margin-left:auto;font-size:11.5px;color:var(--muted)}
-    .dt-bt{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;
-      padding:11px 18px;font:800 13px Inter,sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
-    .dt-bt:hover{border-color:var(--brand);color:var(--brand)}
-    .dt-bt-forte{background:var(--brand);border-color:var(--brand);color:#fff}
-    .dt-bt-forte:hover{filter:brightness(1.08);color:#fff}
-    .dt-bt-fraco{color:var(--muted);font-weight:700}
-    .dt-bt:disabled{opacity:.45;cursor:not-allowed}
-    .dt-passo{display:flex;align-items:center;gap:8px;font:800 11px Inter,sans-serif;color:var(--muted);
-      text-transform:uppercase;letter-spacing:.06em;margin:4px 0 7px}
-    .dt-passo i{display:grid;place-items:center;width:19px;height:19px;border-radius:7px;background:var(--brand-soft);
-      color:var(--brand);font-size:10px;font-style:normal;font-weight:800}
-    .dt-busca{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
-    #dtNums{flex:1;min-width:240px;min-height:62px;resize:vertical;border:1px solid var(--line);
-      border-radius:14px;padding:11px 14px;font:600 13.5px ui-monospace,SFMono-Regular,Menlo,monospace;
-      background:var(--bg);color:var(--text);letter-spacing:.02em}
-    .dt-busca .dt-bt{min-width:140px;justify-content:center}
-    .dt-dica{font-size:11.5px;color:var(--muted);margin-top:6px}
-    .dt-atalho{background:none;border:0;color:var(--brand);font:700 11.5px Inter,sans-serif;cursor:pointer;
-      padding:0;text-decoration:underline}
-    .dt-achado{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:12px 0 0;font-size:12.5px}
-    .dt-achado .ok{color:var(--success);font-weight:700}
-    .dt-achado .nao{color:var(--warning);font-weight:700}
-    .dt-barra-sel{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;
-      border:1px solid var(--line);border-radius:12px;padding:8px 13px;background:var(--bg)}
-    .dt-barra-sel label{display:flex;align-items:center;gap:8px;font:700 12.5px Inter,sans-serif;cursor:pointer;user-select:none}
-    .dt-barra-sel span{margin-left:auto;font-size:12px;color:var(--muted)}
-    .dt-tab-wrap{margin-top:9px;border:1px solid var(--line);border-radius:16px;overflow:auto;max-height:46vh}
-    .dt-tab{width:100%;border-collapse:collapse;font-size:12.5px;color:var(--text)}
-    .dt-tab thead th{position:sticky;top:0;background:var(--card);z-index:2;font:700 10px Inter,sans-serif;
-      text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;
-      padding:10px;border-bottom:1px solid var(--line);white-space:nowrap}
-    .dt-tab td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
-    .dt-tab tbody tr:last-child td{border-bottom:0}
-    .dt-tab tbody tr.marcada td{background:var(--brand-soft)}
-    .dt-tab .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--muted)}
-    .dt-tab .prod{font-weight:700}
-    .dt-dir{text-align:right;font-variant-numeric:tabular-nums}
-    .dt-tab input[type=checkbox],.dt-barra-sel input[type=checkbox]{width:16px;height:16px;accent-color:var(--brand);cursor:pointer}
-    .dt-de{color:var(--muted);text-decoration:line-through}
-    .dt-para{color:var(--info);font-weight:800}
-    .dt-seta{color:var(--muted);margin:0 5px;font-size:10px}
-    .dt-ja{color:var(--muted);font-size:10.5px;margin-left:6px;font-style:italic}
-    .dt-chip{display:inline-flex;align-items:center;border-radius:999px;padding:2px 9px;font:700 10.5px Inter,sans-serif}
-    .dt-chip.ap{background:var(--success-soft);color:var(--success)}
-    .dt-chip.pe{background:var(--warning-soft);color:var(--warning)}
-    .dt-chip.mud{background:var(--warning-soft);color:var(--warning);margin-left:6px}
-    /* cabeçalho de cada lote: o saldo em aberto já sai da DISPO, não precisa de ação */
-    .dt-tab tr.dt-grupo td{background:var(--bg);border-bottom:1px solid var(--line);padding:8px 10px}
-    .dt-grupo-in{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}
-    .dt-grupo-in b{color:var(--text);font-size:12.5px}
-    .dt-grupo-in .sep{opacity:.45}
-    .dt-grupo-in .aberto{color:var(--info);font-weight:700}
-    .dt-grupo-in .dispo{font-weight:700}
-    .dt-grupo-bt{margin-left:auto;border:1px solid var(--line);background:var(--card);color:var(--muted);
-      border-radius:999px;padding:3px 11px;font:700 11px Inter,sans-serif;cursor:pointer;white-space:nowrap}
-    .dt-grupo-bt:hover{border-color:var(--brand);color:var(--brand)}
-    .dt-aplicar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:14px;
-      background:var(--bg);border:1px solid var(--line);border-radius:16px;padding:13px 15px}
-    .dt-aplicar label{display:block;font:700 11px Inter,sans-serif;color:var(--muted);margin-bottom:4px}
-    #dtNovaData{border:1px solid var(--line);border-radius:12px;padding:9px 12px;
-      font:700 13px Inter,sans-serif;background:var(--card);color:var(--text)}
-    .dt-conta{font-size:12.5px;color:var(--muted);margin-left:auto}
-    .dt-conta b{color:var(--text)}
-    .dt-sugs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-    .dt-sug{border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:999px;
-      padding:4px 11px;font:700 11.5px Inter,sans-serif;cursor:pointer}
-    .dt-sug:hover{border-color:var(--brand);color:var(--brand)}
-    .dt-aviso{display:flex;gap:10px;align-items:flex-start;background:var(--warning-soft);border:1px solid var(--line);
-      border-radius:14px;padding:11px 14px;font-size:12.5px;margin-top:12px;color:var(--text)}
-    .dt-aviso i{color:var(--warning);margin-top:2px}
-    .dt-pronto{display:flex;gap:10px;align-items:center;background:var(--info-soft);border:1px solid var(--line);
-      border-radius:14px;padding:11px 14px;font-size:12.5px;margin-top:12px;color:var(--text)}
-    .dt-pronto i{color:var(--info)}
-    .dt-opcao{display:flex;gap:10px;align-items:flex-start;margin-top:12px;padding:11px 14px;
-      border:1px solid var(--line);border-radius:14px;background:var(--card);
-      font-size:12.5px;color:var(--text);cursor:pointer}
-    .dt-opcao input{width:16px;height:16px;accent-color:var(--brand);margin-top:1px;flex:none}
-    .dt-opcao b{font-weight:800}
-    @media (min-width:641px) and (max-width:900px){
-      .dt-tab td.c-gci,.dt-tab td.c-cor,.dt-tab thead th:nth-child(3),.dt-tab thead th:nth-child(5){display:none}
+
+    /* ══════════════════════════════════════════════════════════════
+       NOVA CARA DA LISTA (26/11/2026) — a linha virou TABELA.
+       Ver o comentario em renderList(). O cabecalho e a linha usam a
+       MESMA definicao de colunas: e isso que faz tudo alinhar.
+       ═══════════════════════════════════════════════════════════ */
+    /* A borda e o raio sao do QUADRO, nao da lista: o cabecalho de
+       colunas mora dentro dele junto com as linhas, e e isso que faz
+       as colunas baterem (a borda de 1px deslocava o cabecalho). */
+    .adm-quadro{
+      background:var(--card); border:1px solid var(--line);
+      border-radius:12px; overflow:clip;
+      box-shadow:0 0 0 1px rgba(15,23,42,.02),0 1px 2px rgba(15,23,42,.04);
     }
-    @media (max-width:640px){
-      .dt-caixa{border-radius:20px;margin:8px 0}
-      .dt-topo,.dt-corpo,.dt-pe{padding-left:15px;padding-right:15px}
-      .dt-tab-wrap{max-height:50vh}
-      .dt-tab thead{display:none}
-      .dt-tab tbody tr{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:1px 9px;
-        padding:11px 12px;border-bottom:1px solid var(--line);align-items:start}
-      .dt-tab tbody tr td{display:block;border:0;padding:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-      .dt-tab td.c-chk{grid-column:1;grid-row:1/5;padding-top:2px}
-      .dt-tab td.c-num{grid-column:2;grid-row:1;font-weight:800;color:var(--text);font-size:12px}
-      .dt-tab td.c-num::before{content:"Nº ";color:var(--muted);font-weight:600}
-      .dt-tab td.c-st{grid-column:3;grid-row:1;text-align:right}
-      .dt-tab td.c-prod{grid-column:2/4;grid-row:2;font-size:13px}
-      .dt-tab td.c-cli{grid-column:2;grid-row:3;font-size:11.5px;color:var(--muted)}
-      .dt-tab td.c-vend{grid-column:3;grid-row:3;font-size:11.5px;color:var(--muted);text-align:right}
-      .dt-tab td.c-dt{grid-column:2;grid-row:4;margin-top:4px;white-space:normal}
-      .dt-tab td.c-par{grid-column:3;grid-row:4;margin-top:4px;text-align:right;font-size:11.5px;color:var(--muted)}
-      .dt-tab td.c-par::after{content:" pares"}
-      .dt-tab td.c-gci,.dt-tab td.c-cor{display:none}
-      .dt-tab tbody tr.marcada{background:var(--brand-soft)}
-      .dt-tab tbody tr.marcada td{background:transparent}
-      .dt-tab tbody tr.dt-grupo{display:block;padding:8px 12px}
-      .dt-aplicar{align-items:stretch}
-      #dtNovaData,.dt-aplicar .dt-bt{width:100%;justify-content:center}
-      .dt-conta{margin-left:0;text-align:center}
-      .dt-pe .dt-bt{flex:1;justify-content:center}
-      .dt-rodape{width:100%;margin-left:0;text-align:center}
+    #adminOrdersList{ background:transparent; border:0; border-radius:0; }
+    .order-card-compact{
+      border:0 !important; border-radius:0 !important; box-shadow:none !important;
+      border-bottom:1px solid var(--line) !important; transition:background .12s;
+      /* clip, nao hidden: hidden tornaria o cartao um container de
+         rolagem e a linha grudada abaixo pararia de grudar. */
+      overflow:clip;
+    }
+    .order-card-compact:last-child{ border-bottom:0 !important; }
+    .order-card-compact:hover{ background:var(--brand-soft); box-shadow:none !important; }
+    .order-card-compact.expanded{ background:var(--brand-soft); }
+
+    /* ── so o pedido aberto, como na Detalhada ──
+       Os outros saem de vez (display:none) em vez de ficarem
+       invisiveis: invisiveis, continuariam ocupando a rolagem e o
+       pedido aberto sumiria num mar de espaco vazio. A posicao na
+       tela e mantida por manterNoLugarAdm(). */
+    #adminOrdersList:has(.order-card-compact.expanded) .order-card-compact:not(.expanded){
+      display:none;
+    }
+    /* A paginacao tambem: nao se vira pagina de uma lista de um. */
+    #secaoPedidos:has(#adminOrdersList .order-card-compact.expanded) #paginacaoControles{
+      display:none !important;
+    }
+    /* A linha do pedido acompanha a rolagem dos produtos: sem isto ela
+       some no topo e fica-se lendo uma grade sem saber de quem e. */
+    .order-card-compact.expanded .card-compact-top{
+      position:sticky; top:var(--admin-fixo-h,0px); z-index:9;
+      /* Fundo OPACO. --brand-soft e um rgba de 9% de opacidade: grudada,
+         a linha deixava os produtos passarem por tras dela. Os dois
+         planos dao a mesma cor de sempre, so que sem buraco. */
+      background:linear-gradient(var(--brand-soft),var(--brand-soft)), var(--card);
+    }
+
+    /* a grade — cabecalho e linha, juntos */
+    .adm-cab, .card-compact-top{
+      display:grid !important;
+      grid-template-columns:30px minmax(240px,2fr) 114px 82px 62px 62px 116px 76px;
+      align-items:center; gap:11px; padding:0 14px !important;
+    }
+    .card-compact-top{ height:54px; }
+    .adm-cab{
+      background:var(--cab-bg,#dfe5f0); border-bottom:1px solid var(--line); height:36px;
+      /* Terceiro nivel grudado no topo, abaixo do cabecalho e da barra
+         de filtros. As duas alturas sao medidas porque mudam quando
+         "Mais opcoes" abre — ver mediuFixosAdm(). */
+      position:sticky; z-index:10;
+      top:calc(var(--admin-header-h,68px) + 14px + var(--admin-filtros-h,67px)
+               + var(--admin-sel-h,38px));
+    }
+    .adm-cab > span{
+      font-size:10px; font-weight:800; letter-spacing:.07em;
+      text-transform:uppercase; color:var(--cab-tx,#48566d); white-space:nowrap;
+      overflow:hidden; text-overflow:ellipsis;
+      /* Todo rotulo centralizado, inclusive o de CLIENTE — o conteudo
+         da coluna Cliente e que continua alinhado a esquerda. */
+      text-align:center;
+    }
+    .adm-cab > span > button, .adm-cab > span{ justify-content:center; }
+
+    /* o cliente e o dado-chave: ganha o peso */
+    .adm-cli{ min-width:0; }
+    .adm-cli .nm{ display:flex; align-items:center; gap:6px; min-width:0; }
+    .adm-cli .nm > b{ font-size:13.5px; font-weight:700; color:var(--text);
+      letter-spacing:-.005em; white-space:nowrap; overflow:hidden;
+      text-overflow:ellipsis; min-width:0; }
+    .adm-cli > span{ display:block; font-size:11px; color:var(--muted); font-weight:600;
+      margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      font-variant-numeric:tabular-nums; }
+    .adm-cli .adm-extra{ display:none; font-style:normal; }
+    /* o vendedor e apoio: cinza, menor */
+    /* Da coluna Vendedor em diante tudo e centralizado; so a coluna
+       Cliente continua alinhada a esquerda, porque e por ela que o
+       olho desce procurando um nome. */
+    .adm-vend{ min-width:0; text-align:center; }
+    .adm-vend > b{ display:block; font-size:12px; font-weight:700; color:var(--muted);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .adm-vend > span{ display:block; font-size:10.5px; color:var(--muted); opacity:.75;
+      margin-top:1px; font-variant-numeric:tabular-nums; }
+
+    .adm-lotes{ display:flex; gap:4px; overflow:hidden; min-width:0; }
+    .adm-lote{ flex:none; font-size:11px; font-weight:700; color:var(--muted);
+      background:var(--muted-soft); border-radius:5px; padding:3px 6px;
+      font-variant-numeric:tabular-nums; }
+    .adm-lote.mais{ background:transparent; border:1px dashed var(--line); }
+
+    .adm-num{ text-align:center; font-variant-numeric:tabular-nums; }
+    .adm-num > b{ font-size:14.5px; font-weight:800; color:var(--text); letter-spacing:-.02em; }
+    .adm-num.fraco > b{ font-size:13px; font-weight:700; color:var(--muted); }
+
+    /* altura reservada: a coluna existe mesmo quando nao ha selo */
+    .adm-sinais{ display:flex; gap:5px; overflow:hidden; min-width:0; align-items:center; }
+    .adm-sinais > *{ flex:none !important; margin:0 !important; }
+    .adm-sinais > *{ display:inline-block; max-width:134px; overflow:hidden;
+      text-overflow:ellipsis; white-space:nowrap; vertical-align:middle; }
+    .adm-mais{ flex:none; font-size:10.5px; font-weight:800; color:var(--muted);
+      background:var(--muted-soft); border-radius:5px; padding:3px 7px; cursor:help; }
+
+    /* status: SELO, nao botao */
+    .adm-est{ min-width:0; display:flex; justify-content:center; }
+    .adm-est .chip{
+      height:24px; padding:0 9px; border-radius:6px; font-size:11.5px;
+      font-weight:800; box-shadow:none !important; border:0 !important; gap:6px;
+    }
+    .adm-est .chip-status-pendente{ background:var(--warning-soft) !important; color:var(--warning) !important; }
+    .adm-est .chip-status-aprovado{ background:var(--success-soft) !important; color:var(--success) !important; }
+    .adm-est .chip-status-cancelado{ background:var(--danger-soft) !important; color:var(--danger) !important; }
+    .adm-est .adm-exp{ background:var(--info-soft) !important; color:var(--info) !important; }
+    .adm-est .status-dot{ background:currentColor !important; box-shadow:none !important; }
+
+    /* campanha na linha, e o ponto de aviso que chama o detalhe */
+    .adm-aviso{ flex:none; font-size:10.5px; font-weight:800; cursor:help;
+      background:var(--warning-soft); color:var(--warning);
+      border-radius:5px; padding:3px 6px; }
+
+    /* a faixa do detalhe: o que saiu da linha, mais o prazo */
+    .adm-resumo{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 18px;
+      padding-bottom:11px; margin-bottom:11px; border-bottom:1px solid var(--line); }
+    .adm-resumo .it{ display:flex; align-items:center; gap:7px; min-width:0; }
+    .adm-resumo .rot{ font-size:9.5px; font-weight:800; letter-spacing:.07em;
+      text-transform:uppercase; color:var(--muted); white-space:nowrap; }
+    .adm-resumo b{ font-size:12.5px; font-weight:700; color:var(--text); }
+    .adm-resumo .adm-lote{ font-size:11.5px; }
+
+    .adm-menu{
+      position:absolute; z-index:130; min-width:218px; padding:5px;
+      background:var(--card); border:1px solid var(--line); border-radius:12px;
+      box-shadow:0 18px 44px -12px rgba(15,23,42,.38); display:none;
+    }
+    .adm-menu.ab{ display:block; }
+    .adm-menu button{
+      display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+      background:none; border:0; cursor:pointer; border-radius:8px;
+      padding:9px 10px; font-size:13px; font-weight:600; color:var(--text);
+      font-family:inherit;
+    }
+    .adm-menu button i{ width:14px; text-align:center; color:var(--muted); font-size:12px; }
+    .adm-menu button:hover{ background:var(--bg); }
+    .adm-menu button.perigo, .adm-menu button.perigo i{ color:var(--danger); }
+    .adm-menu button.perigo:hover{ background:var(--danger-soft); }
+    .adm-menu hr{ border:0; border-top:1px solid var(--line); margin:5px 2px; }
+    .ia-mais:hover{ background:var(--muted-soft); color:var(--text); }
+
+    .adm-ops{ display:flex; align-items:center; justify-content:flex-end; gap:3px; }
+    .adm-ops .ia{ width:29px; height:29px; border-radius:7px; }
+    /* "Ver detalhes" vira so a seta: a LINHA INTEIRA ja abre o pedido */
+    .adm-ops .btn-expand-compact{
+      width:29px; height:29px; padding:0; border-radius:7px; font-size:0;
+      justify-content:center; border:0.5px solid var(--line);
+    }
+    .adm-ops .btn-expand-compact i{ font-size:10px !important; }
+    .order-card-compact.expanded .btn-expand-compact i{ transform:rotate(180deg); }
+
+    /* ── tablet deitado: sai "Prod." ── */
+    @media (max-width:1180px){
+      .adm-cab, .card-compact-top{
+        grid-template-columns:30px minmax(216px,1.9fr) 108px 78px 60px 114px 74px;
+        gap:10px;
+      }
+      .adm-cab .adm-col-prod, .card-compact-top .adm-col-prod{ display:none; }
+    }
+    /* ── tablet em pe: vendedor e data descem para junto do codigo ── */
+    @media (max-width:980px){
+      .adm-cab, .card-compact-top{
+        grid-template-columns:28px minmax(188px,1.7fr) 58px 110px 72px;
+        gap:9px; padding:0 12px !important;
+      }
+      .adm-cab .adm-col-vend, .card-compact-top .adm-col-vend,
+      .adm-cab .adm-col-quando, .card-compact-top .adm-col-quando{ display:none; }
+      .adm-cli .adm-extra{ display:inline; }
+    }
+    /* ── telas estreitas: a tabela nao cabe, volta a empilhar ── */
+    @media (max-width:760px){
+      .adm-cab{ display:none !important; }
+      .card-compact-top{
+        grid-template-columns:26px 1fr auto; gap:8px 10px; height:auto !important;
+        padding:11px 12px !important;
+      }
+      .adm-cli{ grid-column:2; }
+      .adm-num{ grid-column:3; grid-row:1; }
+      .adm-num::after{ content:' pares'; font-size:10px; font-weight:700; color:var(--muted); }
+      .adm-est{ grid-column:2; }
+      .adm-ops{ grid-column:3; }
+      .card-compact-top .adm-col-prod{ display:none; }
     }
   </style>
 
@@ -1752,94 +2033,6 @@
         <div class="mt-5 flex flex-wrap justify-end gap-2">
           <button id="btnVoltarSolRecusa" type="button" class="focus-ring rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700" style="background:var(--card);border-color:var(--line);color:var(--muted)">Voltar</button>
           <button id="btnConfirmarSolRecusa" type="button" class="focus-ring rounded-2xl border border-slate-200 bg-slate-800 px-5 py-3 text-sm font-extrabold text-white">Recusar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── AJUSTAR PREV. FATURAMENTO EM BLOCO ───────────────────────────────── -->
-  <div id="datasModal" class="hidden fixed inset-0 z-[140] bg-slate-950/55 p-4" style="overflow-y:auto">
-    <div class="flex min-h-full items-start justify-center">
-      <div class="dt-caixa">
-        <div class="dt-topo">
-          <div>
-            <div class="dt-eyebrow">Repasses · pedidos</div>
-            <div class="dt-tit">Ajustar prev. faturamento</div>
-            <div class="dt-sub">Procure pelos números da DISPO, marque o que vai mudar e aplique a data nova.</div>
-          </div>
-          <button type="button" class="dt-x" onclick="fecharAjusteDatas()" aria-label="Fechar">&times;</button>
-        </div>
-
-        <div class="dt-corpo">
-          <div class="dt-passo"><i>1</i> Números dos pedidos</div>
-          <div class="dt-busca">
-            <textarea id="dtNums" placeholder="Cole aqui os números separados por vírgula — ex.: 256, 219, 259"></textarea>
-            <button type="button" class="dt-bt dt-bt-forte" onclick="dtPesquisar()">
-              <i class="fa-solid fa-magnifying-glass"></i> Pesquisar
-            </button>
-          </div>
-          <div class="dt-dica">
-            Vale vírgula, espaço ou uma linha para cada. ·
-            <button type="button" class="dt-atalho" onclick="dtTrazerDefasados()">trazer os que estão com data diferente da DISPO</button>
-          </div>
-          <div class="dt-achado" id="dtAchado" hidden></div>
-
-          <div id="dtAreaLista" hidden>
-            <div class="dt-passo" style="margin-top:16px"><i>2</i> Pedidos encontrados</div>
-            <div class="dt-barra-sel">
-              <label><input type="checkbox" id="dtChkTodos" onchange="dtMarcarTodos(this.checked)"> Marcar todos</label>
-              <span id="dtContaTopo"></span>
-            </div>
-            <div class="dt-tab-wrap">
-              <table class="dt-tab">
-                <thead>
-                  <tr>
-                    <th style="width:34px"></th>
-                    <th>Nº</th><th>GCI</th><th>Produto</th><th>Cor</th><th>Cliente</th><th>Vendedor</th>
-                    <th class="dt-dir">Pares</th><th>Status</th><th>Prev. faturamento</th>
-                  </tr>
-                </thead>
-                <tbody id="dtCorpo"></tbody>
-              </table>
-            </div>
-
-            <div class="dt-passo" style="margin-top:16px"><i>3</i> Nova data</div>
-            <div class="dt-aplicar">
-              <div>
-                <label for="dtNovaData">Prev. faturamento nova</label>
-                <input type="date" id="dtNovaData" onchange="dtPintarBotoes()">
-                <div class="dt-sugs" id="dtSugs"></div>
-              </div>
-              <button type="button" class="dt-bt dt-bt-forte" id="dtBtAplicar" onclick="dtAplicar()" disabled>
-                <i class="fa-solid fa-wand-magic-sparkles"></i> Aplicar aos marcados
-              </button>
-              <span class="dt-conta" id="dtConta"></span>
-            </div>
-
-            <label class="dt-opcao" id="dtOpcDispo">
-              <input type="checkbox" id="dtTambemDispo" checked onchange="dtPintarBotoes()">
-              <span><b>Atualizar também o lote na DISPO.</b>
-                O estoque e as duas vitrines leem a data do lote, não a do pedido —
-                sem isto, só os pedidos mudam.</span>
-            </label>
-
-            <div class="dt-aviso" id="dtAvisoPedido" hidden>
-              <i class="fa-solid fa-triangle-exclamation"></i>
-              <div id="dtAvisoTxt"></div>
-            </div>
-            <div class="dt-pronto" id="dtPronto" hidden>
-              <i class="fa-solid fa-circle-check"></i>
-              <div id="dtProntoTxt"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="dt-pe">
-          <button type="button" class="dt-bt dt-bt-forte" id="dtBtSalvar" onclick="dtSalvar()" disabled>
-            <i class="fa-solid fa-floppy-disk"></i> <span id="dtRotuloSalvar">Salvar</span>
-          </button>
-          <button type="button" class="dt-bt dt-bt-fraco" onclick="fecharAjusteDatas()">Fechar</button>
-          <span class="dt-rodape" id="dtRodape"></span>
         </div>
       </div>
     </div>
@@ -1997,7 +2190,9 @@ const STATE = {
   selectedId: null,
   cancelReasonContext: null,
   statusFilter: 'Pendente',  // o admin abre direto no que precisa de acao
-  familia: 'repasse'         // 'repasse' | 'colecao' - ver .familia-tabs
+  /* Abre no GTM (26/11/2026): e de onde vem a demanda do semestre.
+     O repasse comum avisa quantos pendentes tem, no proprio trilho. */
+  familia: 'colecao'         // 'repasse' | 'colecao' - ver .familia-tabs
 };
 
 const $ = (id)=>document.getElementById(id);
@@ -2247,6 +2442,81 @@ function dataPlanilhaBR(bruto, texto){
   m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);            // ISO
   if(m) return { br: fmt(+m[3], +m[2], +m[1]), aviso:'' };
   return { br: s, aviso:'data em formato desconhecido' };
+}
+
+/* Data e hora separadas: a coluna Chegada mostra o dia em cima e a hora
+   embaixo, e em tablet so o dia desce para junto do codigo. */
+/* A barra de filtros tambem muda de altura (quebra de linha em tela
+   estreita, "Mais opcoes" aberto). Sem medir, o cabecalho de colunas
+   gruda no lugar errado e fica meio escondido atras dela. */
+/* No Showroom o limiar e de uma tela e meia, porque la a lista nao
+   acaba. Aqui a pagina tem 20 linhas e rola menos que isso: com
+   aquele numero o botao nunca aparecia. Meia tela basta. */
+(function(){
+  const ver = () => {
+    const b = document.getElementById('topoFab');
+    if(!b) return;
+    const mostra = scrollY > innerHeight * 0.5;
+    if(mostra === b.classList.contains('on')) return;
+    if(mostra){ b.hidden = false; requestAnimationFrame(() => b.classList.add('on')); }
+    else{ b.classList.remove('on');
+          setTimeout(() => { if(!b.classList.contains('on')) b.hidden = true; }, 220); }
+  };
+  addEventListener('scroll', ver, { passive:true });
+  document.addEventListener('DOMContentLoaded', ver);
+})();
+
+function mediuFixosAdm(){
+  /* ATENCAO ao mexer aqui. offsetTop NAO ignora o deslocamento do
+     sticky: com a pagina rolada ele devolve a posicao ja deslocada.
+     Medindo assim, cada repintura somava o scroll de novo e as barras
+     desciam 124px por vez — ele filmou o cabecalho indo parar no
+     rodape depois de trocar de pagina (26/11/2026).
+     Por isso o sticky e desligado durante a medicao: em `relative`
+     sem `top`, o elemento fica na posicao de fluxo, que e a que
+     interessa, e o layout ao redor nao muda. */
+  const barras = ['adminHeader', 'secaoFiltros', 'selecaoControles', 'admCabColunas'];
+  const els = barras.map(id => document.getElementById(id))
+    .filter(e => e && !e.classList.contains('hidden'));
+  if(!els.length) return;
+
+  const antes = els.map(e => [e.style.position, e.style.top]);
+  els.forEach(e => { e.style.position = 'relative'; e.style.top = 'auto'; });
+
+  const topoNoFluxo = el => {
+    let y = 0;
+    for(let e = el; e; e = e.offsetParent) y += e.offsetTop;
+    return y;
+  };
+  const naturais = els.map(topoNoFluxo);
+  const alturas = els.map(e => e.offsetHeight);
+
+  els.forEach((e, i) => { e.style.position = antes[i][0] || ''; });
+
+  let piso = 0;   // onde a barra de cima termina
+  els.forEach((e, i) => {
+    /* o maior entre a posicao natural e o fim da barra anterior: a
+       natural evita o salto; o piso evita que duas se sobreponham. */
+    const topo = Math.max(naturais[i], piso);
+    e.style.top = topo + 'px';
+    piso = topo + alturas[i];
+  });
+  /* a tampa vai do topo ate o fim da ultima barra grudada */
+  document.documentElement.style.setProperty('--admin-fixo-h', piso + 'px');
+  const h = document.getElementById('adminHeader');
+  if(h) document.documentElement.style.setProperty(
+    '--admin-header-h', h.offsetHeight + 'px');
+}
+addEventListener('resize', mediuFixosAdm);
+document.addEventListener('DOMContentLoaded', mediuFixosAdm);
+
+function admDataHora(value){
+  const d = parseDate(value);
+  if(!d) return { dia:'—', hora:'' };
+  return {
+    dia: d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }),
+    hora: d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }),
+  };
 }
 
 function formatDateTime(value){
@@ -2795,7 +3065,12 @@ function setStatusFilter(f, btn){
     b.className = 'filter-status-btn';
   });
   const clsMap = { todos:'fs-active-todos', Pendente:'fs-active-pend', Aprovado:'fs-active-aprov', Exportado:'fs-active-export', Cancelado:'fs-active-canc', solicitacoes:'fs-active-sol', alterados:'fs-active-alt' };
-  btn.className = `filter-status-btn ${clsMap[f]||''}`;
+  /* "Solicitacoes" mudou para o cabecalho e nao tem botao na regua:
+     sem isto, chamar sem `btn` estourava em btn.className. */
+  const alvo = btn || document.querySelector(`.filter-status-btn[data-fs="${f}"]`);
+  if(alvo) alvo.className = `filter-status-btn ${clsMap[f]||''}`;
+  const sol = $('btnSolicitacoes');
+  if(sol) sol.classList.toggle('fs-on', f === 'solicitacoes');
   applyFilters();
 }
 
@@ -2819,6 +3094,25 @@ function updateFilterCounts(){
   if($('fsCountExport')) $('fsCountExport').textContent = c.Exportado;
   if($('fsCountCanc'))   $('fsCountCanc').textContent   = c.Cancelado;
   if($('fsCountAlt'))    $('fsCountAlt').textContent    = c.alterados;
+
+  /* Solicitacoes agora vive no cabecalho: quando ha fila, o botao
+     inteiro muda de cor — um numero sozinho la em cima passa batido. */
+  const sol = $('btnSolicitacoes');
+  if(sol) sol.classList.toggle('tem-fila', c.solicitacoes > 0);
+
+  /* Quantos pendentes esperam em CADA familia. Como a tela abre no
+     GTM, o repasse comum sairia de vista sem este aviso. */
+  const pend = fam => STATE.orders.filter(o =>
+    orderMatchesScope(o, scope) && pedidoNaFamilia(o, fam)
+    && canonicalStatus(o.status) === 'Pendente').length;
+  for(const [fam, id] of [['repasse','famBadgeRepasse'], ['colecao','famBadgeColecao']]){
+    const el = $(id);
+    if(!el) continue;
+    const n = pend(fam);
+    el.textContent = n > 99 ? '99+' : n;
+    el.hidden = n === 0;
+    el.title = `${n} pedido${n === 1 ? '' : 's'} pendente${n === 1 ? '' : 's'} aqui`;
+  }
 }
 
 /* "521, 496" sao dois termos; "elevado" e um. Virgula e ponto-e-virgula
@@ -3036,7 +3330,18 @@ function applyFilters(){
                                      : _ts(b, _ordemLista) - _ts(a, _ordemLista);
   });
 
-  $('ordersCountBadge').textContent = `${STATE.filtered.length} pedido${STATE.filtered.length === 1 ? '' : 's'}`;
+  /* O trabalho e despachar PARES, nao linhas — e o que trava sao os
+     avisos. O numero de pedidos sozinho nao dizia nenhum dos dois. */
+  (() => {
+    const el = $('ordersCountBadge');
+    if(!el) return;
+    const n = STATE.filtered.length;
+    const pares = STATE.filtered.reduce((t, o) => t + getOrderUnits(o), 0);
+    const cart  = STATE.filtered.filter(o => o.avisoCarteira).length;
+    el.innerHTML = `<b>${formatInt(n)}</b> ${n === 1 ? 'pedido' : 'pedidos'}`
+      + (pares ? ` <span class="pt">·</span> <b>${formatInt(pares)}</b> pares` : '')
+      + (cart ? ` <span class="rc-alerta" title="Esses clientes já tinham o produto na carteira">&#9888; ${cart} já em carteira</span>` : '');
+  })();
 
   renderList();
 
@@ -3056,6 +3361,9 @@ function renderList(){
 
   const controles = $('selecaoControles');
   if(controles) controles.classList.toggle('hidden', STATE.filtered.length === 0);
+  const cab = $('admCabColunas');
+  if(cab) cab.classList.toggle('hidden', STATE.filtered.length === 0);
+  mediuFixosAdm();
 
   _pedidosSelecionados.clear();
   atualizarSelecaoUI();
@@ -3071,6 +3379,7 @@ function renderList(){
   const svgArch  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/></svg>`;
   const svgXls   = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`;
   const svgPdf   = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>`;
+  const svgMais  = `<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>`;
   const svgDel   = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
 
   $('adminOrdersList').innerHTML = paginados.map(order=>{
@@ -3093,6 +3402,14 @@ function renderList(){
                   border-radius:999px;padding:2px 9px;flex-shrink:0;cursor:help">
            Lote ${safeHtml(lotes.slice(0, 3).join(' · '))}${
              lotes.length > 3 ? ' +' + (lotes.length - 3) : ''}</span>`
+      : '';
+    /* Na coluna de lotes cada numero e um chip, para a coluna virar uma
+       pilha de numeros legivel. Tres cabem; o resto vira "+N". */
+    const loteCabe = lotes.length > 3 ? 2 : 3;
+    const lotesHtml = lotes.length
+      ? `<span class="adm-lote" title="Lote${lotes.length > 1 ? 's' : ''} ${safeHtml(lotes.join(' · '))}">${
+           lotes.slice(0, loteCabe).map(l => safeHtml(l)).join('</span><span class="adm-lote">')}</span>${
+           lotes.length > loteCabe ? `<span class="adm-lote mais" title="${safeHtml(lotes.join(' · '))}">+${lotes.length - loteCabe}</span>` : ''}`
       : '';
     const mudancasFat = (order.items||[])
       .map(item => checkPrevFaturamentoMudou(item))
@@ -3129,23 +3446,65 @@ function renderList(){
       : '';
     const blocoSol = renderBlocoSolicitacao(order, sol);
 
+    /* Um selo so. Antes o exportado levava DOIS chips lado a lado
+       ("Aprovado" + "Exportado"), que e a mesma informacao contada duas
+       vezes e o dobro da largura. Exportado ja implica aprovado. */
     const chipHtml = isExportado
-      ? `<span class="chip ${cardStatus.chipClass} flex-shrink-0" style="font-size:11px"><span class="status-dot ${cardStatus.dotClass}"></span>${safeHtml(cardStatus.label)}</span>
-         <span class="chip flex-shrink-0" style="background:linear-gradient(135deg,#60a5fa,#2563eb);color:#fff;font-size:10px;border:none;box-shadow:0 2px 6px rgba(37,99,235,.32);padding:3px 8px">
-           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline"><path d="M20 6L9 17l-5-5"/></svg> Exportado
-         </span>`
-      : `<span class="chip ${cardStatus.chipClass} flex-shrink-0" style="font-size:11px"><span class="status-dot ${cardStatus.dotClass}"></span>${safeHtml(cardStatus.label)}</span>`;
+      ? `<span class="chip adm-exp" title="Aprovado e já exportado"><span class="status-dot"></span>Exportado</span>`
+      : `<span class="chip ${cardStatus.chipClass}"><span class="status-dot ${cardStatus.dotClass}"></span>${safeHtml(cardStatus.label)}</span>`;
 
-    const inlineIcons = (() => {
-      let icons = '';
-      if(st === 'Pendente')
-        icons += `<button class="ia ia-aprov" data-action="aprovar" data-id="${safeHtml(order.id)}" title="Aprovar">${svgCheck}</button>`;
-      if(st !== 'Cancelado')
-        icons += `<button class="ia ia-canc" data-action="cancelar" data-id="${safeHtml(order.id)}" title="Cancelar">${svgX}</button>`;
-      if(st !== 'Cancelado')
-        icons += `<button class="ia ia-arch" data-action="arquivar" data-id="${safeHtml(order.id)}" title="Arquivar">${svgArch}</button>`;
-      return icons;
-    })();
+    /* So a acao do dia a dia fica a um clique. Cancelar e arquivar
+       moram no menu — ver abrirMenuLinha(). */
+    const inlineIcons = (st === 'Pendente'
+        ? `<button class="ia ia-aprov" data-action="aprovar" data-id="${safeHtml(order.id)}" title="Aprovar este pedido">${svgCheck}</button>`
+        : '')
+      + `<button class="ia ia-mais" type="button" data-menu="${safeHtml(order.id)}"
+           title="Mais ações" aria-haspopup="menu" aria-expanded="false">${svgMais}</button>`;
+
+    /* Quem mandou e quando: duas colunas, nao um texto so. Em tablet a
+       coluna some e isto desce para a linha do codigo do cliente. */
+    const quem = order.preposto?.nome || order.preposto?.codigo || '—';
+    const quando = admDataHora(order.createdAt || order.updatedAt || order.data);
+
+    /* Os sinais competiam com tudo porque tinham o mesmo tratamento de
+       pilula dos dados. Agora tem coluna propria, por ordem de urgencia:
+       aparecem os 2 primeiros e o resto vira "+N" com a lista na dica. */
+    const sinais = [];
+    if(order.avisoCarteira) sinais.push({ txt:'Já em carteira', html:
+      `<span title="O cliente já tinha esse produto na carteira (ou recebeu nos últimos 90 dias) e o vendedor enviou mesmo assim" style="font-size:10.5px;font-weight:800;background:var(--warning-soft);color:var(--warning);border-radius:5px;padding:3px 7px;cursor:help">⚠ Já em carteira</span>` });
+    if(chipSol) sinais.push({ txt:`Pede ${solCanc ? 'cancelamento' : 'alteração'}`, html:chipSol });
+    if(fatMudou) sinais.push({ txt:'Faturamento atualizado', html:
+      `<span title="Prev. Faturamento: ${safeHtml(fatMudouTitle)}" style="font-size:10.5px;font-weight:800;background:var(--warning-soft);color:var(--warning);border-radius:5px;padding:3px 7px;cursor:help">⚠ Faturamento</span>` });
+    if(order.isDuplicate) sinais.push({ txt:'Duplicata', html:
+      `<span style="font-size:10.5px;font-weight:800;background:var(--warning-soft);color:var(--warning);border-radius:5px;padding:3px 7px">⚠ Duplicata</span>` });
+    if(chipColecao) sinais.push({ txt:`${ROTULO_COLECAO_ADM} ${nColecao}/${nItems}`, html:chipColecao });
+    if(chipAlt) sinais.push({ txt:`Alterado${alteracoes.length > 1 ? ' ' + alteracoes.length + 'x' : ''}`, html:chipAlt });
+    if(order.campanha) sinais.push({ campanha:true, txt:String(order.campanha), html:
+      `<span title="Campanha: ${safeHtml(order.campanha)}" style="font-size:10.5px;font-weight:800;background:var(--muted-soft);color:var(--muted);border-radius:5px;padding:3px 7px;cursor:help">${safeHtml(order.campanha)}</span>` });
+    if((order.history||[]).some(h => h.label === 'Antecipado')) sinais.push({ txt:'Antecipado', html:
+      `<span style="font-size:10.5px;font-weight:800;background:#EEEDFE;color:#3C3489;border-radius:5px;padding:3px 7px">↑ Antecipado</span>` });
+
+    /* Na linha fica so a CAMPANHA — e o que aparece em quase todo
+       pedido e o que ele procura de relance. Quando houver aviso, um
+       ponto laranja avisa que tem coisa no detalhe. */
+    const avisos = sinais.filter(x => !x.campanha);
+    /* O aviso anda colado no nome do cliente: e o que evita o pedido
+       errado, e so aparecer ao abrir o detalhe seria tarde demais. */
+    const avisoHtml = avisos.length
+      ? `<span class="adm-aviso" title="${safeHtml(avisos.map(x => x.txt).join(' · '))}">${
+           avisos.length === 1 ? '⚠' : '⚠ ' + avisos.length}</span>`
+      : '';
+
+    /* O que saiu da linha reaparece aqui, junto com o PRAZO, que antes
+       so dava para ver abrindo "Corrigir". */
+    const resumoDetalhe = `
+      <div class="adm-resumo">
+        ${lotes.length ? `<span class="it"><span class="rot">Lote${lotes.length > 1 ? 's' : ''}</span>${lotesHtml}</span>` : ''}
+        <span class="it"><span class="rot">Prazo</span><b>${order.prazo ? safeHtml(order.prazo) : '—'}</b></span>
+        <span class="it"><span class="rot">Campanha</span><b>${order.campanha ? safeHtml(order.campanha) : '—'}</b></span>
+        <span class="it"><span class="rot">Pares</span><b>${formatInt(totalUnits)}</b></span>
+        ${avisos.length ? `<span class="it">${avisos.map(x => x.html).join('')}</span>` : ''}
+      </div>`;
 
     const podeRemoverItem = (order.items||[]).length > 1;
     const itensHtml = (order.items||[]).map((item, itemIdx) => {
@@ -3199,39 +3558,31 @@ function renderList(){
     return `
       <div class="order-card-compact${solAberta ? (solCanc ? ' sol-canc' : ' sol-alt') : ''}" data-order-id="${safeHtml(order.id)}">
         <div class="card-compact-top" onclick="if(!event.target.closest('[data-action],.card-chk,.btn-expand-compact'))toggleCardExpand('${safeHtml(order.id)}')">
-          <input type="checkbox" class="card-chk chk-pedido" data-id="${safeHtml(order.id)}"
+          <span><input type="checkbox" class="card-chk chk-pedido" data-id="${safeHtml(order.id)}"
             ${_pedidosSelecionados.has(order.id) ? 'checked' : ''}
             onclick="event.stopPropagation()" onchange="onCheckPedido(this)"
-            title="Selecionar pedido">
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;font-size:12px;line-height:1.4">
-              <span class="nome-preposto" style="font-weight:700;color:var(--text)">${safeHtml(order.preposto?.nome || order.preposto?.codigo || '—')}</span>
-              <span style="color:var(--muted);font-size:11px">${safeHtml(formatDateTime(order.createdAt || order.updatedAt || order.data))}</span>
-              <span style="color:var(--muted)">·</span>
-              <span style="color:var(--muted);font-size:11px">${clienteDisplay}</span>
-              ${chipLotes}
-              ${totalUnits > 0 ? `<span style="font-size:11px;font-weight:700;background:#EEEDFE;color:#3C3489;border-radius:999px;padding:2px 9px;flex-shrink:0">${formatInt(totalUnits)} pares</span>` : ''}
-              ${order.campanha ? `<span style="font-size:11px;font-weight:700;background:var(--muted-soft);color:var(--muted);border-radius:999px;padding:2px 9px;flex-shrink:0">${safeHtml(order.campanha)}</span>` : ''}
-              ${nItems > 1 ? `<span style="font-size:11px;font-weight:700;background:var(--muted-soft);color:var(--muted);border-radius:999px;padding:2px 9px;flex-shrink:0">${nItems} produtos</span>` : ''}
-              ${chipSol}
-              ${order.isDuplicate ? `<span style="font-size:11px;font-weight:700;background:var(--warning-soft);color:var(--warning);border-radius:999px;padding:2px 9px;flex-shrink:0">⚠ Duplicata</span>` : ''}
-              ${order.avisoCarteira ? `<span title="O cliente já tinha esse produto na carteira (ou recebeu nos últimos 90 dias) e o vendedor enviou mesmo assim" style="font-size:11px;font-weight:700;background:var(--warning-soft);color:var(--warning);border-radius:999px;padding:2px 9px;flex-shrink:0;cursor:help">⚠ Já em carteira</span>` : ''}
-              ${(order.history||[]).some(h=>h.label==='Antecipado') ? `<span style="font-size:11px;font-weight:700;background:#EEEDFE;color:#3C3489;border-radius:999px;padding:2px 9px;flex-shrink:0">↑ Antecipado</span>` : ''}
-              ${chipColecao}
-              ${chipAlt}
-              ${fatMudou ? `<span title="Prev. Faturamento: ${safeHtml(fatMudouTitle)}" style="font-size:11px;font-weight:700;background:var(--warning-soft);color:var(--warning);border-radius:999px;padding:2px 9px;flex-shrink:0;cursor:help"><i class="fa-solid fa-triangle-exclamation" style="font-size:9px"></i> Faturamento atualizado</span>` : ''}
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
-            ${chipHtml}
-            <div class="icon-actions">${inlineIcons}</div>
-            <button class="btn-expand-compact" id="expand-btn-${safeHtml(order.id)}" onclick="event.stopPropagation();toggleCardExpand('${safeHtml(order.id)}')">
-              <i class="fa-solid fa-chevron-down" style="font-size:9px"></i> Ver detalhes
-            </button>
-          </div>
+            title="Selecionar pedido"></span>
+
+          <span class="adm-cli">
+            <span class="nm">
+              <b title="${safeHtml(order.clienteNome || '')} (${safeHtml(order.clienteCodigo || '')})">${safeHtml(order.clienteNome || '—')}</b>
+              ${avisoHtml}
+            </span>
+            <span>${safeHtml(order.clienteCodigo || '')}<i class="adm-extra"> · ${safeHtml(quem)} · ${quando.dia}</i></span>
+          </span>
+
+          <span class="adm-vend adm-col-vend"><b>${safeHtml(quem)}</b></span>
+          <span class="adm-vend adm-col-quando"><b>${quando.dia}</b><span>${quando.hora}</span></span>
+
+          <span class="adm-num"><b>${totalUnits > 0 ? formatInt(totalUnits) : '—'}</b></span>
+          <span class="adm-num fraco adm-col-prod"><b>${nItems}</b></span>
+          <span class="adm-est">${chipHtml}</span>
+
+          <span class="adm-ops">${inlineIcons}</span>
         </div>
         ${blocoSol}
         <div class="card-compact-detail" id="expand-detail-${safeHtml(order.id)}">
+          ${resumoDetalhe}
           ${itensHtml}
           ${expandIcons}
         </div>
@@ -3266,7 +3617,7 @@ function renderList(){
         const btn = document.createElement('button');
         btn.textContent = p;
         btn.className = `focus-ring w-7 h-7 rounded-full text-xs font-bold border ${p === _currentPage ? 'bg-[var(--brand)] text-white border-[var(--brand)]' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'}`;
-        btn.onclick = () => { _currentPage = p; renderList(); };
+        btn.onclick = () => { _currentPage = p; renderList(); voltarAoTopoDaLista(); };
         pages.appendChild(btn);
       }
     }
@@ -3812,13 +4163,6 @@ async function salvarEdicaoPedido(){
 $('btnFecharEditar').addEventListener('click', fecharEdicaoPedido);
 $('btnVoltarEditar').addEventListener('click', fecharEdicaoPedido);
 $('btnSalvarEditar').addEventListener('click', salvarEdicaoPedido);
-$('datasModal').addEventListener('click', e => {
-  if(e.target === $('datasModal')) fecharAjusteDatas();
-});
-document.addEventListener('keydown', e => {
-  if(e.key === 'Escape' && !$('datasModal').classList.contains('hidden')) fecharAjusteDatas();
-});
-
 $('editarPedidoModal').addEventListener('click', e => {
   if(e.target === $('editarPedidoModal')) fecharEdicaoPedido();
 });
@@ -3837,31 +4181,159 @@ function fecharRecusaSolicitacao(){
   document.body.style.overflow = '';
 }
 
+/* Volta ao inicio da lista, sem subir a pagina inteira: o que
+   interessa e ver a primeira linha da pagina nova, nao o cabecalho. */
+function voltarAoTopoDaLista(){
+  const cab = document.getElementById('admCabColunas');
+  const l1 = document.querySelector('.card-compact-top');
+  if(!cab || !l1) return;
+  /* Rola o tanto exato para a primeira linha encostar embaixo do
+     cabecalho de colunas. Medir pelo cabecalho nao serve: ele esta
+     grudado, entao a posicao dele na tela nao diz onde a lista esta. */
+  const delta = l1.getBoundingClientRect().top - cab.getBoundingClientRect().bottom;
+  if(Math.abs(delta) > 2)
+    scrollTo({ top: Math.max(0, scrollY + delta), behavior: 'smooth' });
+}
+
 function mudarPagina(dir){
   const totalPages = Math.max(1, Math.ceil(STATE.filtered.length / PAGE_SIZE));
   _currentPage = Math.max(1, Math.min(totalPages, _currentPage + dir));
   renderList();
+  voltarAoTopoDaLista();
+}
+
+/* Abrir o primeiro pedido some com os outros; fechar o ultimo os traz
+   de volta. As duas coisas mudam a altura da pagina por cima do
+   cartao, e ele pularia para outro ponto da tela. */
+function manterNoLugarAdm(card, acao){
+  if(!card || !card.isConnected){ acao(); return; }
+  const r0 = card.getBoundingClientRect();
+  /* Cartao fora da tela (escondido pelo foco) nao serve de ancora: o
+     retangulo vem zerado e a conta mandaria a pagina para qualquer
+     lugar. So acontece em clique por script, mas sai barato prever. */
+  if(!r0.height){ acao(); return; }
+  const antes = r0.top;
+  acao();
+  const depois = card.getBoundingClientRect().top;
+  if(Math.abs(depois - antes) > 1)
+    scrollTo({ top: Math.max(0, scrollY + depois - antes), behavior:'instant' });
 }
 
 function toggleCardExpand(id){
   const detail = document.getElementById(`expand-detail-${id}`);
-  const btn    = document.getElementById(`expand-btn-${id}`);
-  const card   = btn?.closest('.order-card-compact');
   if(!detail) return;
+  /* O card vem do proprio detalhe. Antes vinha do botao "Ver
+     detalhes", que saiu da linha em 26/11/2026 — e desde entao a
+     classe .expanded nunca era aplicada. */
+  const card = detail.closest('.order-card-compact');
   const isOpen = detail.classList.contains('open');
-  detail.classList.toggle('open', !isOpen);
-  card?.classList.toggle('expanded', !isOpen);
-  if(btn){
-    btn.classList.toggle('open', !isOpen);
-    btn.innerHTML = !isOpen
-      ? `<i class="fa-solid fa-chevron-up" style="font-size:9px"></i> Fechar`
-      : `<i class="fa-solid fa-chevron-down" style="font-size:9px"></i> Ver detalhes`;
+
+  /* Um pedido aberto por vez, como na Detalhada: com varios abertos a
+     lista vira um paredao e perde-se de vista o que se estava
+     olhando. */
+  if(!isOpen){
+    document.querySelectorAll('.card-compact-detail.open').forEach(d => {
+      if(d === detail) return;
+      d.classList.remove('open');
+      d.closest('.order-card-compact')?.classList.remove('expanded');
+    });
   }
-  // Seleciona o pedido ao expandir
+
+  manterNoLugarAdm(card, () => {
+    detail.classList.toggle('open', !isOpen);
+    card?.classList.toggle('expanded', !isOpen);
+  });
+
   if(!isOpen){
     STATE.selectedId = id;
+    focarPedidoAberto(card);
   }
 }
+
+/* Leva o pedido aberto para logo abaixo do cabecalho fixo. Sem isto,
+   fechar os de cima encurta a lista e o pedido que ele acabou de
+   abrir escapa da tela — ou nasce escondido atras das barras. */
+function focarPedidoAberto(card){
+  if(!card) return;
+  requestAnimationFrame(() => {
+    const cab = document.getElementById('admCabColunas');
+    const limite = cab ? cab.getBoundingClientRect().bottom : 0;
+    /* Com os outros fora da tela, o lugar do pedido aberto e o alto da
+       lista. Antes isto so corrigia quando ele estava escondido. */
+    const delta = card.getBoundingClientRect().top - limite - 6;
+    if(Math.abs(delta) < 2) return;
+    scrollTo({ top: Math.max(0, scrollY + delta),
+               behavior: matchMedia('(prefers-reduced-motion:reduce)').matches
+                 ? 'auto' : 'smooth' });
+  });
+}
+
+/* ── Menu "⋯" da linha ─────────────────────────────────────────────
+   Um menu so, reaproveitado. Ao abrir, recebe o id do pedido e
+   esconde o que nao cabe naquele estado (nao se cancela um pedido
+   ja cancelado). */
+let _menuLinhaId = null;
+
+function fecharMenuLinha(){
+  const m = $('admMenuLinha');
+  if(!m) return;
+  m.classList.remove('ab');
+  m.setAttribute('aria-hidden', 'true');
+  document.querySelectorAll('.ia-mais[aria-expanded="true"]')
+    .forEach(b => b.setAttribute('aria-expanded', 'false'));
+  _menuLinhaId = null;
+}
+
+function abrirMenuLinha(btn, id){
+  const m = $('admMenuLinha');
+  const order = STATE.orders.find(o => o.id === id);
+  if(!m || !order) return;
+  const st = canonicalStatus(order.status);
+
+  m.querySelectorAll('[data-id]').forEach(b => { b.dataset.id = id; });
+  /* nao se cancela nem se corrige o que ja foi cancelado */
+  const vivo = st !== 'Cancelado';
+  m.querySelector('[data-mi="cancelar"]').hidden = !vivo;
+  m.querySelector('[data-mi="editar"]').hidden   = !vivo;
+  m.querySelector('[data-mi="sep"]').hidden      = !vivo;
+  m.querySelector('[data-mi="arquivar"]').textContent = '';
+  m.querySelector('[data-mi="arquivar"]').insertAdjacentHTML('afterbegin',
+    `<i class="fa-solid fa-box-archive"></i> ${order.archived ? 'Desarquivar' : 'Arquivar'}`);
+
+  m.classList.add('ab');
+  m.setAttribute('aria-hidden', 'false');
+  btn.setAttribute('aria-expanded', 'true');
+  _menuLinhaId = id;
+
+  /* sobe em vez de descer quando nao ha espaco embaixo */
+  const r = btn.getBoundingClientRect();
+  const alt = m.offsetHeight, larg = m.offsetWidth;
+  const cabeEmbaixo = r.bottom + alt + 10 < innerHeight;
+  m.style.top = (scrollY + (cabeEmbaixo ? r.bottom + 6 : r.top - alt - 6)) + 'px';
+  m.style.left = Math.max(8, scrollX + r.right - larg) + 'px';
+}
+
+document.addEventListener('click', e => {
+  const abre = e.target.closest('[data-menu]');
+  if(abre){
+    e.stopPropagation();
+    const id = abre.dataset.menu;
+    if(_menuLinhaId === id) fecharMenuLinha(); else abrirMenuLinha(abre, id);
+    return;
+  }
+  const dentro = e.target.closest('#admMenuLinha');
+  if(dentro){
+    const mi = e.target.closest('[data-mi]');
+    if(mi && mi.dataset.mi === 'detalhes' && _menuLinhaId){
+      toggleCardExpand(_menuLinhaId);
+    }
+    fecharMenuLinha();
+    return;
+  }
+  fecharMenuLinha();
+}, true);
+document.addEventListener('keydown', e => { if(e.key === 'Escape') fecharMenuLinha(); });
+addEventListener('scroll', fecharMenuLinha, { passive:true });
 
 // Delegação de eventos das ações nos cards
 // Nota: o div de ações NÃO usa mais stopPropagation para não bloquear este listener
@@ -4282,24 +4754,19 @@ async function loadManutencaoStatus(){
   }catch(_){}
 }
 function refreshManutencaoUI(){
-  const btn = $('btnManutencao'); const lbl = $('lblManutencao');
-  if(!btn) return;
-  const classe = 'focus-ring rounded-full px-4 py-2 text-sm font-bold text-white flex items-center gap-2 transition-transform hover:-translate-y-0.5';
-  if(_appPausado){
-    btn.className = classe;
-    btn.style.background = 'linear-gradient(135deg,#f87171,#dc2626)';
-    btn.style.boxShadow = '0 4px 14px rgba(220,38,38,.35)';
-    btn.style.border = 'none';
-    btn.title = 'App pausado — ativar para os vendedores voltarem a acessar';
-    if(lbl) lbl.textContent = 'Ativar';
-  } else {
-    btn.className = classe;
-    btn.style.background = 'linear-gradient(135deg,#fbbf24,#d97706)';
-    btn.style.boxShadow = '0 4px 14px rgba(217,119,6,.35)';
-    btn.style.border = 'none';
-    btn.title = 'Pausar o app: os vendedores veem a tela de manutenção';
-    if(lbl) lbl.textContent = 'Pausar';
+  const btn = $('btnManutencao'), lbl = $('lblManutencao'), tarja = $('tarjaPausado');
+  if(btn){
+    btn.setAttribute('aria-checked', _appPausado ? 'true' : 'false');
+    btn.title = _appPausado
+      ? 'App pausado — clique para os vendedores voltarem a acessar'
+      : 'Pausar o app: os vendedores veem a tela de manutenção';
   }
+  /* O rotulo diz o ESTADO, nao a acao. O botao antigo trocava de
+     "Pausar" para "Ativar", entao a mesma peca dizia coisas opostas
+     conforme o estado e nunca dava para saber como o app estava. */
+  if(lbl) lbl.textContent = _appPausado ? 'Vitrine pausada' : 'Vitrine ativa';
+  if(tarja) tarja.classList.toggle('on', _appPausado);
+  if(typeof mediuFixosAdm === 'function') mediuFixosAdm();
 }
 async function toggleManutencao(){
   const novoPausado = !_appPausado;
@@ -6123,6 +6590,7 @@ $('btnRefresh').addEventListener('click', async ()=>{ await loadAdmin(); });
     requestAnimationFrame(()=>{
       const h = $('adminHeader');
       if(h) document.documentElement.style.setProperty('--admin-header-h', h.offsetHeight + 'px');
+      mediuFixosAdm();
     });
   });
 })();
@@ -6394,9 +6862,17 @@ function getDispoRowAtual(item){
 // casava qualquer lote do mesmo artigo e marcava "faturamento atualizado" em
 // pedido cujo lote nem está mais no estoque — e é essa etiqueta que manda o
 // vendedor procurar a data certa.
+/* As linhas da DISPO de um numero. Ficou de pe quando o ajuste de
+   datas mudou para a dispo (26/11/2026): e dela que sai o sinal
+   "Faturamento atualizado" na lista. */
+function linhasDaDispo(num){
+  if(!_dispoRows) return [];
+  return _dispoRows.filter(r => String(r.num ?? '').trim() === String(num));
+}
+
 function checkPrevFaturamentoMudou(item){
   const num = String(resolveNumDispo(item, _dispoGciMap || new Map()));
-  const linhas = (num && num !== '—') ? dtLinhasDispo(num) : [];
+  const linhas = (num && num !== '—') ? linhasDaDispo(num) : [];
   const atual = linhas.length ? linhas[0] : null;
   if(!atual || !atual.dataEntrega) return { mudou:false };
   const gravada = formatDate(item.prevFaturamento) || '—';
@@ -6419,416 +6895,6 @@ function resolveNumDispo(item, gciMap){
    no momento do repasse. Como o lote só fatura a 100% repassado, o aberto e o
    feito têm que falar a mesma data; esta tela acerta o lado que não se acerta
    sozinho, de uma vez, pelo Nº da DISPO. */
-const DT = { lista: [], marcados: new Set(), aplicadas: 0, lotes: new Set(), dataLote: '' };
-
-function dtBR(iso){
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
-  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
-}
-function dtISO(br){
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(br || '');
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
-}
-
-/* Linhas da DISPO de um Nº. O mesmo Nº pode ter mais de uma linha. */
-function dtLinhasDispo(num){
-  if(!_dispoRows) return [];
-  return _dispoRows.filter(r => String(r.num ?? '').trim() === String(num));
-}
-function dtResumoLote(num){
-  const linhas = dtLinhasDispo(num);
-  const aberto = linhas.reduce((s, r) => s + Number(r.saldo || 0), 0);
-  const datas = [...new Set(linhas.map(r => formatDate(r.dataEntrega)).filter(d => d && d !== '—'))];
-  return { aberto, dispo: datas[0] || '', varias: datas.length > 1, achou: linhas.length > 0 };
-}
-
-async function abrirAjusteDatas(){
-  const bt = $('btnAjustarDatas');
-  const antes = bt ? bt.innerHTML : '';
-  if(bt){ bt.disabled = true; bt.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
-  try{
-    await getDispoGciMap();              // carrega _dispoRows uma vez
-  }catch(e){ console.error(e); }
-  if(bt){ bt.disabled = false; bt.innerHTML = antes; }
-
-  DT.lista = []; DT.marcados.clear(); DT.aplicadas = 0; DT.lotes = new Set(); DT.dataLote = '';
-  $('dtNums').value = '';
-  $('dtNovaData').value = '';
-  $('dtAchado').hidden = true;
-  $('dtAreaLista').hidden = true;
-  $('dtPronto').hidden = true;
-  $('dtAvisoPedido').hidden = true;
-  $('dtChkTodos').checked = false;
-  dtPintarBotoes();
-  $('datasModal').classList.remove('hidden');
-  document.body.style.overflow = 'hidden';
-  $('dtNums').focus();
-}
-/* Atalho vindo da DISPO: `index.html?prevfat=219,256` abre esta tela já
-   procurando por aqueles lotes. É o que fecha o ciclo — quem muda a data lá
-   chega aqui com o trabalho meio pronto, em vez de ter de lembrar sozinho. */
-async function abrirAjusteDatasPelaUrl(){
-  let nums = '';
-  try{ nums = new URLSearchParams(location.search).get('prevfat') || ''; }catch(_){}
-  if(!nums.trim()) return;
-  // espera os pedidos chegarem: sem eles a busca não acha nada
-  for(let i = 0; i < 120 && !(STATE.orders || []).length; i++){
-    await new Promise(r => setTimeout(r, 500));
-  }
-  await abrirAjusteDatas();
-  $('dtNums').value = nums.split(/[^0-9]+/).filter(Boolean).join(', ');
-  if($('dtNums').value) dtPesquisar();
-}
-document.addEventListener('DOMContentLoaded', abrirAjusteDatasPelaUrl);
-
-function fecharAjusteDatas(){
-  if(DT.aplicadas && !confirm('Há alterações aplicadas que ainda não foram salvas. Fechar assim mesmo?')) return;
-  $('datasModal').classList.add('hidden');
-  document.body.style.overflow = '';
-}
-
-/* Todo pedido vivo — aprovado ou pendente. Cancelado e arquivado ficam fora:
-   o primeiro não fatura e o segundo saiu da operação. */
-function dtPedidosVivos(){
-  return (STATE.orders || []).filter(o => o && !o.archived && canonicalStatus(o.status) !== 'Cancelado');
-}
-
-function dtMontarLista(nums){
-  const alvo = new Set(nums.map(String));
-  const out = [];
-  for(const o of dtPedidosVivos()){
-    (o.items || []).forEach((item, idx) => {
-      const num = resolveNumDispo(item, _dispoGciMap || new Map());
-      if(!alvo.has(String(num))) return;
-      out.push({
-        orderId: o.id, idxItem: idx, num: String(num),
-        gci: item.gci || '', produto: item.produto || '', cor: item.cor || '',
-        cliente: o.clienteNome || o.clienteCodigo || '—',
-        vendedor: o.preposto?.nome || o.preposto?.codigo || '—',
-        status: canonicalStatus(o.status),
-        pares: getItemUnits(item),
-        prevFat: formatDate(item.prevFaturamento) || '',
-        nova: '', ja: false
-      });
-    });
-  }
-  return out.sort((a, b) => (Number(a.num) - Number(b.num))
-    || String(a.cliente).localeCompare(String(b.cliente), 'pt-BR'));
-}
-
-/* Os Nº cuja data gravada no pedido já não bate com a da DISPO. A comparação
-   é pelo próprio Nº, não pelo código do produto: o mesmo artigo aparece em
-   vários lotes e comparar por código acusaria diferença onde não há. Lote que
-   saiu da DISPO não entra — não há com o que comparar. */
-function dtNumsDefasados(){
-  const fora = new Set();
-  for(const o of dtPedidosVivos()){
-    for(const item of (o.items || [])){
-      const num = String(resolveNumDispo(item, _dispoGciMap || new Map()));
-      if(num === '—') continue;
-      const r = dtResumoLote(num);
-      if(!r.achou || !r.dispo) continue;
-      const gravada = formatDate(item.prevFaturamento);
-      if(gravada && gravada !== '—' && gravada !== r.dispo) fora.add(num);
-    }
-  }
-  return [...fora].sort((a, b) => Number(a) - Number(b));
-}
-
-function dtTrazerDefasados(){
-  const nums = dtNumsDefasados();
-  if(!nums.length){ showToast('Nenhum pedido está com data diferente da DISPO.', 'info'); return; }
-  $('dtNums').value = nums.join(', ');
-  dtPesquisar();
-}
-
-function dtPesquisar(){
-  const texto = $('dtNums').value || '';
-  const pedidos = [...new Set(texto.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean))];
-  if(!pedidos.length){ showToast('Cole ao menos um número.', 'info'); return; }
-
-  DT.lista = dtMontarLista(pedidos);
-  DT.marcados.clear();
-  DT.aplicadas = 0;
-  DT.lotes = new Set();
-
-  const achados = new Set(DT.lista.map(i => i.num));
-  const semNada = pedidos.filter(n => !achados.has(String(n)));
-  const el = $('dtAchado');
-  el.hidden = false;
-  el.innerHTML =
-    `<span class="ok"><i class="fa-solid fa-circle-check"></i> ${achados.size} número${achados.size === 1 ? '' : 's'} · `
-    + `${DT.lista.length} ${DT.lista.length === 1 ? 'pedido' : 'pedidos'}</span>`
-    + (semNada.length ? `<span class="nao"><i class="fa-solid fa-circle-exclamation"></i> sem pedido: ${safeHtml(semNada.join(', '))}</span>` : '');
-
-  $('dtAreaLista').hidden = DT.lista.length === 0;
-  $('dtPronto').hidden = true;
-  $('dtChkTodos').checked = false;
-  dtPintarSugestoes();
-  dtPintarTabela();
-}
-
-function dtPintarTabela(){
-  let numAtual = null;
-  const linhas = DT.lista.map((i, k) => {
-    let cab = '';
-    if(i.num !== numAtual){
-      numAtual = i.num;
-      const r = dtResumoLote(i.num);
-      cab = `<tr class="dt-grupo"><td colspan="10"><div class="dt-grupo-in">
-        <b>Lote ${safeHtml(i.num)}</b><span class="sep">·</span>
-        ${r.achou
-          ? `<span class="aberto">${formatInt(r.aberto)} pares em aberto</span><span class="sep">·</span>`
-            + `<span>DISPO <span class="dispo">${safeHtml(r.dispo || '—')}</span>${r.varias ? ' (há mais de uma data neste Nº)' : ''}</span>`
-          : `<span>sem linha na DISPO — o lote saiu do estoque, só os pedidos mudam</span>`}
-        <button type="button" class="dt-grupo-bt" onclick="dtMarcarLote('${safeHtml(i.num)}')">marcar o lote</button>
-      </div></td></tr>`;
-    }
-    const data = i.nova
-      ? `<span class="dt-de">${safeHtml(i.prevFat || '—')}</span><i class="fa-solid fa-arrow-right dt-seta"></i><span class="dt-para">${safeHtml(i.nova)}</span>`
-      : safeHtml(i.prevFat || '—')
-        + (i.ja ? `<span class="dt-ja">já estava nessa data</span>` : '');
-    return cab + `<tr class="${DT.marcados.has(k) ? 'marcada' : ''}">
-      <td class="c-chk"><input type="checkbox" ${DT.marcados.has(k) ? 'checked' : ''} onchange="dtMarcar(${k}, this.checked)"></td>
-      <td class="c-num mono">${safeHtml(i.num)}</td>
-      <td class="c-gci mono">${safeHtml(i.gci || '—')}</td>
-      <td class="c-prod prod">${safeHtml(i.produto || '—')}</td>
-      <td class="c-cor">${safeHtml(i.cor || '—')}</td>
-      <td class="c-cli">${safeHtml(i.cliente)}</td>
-      <td class="c-vend">${safeHtml(i.vendedor)}</td>
-      <td class="c-par dt-dir">${formatInt(i.pares)}</td>
-      <td class="c-st"><span class="dt-chip ${i.status === 'Aprovado' ? 'ap' : 'pe'}">${safeHtml(i.status)}</span></td>
-      <td class="c-dt" style="white-space:nowrap">${data}</td>
-    </tr>`;
-  });
-  $('dtCorpo').innerHTML = linhas.join('');
-  dtPintarBotoes();
-}
-
-function dtMarcar(k, on){
-  if(on) DT.marcados.add(k); else DT.marcados.delete(k);
-  $('dtChkTodos').checked = DT.marcados.size === DT.lista.length && DT.lista.length > 0;
-  dtPintarTabela();
-}
-function dtMarcarTodos(on){
-  DT.marcados.clear();
-  if(on) DT.lista.forEach((_, k) => DT.marcados.add(k));
-  dtPintarTabela();
-}
-function dtMarcarLote(num){
-  const ids = DT.lista.map((i, k) => i.num === String(num) ? k : -1).filter(k => k >= 0);
-  const todosJa = ids.every(k => DT.marcados.has(k));
-  ids.forEach(k => todosJa ? DT.marcados.delete(k) : DT.marcados.add(k));
-  $('dtChkTodos').checked = DT.marcados.size === DT.lista.length && DT.lista.length > 0;
-  dtPintarTabela();
-}
-
-/* As datas que a DISPO já tem para esses lotes viram atalho: na maioria das
-   vezes é para elas que o pedido vai. */
-function dtPintarSugestoes(){
-  const nums = [...new Set(DT.lista.map(i => i.num))];
-  const datas = [...new Set(nums.map(n => dtResumoLote(n).dispo).filter(Boolean))].sort(
-    (a, b) => dtISO(a).localeCompare(dtISO(b)));
-  $('dtSugs').innerHTML = datas.slice(0, 4).map(d =>
-    `<button type="button" class="dt-sug" onclick="dtUsarData('${d}')">
-      <i class="fa-solid fa-arrow-turn-up" style="font-size:9px"></i> ${d} (DISPO)</button>`).join('');
-}
-function dtUsarData(br){
-  $('dtNovaData').value = dtISO(br);
-  dtPintarBotoes();
-}
-
-function dtPintarBotoes(){
-  const data = $('dtNovaData') ? $('dtNovaData').value : '';
-  const n = DT.marcados.size;
-  $('dtBtAplicar').disabled = !data || n === 0;
-  const conta = n ? `<b>${n}</b> marcado${n === 1 ? '' : 's'} de ${DT.lista.length}` : 'nenhum marcado';
-  $('dtConta').innerHTML = conta;
-  $('dtContaTopo').innerHTML = conta;
-
-  const aprovados = [...DT.marcados].filter(k => DT.lista[k] && DT.lista[k].status === 'Aprovado').length;
-  $('dtAvisoPedido').hidden = aprovados === 0;
-  if(aprovados){
-    $('dtAvisoTxt').innerHTML = `<b>${aprovados} ${aprovados === 1 ? 'pedido já aprovado' : 'pedidos já aprovados'}.</b> `
-      + 'A data que está lá foi a que o vendedor passou ao cliente — mudando aqui, vale avisá-lo.';
-  }
-
-  // Pedido já certo e lote para trás é um caso real: quem ajustou antes de a
-  // tela gravar os dois lados cai nele, e o Salvar não pode ficar travado.
-  const comDispo = $('dtTambemDispo') && $('dtTambemDispo').checked;
-  const nLotes = comDispo ? (DT.lotes ? DT.lotes.size : 0) : 0;
-  $('dtBtSalvar').disabled = DT.aplicadas === 0 && nLotes === 0;
-  $('dtRotuloSalvar').textContent =
-    DT.aplicadas && nLotes ? `Salvar ${DT.aplicadas} pedido(s) e ${nLotes} lote(s)`
-    : DT.aplicadas ? `Salvar ${DT.aplicadas} alteraç${DT.aplicadas === 1 ? 'ão' : 'ões'}`
-    : nLotes ? `Salvar ${nLotes} lote(s) na DISPO`
-    : 'Salvar';
-  $('dtRodape').textContent = (DT.aplicadas || nLotes) ? 'as mudanças ainda não foram gravadas' : '';
-}
-
-/* Lotes marcados cuja data na DISPO não é a que a tela vai aplicar. É o
-   que falta quando os pedidos já estão certos e só o lote ficou para trás. */
-function dtLotesAMudar(br){
-  const nums = new Set();
-  for(const k of DT.marcados){
-    const i = DT.lista[k];
-    if(!i) continue;
-    const r = dtResumoLote(i.num);
-    if(r.achou && r.dispo && r.dispo !== br) nums.add(String(i.num));
-  }
-  return nums;
-}
-
-function dtAplicar(){
-  const br = dtBR($('dtNovaData').value);
-  if(!br || !DT.marcados.size) return;
-  let n = 0, iguais = 0;
-  for(const k of DT.marcados){
-    if(DT.lista[k].prevFat === br){ DT.lista[k].ja = true; DT.lista[k].nova = ''; iguais++; continue; }
-    DT.lista[k].nova = br;
-    DT.lista[k].ja = false;
-    n++;
-  }
-  DT.aplicadas = DT.lista.filter(i => i.nova).length;
-  DT.lotes = dtLotesAMudar(br);
-  DT.dataLote = br;
-  $('dtPronto').hidden = false;
-  $('dtProntoTxt').innerHTML =
-    `<b>${n} ${n === 1 ? 'pedido recebeu' : 'pedidos receberam'} a data ${br}.</b> `
-    + (iguais ? `${iguais} já ${iguais === 1 ? 'estava' : 'estavam'} nela e ${iguais === 1 ? 'ficou' : 'ficaram'} como ${iguais === 1 ? 'está' : 'estão'}. ` : '')
-    + (DT.lotes.size ? `<b>${DT.lotes.size} lote(s)</b> também vão da data da DISPO para ${br}. ` : '')
-    + 'Confira na tabela e clique em <b>Salvar</b> — até lá, nada foi gravado.';
-  dtPintarTabela();
-}
-
-/* A data do lote na DISPO. É dela que saem o estoque, a vitrine do
-   Repasses e a CMS PASS: o pedido guarda a sua cópia, feita no momento do
-   repasse, e mudar só o pedido deixava as outras telas na data velha. */
-/* Grava a DISPO inteira num pedido só — e por isso precisa partir do que
-   está no servidor AGORA, não da cópia lida quando a tela abriu. Partindo da
-   cópia velha, um saldo que o admin da DISPO acabou de mexer voltava ao que
-   era, e o trabalho da outra tela sumia sem aviso. */
-async function dtGravarDispo(porNum){
-  const campos = r => ({
-    num: r.num, ebm: r.ebm, gci: r.gci, filial: r.filial,
-    codigo: r.codigo, produto: r.produto, cor: r.cor,
-    dataEntrega: r.dataEntrega, pedidoMae: r.pedidoMae,
-    saldo: r.saldo, grade: r.grade || {}
-  });
-
-  let lista = null;
-  try{
-    const r = await workerFetchAdmin({ method:'PATCH', body: JSON.stringify({ action:'getDispo' }) });
-    if(r.ok){ const j = await r.json(); if(Array.isArray(j) && j.length) lista = j.map(campos); }
-  }catch(e){ console.warn('Não reli a DISPO antes de gravar as datas.', e); }
-  if(!lista){
-    if(!_dispoRows || !_dispoRows.length) throw new Error('A DISPO não está carregada');
-    lista = _dispoRows.map(campos);
-  }
-
-  let tocadas = 0;
-  for(const r of lista){
-    const nova = porNum.get(String(r.num ?? '').trim());
-    if(!nova) continue;
-    if(formatDate(r.dataEntrega) === nova) continue;   // já está nessa data
-    r.dataEntrega = nova;
-    tocadas++;
-  }
-  // a tela acompanha o que foi gravado
-  const datas = new Map(lista.map(r => [String(r.num ?? '').trim(), r.dataEntrega]));
-  for(const r of (_dispoRows || [])){
-    const d = datas.get(String(r.num ?? '').trim());
-    if(d !== undefined) r.dataEntrega = d;
-  }
-  if(!tocadas) return 0;
-  const res = await workerFetchAdmin({ method:'PATCH', body: JSON.stringify({
-    action:'saveDispo', data: lista })});
-  if(!res.ok) throw new Error('A DISPO não salvou (HTTP ' + res.status + ')');
-  const j = await res.json();
-  if(!j.success) throw new Error(j.error || 'A DISPO não salvou');
-  return tocadas;
-}
-
-/* Grava num commit só. Cada pedido vai com o array items inteiro — só os
-   itens tocados mudam — e um registro no histórico de quem fez e quando. */
-async function dtSalvar(){
-  const mudancas = DT.lista.filter(i => i.nova);
-  const soLote = !mudancas.length && DT.lotes && DT.lotes.size;
-  if(!mudancas.length && !soLote) return;
-
-  const bt = $('dtBtSalvar');
-  const antes = bt.innerHTML;
-  bt.disabled = true;
-  bt.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando…';
-
-  const agora = new Date().toISOString();
-  const quem = getPortalSession()?.nome || getPortalSession()?.codigo || 'CMS';
-  const porPedido = new Map();
-  for(const m of mudancas){
-    if(!porPedido.has(m.orderId)) porPedido.set(m.orderId, []);
-    porPedido.get(m.orderId).push(m);
-  }
-
-  const alvos = [];
-  for(const [orderId, itens] of porPedido){   // vazio quando só o lote muda
-    const idx = STATE.orders.findIndex(o => o && o.id === orderId);
-    if(idx === -1) continue;
-    const anterior = STATE.orders[idx];
-    const novosItems = (anterior.items || []).map((it, k) => {
-      const m = itens.find(x => x.idxItem === k);
-      return m ? { ...it, prevFaturamento: m.nova } : it;
-    });
-    const detalhe = itens.map(m => `lote ${m.num}: ${m.prevFat || '—'} → ${m.nova}`).join('; ');
-    alvos.push({
-      idx, anterior,
-      campos: { items: novosItems },
-      historyAppend: {
-        id: `prevfat-${orderId}-${agora}`,
-        action: `Prev. faturamento ajustada em bloco por ${quem} — ${detalhe}`,
-        at: agora
-      }
-    });
-  }
-
-  for(const t of alvos){
-    STATE.orders[t.idx] = { ...t.anterior, ...t.campos, updatedAt: agora,
-      history: [...(t.anterior.history || []), t.historyAppend] };
-  }
-  const falhas = alvos.length ? await _gravarLote(alvos) : [];
-
-  bt.innerHTML = antes;
-  if(falhas.length){
-    showToast(`${falhas.length} pedido(s) não salvaram — tente de novo.`, 'error');
-    bt.disabled = false;
-    return;
-  }
-
-  // O lote na DISPO vai depois dos pedidos: se ele falhar, os pedidos já
-  // estão salvos e a tela diz exatamente o que faltou.
-  let lotes = 0, erroDispo = '';
-  if($('dtTambemDispo') && $('dtTambemDispo').checked){
-    const porNum = new Map();
-    for(const m of mudancas) porNum.set(String(m.num), m.nova);
-    // lote cujo pedido já estava certo: só ele precisa ir
-    if(DT.lotes && DT.dataLote) for(const n of DT.lotes) if(!porNum.has(n)) porNum.set(n, DT.dataLote);
-    try{ lotes = await dtGravarDispo(porNum); }
-    catch(e){ console.error(e); erroDispo = e.message || 'erro ao salvar a DISPO'; }
-  }
-
-  if(erroDispo){
-    showToast(`Pedidos salvos, mas o lote na DISPO não: ${erroDispo}`, 'error');
-  }else{
-    showToast((mudancas.length ? `${mudancas.length} item(ns) em ${alvos.length} pedido(s)` : 'Nenhum pedido mudou') +
-      (lotes ? ` · ${lotes} linha(s) da DISPO` : '') + ' atualizados.', 'success');
-  }
-  DT.aplicadas = 0;
-  DT.lotes = new Set();
-  DT.lista.forEach(i => { if(i.nova){ i.prevFat = i.nova; i.nova = ''; } });
-  dtPintarTabela();
-  renderList();
-  atualizarBadgeGlobal();
-}
-
 function buildRelatorioXlsxRows(orders, gciMap=new Map()){
   const rows = [['Nº DISPO','Vendedor','Cod. Cliente','Nome','Prazo','Campanha','Qtde','EBM','GCI','Descrição','Cor','Prev Fat','Status','Grade']];
   let n = 0;
@@ -7018,8 +7084,8 @@ function atualizarSelecaoUI(){
   const chkAll = $('chkSelecionarTodos');
   if(contEl){
     contEl.textContent = n > 0
-      ? `${n} de ${total} selecionado${n>1?'s':''} · ${totalPages} página${totalPages>1?'s':''}`
-      : `${total} pedido${total!==1?'s':''} · ${totalPages} página${totalPages>1?'s':''}`;
+      ? `${n} de ${total} selecionado${n>1?'s':''}`
+      : (totalPages > 1 ? `${totalPages} páginas` : '');
   }
   if(badge)  badge.textContent = nPend;
   if(btnExp) btnExp.classList.toggle('hidden', nPend === 0);
@@ -7221,6 +7287,7 @@ document.addEventListener('mouseup', (e)=>{
   function setStickyOffset(){
     var h = document.getElementById('adminHeader');
     if(h) document.documentElement.style.setProperty('--admin-header-h', h.offsetHeight + 'px');
+      mediuFixosAdm();
   }
   window.addEventListener('resize', setStickyOffset);
   window.addEventListener('load', setStickyOffset);
