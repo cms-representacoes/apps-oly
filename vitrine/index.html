@@ -3271,6 +3271,24 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
   </div>
 </div>
 
+<!-- Gerar catálogo em PDF: com as grades ou só o total. Mesma caixa da
+     planilha (.escplan) — ver escolherPdf(). -->
+<div id="escPdf" class="escplan" hidden>
+  <div class="cx" role="dialog" aria-labelledby="escPdfTit">
+    <h3 id="escPdfTit">Gerar catálogo em PDF</h3>
+    <div class="sub" id="escPdfSub">—</div>
+    <button class="op" type="button" data-escpdf="grades">
+      <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg></span>
+      <span><b>Com as grades</b><small>Os tamanhos e a quantidade de cada um, como na tela</small></span>
+    </button>
+    <button class="op" type="button" data-escpdf="total">
+      <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h8"/></svg></span>
+      <span><b>Só o total</b><small>Apenas a quantidade de cada origem · menos páginas</small></span>
+    </button>
+    <button class="fechar" type="button" data-escpdf="">Cancelar</button>
+  </div>
+</div>
+
 <div id="fichaBg" class="fichabg" hidden onclick="fecharFicha(event)">
   <div class="fichacx" onclick="event.stopPropagation()">
     <div class="topo">
@@ -8480,9 +8498,38 @@ function liberado(btn){
   if(btn._txt) rotuloDe(btn).textContent = btn._txt;
 }
 
+/* Com as grades ou só o total? Devolve 'grades', 'total' ou null
+   (cancelou). Mesmo desenho e mesmo teclado do escolherPlanilha. */
+function escolherPdf(n){
+  return new Promise(resolve => {
+    const fundo = $('escPdf');
+    $('escPdfSub').textContent = `${nf(n)} ${n === 1 ? 'produto marcado' : 'produtos marcados'}`;
+    const fim = v => {
+      fundo.hidden = true;
+      fundo.onclick = null;
+      document.removeEventListener('keydown', esc, true);
+      resolve(v || null);
+    };
+    const esc = e => { if(e.key === 'Escape'){ e.stopPropagation(); fim(null); } };
+    fundo.onclick = e => {
+      const b = e.target.closest('button[data-escpdf]');
+      if(b) fim(b.dataset.escpdf);
+      else if(e.target === fundo) fim(null);
+    };
+    document.addEventListener('keydown', esc, true);
+    fundo.hidden = false;
+    setTimeout(() => { const f = fundo.querySelector('[data-escpdf="grades"]'); if(f) f.focus(); }, 30);
+  });
+}
+
 async function gerarCatalogoPdf(){
   const itens = marcadosVisiveis();
   if(!itens.length) return;
+  /* Quem pede pelo Nexo não está na tela para clicar: ali o PDF sai com
+     as grades, como sempre saiu, em vez de esperar para sempre. */
+  const escolha = window.__nexoPdf ? 'grades' : await escolherPdf(itens.length);
+  if(!escolha) return;
+  const comGrade = escolha === 'grades';
   const btn = $('btnSelPdf');
   ocupado(btn, 'Gerando…');
   try{
@@ -8524,7 +8571,13 @@ async function gerarCatalogoPdf(){
 
     // Quatro por página: mesmo com as três origens o conteúdo mede cerca de
     // 90pt, e em três sobrava metade do card vazio.
-    const POR_PAG = 4, topo = alturaCab + 18, base = pageH - 40, vaoCard = 12;
+    // Só o total: cada origem encolhe de 37pt para 15pt, e o card inteiro
+    // passa a caber em ~120pt. Mantendo quatro, sobraria o mesmo vazio que
+    // o parágrafo acima diz que foi corrigido — então viram cinco, e o
+    // arquivo encurta junto. Cinco é o teto: a foto (88pt) e as margens já
+    // pedem 112pt, e em seis o card teria 111pt.
+    const POR_PAG = comGrade ? 4 : 5;
+    const topo = alturaCab + 18, base = pageH - 40, vaoCard = 12;
     const altCard = (base - topo - vaoCard*(POR_PAG-1)) / POR_PAG;
     const FOTO = 88, PADX = 14, PADY = 12;
 
@@ -8586,8 +8639,14 @@ async function gerarCatalogoPdf(){
                    x+8+wr+8+wv+8, ly);
         }
         ly += 6;
-        ly = desenharGrade(l.grade, x+8, ly, w-8, l.c);
-        if(!l.grade || !Object.keys(l.grade).length) ly += 9;
+        // "Só o total" para aqui: a quantidade da origem já foi escrita
+        // acima (l.val), que é exatamente o total daquela linha.
+        if(comGrade){
+          ly = desenharGrade(l.grade, x+8, ly, w-8, l.c);
+          if(!l.grade || !Object.keys(l.grade).length) ly += 9;
+        }else{
+          ly += 9;
+        }
       }
       return ly;
     }
@@ -8722,8 +8781,10 @@ async function gerarCatalogoPdf(){
       }
       rodape(pag);
     }
+    // O nome diz o que o arquivo traz: dois PDFs do mesmo dia na pasta de
+    // Downloads, um com grade e outro sem, seriam indistinguíveis.
     const nomePdf = `catalogo_${MARCA}_${d.getFullYear()}${p2(d.getMonth()+1)}${p2(d.getDate())}` +
-      `_${p2(d.getHours())}${p2(d.getMinutes())}.pdf`;
+      `_${p2(d.getHours())}${p2(d.getMinutes())}${comGrade ? '' : '_total'}.pdf`;
     // Gerado a pedido do Nexo: o arquivo volta para o chat em vez de baixar.
     if(window.__nexoPdf) window.__nexoPdf.pronto(doc.output('blob'), nomePdf);
     else doc.save(nomePdf);
