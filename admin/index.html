@@ -935,6 +935,20 @@
         </div>
       </header>
 
+      <!-- Menu da ordem da lista. Mesmo desenho do "..." das linhas. -->
+      <div id="menuOrdem" class="adm-menu" role="menu" aria-hidden="true">
+        <div class="adm-menu-rot">Ordenar por</div>
+        <button type="button" role="menuitemradio" data-ordem="chegada">
+          <i class="fa-solid fa-check"></i><span>Mais recentes</span>
+        </button>
+        <button type="button" role="menuitemradio" data-ordem="antigos">
+          <i class="fa-solid fa-check"></i><span>Mais antigos</span>
+        </button>
+        <button type="button" role="menuitemradio" data-ordem="alterados">
+          <i class="fa-solid fa-check"></i><span>Alterados por último</span>
+        </button>
+      </div>
+
       <!-- Menu do botao Importar. Cada item abre o modal que ja existia
            dentro da antiga tela de Configuracoes. -->
       <div id="menuImportar" class="adm-menu" role="menu" aria-hidden="true">
@@ -1020,12 +1034,11 @@
             <input type="checkbox" id="chkSelecionarTodos" class="card-chk" title="Selecionar todos">
             <label for="chkSelecionarTodos" class="chk-select-all-lbl">Selecionar todos</label>
             <span id="selecaoCount" class="text-xs font-bold text-slate-400 ml-2"></span>
-            <select id="ordemLista" onchange="setOrdemLista(this.value)" title="Ordem da lista"
-              class="focus-ring ml-3 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-600">
-              <option value="chegada">Mais recentes</option>
-              <option value="antigos">Mais antigos</option>
-              <option value="alterados">Alterados por último</option>
-            </select>
+            <button id="btnOrdem" type="button" class="btn-ordem ml-3"
+              title="Ordem da lista" aria-haspopup="menu" aria-expanded="false">
+              <span id="btnOrdemRot">Mais recentes</span>
+              <i class="fa-solid fa-chevron-down" style="font-size:9px"></i>
+            </button>
             <div class="text-xs font-bold text-slate-400 ml-auto" id="ordersCountBadge">0 pedidos</div>
             <button id="btnAprovarSelecionados" onclick="aprovarSelecionados()"
               title="Aprovar os pendentes marcados e gerar a planilha dos selecionados"
@@ -1691,6 +1704,22 @@
     .passo .detalhe{ display:block; font-size:11.5px; font-weight:600; color:var(--muted); }
     @keyframes girar-passo{ to{ transform:rotate(360deg); } }
 
+    /* O botao da ordem: pilula, como tudo mais na barra. */
+    .btn-ordem{
+      display:inline-flex; align-items:center; gap:7px; flex:none;
+      border:1px solid var(--line); background:var(--card); color:var(--muted);
+      border-radius:999px; padding:5px 12px; font-family:inherit;
+      font-size:12px; font-weight:700; cursor:pointer;
+      transition:border-color .12s, color .12s;
+    }
+    .btn-ordem:hover{ border-color:var(--muted); color:var(--text); }
+    .btn-ordem[aria-expanded="true"]{ border-color:var(--brand); color:var(--brand); }
+    /* O visto marca a ordem em uso; nos outros ele fica invisivel, mas
+       ocupa o lugar - sem isso os rotulos dancavam ao trocar. */
+    #menuOrdem button i{ opacity:0; }
+    #menuOrdem button[aria-checked="true"]{ color:var(--brand); }
+    #menuOrdem button[aria-checked="true"] i{ opacity:1; color:var(--brand); }
+
     .adm-menu-rot{
       font-size:9.5px; font-weight:800; letter-spacing:.07em;
       text-transform:uppercase; color:var(--muted); padding:7px 10px 5px;
@@ -2046,16 +2075,56 @@ try{ _ordemLista = localStorage.getItem('admin_ordem_lista_v1') || 'chegada'; }c
 function setOrdemLista(valor){
   _ordemLista = valor || 'chegada';
   try{ localStorage.setItem('admin_ordem_lista_v1', _ordemLista); }catch(_){}
+  if(typeof pintarOrdem === 'function') pintarOrdem();
   _currentPage = 1;          // trocar a ordem invalida a página atual
   applyFilters();
 }
 
-// O <select> precisa mostrar a preferência salva, senão exibe "chegada" mesmo
-// quando a lista está ordenada de outro jeito.
-document.addEventListener('DOMContentLoaded', ()=>{
-  const sel = document.getElementById('ordemLista');
-  if(sel) sel.value = _ordemLista;
-});
+/* O botao mostra a ordem em uso, e o menu marca qual e: a preferencia
+   fica salva, entao a tela pode abrir ordenada de um jeito que nao e o
+   padrao. */
+function pintarOrdem(){
+  const b = document.getElementById('btnOrdemRot');
+  const itens = document.querySelectorAll('#menuOrdem [data-ordem]');
+  itens.forEach(i => {
+    const on = i.dataset.ordem === _ordemLista;
+    i.setAttribute('aria-checked', on ? 'true' : 'false');
+    if(on && b) b.textContent = i.querySelector('span').textContent;
+  });
+}
+
+function fecharMenuOrdem(){
+  const m = document.getElementById('menuOrdem');
+  if(!m) return;
+  m.classList.remove('ab');
+  m.setAttribute('aria-hidden', 'true');
+  document.getElementById('btnOrdem')?.setAttribute('aria-expanded', 'false');
+}
+
+function alternarMenuOrdem(){
+  const m = document.getElementById('menuOrdem');
+  const b = document.getElementById('btnOrdem');
+  if(!m || !b) return;
+  if(m.classList.contains('ab')){ fecharMenuOrdem(); return; }
+  m.classList.add('ab');
+  m.setAttribute('aria-hidden', 'false');
+  b.setAttribute('aria-expanded', 'true');
+  const r = b.getBoundingClientRect();
+  const alt = m.offsetHeight, larg = m.offsetWidth;
+  const cabeEmbaixo = r.bottom + alt + 10 < innerHeight;
+  m.style.top = (scrollY + (cabeEmbaixo ? r.bottom + 6 : r.top - alt - 6)) + 'px';
+  m.style.left = Math.max(8, scrollX + Math.min(r.left, innerWidth - larg - 8)) + 'px';
+}
+
+document.addEventListener('click', e => {
+  if(e.target.closest('#btnOrdem')){ e.stopPropagation(); alternarMenuOrdem(); return; }
+  const item = e.target.closest('#menuOrdem [data-ordem]');
+  if(item){ setOrdemLista(item.dataset.ordem); fecharMenuOrdem(); return; }
+  if(!e.target.closest('#menuOrdem')) fecharMenuOrdem();
+}, true);
+document.addEventListener('keydown', e => { if(e.key === 'Escape') fecharMenuOrdem(); });
+addEventListener('scroll', fecharMenuOrdem, { passive:true });
+document.addEventListener('DOMContentLoaded', pintarOrdem);
 
 // Seleção de pedidos para exportar. Declarada aqui em cima porque o template
 // do card a consulta ao renderizar — const não é içada, e ficar depois do uso
