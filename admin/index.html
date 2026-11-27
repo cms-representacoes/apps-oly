@@ -1673,6 +1673,24 @@
       padding:9px 10px; font-size:13px; font-weight:600; color:var(--text);
       font-family:inherit;
     }
+    /* Etapas do modal de progresso */
+    .passo{ display:flex; align-items:center; gap:11px; padding:9px 2px;
+      font-size:13.5px; font-weight:700; color:var(--muted); }
+    .passo .bolinha{
+      width:22px; height:22px; border-radius:50%; flex:none;
+      border:2px solid var(--line); display:flex; align-items:center;
+      justify-content:center; font-size:11px;
+    }
+    .passo.fazendo{ color:var(--text); }
+    .passo.fazendo .bolinha{ border-color:var(--brand); border-right-color:transparent;
+      animation:girar-passo .7s linear infinite; }
+    .passo.ok{ color:var(--text); }
+    .passo.ok .bolinha{ border-color:#16a34a; background:#16a34a; color:#fff; }
+    .passo.erro{ color:var(--danger); }
+    .passo.erro .bolinha{ border-color:var(--danger); background:var(--danger); color:#fff; }
+    .passo .detalhe{ display:block; font-size:11.5px; font-weight:600; color:var(--muted); }
+    @keyframes girar-passo{ to{ transform:rotate(360deg); } }
+
     .adm-menu-rot{
       font-size:9.5px; font-weight:800; letter-spacing:.07em;
       text-transform:uppercase; color:var(--muted); padding:7px 10px 5px;
@@ -1932,6 +1950,27 @@
         <div class="mt-5 flex flex-col-reverse sm:flex-row justify-end gap-2">
           <button id="perguntaNao" class="focus-ring rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700">Cancelar</button>
           <button id="perguntaSim" class="focus-ring rounded-2xl px-5 py-3 text-sm font-extrabold text-white">Confirmar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progresso de uma acao em etapas. Existe para a pausa da vitrine:
+       tirar a vitrine do ar e grave demais para um aviso de canto que
+       aparece antes de alguem conferir se pegou. -->
+  <div id="passosModal" class="hidden fixed inset-0 z-[170] bg-slate-950/45 p-4">
+    <div class="flex min-h-full items-center justify-center">
+      <div class="w-full max-w-md rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,.24)]">
+        <div class="flex items-center gap-3 mb-4">
+          <div id="passosIcone" class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"></div>
+          <div class="min-w-0">
+            <div id="passosTitulo" class="text-base font-extrabold">—</div>
+            <div id="passosSub" class="text-xs font-semibold text-slate-500"></div>
+          </div>
+        </div>
+        <ol id="passosLista" class="flex flex-col gap-1"></ol>
+        <div class="mt-5 flex justify-end">
+          <button id="passosFechar" class="hidden focus-ring rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700">Fechar</button>
         </div>
       </div>
     </div>
@@ -4886,7 +4925,16 @@ async function toggleManutencao(){
     showToast('Nada mudou.', 'info');
     return;
   }
+  const oQue = novo.repasse && novo.gtm ? 'Pausando a vitrine'
+             : novo.repasse ? 'Pausando o repasse do dia a dia'
+             : novo.gtm ? 'Pausando o bolsão da coleção'
+             : 'Colocando tudo de volta no ar';
+  abrirPassos(oQue, 'Não feche esta janela', [
+    { id:'gravar',   rotulo:'Gravando no servidor' },
+    { id:'conferir', rotulo:'Conferindo se pegou' },
+  ]);
   try{
+    passo('gravar', 'fazendo');
     const res = await fetch(WORKER_URL, {
       method:'PATCH', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ action:'saveStatus',
@@ -4894,13 +4942,42 @@ async function toggleManutencao(){
     });
     const out = await res.json().catch(()=>({}));
     if(!res.ok || !out.success) throw new Error(out.error || res.status);
+    passo('gravar', 'ok');
+
+    /* A tela acreditava no "success" e seguia. O arquivo vai para o
+       GitHub, que leva alguns segundos para servir a versao nova -
+       dai as tentativas antes de reclamar. */
+    passo('conferir', 'fazendo');
+    let bateu = false;
+    for(let i = 0; i < 4 && !bateu; i++){
+      if(i) await new Promise(r => setTimeout(r, 1500));
+      try{
+        const r2 = await fetch(WORKER_URL, { method:'PATCH',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ action:'getStatus' }) });
+        const st = await r2.json();
+        bateu = !!st && !!st.paused === novo.repasse && !!st.pausedGtm === novo.gtm;
+      }catch(_){}
+      if(!bateu) passo('conferir', 'fazendo', `tentativa ${i + 1} de 4`);
+    }
+
     _pausa = novo;
     refreshManutencaoUI();
-    showToast(novo.repasse || novo.gtm
-      ? rotuloDaPausa() + '.' : 'Tudo de volta no ar.', 'success');
+    if(bateu){
+      passo('conferir', 'ok');
+      fecharPassos(novo.repasse || novo.gtm ? rotuloDaPausa() : 'Tudo de volta no ar',
+        'As telas já abertas pegam em até 30 segundos.');
+    }else{
+      /* Gravou, mas o servidor ainda responde o valor velho: isso
+         propaga sozinho. Dizer "deu erro" seria mentira. */
+      passo('conferir', 'erro', 'o servidor ainda responde o valor antigo');
+      fecharPassos('Gravado, propagando',
+        'A mudança foi aceita, mas ainda não aparece na leitura. Costuma levar alguns segundos.');
+    }
   }catch(err){
     console.error(err);
-    showToast('Não foi possível alterar o status da vitrine.', 'error');
+    passo('gravar', 'erro', String(err.message || err));
+    fecharPassos('Não deu para mudar', 'Nada foi alterado. Tente de novo.', true);
   }
 }
 loadManutencaoStatus();
@@ -4926,6 +5003,66 @@ function isToday(dateStr){
 }
 
 // Período ativo (em ms de janela)
+/* ── Modal de progresso ───────────────────────────────────────────
+   Mostra etapas de verdade, uma linha por etapa. Quem chama diz quando
+   cada uma comeca, terminou ou falhou. */
+function abrirPassos(titulo, sub, passos){
+  $('passosTitulo').textContent = titulo;
+  $('passosSub').textContent = sub || '';
+  $('passosIcone').style.background = '#eef2ff';
+  $('passosIcone').innerHTML = '<i class="fa-solid fa-circle-half-stroke" style="color:#2c39e2"></i>';
+  $('passosLista').innerHTML = passos.map(p => `
+    <li class="passo" data-passo="${safeHtml(p.id)}">
+      <span class="bolinha"></span>
+      <span><span class="rot">${safeHtml(p.rotulo)}</span></span>
+    </li>`).join('');
+  $('passosFechar').classList.add('hidden');
+  $('passosModal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function passo(id, estado, detalhe){
+  const li = document.querySelector(`#passosLista [data-passo="${id}"]`);
+  if(!li) return;
+  li.classList.remove('fazendo', 'ok', 'erro');
+  if(estado) li.classList.add(estado);
+  const b = li.querySelector('.bolinha');
+  b.innerHTML = estado === 'ok' ? '<i class="fa-solid fa-check"></i>'
+              : estado === 'erro' ? '<i class="fa-solid fa-xmark"></i>' : '';
+  const alvo = li.querySelector('span:last-child');
+  const velho = alvo.querySelector('.detalhe');
+  if(velho) velho.remove();
+  if(detalhe) alvo.insertAdjacentHTML('beforeend',
+    `<span class="detalhe">${safeHtml(detalhe)}</span>`);
+}
+
+function fecharPassos(titulo, sub, erro){
+  if(titulo) $('passosTitulo').textContent = titulo;
+  if(sub !== undefined) $('passosSub').textContent = sub;
+  $('passosIcone').style.background = erro ? '#fdeaea' : '#e6f6ec';
+  $('passosIcone').innerHTML = erro
+    ? '<i class="fa-solid fa-triangle-exclamation" style="color:#b91c1c"></i>'
+    : '<i class="fa-solid fa-check" style="color:#15803d"></i>';
+  $('passosFechar').classList.remove('hidden');
+  setTimeout(() => $('passosFechar').focus(), 30);
+}
+
+function sairDosPassos(){
+  $('passosModal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+$('passosFechar').addEventListener('click', sairDosPassos);
+$('passosModal').addEventListener('click', e => {
+  /* So depois de terminar: no meio da gravacao, fechar deixaria a
+     pessoa sem saber se pegou. */
+  if(e.target === $('passosModal') && !$('passosFechar').classList.contains('hidden'))
+    sairDosPassos();
+});
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape' && !$('passosModal').classList.contains('hidden')
+     && !$('passosFechar').classList.contains('hidden')) sairDosPassos();
+});
+
 // ── MENU IMPORTAR ─────────────────────────────────────────────────────────────
 /* Cada item abre o modal que ja existia. O menu sobe em vez de descer
    quando nao ha espaco embaixo, como o "..." das linhas. */
