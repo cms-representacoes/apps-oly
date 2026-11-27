@@ -16,8 +16,13 @@
 
   <style>
     :root{
-      --bg:#f7f8fc;
+      --bg:#d9e0ee;        /* era #f7f8fc, quase branco: as caixas flutuavam */
       --card:#ffffff;
+      /* A faixa de cabecalho da tabela, como na tela de pedidos. */
+      --cab-bg:#c5cfe3;
+      --cab-tx:#3d4a61;
+      --cab-forte:#b4c1da;  /* passar o mouse */
+      --cab-marc:#a6b5d2;   /* coluna que esta ordenando */
       --text:#0e1526;
       --line:#e6e9f3;
       --brand:#2c39e2;
@@ -82,7 +87,7 @@
       0%,100%{ box-shadow:0 0 0 0 rgba(2,132,199,.5); }
       70%{ box-shadow:0 0 0 9px rgba(2,132,199,0); }
     }
-    #btnToggleFiltros.piscando{
+    #btnMaisCab.piscando{
       color:#0284c7; border-color:#7dd3fc; background:#f0f9ff;
       animation:pisca-filtro 1.6s ease-out infinite;
     }
@@ -104,21 +109,74 @@
       #fabLimparDispo .fab-lbl{ display:none; }
     }
     @media(prefers-reduced-motion:reduce){
-      #btnToggleFiltros.piscando{ animation:none; }
+      #btnMaisCab.piscando{ animation:none; }
       #fabLimparDispo{ transition:none; }
     }
 
     /* Ordenar: mesma altura das abas, com cor própria para não se confundir
        com um filtro ligado */
-    .btn-ordenar{
-      flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center;
-      width:34px; height:34px; border-radius:999px; border:none; cursor:pointer;
-      color:#fff; font-size:13px;
-      background:linear-gradient(135deg,#38bdf8,#0284c7);
-      box-shadow:0 3px 10px rgba(2,132,199,.32);
-      transition:transform .12s, filter .12s;
+    /* Era azul chapado com icone branco: 2,14:1, e gritava mais que os
+       proprios filtros ao lado. Vira a pilula branca dos outros. */
+    /* Menu de acoes da linha - mesmo desenho do "..." da tela de pedidos */
+    .adm-menu{
+      position:absolute; z-index:130; min-width:216px; padding:5px;
+      background:var(--card); border:1px solid var(--line); border-radius:12px;
+      box-shadow:0 18px 44px -12px rgba(15,23,42,.38); display:none;
     }
-    .btn-ordenar:hover{ filter:brightness(1.06); transform:translateY(-1px); }
+    .adm-menu.ab{ display:block; }
+    .adm-menu button{
+      display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+      background:none; border:0; cursor:pointer; border-radius:8px;
+      padding:9px 10px; font-size:13px; font-weight:600; color:var(--text);
+      font-family:inherit;
+    }
+    .adm-menu button i{ width:14px; text-align:center; color:var(--muted); font-size:12px; }
+    .adm-menu button:hover{ background:var(--bg); }
+    .adm-menu button.perigo, .adm-menu button.perigo i{ color:#b91c1c; }
+    .adm-menu button.perigo:hover{ background:#fdeaea; }
+    .adm-menu hr{ border:0; border-top:1px solid var(--line); margin:5px 2px; }
+    .dark .adm-menu button.perigo:hover{ background:rgba(220,38,38,.14); }
+    .icon-btn.btn-mais{ color:var(--muted); }
+    .icon-btn.btn-mais:hover{ background:var(--bg); color:var(--text); }
+
+    /* Voltar ao topo — a mesma peca da tela de pedidos e do Showroom.
+       Aqui ela rola a TABELA, nao a pagina: a pagina nao rola, quem
+       rola e o .table-wrap (236 linhas dao quase 12 mil pixels). */
+    /* `button.topo-fab` e nao `.topo-fab`: esta tela tem um
+       `[title]{position:relative}` para as dicas, e ele empata em
+       especificidade e vence por vir depois - o botao virava relative e
+       nunca chegava ao canto. */
+    button.topo-fab{
+      position:fixed; z-index:140; right:18px;
+      bottom:calc(18px + env(safe-area-inset-bottom,0px));
+      width:46px; height:46px; border-radius:50%; border:0; color:#fff; cursor:pointer;
+      background:linear-gradient(145deg,#5B69E8,#2836D4 60%,#1f2bb0);
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:0 10px 24px rgba(40,54,212,.42),
+                 0 0 0 3px rgba(255,255,255,.9), inset 0 1px 0 rgba(255,255,255,.25);
+      opacity:0; transform:translateY(10px); transition:opacity .2s, transform .2s;
+    }
+    .topo-fab[hidden]{ display:none; }
+    .topo-fab.on{ opacity:1; transform:none; }
+    .topo-fab:hover{ filter:brightness(1.1); }
+    .topo-fab:focus-visible{ outline:2px solid #fff; outline-offset:3px; }
+    /* O anel branco nao serve no escuro: ali ele vira o proprio fundo. */
+    .dark .topo-fab{ box-shadow:0 10px 24px rgba(0,0,0,.5),
+      0 0 0 3px var(--bg), inset 0 1px 0 rgba(255,255,255,.2); }
+    @media (prefers-reduced-motion:reduce){ .topo-fab{ transition:none; } }
+
+    /* O botao da ordem: pilula com o NOME da ordem, como na tela de
+       pedidos. Era um circulo azul chapado, com 2,14:1 de contraste e
+       um icone que se lia de cabeca para baixo. */
+    .btn-ordem{
+      flex:0 0 auto; display:inline-flex; align-items:center; gap:7px;
+      border:1px solid var(--line); background:var(--card); color:var(--muted);
+      border-radius:999px; padding:6px 12px; font-family:inherit;
+      font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;
+      transition:border-color .12s, color .12s;
+    }
+    .btn-ordem:hover{ border-color:var(--muted); color:var(--text); }
+    .btn-ordem[aria-expanded="true"]{ border-color:var(--brand); color:var(--brand); }
 
     /* Tabela: tudo centralizado e alinhado ao meio, cabeçalho junto */
     .table-wrap thead th,
@@ -180,7 +238,7 @@
       --partial-soft:#431407;
     }
     .dark body,.dark .kpi-card,.dark .table-wrap,.dark .filter-pill,.dark header,.dark .rounded-\[28px\],.dark .bg-white,.dark select,.dark input{ background:var(--card)!important; color:var(--text)!important; border-color:var(--line)!important; }
-    .dark .table-wrap thead th{ background:#2836D4!important; color:#fff!important; }
+    .dark .table-wrap thead th{ background:var(--cab-bg)!important; color:var(--cab-tx)!important; }
     .dark .table-wrap tbody tr:hover td{ background:#263248!important; }
     .dark .row-antecipa td{ background:#1e1a3f!important; }
     .dark .row-nova-dispo td{ background:#0d2b1a!important; }
@@ -197,7 +255,7 @@
     .dark .shadow-card{ box-shadow:0 4px 24px rgba(0,0,0,.4)!important; }
     .dark .hover\:bg-slate-50:hover,.dark .hover\:bg-slate-100:hover{ background:#334155!important; }
     .dark .filter-pill:hover{ background:#334155!important; color:var(--text)!important; border-color:#475569!important; }
-    .dark .table-wrap thead th.sortable:hover{ background:#3A46E6!important; color:#fff!important; }
+    .dark .table-wrap thead th.sortable:hover{ background:var(--cab-forte)!important; color:#eef3fc!important; }
     .dark .kpi-card:hover{ box-shadow:0 8px 24px rgba(0,0,0,.3)!important; border-color:#475569!important; }
     .dark .icon-btn:hover{ background:#334155!important; }
     .dark .icon-btn.ocultar:hover{ background:#312e81!important; border-color:#6366f1!important; color:#c7d2fe!important; }
@@ -323,25 +381,27 @@
       border-spacing:0;
     }
 
-    /* Cabeçalho na cor do selo CMS: a tabela ganha a mesma marca do resto do
-       painel e a linha de títulos para de se confundir com as linhas. */
+    /* Faixa sobria, um tom mais escura que o fundo - a mesma da tela de
+       pedidos. Era azul chapado "para a tabela ganhar a marca do
+       painel", mas competia com tudo que e azul aqui: o Nº do lote, o
+       GCI, os botoes. Marca demais, hierarquia nenhuma. */
     .table-wrap thead th{
       position:sticky;
       top:0;
       z-index:2;
-      background:var(--brand);
-      color:#fff;
+      background:var(--cab-bg);
+      color:var(--cab-tx);
       font-size:11px;
       font-weight:800;
       text-transform:uppercase;
       letter-spacing:.06em;
       text-align:left;
       padding:13px 16px;
-      border-bottom:1px solid rgba(255,255,255,.2);
+      border-bottom:1px solid var(--line);
       white-space:nowrap;
       user-select:none;
     }
-    .table-wrap thead th input[type=checkbox]{ accent-color:#fff; }
+    .table-wrap thead th input[type=checkbox]{ accent-color:var(--cab-tx); }
     /* Chute inicial; logo depois o JS mede o espaço real e acerta, senão
        sobra uma faixa vazia embaixo do cartão. */
     .table-wrap{ max-height:calc(100vh - 210px); min-height:240px; }
@@ -352,14 +412,14 @@
     }
 
     .table-wrap thead th.sortable:hover{
-      color:#fff;
-      background:#3A46E6;
+      color:var(--text);
+      background:var(--cab-forte);
     }
 
     .table-wrap thead th.sorted-asc,
     .table-wrap thead th.sorted-desc{
-      color:#fff;
-      background:#1F2BB8;
+      color:var(--text);
+      background:var(--cab-marc);
     }
 
     .table-wrap thead th .sort-icon{
@@ -426,8 +486,10 @@
       border:1px solid var(--line);
       background:white;
       border-radius:999px;
-      padding:7px 16px;
-      font-size:13px;
+      /* 12px e o mesmo da tela de pedidos; o padding acompanha, senao a
+         pilula fica com a letra menor e a caixa do mesmo tamanho. */
+      padding:6px 14px;
+      font-size:12px;
       font-weight:700;
       color:#475569;
       cursor:pointer;
@@ -440,11 +502,13 @@
       color:#0f172a;
     }
 
+    /* Tingida, nao chapada: azul cheio com texto branco dava 4,5:1 raspando
+       e gritava mais que a propria tabela. */
     .filter-pill.active{
-      background:linear-gradient(135deg,#5B69E8,#2836D4);
-      border-color:transparent;
-      color:white;
-      box-shadow:0 4px 12px rgba(40,54,212,.32);
+      background:#e2e8f0;
+      border-color:#cbd5e1;
+      color:#0f172a;
+      box-shadow:none;
     }
 
     /* ── Abas em lista (19/11/2026) ───────────────────────────────────
@@ -466,6 +530,24 @@
        pílula branca de 36px, seta à esquerda e a palavra Portal. Branca
        também no modo escuro — manter o botão idêntico vale mais que combinar
        com cada cabeçalho. */
+    /* Irmao do .portal-btn: o MESMO desenho, para os outros botoes do
+   cabecalho. Diferenciam-se pelo icone, nao pela cor - como na tela de
+   pedidos. */
+    .hdr-btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:7px;
+      flex:none; height:36px; padding:0 13px; border-radius:999px;
+      border:1px solid #E2E8F0; background:#FFFFFF; color:#475569;
+      font-family:inherit; font-size:14px; font-weight:700; line-height:1;
+      text-decoration:none; cursor:pointer; white-space:nowrap;
+      transition:background .15s ease, border-color .15s ease, color .15s ease;
+    }
+    .hdr-btn:hover{ background:#F8FAFC; border-color:#CBD5E1; color:#334155; }
+    .hdr-btn:focus-visible{ outline:2px solid #475569; outline-offset:2px; }
+    .hdr-btn.so-icone{ width:36px; padding:0; }
+    .dark .hdr-btn{ background:rgba(255,255,255,.06) !important;
+      border-color:rgba(255,255,255,.14) !important; color:#cbd5e1 !important; }
+    .dark .hdr-btn:hover{ background:rgba(255,255,255,.12) !important; color:#eef3fc !important; }
+
     .portal-btn{
       display:inline-flex; align-items:center; justify-content:center; gap:7px;
       flex:none; height:36px; padding:0 12px; border-radius:999px;
@@ -762,6 +844,10 @@
   
     /* ===================== MODO ESCURO — TEMA DASHBOARD ===================== */
     .dark{
+      --cab-bg:#0a1430;
+      --cab-tx:#a9b8d6;
+      --cab-forte:#121e42;
+      --cab-marc:#16224a;
       --bg:#0c1a3a;
       --card:rgba(22,31,58,.78);
       --text:#eef3fc;
@@ -799,9 +885,9 @@
     .dark .text-rose-600{ color:#fb7185 !important; }
     .dark .table-wrap{ -webkit-backdrop-filter:none !important; backdrop-filter:none !important; }
     .dark .table-wrap thead, .dark .table-wrap thead tr{ background:#172244 !important; }
-    .dark .table-wrap thead th{ background:#2836D4 !important; color:#fff !important; border-bottom:1px solid rgba(255,255,255,.2) !important; position:sticky !important; top:0 !important; z-index:10 !important; -webkit-backdrop-filter:none !important; backdrop-filter:none !important; }
-    .dark .table-wrap thead th.sortable:hover{ background:#3A46E6 !important; color:#fff !important; }
-    .dark .table-wrap thead th.sorted-asc, .dark .table-wrap thead th.sorted-desc{ background:#1F2BB8 !important; color:#fff !important; }
+    .dark .table-wrap thead th{ background:var(--cab-bg) !important; color:var(--cab-tx) !important; border-bottom:1px solid var(--line) !important; position:sticky !important; top:0 !important; z-index:10 !important; -webkit-backdrop-filter:none !important; backdrop-filter:none !important; }
+    .dark .table-wrap thead th.sortable:hover{ background:var(--cab-forte) !important; color:#eef3fc !important; }
+    .dark .table-wrap thead th.sorted-asc, .dark .table-wrap thead th.sorted-desc{ background:var(--cab-marc) !important; color:#eef3fc !important; }
     .dark .table-wrap tbody td{ border-color:rgba(255,255,255,.07) !important; color:#eef3fc !important; }
     .dark .table-wrap tbody tr:nth-child(even) td{ background:rgba(255,255,255,.022) !important; }
     .dark .table-wrap tbody tr:hover{ background:#202d52 !important; }
@@ -819,7 +905,7 @@
     .dark .saldo-danger{ color:#fb7185 !important; }
     .dark .filter-pill{ background:rgba(255,255,255,.04) !important; border-color:rgba(255,255,255,.10) !important; color:#a9b8d6 !important; }
     .dark .filter-pill:hover{ border-color:rgba(255,255,255,.18) !important; color:#eef3fc !important; background:rgba(255,255,255,.06) !important; }
-    .dark .filter-pill.active{ background:linear-gradient(135deg,#5b8cff,#4f7bff) !important; border-color:transparent !important; color:#fff !important; box-shadow:0 8px 18px -10px rgba(91,140,255,.8) !important; }
+    .dark .filter-pill.active{ background:#334155 !important; border-color:#475569 !important; color:#f1f5f9 !important; box-shadow:none !important; }
     .dispo-chk, .dispo-chk-all{ width:15px; height:15px; cursor:pointer; accent-color:var(--brand,#4f46e5); }
     .th-chk, .td-chk{ text-align:center; }
     /* O botão roxo é o aviso de que o lote está rateado: cheio quando tem
@@ -998,7 +1084,7 @@
     ::-webkit-scrollbar-track{background:transparent}
     ::-webkit-scrollbar-thumb{background:#ccd3e4;border-radius:999px;border:3px solid transparent;background-clip:content-box}
     ::-webkit-scrollbar-thumb:hover{background:#aeb8d3;border:3px solid transparent;background-clip:content-box}
-    .table-wrap thead th{background:var(--brand);color:#fff;letter-spacing:.02em}
+    .table-wrap thead th{background:var(--cab-bg);color:var(--cab-tx);letter-spacing:.02em}
     .icon-btn:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
 
     /* ═══════════════════════════════════════════════════════════════════════
@@ -1201,11 +1287,11 @@
     <div class="mx-auto max-w-[1400px]">
 
       <!-- HEADER -->
-      <header id="dispoHeader" class="rounded-[28px] border border-slate-200 bg-white px-4 sm:px-5 py-2.5 shadow-card mb-4 sticky top-3 z-30">
+      <header id="dispoHeader" class="rounded-[28px] border border-slate-200 bg-white px-4 sm:px-5 py-2.5 shadow-card mb-2.5 sticky top-3 z-30">
         <div class="flex flex-wrap lg:flex-nowrap items-center justify-between gap-3">
           <div class="flex items-center gap-3 flex-shrink-0">
             <button onclick="voltarParaPedidos()"
-              class="focus-ring flex items-center justify-center h-9 w-9 rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors"
+              class="hdr-btn so-icone"
               title="Voltar para os pedidos">
               <i class="fa-solid fa-arrow-left text-sm"></i>
             </button>
@@ -1237,28 +1323,18 @@
             <!-- Encomendas que a Detalhada mandou para repasse: o botão fica
                  sempre aqui; o número só aparece quando há o que fazer. -->
             <button id="btnOfertasDispo" onclick="abrirOfertas()" title="Encomendas mandadas para repasse na Detalhada, esperando virar lote"
-              class="focus-ring relative h-9 w-9 rounded-full flex items-center justify-center text-white transition-transform hover:-translate-y-0.5"
-              style="background:linear-gradient(135deg,#2dd4bf,#0d9488);box-shadow:0 4px 14px rgba(13,148,136,.35)">
+              class="hdr-btn so-icone relative">
               <i class="fa-solid fa-inbox text-sm"></i>
               <span id="badgeOfertasDispo" class="hidden absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white">0</span>
             </button>
 
-            <button id="btnCampanhas" onclick="abrirCampanhas()" title="Campanhas de incentivo — prêmio por par repassado"
-              class="focus-ring relative h-9 w-9 rounded-full flex items-center justify-center text-white transition-transform hover:-translate-y-0.5"
-              style="background:linear-gradient(135deg,#a78bfa,#7c3aed);box-shadow:0 4px 14px rgba(124,58,237,.35)">
-              <i class="fa-solid fa-sack-dollar text-sm"></i>
-              <span id="campBadge" class="hidden absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white">0</span>
-            </button>
-
             <a id="btnDesmembramentos" href="./dispo_consulta.html" title="Consultar desmembramentos"
-              class="focus-ring h-9 w-9 rounded-full flex items-center justify-center text-white transition-transform hover:-translate-y-0.5"
-              style="background:linear-gradient(135deg,#5B69E8,#2836D4);box-shadow:0 4px 14px rgba(40,54,212,.35)">
+              class="hdr-btn so-icone">
               <i class="fa-solid fa-list-check text-sm"></i>
             </a>
 
             <button id="btnRefreshDispo" title="Atualizar a DISPO"
-              class="focus-ring h-9 w-9 rounded-full flex items-center justify-center text-white transition-transform hover:-translate-y-0.5"
-              style="background:linear-gradient(135deg,#34d399,#059669);box-shadow:0 4px 14px rgba(5,150,105,.35)">
+              class="hdr-btn so-icone">
               <i class="fa-solid fa-rotate-right text-sm"></i>
             </button>
 
@@ -1269,7 +1345,7 @@
                  computeAllRows. -->
             <div class="relative hidden" id="antecWrap">
               <button id="btnAntecipacoes" title="Antecipações disponíveis"
-                class="focus-ring relative h-9 w-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
+                class="hdr-btn so-icone relative">
                 <i class="fa-solid fa-bell text-sm"></i>
                 <span id="antecBadge" class="hidden absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center border-2 border-white">0</span>
               </button>
@@ -1290,37 +1366,28 @@
               </div>
             </div>
 
-            <!-- Colunas da tabela -->
-            <div class="relative" id="colToggleWrap">
-              <button onclick="toggleColMenu()" title="Escolher as colunas da tabela"
-                class="focus-ring h-9 w-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors">
-                <i class="fa-solid fa-table-columns text-sm"></i>
-              </button>
-              <div id="colMenu" class="hidden absolute right-0 top-11 bg-white border border-slate-200 rounded-2xl shadow-lg p-3 z-50 flex flex-col gap-2 min-w-[170px]">
+            <!-- Menu de acoes da linha. Um so, reposicionado a cada abertura:
+         um por linha seriam centenas de nos na arvore a toa. -->
+
+    <div id="dispoMenuLinha" class="adm-menu" role="menu" aria-hidden="true"></div>
+
+    <!-- O que saiu da barra: fica a um clique so o que se usa todo dia. -->
+    <div id="menuMaisCab" class="adm-menu" role="menu" aria-hidden="true"></div>
+
+    <!-- Colunas da tabela: o botao foi para o menu "..." em 27/11/2026;
+                 o menu em si ficou, e se ancora nele. -->
+              <div id="colMenu" class="hidden fixed bg-white border border-slate-200 rounded-2xl shadow-lg p-3 z-[130] flex flex-col gap-2 min-w-[170px]">
                 <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colPendente" onchange="toggleCol('pendente',this.checked)"> Pendente</label>
                 <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colAprovado" onchange="toggleCol('aprovado',this.checked)"> Aprovado</label>
                 <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colPedidoMae" onchange="toggleCol('pedidoMae',this.checked)"> Pedido Mãe</label>
                 <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colDesmembrado" onchange="toggleCol('desmembrado',this.checked)"> Desmembrado</label>
                 <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="colOrigem" checked onchange="toggleCol('origem',this.checked)"> Origem</label>
               </div>
-            </div>
 
-            <button id="btnAjustarDatas" type="button" onclick="abrirAjusteDatas()"
-              title="Ajustar a prev. faturamento de vários pedidos pelo Nº da DISPO"
-              class="focus-ring rounded-full px-4 py-2 text-sm font-bold text-white flex items-center gap-2 transition-transform hover:-translate-y-0.5"
-              style="background:linear-gradient(135deg,#38bdf8,#0369a1);box-shadow:0 4px 14px rgba(3,105,161,.35)">
-              <i class="fa-regular fa-calendar-check"></i>
-              <span>Datas</span>
-            </button>
-
-            <button id="btnToggleFiltros" onclick="toggleBarraFiltros()" title="Ocultar a barra de filtros"
-              class="focus-ring h-9 w-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors">
-              <i class="fa-solid fa-sliders text-sm" id="iconToggleFiltros"></i>
-            </button>
-
-            <button id="btnDarkMode" onclick="toggleDark()" title="Alternar entre modo claro e escuro"
-              class="focus-ring h-9 w-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors">
-              <i class="fa-solid fa-moon text-slate-400 text-sm" id="darkIcon"></i>
+            <button id="btnMaisCab" type="button" class="hdr-btn so-icone relative"
+              title="Mais ações" aria-haspopup="menu" aria-expanded="false">
+              <i class="fa-solid fa-ellipsis text-sm"></i>
+              <span id="pontoMaisCab" class="hidden absolute -top-0.5 -right-0.5 w-[9px] h-[9px] rounded-full bg-rose-500 border-2 border-white"></span>
             </button>
 
             <a class="portal-btn" href="https://cms-representacoes.github.io/apps-oly/" title="Voltar ao Portal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg><span>Portal</span></a>
@@ -1339,12 +1406,12 @@
                dele. Moraram em duas fileiras até 19/11/2026 - lado a lado
                poupam uma linha inteira numa tela que já é cheia. -->
           <div id="familiaTabs" class="familia-tabs" role="tablist" aria-label="Estoque">
-            <button type="button" class="familia-tab active" data-familia="repasse" role="tab"
-                    aria-selected="true" title="Repasses do dia a dia — tudo que não é bolsão de coleção">
+            <button type="button" class="familia-tab" data-familia="repasse" role="tab"
+                    aria-selected="false" title="Repasses do dia a dia — tudo que não é bolsão de coleção">
               <i class="fa-solid fa-right-left"></i>Repasse
             </button>
-            <button type="button" class="familia-tab" data-familia="colecao" role="tab"
-                    aria-selected="false" title="GTM - 1S27 — a cota da coleção, a mesma aba que o Showroom mostra ao vendedor">
+            <button type="button" class="familia-tab active" data-familia="colecao" role="tab"
+                    aria-selected="true" title="GTM - 1S27 — a cota da coleção, a mesma aba que o Showroom mostra ao vendedor">
               <i class="fa-solid fa-layer-group"></i>GTM - 1S27
             </button>
           </div>
@@ -1358,7 +1425,7 @@
                  E "Todos" virou "A distribuir", porque deixou de mostrar
                  tudo - mostra o que ainda tem par para dar, que é o trabalho
                  do dia. Em 16/11 isso era 14 de 322 linhas. -->
-            <button class="filter-pill active" data-filter="all"
+            <button class="filter-pill" data-filter="all"
                     data-tip="Lotes que ainda têm saldo para distribuir">A distribuir
               <span id="distribuirBadge" class="ml-1 hidden bg-slate-900 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
             </button>
@@ -1369,7 +1436,7 @@
                  falta FAZER com ele. A regra é a mesma - saldo real zerado,
                  ou seja, tudo já pedido - mas é desta fila que o robô de
                  desmembramento vai puxar o trabalho. -->
-            <button class="filter-pill" data-filter="esgotados" id="pillEsgotados"
+            <button class="filter-pill active" data-filter="esgotados" id="pillEsgotados"
                     data-tip="Tudo já foi pedido: o lote espera ser desmembrado">
               <i class="fa-solid fa-hourglass-half text-slate-500 mr-1"></i>Desmembramento
               <span id="esgotadosBadge" class="ml-1 hidden bg-rose-600 text-white text-[10px] font-extrabold rounded-full px-1.5 py-0.5">0</span>
@@ -1409,8 +1476,14 @@
               </div>
             </div>
             <!-- Ordenar fica junto das abas e rola com elas; a dica diz a ordem em uso -->
-            <button id="btnOrdenar" onclick="toggleOrdenarMenu()" title="Ordenar a lista" class="btn-ordenar">
-              <i class="fa-solid fa-arrow-down-short-wide"></i>
+            <!-- Era so o icone de ordenacao (seta + barras), que ele leu de
+                 cabeca para baixo. Agora diz a ordem em uso, como na tela
+                 de pedidos: saber por onde a lista esta nao pode depender
+                 de abrir o menu. -->
+            <button id="btnOrdenar" onclick="toggleOrdenarMenu()" class="btn-ordem"
+              title="Ordenar a lista" aria-haspopup="menu" aria-expanded="false">
+              <span id="btnOrdenarRot">Ordenar</span>
+              <i class="fa-solid fa-chevron-down" style="font-size:9px"></i>
             </button>
           </div>
           <div class="flex items-center gap-2 flex-shrink-0">
@@ -1663,8 +1736,10 @@ const STATE = {
   ocultos: new Set(), // chaves "codigo|cor|gci" das linhas ocultas
   sortCol: 'saldoReal',
   sortDir: 'asc',
-  activeFilter: 'all',
-  familia: 'repasse',      // 'repasse' | 'colecao' — ver .familia-tabs
+  /* Abre no GTM e em Desmembramento (pedido dele, 27/11/2026): e a
+     frente de trabalho da temporada, e a fila que o robo puxa. */
+  activeFilter: 'esgotados',
+  familia: 'colecao',      // 'repasse' | 'colecao' — ver .familia-tabs
   searchQuery: '',
   filtroMes: '',      // AAAA-MM da Prev. Fat, ou 'sem' para linhas sem data
   filtroNum: '',      // pedaço do Nº digitado na coluna
@@ -5780,6 +5855,7 @@ async function carregarCampanhas(){
     if(!r.ok) throw new Error('HTTP ' + r.status);
     const j = await r.json();
     STATE.campanhas = Array.isArray(j) ? j : [];
+    if(typeof pintarPontoMaisCab === 'function') pintarPontoMaisCab();
   }catch(e){
     // Worker antigo ainda sem a ação: a tela abre vazia em vez de quebrar.
     console.warn('Falha ao carregar campanhas', e);
@@ -6500,19 +6576,21 @@ function renderDispo(){
         <td class="col-pedidoMae text-center font-semibold text-[11px] ${row.pedidoMae === 'SIM' ? 'text-emerald-600' : 'text-slate-400'}">${safeHtml(row.pedidoMae || '—')}</td>
         <td>
           <div class="btn-group">
-            <button class="icon-btn btn-info-dispo" title="Ver tudo deste lote" onclick="abrirInfoLote('${safeHtml(String(row.num||''))}')" style="color:var(--muted)"><i class="fa-solid fa-circle-info" style="font-size:12px"></i></button>
-            <button class="icon-btn btn-editar-dispo" title="Editar dados do produto" onclick="abrirEditarProduto('${safeHtml(String(row.num||''))}')" style="color:var(--brand);border-color:var(--brand-soft)"><i class="fa-solid fa-pen" style="font-size:12px"></i></button>
+            ${/* A acao do dia fica a um clique, e ela muda com a aba:
+                  em Ocultos o que se faz e reexibir; em Arquivados,
+                  desarquivar; no resto, desmembrar. O que sobra vai
+                  para o menu - ver abrirMenuLinhaDispo(). */ ''}
             ${STATE.activeFilter === 'ocultos'
-              ? `<button class="icon-btn reexibir btn-reexibir" data-gci="${safeHtml(String(row.gci||''))}" title="Reexibir"><i class="fa-solid fa-eye" style="font-size:12px"></i></button>
-                 <button class="icon-btn btn-ratear ${rateioDaLinha(row) ? 'rateado' : ''}" title="${safeHtml(dicaRateio(row))}" onclick="abrirRateio('${safeHtml(String(row.num||''))}')"><i class="fa-solid fa-users" style="font-size:12px"></i></button>`
+              ? `<button class="icon-btn reexibir btn-reexibir" data-gci="${safeHtml(String(row.gci||''))}" title="Reexibir este lote"><i class="fa-solid fa-eye" style="font-size:12px"></i></button>`
               : STATE.activeFilter === 'arquivados'
-              ? `<button class="icon-btn" title="Desarquivar este lote" style="color:var(--brand);border-color:var(--brand-soft)" onclick="desarquivarUm('${safeHtml(String(row.num||''))}')"><i class="fa-solid fa-box-open" style="font-size:12px"></i></button>
-                 <button class="icon-btn btn-excluir-dispo" data-idx="${idx}" title="Excluir da DISPO" style="color:#b91c1c;border-color:#fca5a5" onclick="excluirDaDispoJson(STATE.dispoRows.find(r=>String(r.num)===String('${safeHtml(String(row.num||''))}')))"><i class="fa-solid fa-trash-can" style="font-size:12px"></i></button>`
-              : `<button class="icon-btn desm btn-desmembrar" data-idx="${idx}" title="Desmembrar"><i class="fa-solid fa-table-list" style="font-size:12px"></i></button>
-                 <button class="icon-btn btn-ratear ${rateioDaLinha(row) ? 'rateado' : ''}" title="${safeHtml(dicaRateio(row))}" onclick="abrirRateio('${safeHtml(String(row.num||''))}')"><i class="fa-solid fa-users" style="font-size:12px"></i></button>
-                 <button class="icon-btn ocultar btn-ocultar" data-gci="${safeHtml(String(row.gci||''))}" title="Ocultar"><i class="fa-solid fa-eye-slash" style="font-size:12px"></i></button>
-                 <button class="icon-btn btn-excluir-dispo" data-idx="${idx}" title="Excluir da DISPO" style="color:#b91c1c;border-color:#fca5a5" onclick="excluirDaDispoJson(STATE.dispoRows.find(r=>String(r.num)===String('${safeHtml(String(row.num||''))}')))"><i class="fa-solid fa-trash-can" style="font-size:12px"></i></button>`
+              ? `<button class="icon-btn" title="Desarquivar este lote" style="color:var(--brand);border-color:var(--brand-soft)" onclick="desarquivarUm('${safeHtml(String(row.num||''))}')"><i class="fa-solid fa-box-open" style="font-size:12px"></i></button>`
+              : `<button class="icon-btn desm btn-desmembrar" data-idx="${idx}" title="Desmembrar este lote"><i class="fa-solid fa-table-list" style="font-size:12px"></i></button>`
             }
+            <button class="icon-btn btn-mais" type="button" title="Mais ações"
+              aria-haspopup="menu" aria-expanded="false"
+              data-menu-num="${safeHtml(String(row.num||''))}"
+              data-menu-gci="${safeHtml(String(row.gci||''))}"
+              data-menu-idx="${idx}"><i class="fa-solid fa-ellipsis" style="font-size:12px"></i></button>
           </div>
         </td>
       </tr>
@@ -7070,14 +7148,19 @@ document.addEventListener('DOMContentLoaded', ajustarAlturaTabela);
 const FILTROS_OCULTOS_KEY = 'dispo_filtros_ocultos';
 
 function aplicarBarraFiltros(oculta){
-  const barra = $('barraFiltros'), btn = $('btnToggleFiltros'), icone = $('iconToggleFiltros');
-  if(!barra || !btn) return;
+  const barra = $('barraFiltros');
+  /* O botao proprio saiu da barra em 27/11/2026 e virou item do menu
+     "...". Ele era obrigatorio aqui: sem o `if` abaixo afrouxado, a
+     funcao saia cedo e a barra nunca mais se escondia. */
+  if(!barra) return;
   barra.classList.toggle('hidden', oculta);
   requestAnimationFrame(ajustarAlturaTabela);
-  // recolhida, o botão pisca — senão ninguém lembra que a barra existe
-  btn.classList.toggle('piscando', oculta);
-  btn.title = oculta ? 'Exibir a barra de filtros' : 'Ocultar a barra de filtros';
-  if(icone) icone.className = `fa-solid ${oculta ? 'fa-eye' : 'fa-sliders'} text-sm`;
+  const btn = $('btnMaisCab');
+  // recolhida, o "..." pisca — senão ninguém lembra que a barra existe
+  if(btn){
+    btn.classList.toggle('piscando', oculta);
+    btn.title = oculta ? 'Mais ações — a barra de filtros está oculta' : 'Mais ações';
+  }
 }
 
 function toggleBarraFiltros(){
@@ -7275,6 +7358,8 @@ function renderOrdenarMenu(){
   const btn = $('btnOrdenar');
   const nome = (ORDENS_DISPO.find(([v]) => v === atual) || [,''])[1];
   if(btn) btn.title = nome ? `Ordenar a lista · ${nome}` : 'Ordenar a lista';
+  const rot = $('btnOrdenarRot');
+  if(rot) rot.textContent = nome || 'Ordenar';
 }
 
 function toggleOrdenarMenu(){
@@ -7312,7 +7397,12 @@ function toggleDark(){
   // Salva nas duas chaves para manter sincronia com o admin/index.html
   localStorage.setItem('dispo_dark', isDark ? '1' : '0');
   localStorage.setItem('admin_dark', isDark ? '1' : '0');
-  $('darkIcon').className = isDark ? 'fa-solid fa-sun text-amber-400 text-xs' : 'fa-solid fa-moon text-slate-400 text-xs';
+  /* O icone vivia no botao de tema, que virou item do menu "..." em
+     27/11/2026. Sem esta guarda, trocar o tema estourava aqui DEPOIS
+     de ja ter trocado - o tema mudava e o resto da funcao morria. */
+  const ic = $('darkIcon');
+  if(ic) ic.className = isDark ? 'fa-solid fa-sun text-amber-400 text-xs'
+                               : 'fa-solid fa-moon text-slate-400 text-xs';
 }
 
 // ── TEMA PREMIUM (visual neutro alternativo) ──────────────────────────────────
@@ -7353,7 +7443,10 @@ function toggleColMenu(){
   $('colMenu').classList.toggle('hidden');
 }
 document.addEventListener('click', e => {
-  if(!$('colToggleWrap').contains(e.target)) $('colMenu').classList.add('hidden');
+  /* O botao de colunas virou item do menu "...": fechar so quando o
+     clique cair fora do proprio menu de colunas. */
+  if(!$('colMenu').contains(e.target) && !e.target.closest('[data-mais="colunas"]'))
+    $('colMenu').classList.add('hidden');
 });
 function toggleCol(col, visible){
   _colState[col] = visible;
@@ -8038,10 +8131,205 @@ document.querySelector('thead').addEventListener('click', (e) => {
   renderOrdenarMenu();
 });
 
+/* ── Voltar ao topo ───────────────────────────────────────────────
+   Quem rola aqui e a tabela, nao a janela: por isso o ouvinte e do
+   .table-wrap. Aparece depois de meia tela rolada - antes disso ainda
+   da para voltar com dois giros da roda. */
+function pintarTopoFab(){
+  const fab = $('topoFab'), tw = document.querySelector('.table-wrap');
+  if(!fab || !tw) return;
+  const mostrar = tw.scrollTop > tw.clientHeight * 0.5;
+  if(mostrar){ fab.hidden = false; requestAnimationFrame(() => fab.classList.add('on')); }
+  else { fab.classList.remove('on'); fab.hidden = true; }
+}
+
+function voltarAoTopoDaTabela(){
+  const tw = document.querySelector('.table-wrap');
+  if(!tw) return;
+  tw.scrollTo({ top: 0,
+    behavior: matchMedia('(prefers-reduced-motion:reduce)').matches ? 'auto' : 'smooth' });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const tw = document.querySelector('.table-wrap');
+  if(tw) tw.addEventListener('scroll', pintarTopoFab, { passive:true });
+  $('topoFab')?.addEventListener('click', voltarAoTopoDaTabela);
+});
+
+/* ── Menu "..." do cabecalho ──────────────────────────────────────
+   Campanhas, colunas, Datas, filtros e tema. Eram cinco pecas na
+   barra, e so o atualizar, as encomendas e os desmembramentos sao do
+   dia a dia. */
+function fecharMenuMaisCab(){
+  const m = $('menuMaisCab');
+  if(!m) return;
+  m.classList.remove('ab');
+  m.setAttribute('aria-hidden', 'true');
+  $('btnMaisCab')?.setAttribute('aria-expanded', 'false');
+}
+
+/* O badge de campanhas vivia no botao que foi para dentro do menu.
+   Sem isto, as campanhas esperando deixariam de ser avisadas. */
+function pintarPontoMaisCab(){
+  const p = $('pontoMaisCab');
+  if(!p) return;
+  const n = (STATE.campanhas || []).length;
+  p.classList.toggle('hidden', !n);
+}
+
+function abrirMenuMaisCab(){
+  const m = $('menuMaisCab'), b = $('btnMaisCab');
+  if(!m || !b) return;
+  const nCamp = (STATE.campanhas || []).length;
+  const escuro = document.documentElement.classList.contains('dark');
+  const filtrosAbertos = !document.getElementById('barraFiltros')?.classList.contains('hidden');
+  m.innerHTML = `
+    <button type="button" role="menuitem" data-mais="campanhas">
+      <i class="fa-solid fa-sack-dollar"></i>
+      <span>Campanhas${nCamp ? ` <b style="color:var(--brand)">· ${nCamp}</b>` : ''}</span>
+    </button>
+    <button type="button" role="menuitem" data-mais="datas">
+      <i class="fa-regular fa-calendar-check"></i><span>Ajustar prev. faturamento</span>
+    </button>
+    <hr>
+    <button type="button" role="menuitem" data-mais="colunas">
+      <i class="fa-solid fa-table-columns"></i><span>Colunas da tabela…</span>
+    </button>
+    <button type="button" role="menuitem" data-mais="filtros">
+      <i class="fa-solid fa-sliders"></i>
+      <span>${filtrosAbertos ? 'Ocultar' : 'Mostrar'} a barra de filtros</span>
+    </button>
+    <button type="button" role="menuitem" data-mais="tema">
+      <i class="fa-solid fa-${escuro ? 'sun' : 'moon'}"></i>
+      <span>Modo ${escuro ? 'claro' : 'escuro'}</span>
+    </button>`;
+  m.classList.add('ab');
+  m.setAttribute('aria-hidden', 'false');
+  b.setAttribute('aria-expanded', 'true');
+  const r = b.getBoundingClientRect();
+  m.style.top = (scrollY + r.bottom + 8) + 'px';
+  m.style.left = Math.max(8, scrollX + r.right - m.offsetWidth) + 'px';
+}
+
+document.addEventListener('click', e => {
+  if(e.target.closest('#btnMaisCab')){
+    e.stopPropagation();
+    if($('menuMaisCab').classList.contains('ab')) fecharMenuMaisCab();
+    else abrirMenuMaisCab();
+    return;
+  }
+  const item = e.target.closest('#menuMaisCab [data-mais]');
+  if(item){
+    const acao = item.dataset.mais;
+    const b = $('btnMaisCab');
+    fecharMenuMaisCab();
+    if(acao === 'campanhas') abrirCampanhas();
+    else if(acao === 'datas') abrirAjusteDatas();
+    else if(acao === 'filtros') toggleBarraFiltros();
+    else if(acao === 'tema') toggleDark();
+    else if(acao === 'colunas'){
+      /* O menu de colunas morava colado no botao que saiu da barra;
+         agora ele se ancora no "...". */
+      const cm = $('colMenu');
+      const r = b.getBoundingClientRect();
+      cm.style.position = 'fixed';
+      cm.style.top = (r.bottom + 8) + 'px';
+      cm.style.right = 'auto';
+      cm.style.left = Math.max(8, r.right - 190) + 'px';
+      cm.classList.remove('hidden');
+    }
+    return;
+  }
+  if(!e.target.closest('#menuMaisCab')) fecharMenuMaisCab();
+}, true);
+document.addEventListener('keydown', e => { if(e.key === 'Escape') fecharMenuMaisCab(); });
+addEventListener('scroll', fecharMenuMaisCab, { passive:true });
+
+/* ── Menu "..." da linha ───────────────────────────────────────────
+   Um menu so, reaproveitado. Ao abrir recebe o lote e monta os itens
+   que fazem sentido naquela aba. Excluir fica no fim, depois de uma
+   divisoria e em vermelho: longe da acao que se usa todo dia. */
+let _menuLinhaDispo = null;
+
+function fecharMenuLinhaDispo(){
+  const m = $('dispoMenuLinha');
+  if(!m) return;
+  m.classList.remove('ab');
+  m.setAttribute('aria-hidden', 'true');
+  document.querySelectorAll('.btn-mais[aria-expanded="true"]')
+    .forEach(b => b.setAttribute('aria-expanded', 'false'));
+  _menuLinhaDispo = null;
+}
+
+function abrirMenuLinhaDispo(btn){
+  const m = $('dispoMenuLinha');
+  if(!m) return;
+  const num = btn.dataset.menuNum || '';
+  const gci = btn.dataset.menuGci || '';
+  const idx = btn.dataset.menuIdx || '';
+  const oculto = STATE.activeFilter === 'ocultos';
+  const arquivado = STATE.activeFilter === 'arquivados';
+  const itens = [
+    ['info', 'fa-circle-info', 'Ver tudo deste lote', ''],
+    ['editar', 'fa-pen', 'Editar dados do produto', ''],
+  ];
+  if(!arquivado) itens.push(['ratear', 'fa-users', 'Ratear por vendedor', '']);
+  if(!oculto && !arquivado) itens.push(['ocultar', 'fa-eye-slash', 'Ocultar da lista', '']);
+  m.innerHTML = itens.map(([acao, ic, rot]) =>
+      `<button type="button" role="menuitem" data-acao="${acao}">`
+    + `<i class="fa-solid ${ic}"></i><span>${rot}</span></button>`).join('')
+    + `<hr><button type="button" role="menuitem" class="perigo" data-acao="excluir">`
+    + `<i class="fa-solid fa-trash-can"></i><span>Excluir da DISPO…</span></button>`;
+  m.dataset.num = num; m.dataset.gci = gci; m.dataset.idx = idx;
+
+  m.classList.add('ab');
+  m.setAttribute('aria-hidden', 'false');
+  btn.setAttribute('aria-expanded', 'true');
+  _menuLinhaDispo = num;
+
+  /* sobe em vez de descer quando nao ha espaco embaixo */
+  const r = btn.getBoundingClientRect();
+  const alt = m.offsetHeight, larg = m.offsetWidth;
+  const cabeEmbaixo = r.bottom + alt + 10 < innerHeight;
+  m.style.top = (scrollY + (cabeEmbaixo ? r.bottom + 6 : r.top - alt - 6)) + 'px';
+  m.style.left = Math.max(8, scrollX + r.right - larg) + 'px';
+}
+
+document.addEventListener('click', e => {
+  const abre = e.target.closest('.btn-mais[data-menu-num]');
+  if(abre){
+    e.stopPropagation();
+    if(_menuLinhaDispo === (abre.dataset.menuNum || '')) fecharMenuLinhaDispo();
+    else abrirMenuLinhaDispo(abre);
+    return;
+  }
+  const item = e.target.closest('#dispoMenuLinha [data-acao]');
+  if(item){
+    const m = $('dispoMenuLinha');
+    const num = m.dataset.num, gci = m.dataset.gci, idx = m.dataset.idx;
+    fecharMenuLinhaDispo();
+    switch(item.dataset.acao){
+      case 'info':    abrirInfoLote(num); break;
+      case 'editar':  abrirEditarProduto(num); break;
+      case 'ratear':  abrirRateio(num); break;
+      case 'ocultar': toggleOculto(gci); break;
+      case 'excluir': {
+        const alvo = STATE.dispoRows.find(r => String(r.num) === String(num));
+        if(alvo) excluirDaDispoJson(alvo);
+        break;
+      }
+    }
+    return;
+  }
+  if(!e.target.closest('#dispoMenuLinha')) fecharMenuLinhaDispo();
+}, true);
+document.addEventListener('keydown', e => { if(e.key === 'Escape') fecharMenuLinhaDispo(); });
+addEventListener('scroll', fecharMenuLinhaDispo, { passive:true });
+
 // Click em qualquer linha da tabela DISPO — seleciona para facilitar scroll horizontal
 $('dispoTableBody').addEventListener('click', (e)=>{
   // Não seleciona se clicou em botão de ação
-  if(e.target.closest('.btn-desmembrar,.btn-ocultar,.btn-reexibir,.btn-antecipa-row')) return;
+  if(e.target.closest('.btn-desmembrar,.btn-ocultar,.btn-reexibir,.btn-antecipa-row,.btn-mais')) return;
   const tr = e.target.closest('tr');
   if(!tr) return;
   const jaSelecionada = tr.classList.contains('row-selected');
@@ -9231,6 +9519,15 @@ async function dtSalvar(){
       </div>
     </div>
   </div>
+
+<!-- Voltar ao topo: filho do body de proposito. Dentro do cabecalho
+     ele era posicionado pelo layout do header e nao chegava ao canto. -->
+    <button type="button" class="topo-fab" id="topoFab" hidden
+            aria-label="Voltar ao topo da lista" title="Voltar ao topo da lista">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 19V5M5 12l7-7 7 7"/></svg>
+    </button>
 
 </body>
 </html>
