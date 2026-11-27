@@ -738,6 +738,25 @@
   border-color:rgba(255,255,255,.14) !important; color:#cbd5e1 !important; }
 .dark .hdr-btn:hover{ background:rgba(255,255,255,.12) !important; color:#eef3fc !important; }
 
+/* O interruptor das opcoes do modal: o mesmo desenho do cabecalho.
+   Ligado (verde) = no ar; desligado (cinza) = pausado. O input de
+   verdade fica escondido atras dele, para o teclado e o leitor de tela
+   continuarem funcionando. */
+.chave-op{ position:absolute; opacity:0; width:0; height:0; }
+.chave-pino{
+  width:42px; height:24px; border-radius:999px; background:#cbd5e1;
+  position:relative; flex:none; transition:background .18s;
+}
+.chave-pino::after{
+  content:''; position:absolute; top:2.5px; left:2.5px; width:19px; height:19px;
+  border-radius:50%; background:#fff; transition:transform .18s;
+  box-shadow:0 1px 3px rgba(0,0,0,.3);
+}
+.chave-op:checked + .chave-pino{ background:#16a34a; }
+.chave-op:checked + .chave-pino::after{ transform:translateX(18px); }
+.chave-op:focus-visible + .chave-pino{ outline:2px solid var(--brand); outline-offset:2px; }
+.dark .chave-pino{ background:#475569; }
+
 /* O interruptor da vitrine, no lugar do botao laranja */
 .hdr-chave{ display:inline-flex; align-items:center; gap:8px; flex:none; }
 .hdr-chave .rot{ font-size:12px; font-weight:700; color:#64748b; white-space:nowrap; }
@@ -1903,6 +1922,7 @@
           </div>
         </div>
         <div id="perguntaCorpo" class="hidden text-sm font-semibold text-slate-700"></div>
+        <div id="perguntaOpcoes" class="hidden mt-3 flex flex-col gap-2"></div>
         <label id="perguntaCampoBox" class="hidden mt-3 block">
           <span id="perguntaCampoRot" class="text-xs font-bold text-slate-500"></span>
           <textarea id="perguntaCampo" rows="2"
@@ -4399,8 +4419,11 @@ const _TONS = {
 };
 let _perguntaResolve = null;
 
+/* `opcoes` transforma a pergunta numa escolha de varios itens: cada um
+   vira uma chave, e a resposta volta como { id: true/false, texto }. */
 function perguntar({ titulo, sub = '', corpo = '', ok = 'Confirmar',
-                     cancelar = 'Cancelar', tom = 'neutro', campo = null }){
+                     cancelar = 'Cancelar', tom = 'neutro', campo = null,
+                     opcoes = null }){
   return new Promise(resolve => {
     const t = _TONS[tom] || _TONS.neutro;
     $('perguntaTitulo').textContent = titulo || '';
@@ -4411,6 +4434,27 @@ function perguntar({ titulo, sub = '', corpo = '', ok = 'Confirmar',
     const c = $('perguntaCorpo');
     c.innerHTML = corpo || '';
     c.classList.toggle('hidden', !corpo);
+    const cxOp = $('perguntaOpcoes');
+    cxOp.innerHTML = '';
+    if(opcoes && opcoes.length){
+      for(const o of opcoes){
+        const l = document.createElement('label');
+        l.className = 'flex items-center justify-between gap-3 rounded-[20px] '
+                    + 'border border-slate-200 bg-slate-50 px-4 py-3 cursor-pointer';
+        l.innerHTML = `
+          <span class="min-w-0">
+            <span class="block text-sm font-extrabold">${safeHtml(o.rotulo)}</span>
+            ${o.sub ? `<span class="block text-xs font-semibold text-slate-500">${safeHtml(o.sub)}</span>` : ''}
+          </span>
+          <input type="checkbox" data-op="${safeHtml(o.id)}" ${o.marcado ? 'checked' : ''}
+            class="chave-op" role="switch">
+          <span class="chave-pino" aria-hidden="true"></span>`;
+        cxOp.appendChild(l);
+      }
+      cxOp.classList.remove('hidden');
+    } else {
+      cxOp.classList.add('hidden');
+    }
     const box = $('perguntaCampoBox'), inp = $('perguntaCampo');
     if(campo){
       $('perguntaCampoRot').textContent = campo.rotulo || '';
@@ -4439,8 +4483,17 @@ function _fecharPergunta(valor){
 }
 
 $('perguntaSim').addEventListener('click', () => {
-  const box = $('perguntaCampoBox');
-  _fecharPergunta(box.classList.contains('hidden') ? true : $('perguntaCampo').value);
+  const temCampo = !$('perguntaCampoBox').classList.contains('hidden');
+  const temOpcoes = !$('perguntaOpcoes').classList.contains('hidden');
+  if(!temCampo && !temOpcoes) return _fecharPergunta(true);
+  if(temOpcoes){
+    const r = { texto: temCampo ? $('perguntaCampo').value : '' };
+    $('perguntaOpcoes').querySelectorAll('[data-op]').forEach(c => {
+      r[c.dataset.op] = c.checked;
+    });
+    return _fecharPergunta(r);
+  }
+  _fecharPergunta($('perguntaCampo').value);
 });
 $('perguntaNao').addEventListener('click', () => _fecharPergunta(false));
 $('perguntaModal').addEventListener('click', e => {
@@ -4758,70 +4811,96 @@ $('btnConfirmDelete').addEventListener('click', async () => {
 });
 
 // ── MANUTENÇÃO (pausar app para vendedores) ──────────────────────────────────
-let _appPausado = false;
+/* Duas travas independentes: o repasse do dia a dia e o bolsao da
+   colecao. `paused` e o campo historico - e o que a vitrine antiga de
+   Repasses le, e sempre quis dizer repasse comum. */
+let _pausa = { repasse: false, gtm: false, message: '' };
+const MSG_PAUSA_PADRAO = 'Estamos em manutenção. Voltamos em breve!';
+
 async function loadManutencaoStatus(){
   try{
     const res = await fetch(WORKER_URL, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'getStatus' }) });
     if(!res.ok) return;
     const st = await res.json();
-    _appPausado = !!(st && st.paused);
+    _pausa = { repasse: !!(st && st.paused), gtm: !!(st && st.pausedGtm),
+               message: String((st && st.message) || '') };
     refreshManutencaoUI();
   }catch(_){}
 }
+/* O rotulo diz O QUE esta parado, nao so que algo esta: com duas
+   travas, "Vitrine pausada" seria mentira metade das vezes. */
+function rotuloDaPausa(){
+  if(_pausa.repasse && _pausa.gtm) return 'Vitrine pausada';
+  if(_pausa.repasse) return 'Repasse pausado';
+  if(_pausa.gtm) return 'GTM pausado';
+  return 'Vitrine ativa';
+}
+
 function refreshManutencaoUI(){
   const btn = $('btnManutencao'), lbl = $('lblManutencao'), tarja = $('tarjaPausado');
+  const algo = _pausa.repasse || _pausa.gtm;
   if(btn){
-    btn.setAttribute('aria-checked', _appPausado ? 'true' : 'false');
-    btn.title = _appPausado
-      ? 'App pausado — clique para os vendedores voltarem a acessar'
-      : 'Pausar o app: os vendedores veem a tela de manutenção';
+    btn.setAttribute('aria-checked', algo ? 'true' : 'false');
+    btn.title = algo
+      ? rotuloDaPausa() + ' — clique para escolher o que fica no ar'
+      : 'Escolher o que pausar para os vendedores';
   }
-  /* O rotulo diz o ESTADO, nao a acao. O botao antigo trocava de
-     "Pausar" para "Ativar", entao a mesma peca dizia coisas opostas
-     conforme o estado e nunca dava para saber como o app estava. */
-  if(lbl) lbl.textContent = _appPausado ? 'Vitrine pausada' : 'Vitrine ativa';
-  if(tarja) tarja.classList.toggle('on', _appPausado);
+  if(lbl) lbl.textContent = rotuloDaPausa();
+  if(tarja){
+    tarja.classList.toggle('on', algo);
+    const oQue = _pausa.repasse && _pausa.gtm ? 'A vitrine está'
+               : _pausa.repasse ? 'O repasse do dia a dia está'
+               : 'O bolsão da coleção (GTM) está';
+    const alvo = tarja.querySelector('span');
+    if(alvo) alvo.innerHTML = `${oQue} <b>pausado${_pausa.repasse && _pausa.gtm ? 'a' : ''}</b>`
+      + ' — os vendedores veem a tela de manutenção ao tentar enviar.';
+  }
   if(typeof mediuFixosAdm === 'function') mediuFixosAdm();
 }
 async function toggleManutencao(){
-  const novoPausado = !_appPausado;
-  let message = '';
-  /* Eram duas caixas seguidas para uma decisao so: uma perguntando e
-     outra pedindo a mensagem. Agora o campo mora dentro da pergunta. */
-  if(novoPausado){
-    const padrao = 'Estamos em manutenção. Voltamos em breve!';
-    const texto = await perguntar({
-      titulo: 'Pausar a vitrine?',
-      sub: 'Os vendedores param de acessar o catálogo',
-      tom: 'perigo',
-      ok: 'Pausar agora',
-      cancelar: 'Deixar no ar',
-      campo: { rotulo: 'Mensagem que eles vão ver', valor: padrao, placeholder: padrao }
-    });
-    if(texto === false) return;
-    message = String(texto).trim() || padrao;
-  } else {
-    const seguir = await perguntar({
-      titulo: 'Retomar a vitrine?',
-      sub: 'Os vendedores voltam a acessar normalmente',
-      ok: 'Retomar',
-      cancelar: 'Continuar pausada'
-    });
-    if(!seguir) return;
+  /* O modal abre sempre no estado de hoje: e ele que a pessoa quer
+     conferir antes de mudar qualquer coisa. */
+  /* O interruptor diz o que esta NO AR - e assim que a peca se le em
+     qualquer lugar. Desligar e que pausa. Por isso tudo aqui vai e
+     volta invertido em relacao ao que fica gravado. */
+  const r = await perguntar({
+    titulo: 'O que fica no ar?',
+    sub: 'Desligue o que você quer pausar para os vendedores',
+    tom: 'perigo',
+    ok: 'Aplicar',
+    cancelar: 'Deixar como está',
+    opcoes: [
+      { id:'repasse', rotulo:'Repasse do dia a dia',
+        sub:'O pedido comum, de qualquer tela', marcado: !_pausa.repasse },
+      { id:'gtm', rotulo:'Bolsão da coleção (GTM – 1S27)',
+        sub:'A cota do escritório', marcado: !_pausa.gtm },
+    ],
+    campo: { rotulo: 'Mensagem que eles vão ver se tentarem enviar',
+             valor: _pausa.message || MSG_PAUSA_PADRAO, placeholder: MSG_PAUSA_PADRAO }
+  });
+  if(!r) return;
+  const novo = { repasse: !r.repasse, gtm: !r.gtm,
+                 message: String(r.texto || '').trim() || MSG_PAUSA_PADRAO };
+  if(novo.repasse === _pausa.repasse && novo.gtm === _pausa.gtm
+     && novo.message === _pausa.message){
+    showToast('Nada mudou.', 'info');
+    return;
   }
   try{
     const res = await fetch(WORKER_URL, {
       method:'PATCH', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'saveStatus', data:{ paused:novoPausado, message } })
+      body: JSON.stringify({ action:'saveStatus',
+        data:{ paused: novo.repasse, pausedGtm: novo.gtm, message: novo.message } })
     });
     const out = await res.json().catch(()=>({}));
     if(!res.ok || !out.success) throw new Error(out.error || res.status);
-    _appPausado = novoPausado;
+    _pausa = novo;
     refreshManutencaoUI();
-    showToast(novoPausado ? 'App pausado para manutenção.' : 'App retomado.', 'success');
+    showToast(novo.repasse || novo.gtm
+      ? rotuloDaPausa() + '.' : 'Tudo de volta no ar.', 'success');
   }catch(err){
     console.error(err);
-    showToast('Não foi possível alterar o status do app.', 'error');
+    showToast('Não foi possível alterar o status da vitrine.', 'error');
   }
 }
 loadManutencaoStatus();

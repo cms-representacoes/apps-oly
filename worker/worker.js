@@ -126,6 +126,41 @@ export default {
     const GITHUB_LINKS         = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/links_compartilhados.json`;
     const GITHUB_IMG_HIST      = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/disponibilidades_imagens.json`;
     const GITHUB_STATUS        = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/app_status.json`;
+
+    /* ── Trava de entrada de pedidos ────────────────────────────────
+       Decide se um pedido pode nascer, conforme o que esta pausado.
+       Sao duas travas independentes:
+         status.paused     -> repasse do dia a dia (campo historico, e o
+                              que a vitrine antiga de Repasses le)
+         status.pausedGtm  -> bolsao da colecao (GTM - 1S27)
+       O item diz de que estoque saiu no campo `colecao`, gravado desde
+       19/11/2026. Item sem esse campo e repasse comum, que e o que ele
+       sempre foi.
+       Sacola MISTA com so um lado pausado e recusada inteira: gravar a
+       metade liberada faria o vendedor achar que mandou tudo. */
+    function pedidoBarradoPelaPausa(pedido, status) {
+      const st = (status && typeof status === "object") ? status : {};
+      if (!st.paused && !st.pausedGtm) return null;
+      const itens = Array.isArray(pedido && pedido.items) ? pedido.items : [];
+      const ehGtm = (it) => String((it && it.colecao) || "").trim().toUpperCase() === "1S27";
+      const temGtm = itens.some(ehGtm);
+      // pedido sem itens, ou com item sem colecao: repasse comum
+      const temRepasse = !itens.length || itens.some((it) => !ehGtm(it));
+      const barraRepasse = temRepasse && !!st.paused;
+      const barraGtm = temGtm && !!st.pausedGtm;
+      if (!barraRepasse && !barraGtm) return null;
+      const recado = String(st.message || "").trim();
+      // Sacola mista, um lado so pausado: o vendedor precisa saber o que
+      // tirar da sacola, nao so que "esta pausado".
+      if (temGtm && temRepasse && !(st.paused && st.pausedGtm)) {
+        return st.pausedGtm
+          ? "O bolsão da coleção (GTM - 1S27) está pausado. Tire esses itens da sacola para enviar o resto."
+          : "O repasse do dia a dia está pausado. Tire esses itens da sacola para enviar o bolsão da coleção.";
+      }
+      if (recado) return recado;
+      if (barraGtm && !barraRepasse) return "O bolsão da coleção (GTM - 1S27) está pausado no momento.";
+      return "A entrada de pedidos está pausada no momento.";
+    }
     // Ficha técnica vinda do Trade Squash: { "ARTIGO|COR": {...} }
     const GITHUB_FICHAS        = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/fichas.json`;
     const GITHUB_RATEIO        = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/data/rateio.json`;
@@ -1247,6 +1282,22 @@ export default {
           return new Response(JSON.stringify({ success: false, error: "Payload nao e um pedido valido." }), { status: 400, headers: corsHeaders });
         }
 
+        /* A trava mora aqui, e nao na tela: assim vale para o Showroom,
+           para o Repasses antigo e para qualquer aba que ja estivesse
+           aberta quando a pausa foi ligada. */
+        try {
+          const { content: statusAtual } = await getFile(GITHUB_STATUS);
+          const recusa = pedidoBarradoPelaPausa(body, statusAtual);
+          if (recusa) {
+            return new Response(JSON.stringify({ success: false, pausado: true, error: recusa }),
+              { status: 423, headers: corsHeaders });
+          }
+        } catch (e) {
+          /* Sem conseguir ler o status, o pedido passa. Barrar por falha
+             de leitura seria derrubar a vitrine por um erro nosso. */
+          console.log("status nao veio, pedido segue:", e && e.message);
+        }
+
         const novo = { ...body, createdAt: body.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
         await comRetry(async () => {
           const { content, sha } = await getPedidos();
@@ -1639,7 +1690,9 @@ export default {
         // PATCH com action:"getStatus" → retorna status do app (manutenção). Público.
         if (body.action === "getStatus") {
           const { content } = await getFile(GITHUB_STATUS);
-          const status = (content && typeof content === "object") ? content : { paused: false, message: "" };
+          const status = (content && typeof content === "object")
+            ? { paused: false, pausedGtm: false, message: "", ...content }
+            : { paused: false, pausedGtm: false, message: "" };
           return new Response(JSON.stringify(status), { status: 200, headers: corsHeaders });
         }
 
@@ -1648,10 +1701,15 @@ export default {
           const { sha } = await getFile(GITHUB_STATUS);
           const status = {
             paused: !!body.data.paused,
+            pausedGtm: !!body.data.pausedGtm,
             message: String(body.data.message || ""),
             updatedAt: new Date().toISOString()
           };
-          await saveFile(GITHUB_STATUS, status, sha, status.paused ? "app pausado (manutencao)" : "app retomado");
+          const oQue = status.paused && status.pausedGtm ? "repasse e GTM pausados"
+                     : status.paused ? "repasse pausado"
+                     : status.pausedGtm ? "GTM pausado"
+                     : "entrada retomada";
+          await saveFile(GITHUB_STATUS, status, sha, "vitrine: " + oQue);
           return new Response(JSON.stringify({ success: true, status }), { status: 200, headers: corsHeaders });
         }
 

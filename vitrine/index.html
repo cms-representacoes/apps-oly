@@ -293,6 +293,19 @@ button{font:inherit}
 .limpa-tudo .n{background:rgba(255,255,255,.26);border-radius:999px;padding:0 6px;
   font-size:10.5px;font-variant-numeric:tabular-nums}
 
+/* Aviso de pausa: some quando nada esta pausado, entao nao disputa
+   espaco no dia a dia. O vermelho e o mesmo dos avisos de erro. */
+.faixa-pausa{
+  display:flex; align-items:flex-start; gap:10px;
+  margin:10px auto 0; max-width:1280px; padding:12px 16px;
+  border-radius:16px; background:#fdeaea; border:1px solid #f7d4d4;
+  color:#b91c1c; font-size:13.5px; font-weight:700; line-height:1.45;
+}
+.faixa-pausa[hidden]{ display:none !important; }
+.faixa-pausa b{ font-weight:800; }
+.faixa-pausa .fp-txt{ font-weight:600; display:block; margin-top:2px; color:#7f1d1d; }
+.faixa-pausa svg{ flex:none; margin-top:1px; }
+
 .contagem{display:flex;align-items:center;justify-content:space-between;gap:10px;
   padding:11px 13px 0;font-size:12px;color:var(--fraco);max-width:1180px;margin:0 auto}
 /* display:flex numa classe empata com o [hidden] e vence pela ordem: escondida,
@@ -2784,6 +2797,7 @@ body.com-selecao .topo-fab{ bottom:calc(14px + var(--h-selbarra, 56px) + 12px + 
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
 </button>
+<div class="faixa-pausa" id="faixaPausa" role="status" hidden></div>
 <div class="contagem" id="contagem" hidden></div>
 <section class="tira-vistos" id="tiraVistos" aria-label="Vistos há pouco" hidden></section>
 <main class="grade" id="grade" aria-live="polite"></main>
@@ -4995,7 +5009,7 @@ $('btnFiltros').onclick = () => $('painel').hidden ? abrirPainel() : fecharPaine
 $('pnLimpar').onclick = limparFiltros;
 $('painel').onclick = e => { if(e.target.id === 'painel') fecharPainel(); };
 
-function setOrigem(id){ STATE.origem = id; aplicar(); }
+function setOrigem(id){ STATE.origem = id; aplicar(); pintarFaixaPausa(); }
 function setCategoria(id){ STATE.categoria = (STATE.categoria === id) ? '' : id; aplicar(); }
 /* ── METAS DO MÊS ─────────────────────────────────────────────────────
    A meta vem da Carta Campanha (Metas Preposto) e a oferta é o que está
@@ -10077,17 +10091,100 @@ const dataCurta = v => {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : String(v || '').trim();
 };
 
+/* ── A entrada de pedidos pode estar pausada ──────────────────────
+   Sao duas travas, e elas andam separadas: o repasse do dia a dia e o
+   bolsao da colecao. Quem barra de verdade e o Worker; isto aqui so
+   evita que a pessoa preencha tudo para ouvir o nao no fim. */
+let PAUSA = { repasse:false, gtm:false, message:'' };
+
+/* A faixa diz O QUE parou. Com o bolsao pausado e o repasse no ar,
+   dizer so "pausado" mandaria o vendedor embora sem motivo. */
+/* So na aba do que parou (pedido dele, 27/11/2026). "Tudo" e
+   "Oportunidades" tambem mostram lote de repasse, mas sao telas de
+   garimpo: um aviso vermelho ali aparecia o tempo todo sem ser sobre o
+   que a pessoa esta olhando. Quem montar a sacola por elas ainda e
+   avisado na hora de enviar, que e onde a trava vale. */
+function abaSofreAPausa(){
+  if(STATE.origem === COLECAO_BOLSAO) return PAUSA.gtm;
+  if(STATE.origem === 'repasse')      return PAUSA.repasse;
+  return false;
+}
+
+function pintarFaixaPausa(){
+  const f = $('faixaPausa');
+  if(!f) return;
+  const algo = abaSofreAPausa();
+  f.hidden = !algo;
+  if(!algo) return;
+  const oQue = PAUSA.repasse && PAUSA.gtm ? 'O envio de pedidos está pausado'
+             : PAUSA.repasse ? 'O envio de repasse do dia a dia está pausado'
+             : 'O envio do bolsão da coleção (GTM) está pausado';
+  const resto = PAUSA.repasse && PAUSA.gtm ? ''
+              : PAUSA.repasse ? ' — o bolsão da coleção continua no ar.'
+              : ' — o repasse do dia a dia continua no ar.';
+  f.innerHTML = `
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.3" stroke-linecap="round"><circle cx="12" cy="12" r="10"/>
+         <path d="M10 15V9M14 15V9"/></svg>
+    <span><b>${oQue}</b>${resto}
+      ${PAUSA.message ? `<span class="fp-txt">${esc(PAUSA.message)}</span>` : ''}
+      <span class="fp-txt">Você pode montar a sacola; o envio volta quando a CMS liberar.</span>
+    </span>`;
+}
+
+async function lerPausa(){
+  try{
+    const st = await patchLeitura('getStatus');
+    PAUSA = { repasse: !!(st && st.paused), gtm: !!(st && st.pausedGtm),
+              message: String((st && st.message) || '').trim() };
+  }catch(_){
+    /* Sem conseguir ler, segue em frente: o Worker ainda vai recusar se
+       for o caso, e travar a vitrine por falha nossa seria pior. */
+  }
+  pintarFaixaPausa();
+  return PAUSA;
+}
+
+/* De quanto em quanto tempo a vitrine reconfere. A pausa pode ser
+   ligada com a aba ja aberta, e sem isto o vendedor so descobriria ao
+   tentar enviar. */
+lerPausa();   // ao abrir: a faixa precisa estar certa antes do primeiro clique
+setInterval(() => { lerPausa(); }, 120000);
+addEventListener('focus', () => { lerPausa(); });
+
+/* O que impede ESTA sacola de ser enviada, ou '' quando nada impede. */
+function travaDaSacola(itens){
+  const ehGtm = i => String((i && i.colecao) || '').trim().toUpperCase() === COLECAO_BOLSAO;
+  const temGtm = itens.some(ehGtm);
+  const temRep = !itens.length || itens.some(i => !ehGtm(i));
+  /* Sacola mista com so um lado pausado: dizer "pausado" nao basta - a
+     pessoa precisa saber o que tirar para o resto passar. */
+  if(temGtm && temRep && PAUSA.repasse !== PAUSA.gtm)
+    return PAUSA.gtm
+      ? 'O bolsão da coleção (GTM) está pausado. Tire esses itens da sacola para enviar o resto.'
+      : 'O repasse do dia a dia está pausado. Tire esses itens da sacola para enviar o bolsão.';
+  const barrado = (temRep && PAUSA.repasse) || (temGtm && PAUSA.gtm);
+  if(!barrado) return '';
+  if(PAUSA.message) return PAUSA.message;
+  if(PAUSA.gtm && !PAUSA.repasse) return 'O bolsão da coleção (GTM) está pausado no momento.';
+  return 'O envio de pedidos está pausado no momento.';
+}
+
 function repassesDaSacola(){
   return [...STATE.sacola.values()].filter(i => i.origem === 'repasse');
 }
 
-function abrirModalRepasse(){
+async function abrirModalRepasse(){
   const rep = repassesDaSacola();
   const vao = rep.filter(i => Number(i.amount) > 0);
   if(!vao.length){
     avisar('Nada para enviar', 'Escolha quantas caixas de cada repasse na sacola, pelo − e +.');
     return;
   }
+  /* Le na hora: a pausa pode ter sido ligada depois que esta aba abriu. */
+  await lerPausa();
+  const trava = travaDaSacola(vao);
+  if(trava){ avisar('Envio pausado', trava); return; }
   // vendedor: o CMS lança em nome de qualquer um; o vendedor, só no dele
   const cms = ehSessaoCms();
   $('rpVendCampo').hidden = !cms;
