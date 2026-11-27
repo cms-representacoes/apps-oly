@@ -139,6 +139,37 @@
     .icon-btn.btn-mais{ color:var(--muted); }
     .icon-btn.btn-mais:hover{ background:var(--bg); color:var(--text); }
 
+    /* Botoes da barra de selecao. Um so e colorido - o do trabalho do
+       dia; os outros sao a mesma pilula branca do resto da tela. */
+    .bulk-btn{
+      display:inline-flex; align-items:center; gap:7px; flex:none;
+      border:1px solid var(--line); background:var(--card); color:var(--muted);
+      border-radius:999px; padding:7px 14px; font-family:inherit;
+      font-size:12.5px; font-weight:700; cursor:pointer; white-space:nowrap;
+      transition:background .12s, border-color .12s, color .12s;
+    }
+    .bulk-btn:hover{ background:var(--bg); border-color:var(--muted); color:var(--text); }
+    .bulk-btn i{ font-size:12px; }
+    /* O principal: verde cheio, legivel (5,4:1) e sozinho na cor. */
+    .bulk-btn.principal{ background:#0d7a6f; border-color:#0d7a6f; color:#fff; }
+    .bulk-btn.principal:hover{ background:#0b6b61; border-color:#0b6b61; color:#fff; }
+    /* O destrutivo: cor so na borda e no texto, e separado dos outros. */
+    .bulk-btn.perigo{ color:#b91c1c; border-color:#fca5a5; margin-left:10px; }
+    .bulk-btn.perigo:hover{ background:#fdeaea; border-color:#f87171; color:#991b1b; }
+    .dark .bulk-btn{ background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.14);
+      color:#cbd5e1; }
+    .dark .bulk-btn:hover{ background:rgba(255,255,255,.12); color:#eef3fc; }
+    .dark .bulk-btn.perigo{ color:#fca5a5; border-color:#7f1d1d; background:transparent; }
+
+    /* Quando os dados foram buscados. Cinza e pequeno: e referencia,
+       nao aviso - nao pode competir com os numeros do cabecalho. */
+    .dispo-quando{
+      font-size:11px; font-weight:700; color:var(--muted);
+      white-space:nowrap; align-self:center; margin-left:-2px;
+    }
+    .dispo-quando[hidden]{ display:none; }
+    @media (max-width:1100px){ .dispo-quando{ display:none; } }
+
     /* Voltar ao topo — a mesma peca da tela de pedidos e do Showroom.
        Aqui ela rola a TABELA, nao a pagina: a pagina nao rola, quem
        rola e o .table-wrap (236 linhas dao quase 12 mil pixels). */
@@ -672,10 +703,6 @@
     .desm-table tbody td{ padding:10px 12px; border-bottom:1px solid #edf2f7; vertical-align:middle; }
     .desm-table tbody tr:last-child td{ border-bottom:none; }
     .desm-table tbody tr:hover td{ background:#f8fafc; }
-    .desm-status-select{ border:1px solid #e2e8f0; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; cursor:pointer; outline:none; appearance:none; -webkit-appearance:none; }
-    .desm-status-select.st-pendente{ background:#fef3c7; color:#b45309; border-color:#fde68a; }
-    .desm-status-select.st-desmembrado,
-    .desm-status-select.st-finalizado{ background:#dcfce7; color:#15803d; border-color:#bbf7d0; }
 
     .btn-desmembrar{
       display:inline-flex; align-items:center; gap:5px;
@@ -1337,6 +1364,9 @@
               class="hdr-btn so-icone">
               <i class="fa-solid fa-rotate-right text-sm"></i>
             </button>
+            <!-- De quando sao os dados. Fica colado no botao que os
+                 renova, que e onde a pergunta aparece. -->
+            <span id="dispoQuando" class="dispo-quando" hidden></span>
 
             <!-- Antecipações: o sino ficava vermelho quando havia produtos
                  com data melhor. Escondido em 19/11/2026 junto com o botão
@@ -1538,11 +1568,15 @@
         </div>
 
         <!-- BARRA DE SELEÇÃO (excluir em lote) -->
-        <div id="dispoBulkBar" style="display:none;align-items:center;gap:12px;margin-bottom:10px;padding:10px 14px;border-radius:14px;background:var(--brand-soft,#eef0fe);border:1px solid var(--line,#c7cdfb)">
+        <!-- Mesma altura e mesma margem da fileira de filtros: e ela que
+             sai para esta entrar, e a tabela nao pode se mover por isso. -->
+        <div id="dispoBulkBar" style="display:none;align-items:center;gap:12px;margin-bottom:12px;padding:0 14px;min-height:38px;border-radius:14px;background:var(--brand-soft,#eef0fe);border:1px solid var(--line,#c7cdfb)">
           <span id="dispoBulkCount" style="font-weight:800;color:var(--brand,#3730a3);font-size:13px"></span>
-          <button onclick="cancelarSelecionadosDispo()" style="margin-left:auto;display:flex;align-items:center;gap:7px;background:#b45309;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-ban" style="font-size:12px"></i> Cancelar selecionados</button>
-          <button onclick="relatorioDispo()" style="background:transparent;border:1px solid var(--line,#c7cdfb);color:var(--brand,#3730a3);border-radius:999px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer" title="Baixar o relatorio de cancelamentos"><i class="fa-solid fa-file-excel"></i> Relatorio</button>
-          <button onclick="excluirSelecionadosDispo()" style="display:flex;align-items:center;gap:7px;background:#dc2626;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-trash-can" style="font-size:12px"></i> Excluir selecionados</button>
+          <span style="margin-left:auto"></span>
+          <button onclick="cancelarSelecionadosDispo()" class="bulk-btn"
+            title="Cancelar os lotes selecionados"><i class="fa-solid fa-ban"></i> Cancelar</button>
+          <button onclick="relatorioDispo()" class="bulk-btn"
+            title="Baixar o relatório de cancelamentos"><i class="fa-solid fa-file-excel"></i> Relatório</button>
           <!-- Cada um aparece só na sua aba: arquivar na Ag desmembramento,
                desarquivar na dos Finalizados. Fora delas não fazem sentido e
                só dariam chance de erro. -->
@@ -1551,10 +1585,20 @@
                por LOTE e o pacote se agrupa por pedido mãe, porque é assim
                que o EBM trabalha - abre o pedido uma vez e digita todos os
                clientes dele. -->
-          <button id="btnDesmembrarSel" onclick="checarPendentesDesm()" style="display:none;align-items:center;gap:7px;background:#0d9488;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-scissors" style="font-size:12px"></i> Desmembrar</button>
-          <button id="btnArquivarSel" onclick="arquivarSelecionadosDispo()" style="display:none;align-items:center;gap:7px;background:#475569;color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-box-archive" style="font-size:12px"></i> Arquivar selecionados</button>
-          <button id="btnDesarquivarSel" onclick="desarquivarSelecionadosDispo()" style="display:none;align-items:center;gap:7px;background:var(--brand,#3730a3);color:#fff;border:0;border-radius:999px;padding:8px 16px;font-weight:800;font-size:13px;cursor:pointer"><i class="fa-solid fa-box-open" style="font-size:12px"></i> Desarquivar</button>
-          <button onclick="limparSelecaoDispo()" style="background:transparent;border:1px solid var(--line,#c7cdfb);color:var(--brand,#3730a3);border-radius:999px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer">Limpar</button>
+          <button id="btnArquivarSel" onclick="arquivarSelecionadosDispo()" class="bulk-btn"
+            style="display:none" title="Arquivar os lotes selecionados"><i class="fa-solid fa-box-archive"></i> Arquivar</button>
+          <button id="btnDesarquivarSel" onclick="desarquivarSelecionadosDispo()" class="bulk-btn"
+            style="display:none" title="Desarquivar os lotes selecionados"><i class="fa-solid fa-box-open"></i> Desarquivar</button>
+          <!-- O principal fica junto do fim, perto do polegar, e e o unico
+               colorido. Antes era o terceiro de cinco botoes gritando. -->
+          <button id="btnDesmembrarSel" onclick="checarPendentesDesm()" class="bulk-btn principal"
+            style="display:none" title="Desmembrar os lotes selecionados"><i class="fa-solid fa-scissors"></i> Desmembrar</button>
+          <!-- Excluir depois de um respiro, com cor so na borda: estava do
+               mesmo tamanho e colado nas acoes do dia a dia. -->
+          <button onclick="excluirSelecionadosDispo()" class="bulk-btn perigo"
+            title="Excluir os lotes selecionados da DISPO"><i class="fa-solid fa-trash-can"></i> Excluir</button>
+          <button onclick="limparSelecaoDispo()" class="bulk-btn"
+            title="Limpar a seleção">Limpar</button>
         </div>
 
         <div id="ordenarMenu" class="hidden fixed z-[120] bg-white border border-slate-200 rounded-2xl shadow-lg p-2 flex flex-col gap-1 min-w-[250px]"></div>
@@ -2193,7 +2237,9 @@ async function loadDispo(){
     $('dispoNotLoaded').classList.add('hidden');
     atualizarBadgeOcultos();
     renderDispo();
-    showToast('DISPO carregada com sucesso.', 'success');
+    /* Sem aviso de sucesso: a tela inteira ja mostra que carregou. O
+       que ela nao mostrava era a HORA - e e isso que entra. */
+    marcarHoraDaCarga();
     /* Depois de pintar: o aviso vem por cima da tela pronta, não no escuro.
        Ele só aparece quando há lote concluído que esta máquina ainda não
        mostrou (ver avisarDesmembramentosConcluidos). */
@@ -2531,12 +2577,69 @@ async function salvarEdicaoProduto(){
 
 // ===== Seleção em lote da DISPO =====
 const _dispoSelecionados = new Set();
+
+/* Esc desfaz a selecao - um lote ou todos. So quando NAO ha nada
+   aberto por cima: com um menu ou modal na tela, Esc pertence a eles,
+   e limpar a selecao por baixo seria um efeito que ninguem pediu.
+   O mesmo vale para a busca: com texto e foco nela, Esc limpa a busca,
+   que e o que a propria dica do campo promete. */
+const _MODAIS_DISPO = ['ofertasModal','campFormModal','campModal','confirmModal',
+  'datasModal','desmConcluidoModal','desmConfModal','desmExecModal','desmPendModal',
+  'editarProdutoModal','infoLoteModal','loteModal','progModal','rateioModal',
+  'antecipacaoModal'];
+
+/* `offsetParent` NAO serve aqui: ele e null para position:fixed, que e
+   justamente como os modais desta tela sao posicionados - todos
+   passavam por fechados. Vale o retangulo mais o display. */
+function estaNaTela(el){
+  if(!el) return false;
+  const cs = getComputedStyle(el);
+  if(cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0') return false;
+  const r = el.getBoundingClientRect();
+  return r.width > 0 && r.height > 0;
+}
+
+function temAlgoAbertoNaDispo(){
+  for(const id of _MODAIS_DISPO){
+    if(estaNaTela(document.getElementById(id))) return true;
+  }
+  if(document.querySelector('.adm-menu.ab')) return true;
+  for(const id of ['ordenarMenu','colMenu','antecPop','menuMaisFiltros']){
+    if(estaNaTela(document.getElementById(id))) return true;
+  }
+  return false;
+}
+
+/* Na CAPTURA, nao no borbulhar: o campo de busca tem o proprio Esc e,
+   quando a vez chegava aqui, ele ja havia esvaziado o campo - entao a
+   condicao "tem texto na busca" nunca era verdadeira e a selecao caia
+   junto. Aqui a decisao e tomada antes de qualquer um agir. */
+document.addEventListener('keydown', e => {
+  if(e.key !== 'Escape') return;
+  if(!_dispoSelecionados.size) return;
+  if(temAlgoAbertoNaDispo()) return;
+  const busca = document.getElementById('dispoSearch');
+  if(busca && e.target === busca && busca.value) return;
+  limparSelecaoDispo();
+}, true);
 function atualizarBulkBarDispo(){
   const n = _dispoSelecionados.size;
   const bar = document.getElementById('dispoBulkBar');
   const cnt = document.getElementById('dispoBulkCount');
   if(cnt) cnt.textContent = `${n} selecionado${n!==1?'s':''}`;
   if(bar) bar.style.display = n > 0 ? 'flex' : 'none';
+  /* A barra OCUPA O LUGAR dos filtros, nao se soma a eles: aparecendo
+     por cima, ela empurrava a tabela 56px para baixo e o cabecalho das
+     colunas fugia da vista no clique. Enquanto se escolhe lote para
+     agir, filtrar nao e o que se quer fazer - e "Limpar" devolve a
+     fileira. A preferencia de quem escondeu os filtros pelo menu "..."
+     continua valendo quando a selecao acaba. */
+  const filtros = document.getElementById('barraFiltros');
+  if(filtros){
+    let ocultosPorEle = false;
+    try{ ocultosPorEle = localStorage.getItem(FILTROS_OCULTOS_KEY) === '1'; }catch(_){}
+    filtros.classList.toggle('hidden', n > 0 || ocultosPorEle);
+  }
   /* Arquivar vale em QUALQUER aba, não só na Ag desmembramento. Era assim no
      primeiro desenho e estava errado: o modal já avisa quando um selecionado
      ainda tem saldo, e esse aviso só faz sentido se der para arquivar fora
@@ -6727,103 +6830,11 @@ function openDesmModal(row){
 }
 
 
-function renderDesmTable(linhas){
-  $('desmContent').innerHTML = `
-    <div class="overflow-auto">
-      <table class="desm-table">
-        <thead>
-          <tr>
-            <th>EBM</th>
-            <th>GCI</th>
-            <th>Cliente</th>
-            <th>Prazo</th>
-            <th>Campanha</th>
-            <th>Descrição</th>
-            <th>Cor</th>
-            <th class="text-right">Qtde</th>
-            <th>Prev Fat</th>
-            <!-- os mesmos nomes da tela cheia: PEDIDO e STATUS -->
-            <th>Pedido</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${linhas.map(l => `
-            <tr>
-              <td class="text-slate-500 font-semibold">${safeHtml(l.ebm)}</td>
-              <td class="font-extrabold text-[var(--brand)]">${safeHtml(l.gci)}</td>
-              <td class="font-extrabold">${safeHtml(l.cliente)}</td>
-              <td class="text-slate-500 font-semibold whitespace-nowrap">${safeHtml(l.prazo)}</td>
-              <td class="text-slate-500 font-semibold">${safeHtml(l.campanha)}</td>
-              <td class="font-extrabold">${safeHtml(l.produto)}</td>
-              <td class="text-slate-500 font-semibold">${safeHtml(l.cor)}</td>
-              <td class="text-right font-extrabold">${l.qtde}</td>
-              <td class="text-slate-500 font-semibold whitespace-nowrap">${safeHtml(l.prevFat)}</td>
-              <td>${renderStatusChipDesm(l.orderStatus)}</td>
-              <td>
-                <select class="desm-status-select st-${(l.desmStatus||'Pendente').toLowerCase()}"
-                  data-line-key="${safeHtml(l.lineKey)}"
-                  onchange="onDesmStatusChange(this)">
-                  <option value="Pendente"  ${l.desmStatus==='Pendente'  ?'selected':''}>Pendente</option>
-                  <option value="Desmembrado" ${l.desmStatus==='Desmembrado'?'selected':''}>Desmembrado</option>
-                </select>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
 function renderStatusChipDesm(status){
   const s = (status||'').toLowerCase();
   if(s.includes('aprovado'))  return `<span class="chip chip-success" style="font-size:11px">Aprovado</span>`;
   if(s.includes('cancelado')) return `<span class="chip chip-danger"  style="font-size:11px">Cancelado</span>`;
   return `<span class="chip chip-warning" style="font-size:11px">Pendente</span>`;
-}
-
-function onDesmStatusChange(sel){
-  sel.className = `desm-status-select st-${sel.value.toLowerCase()}`;
-}
-
-async function saveDesmembramento(){
-  const key = STATE._desmCurrentKey;
-  if(!key) return;
-
-  const selects = document.querySelectorAll('.desm-status-select');
-  const saved = STATE.desmembramentos[key] || {};
-  selects.forEach(sel => { saved[sel.dataset.lineKey] = sel.value; });
-  STATE.desmembramentos[key] = saved;
-
-  const btn = $('btnSaveDesmembramento');
-  const prev = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
-
-  try{
-    const res = await workerFetch({
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'save', data: STATE.desmembramentos })
-    });
-    if(!res.ok) throw new Error(`Worker PATCH falhou (${res.status})`);
-    const result = await res.json();
-    if(!result.success) throw new Error(result.error || 'Erro ao salvar');
-    showToast('Desmembramento salvo com sucesso!', 'success');
-  }catch(err){
-    console.error(err);
-    showToast('Não foi possível salvar. Tente novamente.', 'error');
-  }finally{
-    btn.disabled = false;
-    btn.innerHTML = prev;
-  }
-}
-
-function closeDesmModal(){
-  $('desmModalWrap').classList.remove('open');
-  STATE._desmCurrentKey = null;
-  STATE._desmCurrentLinhas = null;
 }
 
 // ── CONSULTA DESMEMBRAMENTOS ──────────────────────────────────────────────────
@@ -7392,6 +7403,40 @@ function toggleOrdenarMenu(){
 })();
 
 // ── DARK MODE ─────────────────────────────────────────────────────────────────
+/* ── De quando sao os dados na tela ───────────────────────────────
+   "agora" nos primeiros 60s, depois "há N min" e "há N h". O texto se
+   reescreve sozinho a cada meio minuto: um "agora" de uma hora atras
+   seria pior do que nao ter nada. */
+let _horaDaCarga = null;
+
+function textoDoQuando(){
+  if(!_horaDaCarga) return '';
+  const seg = Math.floor((Date.now() - _horaDaCarga) / 1000);
+  if(seg < 60) return 'agora';
+  const min = Math.floor(seg / 60);
+  if(min < 60) return `há ${min} min`;
+  const h = Math.floor(min / 60);
+  return `há ${h} h`;
+}
+
+function pintarQuando(){
+  const el = document.getElementById('dispoQuando');
+  if(!el) return;
+  const t = textoDoQuando();
+  el.hidden = !t;
+  if(!t) return;
+  el.textContent = t;
+  el.title = 'Dados buscados às '
+    + new Date(_horaDaCarga).toLocaleTimeString('pt-BR',
+        { hour:'2-digit', minute:'2-digit' });
+}
+
+function marcarHoraDaCarga(){
+  _horaDaCarga = Date.now();
+  pintarQuando();
+}
+setInterval(pintarQuando, 30000);
+
 function toggleDark(){
   const isDark = document.documentElement.classList.toggle('dark');
   // Salva nas duas chaves para manter sincronia com o admin/index.html
@@ -8562,8 +8607,23 @@ async function abrirAjusteDatasPelaUrl(){
 }
 document.addEventListener('DOMContentLoaded', abrirAjusteDatasPelaUrl);
 
-function fecharAjusteDatas(){
-  if(DT.aplicadas && !confirm('Há alterações aplicadas que ainda não foram salvas. Fechar assim mesmo?')) return;
+async function fecharAjusteDatas(){
+  /* Era a caixa do navegador - a unica que sobrou nesta tela, e logo
+     numa pergunta que custa trabalho perdido. O modal daqui ja existia
+     (uiConfirm) e diz QUANTAS alteracoes estao em jogo. */
+  if(DT.aplicadas){
+    const n = DT.aplicadas;
+    const ok = await uiConfirm({
+      title: 'Sair sem salvar?',
+      message: (n > 1
+          ? `${n} alterações de data foram aplicadas na tela, mas ainda não foram salvas.`
+          : '1 alteração de data foi aplicada na tela, mas ainda não foi salva.')
+        + `
+Fechando agora, ${n > 1 ? 'elas se perdem' : 'ela se perde'}.`,
+      okText: 'Fechar e perder',
+      danger: true });
+    if(!ok) return;
+  }
   $('datasModal').classList.add('hidden');
   document.body.style.overflow = '';
 }
