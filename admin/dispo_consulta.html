@@ -5,13 +5,17 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <title>Desmembramentos • Repasse Olympikus</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- A Plus Jakarta Sans entra pelo selo CMS: ele a pede, e sem ela o
+       "CMS" caia numa fonte substituta e saia diferente das outras telas. -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <style>
     :root{
-      --bg:#f6f7fb; --card:#ffffff; --text:#0f172a; --line:#e2e8f0;
+      --bg:#d9e0ee;        /* era #f6f7fb, quase branco */
+      --card:#ffffff; --text:#0f172a; --line:#e2e8f0;
+      --cab-bg:#c5cfe3; --cab-tx:#3d4a61;   /* a faixa das outras telas */
       --brand:#2836d4; --brand-soft:rgba(40,54,212,.10);
       --shadow:0 18px 42px rgba(15,23,42,.08);
       --success:#15803d; --success-soft:#dcfce7;
@@ -21,6 +25,7 @@
     }
     .dark{
       --bg:#0f172a; --card:#1e293b; --text:#f1f5f9; --line:#334155;
+      --cab-bg:#0a1430; --cab-tx:#a9b8d6;
       --brand:#818cf8; --brand-soft:rgba(129,140,248,.15);
       --shadow:0 18px 42px rgba(0,0,0,.4);
       --success:#4ade80; --success-soft:#14532d;
@@ -39,7 +44,7 @@
     .dark .text-slate-500,.dark .text-slate-400{ color:var(--muted)!important; }
     .dark .shadow-card{ box-shadow:var(--shadow)!important; }
     .dark .hover\:bg-slate-50:hover,.dark .hover\:bg-slate-100:hover{ background:#334155!important; }
-    .dark .table-wrap thead th{ background:#263248!important; color:#94a3b8!important; }
+    .dark .table-wrap thead th{ background:var(--cab-bg)!important; color:var(--cab-tx)!important; }
     .dark .table-wrap tbody tr:hover td{ background:#263248!important; }
     .dark .table-wrap tbody td{ border-color:#334155!important; }
 
@@ -51,9 +56,9 @@
        calculado para o cabecalho antigo, de tres fileiras, e com o novo
        sobravam 100 px de vazio embaixo da tabela. O valor aqui e so o
        primeiro desenho, antes de o JS medir. */
-    .table-wrap{ overflow:auto; border-radius:20px; border:1px solid var(--line); background:var(--card); max-height:calc(100vh - 210px); }
+    .table-wrap{ overflow:auto; border-radius:12px; border:1px solid var(--line); background:var(--card); max-height:calc(100vh - 210px); }
     .table-wrap table{ width:100%; min-width:1000px; border-collapse:separate; border-spacing:0; }
-    .table-wrap thead th{ position:sticky; top:0; z-index:2; background:#f8fafc; color:#475569; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); white-space:nowrap; user-select:none; }
+    .table-wrap thead th{ position:sticky; top:0; z-index:2; background:var(--cab-bg); color:var(--cab-tx); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); white-space:nowrap; user-select:none; }
     .table-wrap tbody td{ padding:11px 14px; font-size:13px; border-bottom:1px solid #edf2f7; vertical-align:middle; }
     /* A linha da visao por LOTE carrega duas alturas de texto (Nº com o GCI
        embaixo, produto com o codigo), entao ela engordou de 50 para 59 px -
@@ -108,6 +113,29 @@
     .dark .tr-expand td{ background:#1e293b!important; }
     .tr-expand-inner{ padding:10px 16px 14px; }
     .sub-table{ width:100%; border-collapse:collapse; font-size:12px; min-width:600px; }
+    /* Voltar ao topo — a mesma peca das outras telas. Aqui ela rola o
+       #tableWrap: a pagina nao rola, e a tabela tem 24 mil pixels.
+       `button.topo-fab` por seguranca: se um dia entrar um
+       [title]{position:relative} aqui, como na DISPO, o seletor magro
+       perderia a disputa. */
+    button.topo-fab{
+      position:fixed; z-index:140; right:18px;
+      bottom:calc(18px + env(safe-area-inset-bottom,0px));
+      width:46px; height:46px; border-radius:50%; border:0; color:#fff; cursor:pointer;
+      background:linear-gradient(145deg,#5B69E8,#2836D4 60%,#1f2bb0);
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:0 10px 24px rgba(40,54,212,.42),
+                 0 0 0 3px rgba(255,255,255,.9), inset 0 1px 0 rgba(255,255,255,.25);
+      opacity:0; transform:translateY(10px); transition:opacity .2s, transform .2s;
+    }
+    .topo-fab[hidden]{ display:none; }
+    .topo-fab.on{ opacity:1; transform:none; }
+    .topo-fab:hover{ filter:brightness(1.1); }
+    .topo-fab:focus-visible{ outline:2px solid #fff; outline-offset:3px; }
+    .dark .topo-fab{ box-shadow:0 10px 24px rgba(0,0,0,.5),
+      0 0 0 3px var(--bg), inset 0 1px 0 rgba(255,255,255,.2); }
+    @media (prefers-reduced-motion:reduce){ .topo-fab{ transition:none; } }
+
     .sub-table thead th{ background:#e8ecff; color:#3730a3; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; padding:7px 12px; border-bottom:1px solid #c7d2fe; text-align:left; white-space:nowrap; }
     .dark .sub-table thead th{ background:#1e2a4a!important; color:#818cf8!important; border-color:#334155!important; }
     .sub-table tbody td{ padding:8px 12px; border-bottom:1px solid #eef2ff; vertical-align:middle; color:var(--text); }
@@ -117,6 +145,21 @@
     .btn-det:hover,.btn-det.open{ border-color:var(--brand); color:var(--brand); background:var(--brand-soft); }
     .badge-lojas{ background:#e0e7ff; color:#3730a3; border-radius:999px; padding:1px 6px; font-size:10px; font-weight:700; }
     .dark .badge-lojas{ background:#1e2a4a; color:#818cf8; }
+
+    /* o selo da casa, igual ao da DISPO e do Repasses */
+    .cms-badge{
+      width:38px;height:38px;border-radius:12px;flex:none;
+      display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(135deg,#5B69E8,#2836D4);color:#fff;
+      font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;
+      font-size:12px;letter-spacing:.02em;
+      box-shadow:0 4px 12px rgba(40,54,212,.28);
+    }
+    /* no celular e no tablet ele encolhe, como na DISPO; no computador
+       fica nos 38 px das outras telas */
+    @media(max-width:1024px){
+      #consultaHeader .cms-badge{ width:32px;height:32px; }
+    }
 
     /* o cabecalho numa linha: tudo nele e flex:none e a linha rola */
     .cab-uma-linha{ display:flex; align-items:center; gap:8px;
@@ -169,24 +212,22 @@
 <body>
 <div id="toastWrap" class="toast-wrap"></div>
 
-<main class="min-h-screen p-4 sm:p-6">
+<main class="min-h-screen px-4 sm:px-6 pb-4 sm:pb-6 pt-3 sm:pt-3.5">   <!-- mesmo respiro da tela de pedidos -->
   <div class="mx-auto max-w-[1400px]">
 
     <!-- HEADER -->
-    <header class="rounded-[32px] border border-slate-200 bg-white p-4 sm:p-5 shadow-card mb-4 sticky top-4 z-30">
+    <header id="consultaHeader" class="rounded-[18px] border border-slate-200 bg-white px-4 sm:px-5 py-2.5 shadow-card mb-2.5 sticky top-3 z-30">
       <!-- Uma linha so, que rola de lado no celular e no tablet: eram tres
            fileiras (titulo, busca+visoes+periodo, botoes) e 303 px antes da
            primeira linha da tabela. -->
       <div class="cab-uma-linha">
         <div class="flex items-center gap-3" style="flex:none">
           <button onclick="voltarParaDispo()" data-tip="Voltar ao DISPO"
-            class="focus-ring flex items-center justify-center h-10 w-10 rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors">
+            class="focus-ring flex items-center justify-center h-9 w-9 rounded-full border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors">
             <i class="fa-solid fa-arrow-left text-sm"></i>
           </button>
-          <div>
-            <div class="text-[11px] font-bold text-slate-500">Controle de estoque</div>
-            <div class="text-lg font-extrabold" style="white-space:nowrap">Desmembramentos</div>
-          </div>
+          <span class="cms-badge">CMS</span>
+          <span class="text-lg font-extrabold" style="white-space:nowrap">Desmembramentos</span>
         </div>
 
         <div class="flex items-center gap-2" style="flex:none">
@@ -246,37 +287,37 @@
             <i class="fa-solid fa-rotate-right text-xs"></i>
           </button>
 
-          <!-- as pilulas de resumo moram no fim da linha, nao numa fileira
-               propria abaixo dela -->
-          <span id="pillsResumo" class="hidden">
-            <span class="pill-resumo" style="background:#fef3c7;color:#92400e;border:.5px solid #fde68a">
-              <b id="pillPendente">—</b> pendente(s)</span>
-            <span class="pill-resumo" style="background:#dcfce7;color:#166534;border:.5px solid #bbf7d0">
-              <b id="pillFinalizado">—</b> finalizado(s)</span>
-            <span class="pill-resumo" style="background:var(--brand-soft);color:var(--brand);border:.5px solid var(--brand)">
-              <b id="pillTotal">—</b> lote(s)</span>
-          </span>
         </div>
       </div>
     </header>
 
 
-    <!-- resumo da visão por cliente -->
-    <div id="pillsClientes" class="flex flex-wrap items-center gap-2 mb-4 hidden">
-      <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold" style="background:var(--brand-soft);color:var(--brand);border:0.5px solid var(--brand)">
-        <span id="pillCliQtd">—</span> cliente(s)
-      </span>
-      <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold" style="background:#dcfce7;color:#166534;border:0.5px solid #bbf7d0">
-        <span id="pillCliPares">—</span>
-      </span>
-      <span class="text-[11px] font-bold text-slate-400" id="pillCliFonte"></span>
-    </div>
-
     <!-- TABELA -->
-    <div class="rounded-[28px] border border-slate-200 bg-white shadow-card p-4">
-      <div class="flex items-center justify-between gap-3 mb-4">
-        <div class="text-sm font-extrabold">Registros de desmembramento</div>
-        <div class="text-xs font-bold text-slate-400" id="tableCount">— registros</div>
+    <div class="rounded-[16px] border border-slate-200 bg-white shadow-card p-4">
+      <!-- O resumo mora aqui, do lado do titulo: no cabecalho ele era o
+           ultimo da fila e era cortado quando a linha enchia. -->
+      <div id="faixaTitulo" class="flex items-center justify-between gap-3 mb-4">
+        <div class="flex flex-wrap items-center gap-2 min-w-0">
+          <div class="text-sm font-extrabold" style="white-space:nowrap">Registros de desmembramento</div>
+
+          <span id="pillsResumo" class="hidden">
+            <span class="pill-resumo" style="background:#fef3c7;color:#92400e;border:.5px solid #fde68a">
+              <b id="pillPendente">—</b> <span id="pillPendenteRot">pendentes</span></span>
+            <span class="pill-resumo" style="background:#dcfce7;color:#166534;border:.5px solid #bbf7d0">
+              <b id="pillFinalizado">—</b> <span id="pillFinalizadoRot">finalizados</span></span>
+            <span class="pill-resumo" style="background:var(--brand-soft);color:var(--brand);border:.5px solid var(--brand)">
+              <b id="pillTotal">—</b> <span id="pillTotalRot">lotes</span></span>
+          </span>
+
+          <span id="pillsClientes" class="flex flex-wrap items-center gap-2 hidden">
+            <span class="pill-resumo" style="background:var(--brand-soft);color:var(--brand);border:.5px solid var(--brand)">
+              <b id="pillCliQtd">—</b> <span id="pillCliQtdRot">clientes</span></span>
+            <span class="pill-resumo" style="background:#dcfce7;color:#166534;border:.5px solid #bbf7d0">
+              <span id="pillCliPares">—</span></span>
+            <span class="text-[11px] font-bold text-slate-400" id="pillCliFonte"></span>
+          </span>
+        </div>
+        <div class="text-xs font-bold text-slate-400 flex-none" id="tableCount"></div>
       </div>
 
       <div id="loadingState" class="loading-shimmer rounded-2xl bg-slate-100 h-48 mb-2"></div>
@@ -643,12 +684,16 @@ function renderClientes(){
   const dataBR = d => { const m = String(d||'').match(/^(\d{4})-(\d{2})-(\d{2})/);
                         return m ? `${m[3]}/${m[2]}/${m[1]}` : '—'; };
   $('pillCliQtd').textContent = nf(lista.length);
+  const rotCli = $('pillCliQtdRot');
+  if(rotCli) rotCli.textContent = lista.length === 1 ? 'cliente' : 'clientes';
   const totPares = lista.reduce((s,c) => s + c.pares, 0);
   const totFeitos = lista.reduce((s,c) => s + c.feitos, 0);
   $('pillCliPares').textContent = nf(totPares) + ' pares · ' + nf(totFeitos) + ' já desmembrados';
   $('pillCliFonte').textContent = _hist && _hist.lido_em
     ? `planilha do Chris, lida em ${dataBR(String(_hist.lido_em).slice(0,10))}` : '';
-  $('tableCount').textContent = `${nf(lista.length)} cliente(s)`;
+  /* a pilula ao lado do titulo ja diz "N clientes"; repetir aqui seria o
+     mesmo numero duas vezes na mesma linha */
+  $('tableCount').textContent = '';
 
   const tb = $('bodyClientes');
   tb.innerHTML = '';
@@ -951,9 +996,18 @@ function chipDesmSit(s){
 function renderTable(){
   $('loadingState').classList.add('hidden');
   const produtos=filtrarProdutos();
-  $('pillPendente').textContent  = produtos.filter(p=>p.situacao==='pendente').length;
-  $('pillFinalizado').textContent = produtos.filter(p=>p.situacao==='total').length;
-  $('pillTotal').textContent     = produtos.length;
+  /* O numero manda no rotulo: "1 pendente", "305 pendentes". O (s)
+     entre parenteses e plural de sistema. */
+  const porRotulo = (idNum, idRot, n, um, muitos) => {
+    const bn = $(idNum), br = $(idRot);
+    if(bn) bn.textContent = n;
+    if(br) br.textContent = n === 1 ? um : muitos;
+  };
+  porRotulo('pillPendente', 'pillPendenteRot',
+    produtos.filter(p=>p.situacao==='pendente').length, 'pendente', 'pendentes');
+  porRotulo('pillFinalizado', 'pillFinalizadoRot',
+    produtos.filter(p=>p.situacao==='total').length, 'finalizado', 'finalizados');
+  porRotulo('pillTotal', 'pillTotalRot', produtos.length, 'lote', 'lotes');
   /* Em foco a contagem perde o sentido ("1 produto" nao diz nada), e no
      lugar dela vai o aviso de que a lista esta recortada. */
   /* O UNICO "Voltar a lista" da tela mora aqui, ao lado do aviso do
@@ -966,7 +1020,7 @@ function renderTable(){
          style="margin-left:9px;border:1px solid;border-radius:999px;
                 padding:4px 13px;font-size:11.5px;cursor:pointer">
          ← Voltar à lista</button>`
-    : `${produtos.length} produto${produtos.length!==1?'s':''}`;
+    : '';   /* fora do foco quem conta e a pilula "N lotes", ao lado do titulo */
   /* Em foco as pilulas contariam so o lote aberto ("0 pendentes · 1 lote"),
      o que nao diz nada sobre a lista - elas somem e voltam ao sair. */
   $('pillsResumo').classList.toggle('hidden', produtos.length===0 || !!_foco);
@@ -1016,11 +1070,11 @@ function renderTable(){
       <td class="tabular-nums cel-fraca" style="white-space:nowrap">${safeHtml(formatDateUTC(p.prevFat))}</td>
       <td${dicaSemSaldo} class="tabular-nums">${paresTxt}</td>
       <td>${chipSituacao(p.situacao)}${faltam ? `<span class="chip"
-          title="${faltam} destino(s) com cliente definido que ainda não foram digitados no EBM"
+          title="${faltam} destino${faltam === 1 ? '' : 's'} com cliente definido que ainda não ${faltam === 1 ? 'foi digitado' : 'foram digitados'} no EBM"
           style="background:#FEF3C7;color:#92400E;font-size:10px;margin-left:5px">faltam ${faltam}</span>` : ''}</td>
       <td style="text-align:right">
         <button class="det-abrir${isOpen?' open':''}" data-chave="${safeHtml(p.chave)}"
-          title="${isOpen ? 'Fechar os ' : 'Ver os '}${p.lojas.length} destino(s)">
+          title="${isOpen ? 'Fechar os ' : 'Ver os '}${p.lojas.length} destino${p.lojas.length === 1 ? '' : 's'}">
           <i class="fa-solid fa-chevron-${isOpen?'up':'down'}"></i>${p.lojas.length}</button></td>`;
 
     const trExp=document.createElement('tr');
@@ -1099,7 +1153,7 @@ function exportarSelecionados(){
   XLSX.utils.book_append_sheet(wb,ws,'Desmembramentos');
   const now=new Date();
   XLSX.writeFile(wb,`desmembramentos_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.xlsx`);
-  showToast(`${produtos.length} produto(s) exportado(s)!`,'success');
+  showToast((produtos.length === 1 ? '1 produto exportado!' : `${produtos.length} produtos exportados!`),'success');
 }
 
 
@@ -1180,6 +1234,32 @@ document.addEventListener('keydown', e => {
    troca de aba a qualquer momento. A visão guardada só entra depois, para
    não pintar a lista de lotes por cima da de clientes. */
 loadData().then(() => { if(_visao === 'cliente') setVisao('cliente'); });
+</script>
+<!-- Voltar ao topo: filho do body, senao o layout o empurra para dentro
+     de alguma caixa e ele nunca chega ao canto. -->
+<button type="button" class="topo-fab" id="topoFab" hidden
+        aria-label="Voltar ao topo da lista" title="Voltar ao topo da lista">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M12 19V5M5 12l7-7 7 7"/></svg>
+</button>
+
+<script>
+/* Quem rola aqui e o #tableWrap, nao a janela. Aparece depois de meia
+   tela rolada. */
+(function(){
+  const fab = document.getElementById('topoFab');
+  const tw = document.getElementById('tableWrap');
+  if(!fab || !tw) return;
+  function pintar(){
+    const mostrar = tw.scrollTop > tw.clientHeight * 0.5;
+    if(mostrar){ fab.hidden = false; requestAnimationFrame(() => fab.classList.add('on')); }
+    else { fab.classList.remove('on'); fab.hidden = true; }
+  }
+  tw.addEventListener('scroll', pintar, { passive:true });
+  fab.addEventListener('click', () => tw.scrollTo({ top:0,
+    behavior: matchMedia('(prefers-reduced-motion:reduce)').matches ? 'auto' : 'smooth' }));
+})();
 </script>
 </body>
 </html>

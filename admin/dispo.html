@@ -292,6 +292,7 @@
     .dark .icon-btn.ocultar:hover{ background:#312e81!important; border-color:#6366f1!important; color:#c7d2fe!important; }
     .dark .icon-btn.reexibir:hover{ background:#312e81!important; }
     .dark .icon-btn.desm:hover{ background:#1e3a5f!important; }
+    .dark .icon-btn.acao-principal:hover{ background:#1e3a5f!important; }
     .dark .btn-desmembrar:hover{ background:#1e3a5f!important; }
     .dark .desm-table tbody tr:hover td{ background:#263248!important; }
     .dark .btn-antecipa-ok:hover{ background:#26215C!important; }
@@ -400,7 +401,7 @@
     /* TABLE */
     .table-wrap{
       overflow:auto;
-      border-radius:20px;
+      border-radius:12px;   /* o quadro da lista dos pedidos */
       border:1px solid var(--line);
       background:white;
     }
@@ -762,7 +763,7 @@
       padding:16px; overflow-y:auto; }
     #infoLoteModal.hidden{ display:none; }
     .mi{ width:100%; max-width:720px; margin:24px auto; background:var(--card);
-      border:1px solid var(--line); border-radius:24px; box-shadow:var(--shadow); overflow:hidden; }
+      border:1px solid var(--line); border-radius:28px; box-shadow:var(--shadow); overflow:hidden; }
     .mi-topo{ display:flex; gap:14px; padding:18px 20px; border-bottom:1px solid var(--line); }
     .mi-foto{ width:84px; height:84px; flex:none; border-radius:16px; overflow:hidden;
       background:var(--muted-soft); display:flex; align-items:center; justify-content:center; }
@@ -865,6 +866,10 @@
     .icon-btn.reexibir:hover{ background:#AFA9EC; }
     .icon-btn.desm{ border-color:#c7d2fe; color:#4338ca; background:#eef2ff; }
     .icon-btn.desm:hover{ background:#c7d2fe; }
+    /* a acao de um clique da linha - desde 27/11/2026 e Editar, nao
+       Desmembrar. A pintura e a mesma: o que muda e o que ela faz. */
+    .icon-btn.acao-principal{ border-color:#c7d2fe; color:#4338ca; background:#eef2ff; }
+    .icon-btn.acao-principal:hover{ background:#c7d2fe; }
     /* os botões de ação ficam sempre lado a lado: a tabela já rola de lado,
        e quebrar a fileira empurrava a linha para baixo */
     .btn-group{ display:flex; gap:4px; align-items:center; flex-wrap:nowrap; }
@@ -1029,6 +1034,30 @@
     .canc.volta .canc-cab .ico, .canc.volta .canc-cab .t{ color:#7a2fbf }
     .canc.aberto .canc-cab .seta{ transform:rotate(180deg) }
     .canc-corpo{ display:none; padding:14px; border-top:1px solid var(--line) }
+
+    /* A caixa nunca passa da janela (24 px de margem em cima + 16 do
+       respiro do fundo + folga). Dentro dela, cabecalho e botoes ficam do
+       tamanho que sao e a LISTA fica com o que sobrar - rolando por dentro
+       quando os vendedores nao couberem. Nada aqui depende de eu adivinhar
+       a altura do resto do modal. */
+    .rateio-caixa{ display:flex; flex-direction:column; max-height:calc(100vh - 64px) }
+    .editar-caixa{ display:flex; flex-direction:column; max-height:calc(100vh - 64px) }
+    .editar-miolo{ flex:1 1 auto; min-height:80px; overflow-y:auto; padding-right:2px }
+    .rateioLista-rolando{ flex:1 1 auto; min-height:64px; overflow-y:auto; padding-right:2px }
+
+    /* O irmao neutro do bloco de cima: guarda o que quase nunca se
+       ajusta (No, filial, pedido mae, saldo e a grade). */
+    .mais-campos{ border:1px solid var(--line); border-radius:16px; margin-top:14px; overflow:hidden }
+    .mais-cab{ display:flex; align-items:center; gap:10px; padding:11px 14px; cursor:pointer;
+      background:var(--muted-soft); width:100%; border:0; text-align:left; font:inherit }
+    .mais-cab .ico{ color:var(--muted) }
+    .mais-cab .t{ font-size:13px; font-weight:800; color:var(--text) }
+    .mais-cab .s{ font-size:11.5px; color:var(--muted) }
+    .mais-cab .seta{ margin-left:auto; color:var(--muted); font-size:12px; transition:transform .18s }
+    .mais-campos.aberto .mais-cab .seta{ transform:rotate(180deg) }
+    .mais-corpo{ display:none; padding:14px; border-top:1px solid var(--line) }
+    .mais-campos.aberto .mais-corpo{ display:block }
+    @media (prefers-reduced-motion:reduce){ .mais-cab .seta{ transition:none } }
     .canc.aberto .canc-corpo{ display:block }
     .canc-rot{ display:block; font-size:11px; font-weight:700; color:var(--muted); margin-bottom:3px }
     .canc-opcs{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px }
@@ -1184,7 +1213,7 @@
     /* ── Ajustar prev. faturamento (veio do admin) ── */
     /* ── Ajustar prev. faturamento em bloco ──────────────────────────────── */
     .dt-caixa{width:100%;max-width:980px;margin:14px 0;background:var(--card);border:1px solid var(--line);
-      border-radius:24px;box-shadow:0 30px 70px -20px rgba(0,0,0,.5);overflow:hidden}
+      border-radius:28px;box-shadow:0 30px 70px -20px rgba(0,0,0,.5);overflow:hidden}
     .dt-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:20px 22px 0}
     .dt-eyebrow{font:800 11px Inter,sans-serif;color:var(--brand);text-transform:uppercase;letter-spacing:.05em}
     .dt-tit{font:800 19px Inter,sans-serif;margin-top:2px;color:var(--text)}
@@ -1276,7 +1305,7 @@
       .dt-tab td.c-gci,.dt-tab td.c-cor,.dt-tab thead th:nth-child(3),.dt-tab thead th:nth-child(5){display:none}
     }
     @media (max-width:640px){
-      .dt-caixa{border-radius:20px;margin:8px 0}
+      .dt-caixa{border-radius:28px;margin:8px 0}
       .dt-topo,.dt-corpo,.dt-pe{padding-left:15px;padding-right:15px}
       .dt-tab-wrap{max-height:50vh}
       .dt-tab thead{display:none}
@@ -1310,11 +1339,11 @@
 <body>
   <div id="toastWrap" class="toast-wrap"></div>
 
-  <main class="min-h-screen p-4 sm:p-6">
+  <main class="min-h-screen px-4 sm:px-6 pb-4 sm:pb-6 pt-3 sm:pt-3.5">   <!-- mesmo respiro da tela de pedidos -->
     <div class="mx-auto max-w-[1400px]">
 
       <!-- HEADER -->
-      <header id="dispoHeader" class="rounded-[28px] border border-slate-200 bg-white px-4 sm:px-5 py-2.5 shadow-card mb-2.5 sticky top-3 z-30">
+      <header id="dispoHeader" class="rounded-[18px] border border-slate-200 bg-white px-4 sm:px-5 py-2.5 shadow-card mb-2.5 sticky top-3 z-30">
         <div class="flex flex-wrap lg:flex-nowrap items-center justify-between gap-3">
           <div class="flex items-center gap-3 flex-shrink-0">
             <button onclick="voltarParaPedidos()"
@@ -1427,7 +1456,7 @@
       </header>
 
       <!-- FILTERS + TABLE -->
-      <div class="rounded-[28px] border border-slate-200 bg-white px-4 pt-4 pb-1.5 shadow-card">
+      <div class="rounded-[16px] border border-slate-200 bg-white px-4 pt-4 pb-1.5 shadow-card">
 
         <!-- Filter pills + count -->
         <div id="barraFiltros" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
@@ -1659,7 +1688,7 @@
 
       <!-- CONSULTA DESMEMBRAMENTOS -->
       <div id="consultaDesmWrap" class="hidden mt-6">
-        <div class="rounded-[28px] border border-slate-200 bg-white overflow-hidden shadow-card">
+        <div class="rounded-[16px] border border-slate-200 bg-white overflow-hidden shadow-card">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-slate-200">
             <div>
               <div class="text-sm font-extrabold text-slate-800">Consulta de desmembramentos</div>
@@ -2428,7 +2457,21 @@ O lote sai da lista, mas fica registrado no histórico.`,
 // ===== Edição inline de um produto da DISPO =====
 let _editProdutoNumOriginal = null;
 
+function toggleMaisCampos(cab){
+  const bloco = cab.closest('.mais-campos');
+  const aberto = bloco.classList.toggle('aberto');
+  cab.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+}
+
 function abrirEditarProduto(num){
+  /* o bloco volta fechado a cada abertura: quem abriu uma vez para mexer
+     na grade nao quer o modal grande para sempre */
+  const bm = document.getElementById('blocoMais');
+  if(bm){
+    bm.classList.remove('aberto');
+    const cab = bm.querySelector('.mais-cab');
+    if(cab) cab.setAttribute('aria-expanded', 'false');
+  }
   const row = STATE.dispoRows.find(r => String(r.num) === String(num));
   if(!row){ showToast('Linha não encontrada.', 'error'); return; }
   _editProdutoNumOriginal = String(row.num ?? '');
@@ -4386,7 +4429,7 @@ function uiEscolher(opts){
     const fundo = document.createElement('div');
     fundo.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(2,6,23,.55);display:flex;align-items:center;justify-content:center;padding:16px';
     fundo.innerHTML = [
-      '<div style="width:100%;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">',
+      '<div style="width:100%;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:28px;padding:20px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">',
       '<div style="font-size:16px;font-weight:900;color:var(--text)">' + safeHtml(title) + '</div>',
       '<div style="font-size:13px;color:var(--muted);margin:8px 0 14px;white-space:pre-line">' + safeHtml(message) + '</div>',
       '<select id="__esc" style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px;font-weight:600;background:var(--bg);color:var(--text)">',
@@ -4424,7 +4467,7 @@ function uiDuasOpcoes({ title, message, a, b }){
       '<span><b style="font-size:14px;font-weight:800">' + safeHtml(o.titulo) + '</b>' +
       '<small style="display:block;font-size:12px;color:var(--muted);margin-top:3px;font-weight:600">' + safeHtml(o.dica) + '</small></span></button>';
     fundo.innerHTML =
-      '<div style="width:100%;max-width:440px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">' +
+      '<div style="width:100%;max-width:440px;background:var(--card);border:1px solid var(--line);border-radius:28px;padding:20px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">' +
       '<div style="font-size:16px;font-weight:900;color:var(--text)">' + safeHtml(title) + '</div>' +
       '<div style="font-size:13px;color:var(--muted);margin:8px 0 14px;white-space:pre-line">' + safeHtml(message) + '</div>' +
       '<div style="display:flex;flex-direction:column;gap:10px">' + cartao('__a', a) + cartao('__b', b) + '</div>' +
@@ -6303,13 +6346,13 @@ function abrirRateio(num){
     const cx = pares ? pares/_rateioPack : 0;
     const cxVal = cx ? (Number.isInteger(cx)?cx:cx.toFixed(2)) : '';
     const j = levou.get(p.nome);
-    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:12px;padding:8px 12px">
-      <span style="font-weight:800;font-size:13px;color:var(--text)">${safeHtml(p.nome)}
-        ${j ? `<span style="display:block;font-size:10.5px;font-weight:700;color:#0f766e" title="${j.pedidos.size} pedido(s) deste lote">
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:12px;padding:4px 12px">
+      <span style="font-weight:800;font-size:12.5px;color:var(--text)">${safeHtml(p.nome)}
+        ${j ? `<span style="display:block;font-size:10px;font-weight:700;color:#0f766e;margin-top:1px" title="${j.pedidos.size} pedido(s) deste lote">
                  já levou ${formatInt(j.pares)} ${j.pares === 1 ? 'par' : 'pares'}${j.pendentes ? ` · ${formatInt(j.pendentes)} ainda pendente${j.pendentes === 1 ? '' : 's'}` : ''}</span>` : ''}
       </span>
       <div style="display:flex;align-items:center;gap:8px">
-        <input type="number" min="0" step="1" class="rateio-inp" data-code="${p.codigo}" value="${cxVal}" oninput="recalcRateio()" placeholder="0" style="width:62px;text-align:center;border:1px solid var(--line);border-radius:8px;padding:5px 6px;font-weight:800;font-size:13px;background:var(--card);color:var(--text)">
+        <input type="number" min="0" step="1" class="rateio-inp" data-code="${p.codigo}" value="${cxVal}" oninput="recalcRateio()" placeholder="0" style="width:58px;text-align:center;border:1px solid var(--line);border-radius:8px;padding:4px 6px;font-weight:800;font-size:12.5px;background:var(--card);color:var(--text)">
         <span style="font-size:11px;color:var(--muted);min-width:62px;text-align:right" class="rateio-pares" data-code="${p.codigo}">${pares} pares</span>
       </div>
     </div>`;
@@ -6681,13 +6724,14 @@ function renderDispo(){
           <div class="btn-group">
             ${/* A acao do dia fica a um clique, e ela muda com a aba:
                   em Ocultos o que se faz e reexibir; em Arquivados,
-                  desarquivar; no resto, desmembrar. O que sobra vai
-                  para o menu - ver abrirMenuLinhaDispo(). */ ''}
+                  desarquivar; no resto, EDITAR os dados do produto - era
+                  desmembrar ate 27/11/2026, e ele pediu a troca. O que
+                  sobra vai para o menu - ver abrirMenuLinhaDispo(). */ ''}
             ${STATE.activeFilter === 'ocultos'
               ? `<button class="icon-btn reexibir btn-reexibir" data-gci="${safeHtml(String(row.gci||''))}" title="Reexibir este lote"><i class="fa-solid fa-eye" style="font-size:12px"></i></button>`
               : STATE.activeFilter === 'arquivados'
               ? `<button class="icon-btn" title="Desarquivar este lote" style="color:var(--brand);border-color:var(--brand-soft)" onclick="desarquivarUm('${safeHtml(String(row.num||''))}')"><i class="fa-solid fa-box-open" style="font-size:12px"></i></button>`
-              : `<button class="icon-btn desm btn-desmembrar" data-idx="${idx}" title="Desmembrar este lote"><i class="fa-solid fa-table-list" style="font-size:12px"></i></button>`
+              : `<button class="icon-btn acao-principal btn-editar-linha" data-num="${safeHtml(String(row.num||''))}" title="Editar dados do produto"><i class="fa-solid fa-pen" style="font-size:12px"></i></button>`
             }
             <button class="icon-btn btn-mais" type="button" title="Mais ações"
               aria-haspopup="menu" aria-expanded="false"
@@ -8314,10 +8358,14 @@ function abrirMenuLinhaDispo(btn){
   const idx = btn.dataset.menuIdx || '';
   const oculto = STATE.activeFilter === 'ocultos';
   const arquivado = STATE.activeFilter === 'arquivados';
-  const itens = [
-    ['info', 'fa-circle-info', 'Ver tudo deste lote', ''],
-    ['editar', 'fa-pen', 'Editar dados do produto', ''],
-  ];
+  /* Desmembrar desceu da linha para ca em 27/11/2026, e e o primeiro do
+     menu. Editar so aparece aqui nas abas em que a linha tem outra acao
+     (Ocultos, Arquivados) - nas demais ele JA e o botao da linha, e
+     repetir seria oferecer duas vezes a mesma coisa. */
+  const itens = [];
+  if(!oculto && !arquivado) itens.push(['desmembrar', 'fa-table-list', 'Desmembrar este lote', '']);
+  itens.push(['info', 'fa-circle-info', 'Ver tudo deste lote', '']);
+  if(oculto || arquivado) itens.push(['editar', 'fa-pen', 'Editar dados do produto', '']);
   if(!arquivado) itens.push(['ratear', 'fa-users', 'Ratear por vendedor', '']);
   if(!oculto && !arquivado) itens.push(['ocultar', 'fa-eye-slash', 'Ocultar da lista', '']);
   m.innerHTML = itens.map(([acao, ic, rot]) =>
@@ -8354,6 +8402,11 @@ document.addEventListener('click', e => {
     const num = m.dataset.num, gci = m.dataset.gci, idx = m.dataset.idx;
     fecharMenuLinhaDispo();
     switch(item.dataset.acao){
+      case 'desmembrar': {
+        const row = linhasVisiveis().lista[parseInt(idx, 10)];
+        if(row) openDesmModal(row);
+        break;
+      }
       case 'info':    abrirInfoLote(num); break;
       case 'editar':  abrirEditarProduto(num); break;
       case 'ratear':  abrirRateio(num); break;
@@ -8374,7 +8427,7 @@ addEventListener('scroll', fecharMenuLinhaDispo, { passive:true });
 // Click em qualquer linha da tabela DISPO — seleciona para facilitar scroll horizontal
 $('dispoTableBody').addEventListener('click', (e)=>{
   // Não seleciona se clicou em botão de ação
-  if(e.target.closest('.btn-desmembrar,.btn-ocultar,.btn-reexibir,.btn-antecipa-row,.btn-mais')) return;
+  if(e.target.closest('.btn-desmembrar,.btn-editar-linha,.btn-ocultar,.btn-reexibir,.btn-antecipa-row,.btn-mais')) return;
   const tr = e.target.closest('tr');
   if(!tr) return;
   const jaSelecionada = tr.classList.contains('row-selected');
@@ -8386,6 +8439,11 @@ $('dispoTableBody').addEventListener('click', (e)=>{
 
 // Botão Desmembrar, Ocultar e Antecipar por linha
 $('dispoTableBody').addEventListener('click', (e)=>{
+  const btnEdit = e.target.closest('.btn-editar-linha');
+  if(btnEdit){
+    abrirEditarProduto(btnEdit.dataset.num);
+    return;
+  }
   const btnDesm = e.target.closest('.btn-desmembrar');
   if(btnDesm){
     const idx = parseInt(btnDesm.dataset.idx, 10);
@@ -8974,7 +9032,7 @@ async function dtSalvar(){
 <!-- PROGRESSO — devolver, cancelar e excluir fazem três gravações em fila;
      sem isto a tela parece travada e ninguém sabe quando acabou. -->
 <div id="progModal" style="position:fixed;inset:0;z-index:260;background:rgba(2,6,23,.55);display:none;align-items:center;justify-content:center;padding:16px">
-  <div style="width:100%;max-width:380px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:26px 24px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5);text-align:center">
+  <div style="width:100%;max-width:380px;background:var(--card);border:1px solid var(--line);border-radius:28px;padding:26px 24px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5);text-align:center">
     <div id="progIcone" style="font-size:30px;line-height:1;margin-bottom:14px;color:#0d9488">
       <i class="fa-solid fa-circle-notch fa-spin"></i>
     </div>
@@ -8986,7 +9044,7 @@ async function dtSalvar(){
 
 <!-- MODAL DO LOTE — o que o EBM devolveu, para o Chris conferir e inserir -->
 <div id="loteModal" style="position:fixed;inset:0;z-index:210;background:rgba(2,6,23,.6);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
-  <div style="width:100%;max-width:680px;margin-top:40px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
+  <div style="width:100%;max-width:680px;margin-top:40px;background:var(--card);border:1px solid var(--line);border-radius:28px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px">
       <div>
         <div style="font-size:11px;font-weight:800;color:#0d9488;text-transform:uppercase;letter-spacing:.04em">Do EBM</div>
@@ -9001,7 +9059,7 @@ async function dtSalvar(){
 
 <!-- MODAL DAS OFERTAS — encomendas mandadas para repasse na Detalhada -->
 <div id="ofertasModal" style="position:fixed;inset:0;z-index:200;background:rgba(2,6,23,.55);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
-  <div style="width:100%;max-width:680px;margin-top:40px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
+  <div style="width:100%;max-width:680px;margin-top:40px;background:var(--card);border:1px solid var(--line);border-radius:28px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px">
       <div>
         <div style="font-size:11px;font-weight:800;color:#0d9488;text-transform:uppercase;letter-spacing:.04em">Veio da Detalhada</div>
@@ -9027,7 +9085,7 @@ async function dtSalvar(){
      meio dos outros da conferencia, e passou batido. Aqui ele vira uma
      parada no caminho - com o que fazer a respeito. -->
 <div id="desmPendModal" style="position:fixed;inset:0;z-index:216;background:rgba(2,6,23,.6);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
-  <div style="width:100%;max-width:700px;margin:24px 0;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
+  <div style="width:100%;max-width:700px;margin:24px 0;background:var(--card);border:1px solid var(--line);border-radius:28px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
       <div>
         <div style="font-size:11px;font-weight:800;color:var(--warning);text-transform:uppercase;letter-spacing:.04em">Antes de desmembrar</div>
@@ -9054,7 +9112,7 @@ async function dtSalvar(){
 </div>
 
 <div id="desmConfModal" style="position:fixed;inset:0;z-index:215;background:rgba(2,6,23,.6);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
-  <div style="width:100%;max-width:760px;margin:24px 0;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
+  <div style="width:100%;max-width:760px;margin:24px 0;background:var(--card);border:1px solid var(--line);border-radius:28px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
       <div>
         <div style="font-size:11px;font-weight:800;color:#0d9488;text-transform:uppercase;letter-spacing:.04em">Ag desmembramento</div>
@@ -9121,7 +9179,7 @@ async function dtSalvar(){
 
 <!-- MODAL: O DESMEMBRAMENTO ACONTECENDO -->
 <div id="desmExecModal" style="position:fixed;inset:0;z-index:220;background:rgba(2,6,23,.65);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
-  <div style="width:100%;max-width:720px;margin:24px 0;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
+  <div style="width:100%;max-width:720px;margin:24px 0;background:var(--card);border:1px solid var(--line);border-radius:28px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
       <div>
         <div style="font-size:11px;font-weight:800;color:#0d9488;text-transform:uppercase;letter-spacing:.04em">Desmembrando</div>
@@ -9156,7 +9214,7 @@ async function dtSalvar(){
 </div>
 
 <div id="rateioModal" style="position:fixed;inset:0;z-index:200;background:rgba(2,6,23,.55);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
-  <div style="width:100%;max-width:560px;margin-top:40px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
+  <div class="rateio-caixa" style="width:100%;max-width:560px;margin-top:24px;background:var(--card);border:1px solid var(--line);border-radius:28px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px">
       <div>
         <div style="font-size:11px;font-weight:800;color:var(--brand);text-transform:uppercase;letter-spacing:.04em">Rateio por vendedor</div>
@@ -9172,9 +9230,17 @@ async function dtSalvar(){
     <label for="rateioSelo" style="display:block;font-size:11px;font-weight:800;color:var(--text);margin-bottom:4px">Nome no selo da vitrine</label>
     <input id="rateioSelo" type="text" maxlength="28" autocomplete="off" placeholder="Forecast"
            style="width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-weight:700;font-size:13px;background:var(--card);color:var(--text);margin-bottom:4px">
-    <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Aparece no card do vendedor que tem cota e vira o nome do filtro na vitrine. Em branco, fica "Forecast".</div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Quantidade em <b>caixas</b> (os pares aparecem ao lado). Quem ficar com 0 não vê o produto.</div>
-    <div id="rateioLista" style="display:flex;flex-direction:column;gap:8px"></div>
+    <!-- Os dois paragrafos de explicacao sairam em 27/11/2026: o do selo
+         ja estava dito pela dica do campo ("Forecast"), e o das caixas
+         virou este rotulo. -->
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:10px 0 6px">
+      <span style="font-size:11px;font-weight:800;color:var(--text)">Caixas por vendedor</span>
+      <span style="font-size:10.5px;color:var(--muted)">quem ficar com 0 não vê o produto</span>
+    </div>
+    <!-- rateioLista-rolando: a lista rola por dentro quando nao cabe, para
+         o modal inteiro caber na tela e os botoes ficarem sempre a mao -->
+    <div id="rateioLista" class="rateioLista-rolando"
+         style="display:flex;flex-direction:column;gap:5px"></div>
     <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
       <button id="rateioBtnSalvar" onclick="salvarRateio()" style="flex:1;min-width:140px;background:var(--brand);color:#fff;border:0;border-radius:999px;padding:11px;font-weight:800;font-size:14px;cursor:pointer">Salvar rateio</button>
       <button onclick="liberarRateio()" style="background:transparent;border:1px solid #fca5a5;color:#dc2626;border-radius:999px;padding:11px 16px;font-weight:800;font-size:13px;cursor:pointer">Liberar p/ todos</button>
@@ -9184,7 +9250,7 @@ async function dtSalvar(){
 </div>
 <!-- MODAL: LISTA DE CAMPANHAS -->
 <div id="campModal" style="position:fixed;inset:0;z-index:200;background:rgba(2,6,23,.55);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
-  <div style="width:100%;max-width:720px;margin-top:40px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
+  <div style="width:100%;max-width:720px;margin-top:40px;background:var(--card);border:1px solid var(--line);border-radius:28px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px">
       <div>
         <div style="font-size:11px;font-weight:800;color:#7c3aed;text-transform:uppercase;letter-spacing:.04em">Campanhas de incentivo</div>
@@ -9204,7 +9270,7 @@ async function dtSalvar(){
 
 <!-- MODAL: CADASTRO DE CAMPANHA -->
 <div id="campFormModal" style="position:fixed;inset:0;z-index:201;background:rgba(2,6,23,.6);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
-  <div style="width:100%;max-width:620px;margin-top:40px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
+  <div style="width:100%;max-width:620px;margin-top:40px;background:var(--card);border:1px solid var(--line);border-radius:28px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px">
       <div>
         <div style="font-size:11px;font-weight:800;color:#7c3aed;text-transform:uppercase;letter-spacing:.04em">Campanha de incentivo</div>
@@ -9288,7 +9354,7 @@ async function dtSalvar(){
 
 <!-- MODAL DE EDIÇÃO DE PRODUTO -->
 <div id="editarProdutoModal" style="position:fixed;inset:0;z-index:200;background:rgba(2,6,23,.55);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
-  <div style="width:100%;max-width:520px;margin-top:40px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
+  <div class="editar-caixa" style="width:100%;max-width:520px;margin-top:24px;background:var(--card);border:1px solid var(--line);border-radius:28px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px">
       <div>
         <div style="font-size:11px;font-weight:800;color:var(--brand);text-transform:uppercase;letter-spacing:.04em">Editar produto</div>
@@ -9297,6 +9363,9 @@ async function dtSalvar(){
       <button onclick="fecharEditarProduto()" style="border:0;background:transparent;color:var(--muted);font-size:24px;cursor:pointer;line-height:1">&times;</button>
     </div>
 
+    <!-- O miolo rola por dentro quando a tela e baixa (tablet deitado tem
+         669 px): os botoes la embaixo ficam sempre a vista. -->
+    <div class="editar-miolo">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div>
         <label style="font-size:11px;font-weight:700;color:var(--muted)">Produto</label>
@@ -9315,30 +9384,49 @@ async function dtSalvar(){
         <input id="editGci" type="text" style="width:100%;margin-top:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
       </div>
       <div>
-        <label style="font-size:11px;font-weight:700;color:var(--muted)">Nº</label>
-        <input id="editNum" type="text" style="width:100%;margin-top:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
-      </div>
-      <div>
-        <label style="font-size:11px;font-weight:700;color:var(--muted)">Filial</label>
-        <input id="editFilial" type="text" style="width:100%;margin-top:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
-      </div>
-      <div>
-        <label style="font-size:11px;font-weight:700;color:var(--muted)">Prev. Faturamento (DD/MM/AAAA)</label>
+        <label style="font-size:11px;font-weight:700;color:var(--muted)">Prev. Fat.</label>
         <input id="editDataEntrega" type="text" placeholder="31/07/2026" style="width:100%;margin-top:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
-      </div>
-      <div>
-        <label style="font-size:11px;font-weight:700;color:var(--muted)">Pedido Mãe</label>
-        <input id="editPedidoMae" type="text" style="width:100%;margin-top:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
-      </div>
-      <div>
-        <label style="font-size:11px;font-weight:700;color:var(--muted)">Saldo DISPO</label>
-        <input id="editSaldo" type="number" style="width:100%;margin-top:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
       </div>
     </div>
 
+
+    <!-- O que quase nunca se ajusta: fechado ao abrir o modal, a um
+         clique de distancia. A grade estava aqui fora e sozinha ocupava
+         mais da metade da altura da caixa. -->
+    <div class="mais-campos" id="blocoMais">
+      <button type="button" class="mais-cab" aria-expanded="false" aria-controls="blocoMaisCorpo"
+        onclick="toggleMaisCampos(this)">
+        <i class="fa-solid fa-sliders ico"></i>
+        <div>
+          <div class="t">Mais campos e grade</div>
+          <div class="s">Nº, filial, pedido mãe, saldo e a grade por tamanho</div>
+        </div>
+        <i class="fa-solid fa-chevron-down seta"></i>
+      </button>
+      <div class="mais-corpo" id="blocoMaisCorpo">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted)">Nº</label>
+        <input id="editNum" type="text" style="width:100%;margin-top:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
+      </div>
+          <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted)">Filial</label>
+        <input id="editFilial" type="text" style="width:100%;margin-top:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
+      </div>
+          <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted)">Pedido Mãe</label>
+        <input id="editPedidoMae" type="text" style="width:100%;margin-top:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
+      </div>
+          <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted)">Saldo DISPO</label>
+        <input id="editSaldo" type="number" style="width:100%;margin-top:3px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text)">
+      </div>
+        </div>
     <div style="margin-top:14px">
       <label style="font-size:11px;font-weight:700;color:var(--muted)">Grade (quantidade por tamanho)</label>
       <div id="editGradeGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;margin-top:6px"></div>
+    </div>
+      </div>
     </div>
 
     <!-- ── Cancelar lote ─────────────────────────────────────────────
@@ -9438,6 +9526,7 @@ async function dtSalvar(){
 
     <!-- A vida do lote: de onde veio, quem levou, o que foi devolvido. -->
     <div id="loteHistorico" style="margin-top:18px"></div>
+    </div><!-- /editar-miolo -->
 
     <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
       <button id="editarProdutoBtnSalvar" onclick="salvarEdicaoProduto()" style="flex:1;min-width:140px;background:var(--brand);color:#fff;border:0;border-radius:999px;padding:11px;font-weight:800;font-size:14px;cursor:pointer">Salvar alterações</button>
@@ -9448,7 +9537,7 @@ async function dtSalvar(){
 
 <!-- MODAL DE CONFIRMAÇÃO -->
 <div id="confirmModal" onclick="if(event.target===this)_confirmClose(false)" style="position:fixed;inset:0;z-index:210;background:rgba(2,6,23,.55);display:none;align-items:center;justify-content:center;padding:16px">
-  <div style="width:100%;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:24px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
+  <div style="width:100%;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:28px;padding:24px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)">
     <div id="confirmTitulo" style="font-size:17px;font-weight:900;color:var(--text);margin-bottom:8px"></div>
     <div id="confirmMsg" style="font-size:13px;font-weight:500;color:var(--muted);line-height:1.55;margin-bottom:22px"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end">
